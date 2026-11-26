@@ -63,7 +63,7 @@ function setup(configure: (state: ReturnType<typeof createInitialState>) => void
   const events = new EventBus();
   const storage = new MemoryStorage();
   let now = 0;
-  const save = new SaveManager(state, storage, events, () => now);
+  const save = new SaveManager(state, storage, events, () => now, () => now);
   const writes: string[] = [];
   events.on('save:written', ({ reason }) => writes.push(reason));
   let quickPressed = false;

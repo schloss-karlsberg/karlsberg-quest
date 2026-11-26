@@ -315,6 +315,9 @@ Rules
 - A system that throws in `init/update/frame` is disabled and logged; the game keeps running.
 - Talk to other features through `ctx.events` and `ctx.state`, not by importing each other.
 - Persist everything that must survive a reload in your slice (`ctx.state.slice(id, init)`),
+  JSON-serialisable only. Call `ctx.save.autosave('reason')` at meaningful moments. Passing
+  `true` bypasses the five-second success cooldown and queues a retry if storage is in backoff.
+  `true` bypasses the five-second success cooldown. All autosaves respect storage failure backoff.
   JSON-serialisable only. Call `ctx.save.autosave('reason')` at meaningful moments (throttled 5 s;
   `autosave(reason, true)` bypasses the interval and respects active save holds).
 - Persist everything that must survive a reload in your slice (`ctx.state.slice(id, init)`). Slices
@@ -329,8 +332,9 @@ Rules
   `ATMOS_GLSL` (`kqLight`, `kqFog`, noise) so they match lighting, fog, lantern and fire glow.
 - Gameplay input: `ctx.input.wasPressed('listen')`, `isDown('sprint')` (actions in
   `DEFAULT_BINDINGS`: forward/back/left/right, sprint, crouch, prone, fly, up/down, interact,
-  listen E, lantern L, map M, measure 3, shift Q, scan 2, scan0 ^, pause Esc/P, keyboard
+  listen E, lantern L, map M, measure 3, shift Q, scan 2, scan0 Backquote, keyboard
   look lookLeft/lookRight/lookUp/lookDown on Comma/Period/PageUp/PageDown and Numpad 4/6/8/2).
+  The Pause menu handles Escape in `boot.ts`. The photo system also reads the `pause` action (Esc/P).
   Bindings are physical `KeyboardEvent.code`s (layout-independent; AZERTY "forward" is on Z).
   Players remap the actions in `REBINDABLE` (settings → Steuerung → Tastenbelegung);
   `settings.bindings` stores overrides. `effectiveBindings(overrides)` merges them, `bindKey` takes a
@@ -353,6 +357,7 @@ Rules
 | `perf` | `PerfMonitor`: `summary()` (frame/CPU/GPU ms percentiles, calls, triangles), `recentFrameMs`, `onFrame`; `renderer.info.autoReset` is off, counts cover the whole frame |
 | `quality` | `QualityManager`: `level` (= `override` ?? `settings.graphics` ?? `fallback`), `preset`, `apply()`, `listeners` (called with the preset after each apply), `hold(seconds)` (pause the auto-downgrade around loads / shifts), `capFps` (the render cap; the slow threshold follows it). `override` comes from `?q=` or a software renderer and is cleared when the player picks a level |
 | `assets` | `AssetLoader` (docs/ART-DIRECTION.md §8): `instance(id)` (model clone, PBR patched to the world light), `model(id)`, `texture(id)`, `loadArea(area, onProgress)`, `prefetchEra(era)` (boot calls it on `era:change`), `peek(id)`, `list(area?, era?)`, `licences()` |
+| `save` | `save(slot)`, `autosave(reason, force?)`, `load(slot)`, `has`, `peek(slot)` (read a slot without loading it), `delete`. Boot calls `retryAutosave()` during play and `flushAutosave(reason)` on tab hide and return to title. Keys are `kq.save.v1.<slot>`. `save:loaded` re-runs every system's `restore()` (boot.ts), so a load from the title (e.g. "Ende noch einmal wählen") rebuilds the running game |
 | `save` | `save(slot)`, `autosave(reason, force?)`, `load(slot)`, `has(slot)` (key presence), `availability(slot)` (empty, readable, or unreadable), `peek(slot)` (read a decoded slot without loading it), `readRaw(slot)` (exact stored bytes), `delete`. Keys are `kq.save.v1.<slot>`. `save:loaded` restores the world and system state. The title offers „Weiter“ when decoding and migration succeed, then loads the autosave again before `game:start` resumes its story beat. „Neues Spiel“ checks the bytes of an occupied writable slot before and after tour setup. Cancelling setup refreshes the title's save actions. „Ende noch einmal wählen“ checks the autosave against the bytes seen when the menu was drawn before loading the ending slot. Changed bytes in an occupied slot require fresh confirmation, including writes during a prompt. `?nosave` disables writes and deletion. |
 | `events` | `on/once/off/emit/onAny` |
 | `audio` | `bus('sfx'|'music'|'voice'|'ambience')` (spoken lines and whispers on `voice`, drones/score on `music`), `createSource3D(bus, opts)` (HRTF `PannerNode`, null until unlocked), `noise()`, `onUnlock(fn)`, `ctx` (AudioContext or null) |
@@ -470,6 +475,12 @@ Loading merges onto defaults (new fields appear automatically, extra keys are ke
 are rejected). Bump `STATE_VERSION` and add a migration in `deserializeState` for structural changes.
 Surveyor saves resume at the Chapter 1 checkpoint. The migration uses the archived quest history
 and reward data in `src/core/legacy-prologue-quests.ts` to retain deeds and settle pending payouts.
+Successful writes record wall-clock time in `meta.savedAt`. The five-second autosave cooldown
+and failure backoff use a monotonic clock. The first storage failure permits an immediate retry.
+After two consecutive failures, autosaves back off for one second between attempts. The game loop
+retries pending forced checkpoints with the current state after backoff and any cinematic holds end.
+Tab hide and return to title each get one immediate attempt while no hold is active. A successful
+autosave clears the failure streak. Manual saves can still be attempted.
 
 ## 8. Eras and world look
 
@@ -605,6 +616,8 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 - Unit (`tests/`): event bus, loop determinism, state/save round trip and throttling, settings,
   system ordering + error isolation, heightfield sampling, decoders (incl. real data), collision,
   forest determinism, validator (good + each failure class), ContentDB.
+- `tests/control-fixture.ts` records the controls that the settings form and touch overlay build.
+  Node tests dispatch events to their handlers by test ID. Playwright covers layout, focus and native pointer capture.
 - Quest, story and Chronik units reuse the existing headless fixtures for quest reloads, chapter
   reactions, dialogue queues and the echo director. `content-validation-cli.test.ts` verifies pack
   discovery and terrain bounds with temporary files.
@@ -1481,6 +1494,7 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   dog bark SFX yet).
 - **Calm** is script-only (`kq.animals.calm`): photo mode does not calm the deer (design decision,
   sneaking is the skill).
+- **Deer tuning** for the tour is recorded in [the tour slice](design/tour/slice-v0.md#deer-photo-and-sneak-tuning-task-017).
 - **Targets**: photo mode's `attachTarget` (`src/systems/photo/index.ts`, kq-mobile) gets
   `reh.ricke` / `reh.kitz` (`at` = body centre, `calm` false only while fleeing, `state` = the core
   state); the cinematic's `registerTarget` (`src/systems/cinematic/targets.ts`) gets `animal:<id>`
@@ -1944,32 +1958,46 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
   lock / dodge / abilities / Q / E / pause from every other reader; the photo system reads them
   with `raw`. Esc is caught in the capture phase (and the pointer-lock loss marked as the game's
   own), so no pause menu opens.
+- The **viewfinder** uses `html[data-kq-photo]` to hide the gameplay HUD, prompts, waymarks, minimap,
+  measuring UI and quest giver glyphs while the phone is up. Touch keeps the phone toggle and
+  shutter visible and accepts movement and look gestures. The measuring scene and surface taps
+  pause with endpoints intact. Scene marker roots follow `photo:open` / `photo:close` alongside
+  the independent `world:quiet` reasons. Tripods still activate, with their banners queued until
+  the phone closes.
 - **Not now** (a toast, an open phone closes): a menu / modal or pause, a conversation
   (`npc:conversation`, `cameraHints.focus`), a fight (`cameraHints.fight` / `boss`), the spirit view,
   `player.frozen`, or the camera taken over (`camera:override` from boot's camera slot, which
   `kq.setCamera` and the coming cinematic use).
+- An inline story choice or a `say` action with `phoneDown: true` lowers the phone and keeps it
+  down until the choice or dialogue ends. Other story captions pause their queue, typing and
+  recorded voice while the viewfinder is up.
 - **Judging** (`core.ts`, pure, `tests/photo.test.ts`): geometric, never pixels. Per target of the
   era: project the bounding sphere; good = centre in the middle third (`centre: 'any'` allowed),
-  diameter ≥ `minFrac` of the frame height, ≥ 2 of 3 sample points (top / left / right of the
-  sphere) with a clear line (terrain, footprint walls when the palace stands, `forest.trunksNear`;
-  the last 0.7 r is the subject itself), distance within `minDist`…`maxDist`, the view's mean
-  angular speed < 0.35 rad/s over the last 0.3 s (`SteadyMeter`), and `calm()` true. `needAll`
-  binds targets (doe and fawn both good in the same shot). **Fallback:** `fallbackDist` counts once
+  diameter ≥ `minFrac` of the frame height, and a majority of sample rays clear. The rays aim at
+  the top, left and right of the sphere. Animals also sample the centre and bottom, so they
+  need three of five clear. Terrain, footprint walls when the palace stands and tree trunks
+  block the rays. The last 0.7 r is skipped for the subject itself. The distance must be within
+  `minDist`…`maxDist`. Subjects beyond the active range limit get one star in frame and skip
+  sight sampling. The view's mean angular speed must be at most 0.35 rad/s over the last
+  0.3 s (`SteadyMeter`), and `calm()` must allow the shot. `needAll`
+  binds targets (doe and fawn both good in the same shot). **Fallback:** `fallbackDist` and the
+  optional lower `fallbackMinFrac` apply once
   the player has spent `fallbackAfterS` unpaused seconds within `fallbackDist` of the target (the
   clock lives in the save slice, stops at the first good shot), with `fallbackStars` (2 or 3 = good;
   1 = never good: one rule, good means ≥ 2 stars everywhere). **Stars**
   (contract C3): 0 nothing in the frame, 1 in the frame but not good, 2 good, 3 good and closer than
   0.6 × `maxDist`. German verdicts („Perfekt!“, „Gutes Foto“, „Nicht mittig“, „Verdeckt“, „Zu weit
   weg“, „Zu klein im Bild“, „Unscharf“, „Aufgeschreckt“, „Nicht alle im Bild“ …).
-- **Past eras:** „Kein Netz“ in the frame and as a toast, the picture comes out white, nothing is
-  judged or booked: `photo:shot { targets: [], good: [], stars: 0, noSignal: true }`.
+- **Past eras:** the phone still opens and the viewfinder shows „Kein Netz“. The shutter produces
+  a white picture and a toast. The shot is recorded as
+  `photo:shot { targets: [], good: [], stars: 0, noSignal: true }` and stays out of the album.
 - **Events:** `photo:open`, `photo:close`, `photo:shot { targets, good, stars, noSignal }`, and one
   `photo:good { id, stars }` per good target (scalar: the story waits with
   `{ "event": "photo:good", "match": { "id": … } }`; quests count it with the objective
   `{ "type": "photo", "target": … }`, validated against the target list; a good shot taken before
   the objective started counts at once, on accept, on a newly active objective and on load:
   `QuestBook.settleKnown(found, hasPhoto)` reads `systems.photo.good`).
-- **Subject state:** `attachTarget(id, { at, calm, state })` / `registerTarget({ …, state })` take an optional `state()` getter (an opaque string, e.g. the deer's `graze` / `alert` / `flee` / `settled`), read at the shot for each good target and carried as `photo:good { id, stars, state }` (absent without a getter; also on the album entry); story matches `{ "event": "photo:good", "match": { "id": "reh.ricke", "state": "alert" } }`. Stars and verdicts ignore it, and `calm()` false still voids the shot (`?debug`: `kq.photo.deer.state('alert')`).
+- **Subject state:** `attachTarget(id, { at, calm, state })` / `registerTarget({ …, state })` take an optional `state()` getter (an opaque string, e.g. the deer's `graze` / `alert` / `flee` / `settled`), read at the shot for each good target and carried as `photo:good { id, stars, state }` (absent without a getter; also on the album entry). The tour saves the first accepted state with the album entry and finishes the corresponding reaction on Continue. Stars and verdicts ignore the state, and `calm()` false still voids the shot (`?debug`: `kq.photo.deer.state('alert')`).
 - **Targets are data:** `content/photo/targets.json` (kq-story; C3 shape: id, kind, era `today`,
   one anchor `at` / `npc` / `animal`, `r`, `frame`, `grants`, plus `cards[]`), validated by
   `pnpm validate` (`data.ts` `validatePhotoTargets`). A point anchor is static (ground + r without
@@ -2278,9 +2306,12 @@ Rules that came out of it:
 - **Actions, not keys.** Features read `input.isDown(action)` / `input.wasPressed(action)`. Keys come
   from `effectiveBindings` (defaults plus the player's remaps). Mouse look comes from pointer-locked
   `movementX/Y`, `addLook(dx, dy)` (the pilot and touch) and ← / → (`keyTurn.ts`).
+  Changing modal input ownership or losing window focus clears pending presses, look and wheel movement.
 - **Virtual presses.** `input.press(action, down, edge?)` holds a binding-independent code `@<action>`.
   Remaps and the shared-key pairs (LMB = attack + interact, Space = dodge + up) stay untouched, and
-  the touch layer says per button which actions it means. `releaseVirtual()` drops every `@` hold.
+  the touch layer says per button which actions it means. `releaseVirtual()` clears virtual holds
+  and queued virtual presses. Fingers and brief keyboard or assistive technology activations share
+  a single press on each button. The action releases when all fingers leave and any active tap ends.
 - **Touch mode** (`input.touchMode`): `requestLock()` is a no-op, the "Ins Bild klicken" chip stays
   hidden, and the pause menu comes from a button, since Esc and losing the lock do not exist on touch.
 - **`TouchControls` (`src/ui/touch.ts`)** is created in boot after the input.

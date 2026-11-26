@@ -1,5 +1,6 @@
 import { PerspectiveCamera } from 'three';
 import { describe, expect, it } from 'vitest';
+import { FixedStepLoop } from '../src/core/loop';
 import { lensDown } from '../src/systems/photo/core';
 import { CameraRig, type CameraHints, type CameraWorld, PHOTO_AHEAD, PHOTO_DROP } from '../src/player/camera';
 
@@ -65,6 +66,24 @@ describe('camera rig: photo mode hook', () => {
     cam.fov = 66;
     rig.update(cam, input(), flat, noHints());
     expect(cam.fov).toBe(66);
+  });
+
+  it('manual render frames settle 2× zoom with motion enabled and no rAF or extra simulation', () => {
+    const rig = new CameraRig();
+    const cam = new PerspectiveCamera(95, 16 / 9);
+    const loop = new FixedStepLoop({
+      update: () => {},
+      render: (dt) => rig.update(cam, input({ dt }), flat, noHints()),
+    }, 60, () => 0, () => {});
+    loop.manual = true;
+    rig.setPhoto(true);
+    rig.setFovScale(2);
+    loop.step(40);
+    expect(rig.fovScale).toBeLessThan(2);
+    for (let i = 0; i < 32 && rig.fovScale !== 2; i++) loop.renderOnce(loop.dt);
+    expect(rig.fovScale).toBe(2);
+    expect(cam.fov).toBeCloseTo(zoomed(95));
+    expect(loop.tick).toBe(40);
   });
 
   it('the wheel switches 1× / 2× while the phone is up and leaves the boom alone', () => {

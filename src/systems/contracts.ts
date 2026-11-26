@@ -87,6 +87,8 @@ declare module '../core/events' {
       id?: string;
       /** 'now': a tutorial for the action at hand cuts in (default: the line queues). */
       priority?: 'now' | 'normal' | 'low';
+      /** Put the phone away and keep it down until this line finishes. */
+      phoneDown?: boolean;
       /** A story Condition (story/types.ts): once it holds, the line is no longer worth saying. */
       until?: unknown;
       /** Not bound to the current beat (quest turn-ins teach history: a beat change never drops them). */

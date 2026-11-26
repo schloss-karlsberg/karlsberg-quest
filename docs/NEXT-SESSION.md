@@ -414,6 +414,7 @@ Source: the playtest report of 2026-11-21 (tour-playtest @ 69c1fc0). It lives in
 
 - Findings 1–4 are FIXED (MR 14 `feat/tour-find-group` c2843ce + slice `tour/slice-find` 3997f28).
 - Findings 5–6 (dogs not moved by fades/warps; dogs slide backwards on 180° turns) are with kq-characters.
+- TASK-017 addresses findings 12–13. See the [implementation and tuning notes](design/tour/slice-v0.md#deer-photo-and-sneak-tuning-task-017).
 
 | # | Severity | Essence |
 |---|---|---|
@@ -448,8 +449,6 @@ Slice polish list:
 - The group vanishes in view.
 - The slice runs too short: 4:41 / 8:16 against the targets of 8 / 12 min.
 - Laub's 1789 arrival line from main does not fit the tour.
-- Use `photo:good.state` for the „Sie hat dich angesehen“ check.
-- The C prompt's touch text should come from `actionLabel(input, 'crouch')` (`src/ui/actionLabel.ts`).
 
 Mobile/UI leftovers: the credits strip vs the touch buttons on phones (MR 13, unchecked), and MR 9's
 open visual check in [`docs/MOBILE-UI-PASS.md`](MOBILE-UI-PASS.md) §8.2.

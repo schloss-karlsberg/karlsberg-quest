@@ -48,8 +48,7 @@ describe('deer: constants and perception', () => {
     const shy = { notice: DEER.NOTICE, flee: DEER.FLEE, settle: DEER.SETTLE };
     const sneak: DeerPlayer = { x: 0, z: 0, speed: 1.5, stance: 'crouch' };
     expect(isSneaking(sneak)).toBe(true);
-    expect(noticeRadius(shy, sneak)).toBeCloseTo(30 * 0.35);
-    expect(noticeRadius(shy, sneak)).toBeLessThan(DEER.PHOTO_RANGE);
+    expect(noticeRadius(shy, sneak)).toBe(15);
     expect(isSneaking({ ...sneak, stance: 'stand' })).toBe(false);
     expect(noticeRadius(shy, { ...sneak, stance: 'stand', speed: 3.2 })).toBe(30);
   });
@@ -75,7 +74,7 @@ describe('deer: approach', () => {
     const fled = log.events.find((e) => e.type === 'animal:fled' && e.id === 'ricke');
     expect(fled).toMatchObject({ by: 'player' });
     expect((fled as { dist: number }).dist).toBeLessThanOrEqual(DEER.FLEE);
-    expect((fled as { dist: number }).dist).toBeGreaterThan(DEER.PHOTO_RANGE);
+    expect((fled as { dist: number }).dist).toBeGreaterThan(14);
     // bounded 25 m away from the player (player came from +z → deer went toward −z)
     expect(h[0]!.z).toBeCloseTo(-25, 0);
   });
@@ -99,11 +98,30 @@ describe('deer: approach', () => {
 
   it('a sneaking approach reaches photo range without an alert or a flight', () => {
     const h = herd();
-    const log = run(h, 40, approach('crouch', 1.5, 40, 12));
-    expect(log.minDist).toBeLessThanOrEqual(DEER.PHOTO_RANGE);
+    const log = run(h, 40, approach('crouch', 1.5, 40, 22));
+    expect(log.minDist).toBeLessThanOrEqual(22);
     expect(log.events).toEqual([]);
     expect(h[0]!.state).toBe('graze');
     expect(h[0]!.meter).toBe(0);
+  });
+
+  it('a nearby runner and an upright player build alert faster than a crouching player', () => {
+    const running = herd();
+    const standing = herd();
+    const crouching = herd();
+    const player: DeerPlayer = { x: 0, z: 13, speed: 0, stance: 'stand' };
+
+    run(running, 0.5, () => ({ ...player, speed: 4 }));
+    run(standing, 0.5, () => player);
+    run(crouching, 0.5, () => ({ ...player, speed: 1.6, stance: 'crouch' }));
+    expect(running[0]!.state).toBe('alert');
+    expect(standing[0]!.meter).toBeCloseTo(0.375);
+    expect(crouching[0]!.meter).toBeGreaterThan(0);
+    expect(crouching[0]!.meter).toBeLessThan(0.1);
+
+    expect(count(run(standing, 2, () => player).events, 'animal:fled', 'ricke')).toBe(1);
+    expect(count(run(crouching, 2, () => ({ ...player, stance: 'crouch' })).events, 'animal:fled', 'ricke')).toBe(0);
+    expect(crouching[0]!.state).toBe('graze');
   });
 
   it('prone and slow works too; crouched but rushing does not', () => {
@@ -141,14 +159,14 @@ describe('deer: approach', () => {
     expect(h[0]!.state).toBe('graze');
   });
 
-  it('calm() (phone up) prevents the flight while active; running breaks it', () => {
+  it('scripted calm prevents the flight while active; running breaks it', () => {
     const h = herd();
     const log = run(h, 20, approach('stand', 3.2, 40, 9), {}, (hh) => calmHerd(hh, 0.1));
     expect(log.minDist).toBeLessThan(10);
     expect(count(log.events, 'animal:fled', 'ricke')).toBe(0);
     expect(h[0]!.meter).toBeLessThanOrEqual(DEER.CALM_CAP);
     // calm runs out → they bolt
-    const after = run(h, 5, (hh) => ({ x: 0, z: hh[0]!.z + 9, speed: 3.2, stance: 'stand' }));
+    const after = run(h, 5, () => ({ x: 0, z: 9, speed: 0, stance: 'stand' }));
     expect(count(after.events, 'animal:fled', 'ricke')).toBe(1);
 
     const h2 = herd();

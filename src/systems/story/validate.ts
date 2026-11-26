@@ -6,6 +6,7 @@
  */
 import { ERAS } from '../../core/era';
 import type { Issue } from '../../content/validate';
+import { DEFAULT_BINDINGS } from '../../player/input';
 import { ENEMY_IDS } from '../../rpg/enemies';
 import { ITEM_IDS } from '../../rpg/items';
 import { normalize as normalizeCinematic } from '../cinematic/keys';
@@ -334,6 +335,7 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
         if (a.id !== undefined && !ID_RE.test(a.id)) err(file, where, `say: malformed id '${a.id}'`);
         if (a.wait !== undefined && (typeof a.wait !== 'boolean' || (a.wait && !isStr(a.id ?? a.line))))
           err(file, where, 'say: wait must be a boolean and needs an id or line when enabled');
+        if (a.phoneDown !== undefined && typeof a.phoneDown !== 'boolean') err(file, where, 'say: phoneDown must be a boolean');
         // shown, not told (playtest round 5): a stage direction is an event (sound, cue, staging), never a speaker card
         for (const txt of [a.text, ...(Array.isArray(a.variants) ? a.variants : [])]) {
           if (!isStr(txt)) continue;
@@ -348,6 +350,7 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
         break;
       case 'objective':
         if (a.text !== undefined && a.text !== null && !isStr(a.text)) err(file, where, 'objective text must be a string or null');
+        if (a.animal !== undefined && !isStr(a.animal)) err(file, where, 'objective animal must be an id');
         if ((a.x === undefined) !== (a.z === undefined) || (a.x !== undefined && (!isNum(a.x) || !isNum(a.z)))) err(file, where, 'objective needs both numeric x and z (or neither)');
         break;
       case 'threat':
@@ -405,6 +408,7 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
         if (!isStr(a.id)) err(file, where, 'cue needs an id');
         break;
       case 'prompt':
+        if (a.action !== undefined && (!isStr(a.action) || !Object.hasOwn(DEFAULT_BINDINGS, a.action))) err(file, where, 'prompt action must name an input action');
         if (a.touch !== undefined) {
           if (!isStr(a.touch)) err(file, where, 'prompt touch must be a text');
           // an interact prompt's text labels the Aktion button on a touch screen
