@@ -770,6 +770,9 @@ export class CombatSim {
     const e = this.enemies[i];
     this.tokens.release(e.id);
     this.dropRings(e);
+    for (let j = this.projectiles.length - 1; j >= 0; j--) {
+      if (this.projectiles[j]!.owner === e.id) this.projectiles.splice(j, 1);
+    }
     this.enemies.splice(i, 1);
   }
 
