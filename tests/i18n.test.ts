@@ -103,3 +103,25 @@ describe('German player-facing text', () => {
     }
   });
 });
+
+describe('missing-key fallback callers', () => {
+  it('lets Laub skip a skill level without a line instead of saying the placeholder', async () => {
+    const { laubLine } = await import('../src/systems/skills/index');
+    const emit = vi.fn();
+    const ctx = {
+      state: { state: { flags: { 'story.laub': true }, systems: {} } },
+      t: i18n.t,
+      events: { emit },
+    } as unknown as Parameters<typeof laubLine>[0];
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      laubLine(ctx, 'roentgen', 2);
+      expect(emit).not.toHaveBeenCalled();
+      laubLine(ctx, 'roentgen', 1);
+      expect(emit).toHaveBeenCalledExactlyOnceWith('dialogue:say', expect.objectContaining({ speaker: 'laub', id: 'laub.skill.roentgen.1', text: i18n.t('skills.laub.roentgen.1') }));
+      expect(emit.mock.calls[0]![1].text).not.toBe('Text nicht verfügbar');
+    } finally {
+      warn.mockRestore();
+    }
+  });
+});
