@@ -588,6 +588,9 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 
 - `tests/travel-fixture.ts` runs the registered travel system on flat ground with a real game state
   store and event bus. Use `step()` for a simulation tick and Vitest's fake timers for a timed journey.
+- Pause and journal page tests use `tests/ui-fixture.ts` to run the real renderers and handlers on a
+  small in-memory element tree. Assert control state and text there; use Playwright for layout,
+  browser focus behaviour and canvas drawing. The fixture does not run timers or animation frames.
 - Unit (`tests/`): event bus, loop determinism, state/save round trip and throttling, settings,
   system ordering + error isolation, heightfield sampling, decoders (incl. real data), collision,
   forest determinism, validator (good + each failure class), ContentDB.
@@ -1616,6 +1619,9 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   starting a game or disposing the travel system cancels a pending arrival, releases the travel
   pause and removes any curtain immediately, including during its fade. The title autosave runs
   after this cleanup.
+  (`survey:show-map`). Both Enter and the travel button require an unblocked point at least 25 m away.
+  Travel: a curtain, pause `travel`, teleport beside the tripod facing the
+  goal, `travel:arrived`, autosave (synchronous under `?manual`).
 - Route POIs (`pois.ts`, deterministic): along 18 chapter routes every ~120 m a cache (2–4 era
   guards via `enemy:spawn`, group `poi:<id>`, only with a weapon in hand; `enemy:cleared` opens it:
   `loot:place` + EP), a Fundstück (`lore.ts`, 26 fictional letters / notes / tokens / coins, card +
@@ -2083,6 +2089,7 @@ Each RPG track adds its own subsection here when it fills its system in.
   (`.kqq-offer`, „Bei <Geber> annehmen“; deliberately not `.kqq-main`, so the story's line keeps
   leading to the giver). The „Laufend“ view in Aufgaben is `journalRunning()`: running quests plus main
   quests on offer; with no main quest in it, the story's objective shows as „Hauptweg: …“.
+  Displaying a quest's detail clears its unread mark on that render, including the initial selection.
 - `hud.ts`: tracker (`hud.stack`, max 3, main first, `n/N`, "Zurück zu …" when ready; a done
   goal is struck through, then folds away), feed (`hud.dock('feed')`), banner (waits for the payout
   and the chapter title) and payout notice (earned EP, items, skills and a Codex count). The

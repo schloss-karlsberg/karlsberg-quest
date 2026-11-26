@@ -68,6 +68,7 @@ export function renderQuests(el: HTMLElement, d: PageData): void {
   const done = all.filter((q) => st(q) === 'done' || st(q) === 'failed').sort((a, b) => (d.progress(b.id)?.t ?? 0) - (d.progress(a.id)?.t ?? 0));
   if (!selQuest || ![...active, ...done].some((q) => q.id === selQuest)) selQuest = active[0]?.id ?? done[0]?.id ?? null;
   const unseen = new Set(d.unseen());
+  if (selQuest && unseen.delete(`q:${selQuest}`)) d.seen(`q:${selQuest}`);
   const rerender = () => renderQuests(el, d);
 
   const row = (q: QuestDef) => {
@@ -81,7 +82,6 @@ export function renderQuests(el: HTMLElement, d: PageData): void {
         'aria-pressed': String(q.id === selQuest),
         onclick: () => {
           selQuest = q.id;
-          d.seen(`q:${q.id}`);
           rerender();
         },
       },
@@ -122,7 +122,7 @@ export function renderQuests(el: HTMLElement, d: PageData): void {
         objs.map((o) => {
           const n = d.count(q.id, o.id);
           const need = o.type === 'survive' ? Math.round(o.seconds ?? o.count ?? 1) : (o.count ?? 1);
-          const ok = n >= need || s === 'done';
+          const ok = n >= need || (s === 'done' && !o.optional);
           return h(`li${ok ? '.kqj-ok' : ''}${o.optional ? '.kqj-opt' : ''}`, [
             h('span.kqq-box', { 'aria-hidden': 'true' }, ok ? '✓' : ''),
             o.text_de,
@@ -152,7 +152,6 @@ export function renderQuests(el: HTMLElement, d: PageData): void {
           )
         : null,
     ]);
-    if (unseen.has(`q:${q.id}`)) d.seen(`q:${q.id}`);
   }
   el.replaceChildren(h('div.kqj-quests', [list, detail]));
 }

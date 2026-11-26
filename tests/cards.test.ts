@@ -102,6 +102,22 @@ describe('CardDirector', () => {
 });
 
 describe('HUD toast slot', () => {
+  it('drops interrupted and queued notices and clue requests when replacing the game', () => {
+    const { d, toast, hud, card } = rig();
+    const opened: string[] = [];
+    d.enqueueToast('First'); d.enqueueToast('Waiting'); d.tick(0);
+    expect(toast()).toBe('First');
+    expect(d.claim('reward')).toBe(true);
+    hud.inAction = true;
+    d.modal('clue:old', card(opened, 'Old clue'));
+    d.clear(); hud.inAction = false; d.tick(5);
+    expect(opened).toEqual([]);
+    expect(toast()).toBeNull();
+    expect(d.dismissNotice()).toBe(false);
+    d.enqueueToast('Waiting'); d.tick(0);
+    expect(toast()).toBe('Waiting');
+  });
+
   it('deduplicates the active and waiting text, bounds the queue, and observes the gap', () => {
     const { d, toast } = rig();
     d.enqueueToast('First', 2000);

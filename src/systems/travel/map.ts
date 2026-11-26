@@ -205,6 +205,9 @@ export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapM
     (side.querySelector<HTMLButtonElement>('li.sel .kqt-map-go:not(:disabled)') ?? canvas).focus();
   }
 
+  const distanceTo = (point: SurveyPoint) => Math.hypot(point.x - m.player.x, point.z - m.player.z);
+  const canTravel = (point: SurveyPoint) => !m.block && distanceTo(point) >= 25;
+
   function renderSide(): void {
     side.textContent = '';
     side.append(el('p', 'kqt-map-hint', TRAVEL_DE.mapHint));
@@ -214,10 +217,10 @@ export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapM
       side.append(b);
     }
     const list = el('ol', 'kqt-map-list');
-    const byDist = [...m.known].sort((a, b) => Math.hypot(a.x - m.player.x, a.z - m.player.z) - Math.hypot(b.x - m.player.x, b.z - m.player.z));
+    const byDist = [...m.known].sort((a, b) => distanceTo(a) - distanceTo(b));
     byDist.forEach((p, i) => {
       const li = el('li', p.id === selected ? 'sel' : undefined);
-      const d = Math.hypot(p.x - m.player.x, p.z - m.player.z);
+      const d = distanceTo(p);
       const head = el('button', 'kqt-map-pick');
       head.type = 'button';
       head.append(el('b', undefined, `${i < 9 ? `${i + 1} · ` : ''}${p.name}`), el('span', undefined, d < 25 ? TRAVEL_DE.here : TRAVEL_DE.walk(d)));
@@ -231,7 +234,7 @@ export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapM
       const go = el('button', 'kq-btn kqt-map-go', TRAVEL_DE.go);
       go.type = 'button';
       go.dataset.testid = `travel-go-${p.id}`;
-      go.disabled = !!m.block || d < 25;
+      go.disabled = !canTravel(p);
       go.onclick = () => act.travel(p.id);
       li.append(go);
       list.append(li);
@@ -305,14 +308,14 @@ export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapM
   const onKey = (e: KeyboardEvent): void => {
     if (!root.isConnected) return;
     const n = Number(e.key);
-    const byDist = [...m.known].sort((a, b) => Math.hypot(a.x - m.player.x, a.z - m.player.z) - Math.hypot(b.x - m.player.x, b.z - m.player.z));
+    const byDist = [...m.known].sort((a, b) => distanceTo(a) - distanceTo(b));
     if (n >= 1 && n <= 9 && byDist[n - 1]) {
       e.preventDefault();
       e.stopPropagation();
       selected = byDist[n - 1]!.id;
       renderSide();
       focusDestination();
-    } else if (e.key === 'Enter' && e.target === canvas && selected && !m.block) {
+    } else if (e.key === 'Enter' && e.target === canvas && selected && m.known.some(point => point.id === selected && canTravel(point))) {
       e.preventDefault();
       e.stopPropagation();
       act.travel(selected);
