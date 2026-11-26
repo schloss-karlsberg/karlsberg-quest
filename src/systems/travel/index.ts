@@ -43,7 +43,7 @@ import { CHAPTER_TIER, type Poi, cacheLoot, generatePois, poiXp } from './pois';
 import { TRAVEL_DE } from './strings';
 import { Trail } from './trail';
 import { registerEraMaterials } from '../fx/shift/prewarm';
-import { type PoiVisual, type TripodVisual, animatePoi, animateTripod, buildCache, buildLetter, buildShrine, buildTripod, disposeGroup, setCacheOpen } from './visuals';
+import { type PoiVisual, type TripodVisual, animatePoi, animateTripod, buildCache, buildLetter, buildShrine, buildTripod, cacheLidStep, disposeGroup, setCacheOpen } from './visuals';
 
 export interface TravelSlice {
   /** Points walked up to. */
@@ -537,7 +537,7 @@ class Travel {
       } else if (poi.kind === 'shrine' && d < SHRINE_R && !this.inCombat) {
         this.touchShrine(poi, v);
       }
-      if (poi.kind === 'cache' && done && v.open < 1) setCacheOpen(v, Math.min(1, v.open + dt * 1.6));
+      if (poi.kind === 'cache' && done && v.open < 1) setCacheOpen(v, cacheLidStep(v.open, dt, ctx.settings.state.reducedMotion));
     }
   }
 
@@ -654,7 +654,12 @@ class Travel {
       tag.textContent = TRAVEL_DE.fundTag;
       c.append(tag);
     }
-    c.onclick = () => this.hideCard();
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'kqt-card-dismiss';
+    close.setAttribute('aria-label', this.ctx.t('modal.close'));
+    close.onclick = () => this.hideCard();
+    c.append(close);
     this.ctx.ui.add(c);
     this.card = c;
     this.cardT = seconds;
@@ -901,7 +906,7 @@ class Travel {
     const rm = ctx.settings.state.reducedMotion;
     const t = performance.now() / 1000;
     const cam = ctx.camera.position;
-    for (const tp of this.tripods.values()) animateTripod(tp, dt, t, rf, Math.hypot(cam.x - tp.group.position.x, cam.z - tp.group.position.z));
+    for (const tp of this.tripods.values()) animateTripod(tp, dt, t, rf, Math.hypot(cam.x - tp.group.position.x, cam.z - tp.group.position.z), rm);
     for (const v of this.poiVis.values()) animatePoi(v, dt, t, rm, Math.hypot(cam.x - v.group.position.x, cam.z - v.group.position.z), rf);
     this.trail.frame(dt, (x, z) => ctx.world.heightAt(x, z), rm);
   }

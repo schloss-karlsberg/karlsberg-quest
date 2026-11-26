@@ -21,7 +21,7 @@
  */
 import type { Mesh, Object3D } from 'three';
 import type { GameContext } from '../../core/context';
-import { prefersReducedMotion } from '../../core/save';
+import { creditsReducedMotion } from '../../core/motion';
 import { defineSystem } from '../../core/systems';
 import { addStrings } from '../../i18n';
 import { creditLines, creditSections } from './creditContent';
@@ -30,7 +30,8 @@ import { PartyRuntime, type PartyBus, CREDITS_CINEMATIC } from './runtime';
 import { FestPartySet } from './fest';
 import type { PartySet } from './set';
 import { CreditsStrip } from './strip';
-import { PARTY_VARIANTS, type PartySlice, type PartyVariant } from './types';
+import { isOneOf } from '../../core/saved';
+import { PARTY_CREDITS, PARTY_VARIANTS, type PartySlice, type PartyVariant } from './types';
 import './types';
 
 export type { PartyCreditsRequest, PartySetRequest, PartySlice, PartyVariant } from './types';
@@ -69,6 +70,7 @@ class PartySystem {
     this.setBuilder = new FestPartySet(
       (x, z) => ctx.world.heightAt(x, z),
       () => ctx.quality.level,
+      () => ctx.settings.state.reducedMotion,
     );
     const strip = new CreditsStrip({
       label: ctx.t('party.credits'),
@@ -90,7 +92,7 @@ class PartySystem {
       },
       slice: () => this.slice,
       defaultLines,
-      reduced: () => ctx.settings.state.reducedMotion || prefersReducedMotion(),
+      reduced: () => creditsReducedMotion(ctx.settings.state.reducedMotion),
       strip,
       cinematic: {
         available: () => !!ctx.systems.get('cinematic') && !ctx.systems.stats().find((s) => s.id === 'cinematic')?.failed,
@@ -101,7 +103,7 @@ class PartySystem {
 
   get slice(): PartySlice {
     const s = this.ctx.state.slice('party', () => ({ variant: null, credits: 'none' }));
-    if (s.credits !== 'playing' && s.credits !== 'done') s.credits = 'none';
+    if (!isOneOf(PARTY_CREDITS, s.credits)) s.credits = 'none';
     if (!PARTY_VARIANTS.includes(s.variant as PartyVariant)) s.variant = null;
     return s;
   }

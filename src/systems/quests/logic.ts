@@ -16,10 +16,12 @@
  * (`spawn` → enemy:spawn with group / quest / objective) and place its pickups (`place` →
  * loot:place). `optional` objectives are not needed for "ready" and pay `bonus_xp`.
  */
+import { allOf, isOneOf, numberRecord } from '../../core/saved';
 import type { Era } from '../../core/era';
 import type { GameEvents } from '../../core/events';
 import type { FlagValue, ItemDef, QuestDef, QuestObjective, QuestPlace, QuestProgress, QuestRewards, QuestSlice, QuestState, QuestTopic, GiverMark, SpawnSpec } from '../../rpg/types';
 import '../contracts';
+import type { MenagerieSlice } from '../menagerie';
 
 export type QuestDefIn = QuestDef & { chapter: string };
 
@@ -28,6 +30,8 @@ export interface QuestEnv {
   flags: Record<string, FlagValue>;
   /** state.codex.facts (mutable: turn-ins push the facts they unlock). */
   codex: string[];
+  /** The current save's menagerie, including animals calmed before a quest opens. */
+  readonly menagerie?: MenagerieSlice;
   emit<K extends keyof GameEvents>(name: K, payload: GameEvents[K]): void;
   /** Game seconds (meta.playSeconds) for QuestProgress.t. */
   now(): number;
@@ -68,6 +72,8 @@ export const QUEST_FLAG = (id: string) => `quest.${id}`;
 export const OBJ_FLAG = (id: string, obj: string) => `quest.${id}.${obj}`;
 const MAX_TRACKED = 3;
 
+const QUEST_STATES = allOf<QuestState>()(['hidden', 'offered', 'active', 'ready', 'done', 'failed']);
+
 export function createQuestSlice(): QuestSlice {
   return { quests: {}, tracked: [], unseen: [] };
 }
@@ -75,11 +81,17 @@ export function createQuestSlice(): QuestSlice {
 /** Fill the fields of an older / partial slice (old saves). */
 export function normaliseSlice(s: Partial<QuestSlice> | undefined | null): QuestSlice {
   const out = (s ?? {}) as QuestSlice;
-  if (!out.quests || typeof out.quests !== 'object') out.quests = {};
+  if (!out.quests || typeof out.quests !== 'object' || Array.isArray(out.quests)) out.quests = {};
   if (!Array.isArray(out.tracked)) out.tracked = [];
   if (!Array.isArray(out.unseen)) out.unseen = [];
-  for (const p of Object.values(out.quests)) {
-    if (!p.counts || typeof p.counts !== 'object') p.counts = {};
+  if (out.bestiary !== undefined) out.bestiary = numberRecord(out.bestiary);
+  for (const [id, p] of Object.entries(out.quests)) {
+    // A corrupt entry restores as never seen (the story re-offers what it needs).
+    if (!p || typeof p !== 'object' || Array.isArray(p) || !isOneOf(QUEST_STATES, p.state)) {
+      delete out.quests[id];
+      continue;
+    }
+    p.counts = numberRecord(p.counts);
     if (typeof p.t !== 'number') p.t = 0;
   }
   return out;
@@ -358,6 +370,8 @@ export class QuestBook {
     this.track(id);
     this.env.emit('quest:accepted', { id });
     this.activate(q, new Set());
+    // A conversation pauses fixed updates, so credit saved calms before saving acceptance.
+    for (const o of this.openObjectives(q)) this.settleCalm(q, o);
     this.checkReady(q);
     this.onChange('accept');
     return true;
@@ -669,16 +683,28 @@ export class QuestBook {
   }
 
   /**
-   * Clues already found when an examine / echo objective opens count at once; so does a good photo
-   * of a `photo` objective's target taken before the objective started (`hasPhoto`: the photo
-   * system's `has()`, read from its save slice), on accept, on a newly active objective and on load.
+   * Credit clues, good photos and calmed animals from the save when an objective opens or on load.
    */
   settleKnown(found: (clue: string) => boolean, hasPhoto: (target: string) => boolean = () => false): void {
     for (const q of this.running())
       for (const o of this.openObjectives(q)) {
         if ((o.type === 'examine' || o.type === 'echo') && o.clue && found(o.clue)) this.progress(q.id, o.id, need(o));
         else if (o.type === 'photo' && o.target && hasPhoto(o.target)) this.progress(q.id, o.id, need(o));
+        else this.settleCalm(q, o);
       }
+  }
+
+  private settleCalm(q: QuestDefIn, o: QuestObjective): void {
+    const menagerie = this.env.menagerie;
+    if (o.type !== 'calm' || !o.animal || !Array.isArray(menagerie?.calmed)) return;
+    const animals = Array.isArray(menagerie.animals) ? menagerie.animals : [];
+    const count = menagerie.calmed.filter((id) => {
+      const animal = animals.find((spawn) => spawn.id === id)?.animal;
+      // Older garden saves can retain the calm ID after the story clears its spawn record.
+      const kind = animal ?? (q.id === 'q.k3.jaguar' && id === 'k3.jaguar' ? 'jaguar' : undefined);
+      return id === o.animal || kind === o.animal;
+    }).length;
+    this.progress(q.id, o.id, count - this.count(q.id, o.id));
   }
 
   /**

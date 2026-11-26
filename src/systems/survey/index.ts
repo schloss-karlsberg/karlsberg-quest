@@ -17,6 +17,7 @@ import { actionLabel } from '../../ui/actionLabel';
 export const SCAN_RADIUS = 160;
 /** travel handed the M key back this step (`survey:cycle-map`). */
 let cycleAsked = false;
+let recheckSkills = false;
 
 export interface SurveyHooks {
   /** Show a map layer (no gating): 0 off, 1840, 1935. */
@@ -89,6 +90,19 @@ export default defineSystem({
   init(ctx) {
     mapLayer = 0;
     autoOff = -1;
+    cycleAsked = false;
+    recheckSkills = false;
+    // a load (also a new game, which loads the fresh state first) drops the outgoing find's countdown
+    ctx.events.on('save:loaded', () => {
+      autoOff = -1;
+      cycleAsked = false;
+      recheckSkills = true;
+    });
+    // Continue from the title resumes the same game: a pending relief exit keeps its remaining time
+    ctx.events.on('game:start', () => {
+      cycleAsked = false;
+      recheckSkills = true;
+    });
     ctx.events.on('clue:found', () => {
       if (ctx.world.scanMode > 0) autoOff = SCAN_AUTO_OFF_S;
     });
@@ -118,10 +132,20 @@ export default defineSystem({
   update(dt, ctx) {
     const inp = ctx.input;
     let mode: ScanMode | null = null;
+    if (recheckSkills) {
+      // The story may start later in the event dispatch. Its skills are ready on this tick.
+      recheckSkills = false;
+      if (!scanAllowed(ctx.world.scanMode, gateFrom(ctx.state.state, ctx.params))) {
+        ctx.world.setScanMode(0, ctx.settings.state.reducedMotion);
+        ctx.events.emit('scan:mode', { mode: 0 });
+      }
+      if (mapLayer !== 0 && !scanMapAllowed(ctx, mapLayer)) showMap(ctx, 0, ctx.settings.state.reducedMotion);
+    }
     if (autoOff >= 0) {
       autoOff -= dt;
       if (ctx.world.scanMode === 0) autoOff = -1;
-      else if (autoOff < 0) {
+      else if (autoOff <= 0) {
+        autoOff = -1;
         ctx.world.setScanMode(0, ctx.settings.state.reducedMotion);
         ctx.events.emit('scan:mode', { mode: 0 });
         ctx.ui.toast(ctx.t('scan.auto0'), 4200);

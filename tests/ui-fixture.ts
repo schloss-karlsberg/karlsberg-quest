@@ -36,6 +36,14 @@ export class PageNode extends EventTarget {
     if (name === 'value' || name === 'id') this[name] = value;
   }
   getAttribute(name: string) { return this.attributes.get(name) ?? null; }
+  hasAttribute(name: string) { return this.attributes.has(name); }
+  removeAttribute(name: string) { this.attributes.delete(name); }
+  toggleAttribute(name: string, force?: boolean) {
+    const on = force ?? !this.attributes.has(name);
+    if (on) this.attributes.set(name, this.attributes.get(name) ?? '');
+    else this.attributes.delete(name);
+    return on;
+  }
   all(test: (node: PageNode) => boolean): PageNode[] {
     return this.children.flatMap(child => [...(test(child) ? [child] : []), ...child.all(test)]);
   }

@@ -88,7 +88,13 @@ export class EventBus {
         }
       }
     }
-    for (const fn of this.anyHandlers) fn(name, payload);
+    for (const fn of this.anyHandlers) {
+      try {
+        fn(name, payload);
+      } catch (err) {
+        console.error(`[events] observer for '${name}' threw`, err);
+      }
+    }
   }
 
   clear(): void {

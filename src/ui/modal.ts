@@ -1,5 +1,6 @@
 import { t } from '../i18n';
 import { clear, h } from './dom';
+import { containsFocus, tabStops, wrapTab } from './focus';
 import { PointerTap } from './pointerTap';
 
 export interface ModalAction {
@@ -35,6 +36,8 @@ export interface ModalHandle {
   readonly closed: boolean;
 }
 
+let dialogId = 0;
+
 /**
  * Stacked panels. While any modal is open the game is paused and gameplay input is
  * disabled (via the `onChange` callback wired in boot). Features reuse this for the Chronik,
@@ -48,7 +51,8 @@ export class ModalManager {
     window.addEventListener(
       'keydown',
       (e) => {
-        if (e.code !== 'Escape' || !this.stack.length) return;
+        if (e.code !== 'Escape' || !this.stack.length ||
+            (e.target instanceof HTMLElement && e.target.hasAttribute('data-key-capture'))) return;
         const top = this.stack[this.stack.length - 1]!;
         e.stopImmediatePropagation();
         e.preventDefault();
@@ -58,23 +62,8 @@ export class ModalManager {
     );
     // keyboard focus stays inside the top panel (Tab / Shift+Tab wrap around)
     window.addEventListener('keydown', (e) => {
-      if (e.code !== 'Tab' || e.defaultPrevented || !this.stack.length) return;
-      const top = this.stack[this.stack.length - 1]!.el;
-      const f = [...top.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, summary, [tabindex]:not([tabindex="-1"])')].filter(
-        (el) => !el.hasAttribute('disabled') && el.offsetParent !== null,
-      );
-      if (!f.length) return;
-      const a = document.activeElement as HTMLElement | null;
-      if (!a || !top.contains(a)) {
-        e.preventDefault();
-        (e.shiftKey ? f[f.length - 1]! : f[0]!).focus();
-      } else if (!e.shiftKey && a === f[f.length - 1]) {
-        e.preventDefault();
-        f[0]!.focus();
-      } else if (e.shiftKey && a === f[0]) {
-        e.preventDefault();
-        f[f.length - 1]!.focus();
-      }
+      const top = this.stack.at(-1);
+      if (top) wrapTab(e, top.el);
     });
   }
 
@@ -92,14 +81,21 @@ export class ModalManager {
     const parent = this.stack.at(-1);
     const previousFocus = document.activeElement;
     const closable = o.closable ?? true;
-    const page = h(`div.kq-modal.kq-paper${o.wide ? '.wide' : ''}`, { role: 'dialog', 'aria-modal': 'true' });
+    const page = h(`div.kq-modal.kq-paper${o.wide ? '.wide' : ''}`, { role: 'dialog', 'aria-modal': 'true', tabindex: -1 });
     if (o.className) page.classList.add(...o.className.split(' '));
     const layer = h('div.kq-modal-layer', page);
-    const titleEl = h('h2');
-    const bodyEl = h('div.kq-modal-body');
+    const id = ++dialogId;
+    const titleEl = h('h2', { id: `kq-dialog-${id}-title` });
+    const bodyEl = h('div.kq-modal-body', { id: `kq-dialog-${id}-body` });
     const actionsEl = h('div.actions');
-    if (closable) page.append(h('button.close', { 'aria-label': t('modal.close'), onclick: () => handle.close() }, '×'));
+    const hasAction = o.actions?.some((a) => a.primary || a.onClick);
+    const focusPage = () => {
+      const control = tabStops(bodyEl)[0] ?? (hasAction ? tabStops(actionsEl)[0] : undefined);
+      if (control) control.focus();
+      else page.focus({ preventScroll: true });
+    };
     page.append(titleEl, bodyEl, actionsEl);
+    if (closable) page.append(h('button.close', { 'aria-label': t('modal.close'), onclick: () => handle.close() }, '×'));
     let closed = false;
     const handle: ModalHandle & { closable: boolean; backdrop: 'live' | 'still' } = {
       el: page,
@@ -109,12 +105,21 @@ export class ModalManager {
         return closed;
       },
       setBody: (body, title) => {
+        const refocus = containsFocus(bodyEl);
         if (title !== undefined) titleEl.textContent = title;
-        titleEl.style.display = titleEl.textContent ? '' : 'none';
+        const named = Boolean(titleEl.textContent);
+        titleEl.hidden = !named;
+        page.toggleAttribute('aria-labelledby', named);
+        if (named) page.setAttribute('aria-labelledby', titleEl.id);
+        page.toggleAttribute('aria-label', !named);
+        if (!named) page.setAttribute('aria-label', t('modal.dialog'));
+        page.toggleAttribute('aria-describedby', typeof body === 'string');
+        if (typeof body === 'string') page.setAttribute('aria-describedby', bodyEl.id);
         clear(bodyEl);
         if (typeof body === 'string') for (const p of body.split(/\n\n+/)) bodyEl.append(h('p', p));
         else if (Array.isArray(body)) bodyEl.append(...body);
         else if (body) bodyEl.append(body);
+        if (refocus) focusPage();
       },
       close: () => {
         if (closed) return;
@@ -123,10 +128,14 @@ export class ModalManager {
         const i = this.stack.indexOf(handle);
         const wasTop = this.stack.at(-1) === handle;
         if (i >= 0) this.stack.splice(i, 1);
+        const next = this.stack.at(-1);
+        if (wasTop && next) next.el.inert = false;
         o.onClose?.();
         this.onChange(this.stack.length);
-        if (wasTop && parent && this.stack.at(-1) === parent &&
-            previousFocus instanceof HTMLElement && parent.el.contains(previousFocus)) previousFocus.focus();
+        if (wasTop && this.stack.at(-1) === next) {
+          if (previousFocus instanceof HTMLElement && previousFocus.isConnected && (!next || next.el.contains(previousFocus))) previousFocus.focus();
+          else if (next) (tabStops(next.el)[0] ?? next.el).focus();
+        }
       },
     };
     handle.setBody(o.body, o.title ?? '');
@@ -159,11 +168,12 @@ export class ModalManager {
       // A mouse drag can leave the layer entirely (touch has implicit pointer capture).
       layer.addEventListener('pointerleave', () => { tap = null; });
     }
+    if (parent) parent.el.inert = true;
     this.root.append(layer);
     this.stack.push(handle);
     this.onChange(this.stack.length);
     queueMicrotask(() => {
-      if (this.stack.at(-1) === handle) page.querySelector<HTMLElement>('button.kq-btn, button, input')?.focus();
+      if (this.stack.at(-1) === handle && !containsFocus(page)) focusPage();
     });
     return handle;
   }

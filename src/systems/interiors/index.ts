@@ -40,7 +40,7 @@ import { type FullPlan, buildPlan } from './layout';
 import { bakeLight, lightTexture } from './lightmap';
 import { MAX_LIGHTS, MAX_ROOMS, makeInteriorMaterial } from './material';
 import { type CutBox, MAX_OPEN, ShellCut, extractOpenings, palaceMesh } from './shell';
-import type { BuildingPlan, InteriorMode, ShellOpening } from './types';
+import type { BuildingPlan, InteriorMode, IRoom, ShellOpening } from './types';
 import { pointInPoly } from './geom';
 import { t } from '../../i18n';
 import './strings';
@@ -121,6 +121,10 @@ interface Runtime {
   openings: ShellOpening[];
   cut: ShellCut | null;
   plans: Map<InteriorMode, { plan: FullPlan; query: PlanQuery }>;
+  /** Plans from the room catalogue alone (no shell openings): floors and walls while the shell streams. */
+  catalogue: Map<InteriorMode, { plan: FullPlan; query: PlanQuery }>;
+  /** A player loaded indoors before the shell arrived: the catalogue plan holds them on their storey. */
+  provisional: boolean;
   mode: InteriorMode;
   era: Era;
   brt: Map<string, BRT>;
@@ -134,13 +138,19 @@ interface Runtime {
 let rt: Runtime | null = null;
 let festsaal: FestsaalObjects | null = null;
 let beams: FallingBeams | null = null;
-/** A `festsaal:objects` cue that came before the plans were ready. */
-let festsaalPending: string | null = null;
+/**
+ * A Festsaal choice waiting to be shown: its `festsaal:objects` cue came before the plans were
+ * ready, or the player shifted away before choosing (it comes back in its era).
+ */
+let festsaalPending: { room: string; era: Era } | null = null;
+/** The choice on show (what a shift away suspends). */
+let festsaalShown: { room: string; era: Era } | null = null;
 
 function placeFestsaal(ctx: GameContext, roomId: string): boolean {
   const cur = current();
   const ri = findRoom(roomId);
   if (!cur || ri < 0) return false;
+  festsaalShown = { room: roomId, era: ctx.era.current };
   festsaal ??= new FestsaalObjects(ctx);
   const room = cur.plan.rooms[ri]!;
   // the Festsaal is dressed by the world sets: its clock and ducat stand on that console / ledge
@@ -154,28 +164,102 @@ function modeOf(era: Era): InteriorMode {
   return p === 'hidden' ? 'today' : p === 'ruin' ? 'ruin' : 'intact';
 }
 
+function makePlan(ctx: GameContext, mode: InteriorMode, openings: readonly ShellOpening[]): { plan: FullPlan; query: PlanQuery } {
+  const hf = ctx.world.heightfields[mode === 'today' ? '2025' : '1789'];
+  // while the palace stands, the ground before the Tempelzimmer's glass doors is the rotunda's
+  // colonnade (scenery/passage.ts): flush with the door, so no steps down are built there
+  const intact = mode === 'intact';
+  const terrain = (x: number, z: number) => {
+    const h = hf.heightAt(x, z);
+    return (intact ? passageFloor(x, z, h) : null) ?? h;
+  };
+  const plan = buildPlan({ rooms: ctx.data.rooms, footprints: ctx.data.footprints.buildings, mode, terrain, openings });
+  return { plan, query: new PlanQuery(plan) };
+}
+
 function current(): { plan: FullPlan; query: PlanQuery } | null {
   if (!rt?.ready) return null;
   let p = rt.plans.get(rt.mode);
   if (!p) {
-    const ctx = rt.ctx;
-    const hf = ctx.world.heightfields[rt.mode === 'today' ? '2025' : '1789'];
-    // while the palace stands, the ground before the Tempelzimmer's glass doors is the rotunda's
-    // colonnade (scenery/passage.ts): flush with the door, so no steps down are built there
-    const intact = rt.mode === 'intact';
-    const terrain = (x: number, z: number) => {
-      const h = hf.heightAt(x, z);
-      return (intact ? passageFloor(x, z, h) : null) ?? h;
-    };
-    const plan = buildPlan({ rooms: ctx.data.rooms, footprints: ctx.data.footprints.buildings, mode: rt.mode, terrain, openings: rt.openings });
-    p = { plan, query: new PlanQuery(plan) };
+    p = makePlan(rt.ctx, rt.mode, rt.openings);
     rt.plans.set(rt.mode, p);
   }
   return p;
 }
 
+function cataloguePlan(mode: InteriorMode): { plan: FullPlan; query: PlanQuery } {
+  let p = rt!.catalogue.get(mode);
+  if (!p) {
+    p = makePlan(rt!.ctx, mode, []);
+    rt!.catalogue.set(mode, p);
+  }
+  return p;
+}
+
+/**
+ * The plan that answers floors and walls for walking: the streamed palace's; before it arrives
+ * the room catalogue's, for a player who loaded indoors (the shell's openings only move windows
+ * and add model doors; the floors and walls are the catalogue's either way). Null outside both.
+ */
+function walkPlan(): { plan: FullPlan; query: PlanQuery } | null {
+  if (!rt) return null;
+  if (rt.ready) return rt.mode === 'today' ? null : current();
+  const mode = modeOf(rt.ctx.era.current);
+  return rt.provisional && mode !== 'today' ? cataloguePlan(mode) : null;
+}
+
 function playerY(ctx: GameContext): number {
   return ctx.player.position.y;
+}
+
+/** The plan's walls take over from the detailed footprints (the shell's plan, else the catalogue's). */
+function walkOverlay(ctx: GameContext, plan: FullPlan): void {
+  const passable = new Set<number>();
+  for (const bp of plan.buildings) {
+    const i = ctx.data.footprints.buildings.findIndex((f) => f.id === bp.id);
+    if (i >= 0) passable.add(i);
+  }
+  ctx.world.collider.overlay = {
+    passable,
+    resolve: (x, z, r) => {
+      const c = walkPlan();
+      return c ? c.query.resolve(x, z, r, playerY(ctx)) : { x, z, hit: false };
+    },
+    // the third-person camera's probes: walls from the knee up to over the lens (a lintel over a
+    // door stops a raised camera too)
+    hits: (x, z, r) => {
+      const c = walkPlan();
+      if (!c) return false;
+      const y = playerY(ctx);
+      return c.query.hits(x, z, r, y + 0.45, y + 3.4);
+    },
+  };
+}
+
+/**
+ * A slot loaded with the player indoors (a cold start or a load): put them back on the saved
+ * storey. The ground probe alone finds the lowest floor (or the terrain while the shell streams),
+ * so the saved height picks it: a room's floor or a doorway's. Before the shell is there the
+ * catalogue plan holds them on that floor and inside its walls, and the pose (what an autosave
+ * writes) keeps the storey until the shell's plan takes over.
+ */
+function restoreStorey(ctx: GameContext): void {
+  if (!rt) return;
+  const { player, era } = ctx.state.state;
+  const p = ctx.player.position;
+  const indoors = !player.flying && era === ctx.era.current && modeOf(era) !== 'today' && player.x === p.x && player.z === p.z
+    && ctx.data.footprints.buildings[ctx.world.collider.footprintAt(p.x, p.z)]?.interior === 'detailed';
+  if (!rt.ready) {
+    rt.provisional = indoors;
+    if (indoors) walkOverlay(ctx, walkPlan()!.plan);
+    else ctx.world.collider.overlay = null;
+  }
+  const cur = walkPlan();
+  if (!indoors || !cur) return;
+  const floor = cur.query.floorAt(p.x, p.z, player.y, ctx.world.heightfield.heightAt(p.x, p.z));
+  if (floor === null || Math.abs(floor - player.y) > 0.05 || Math.abs(p.y - floor) < 1e-4) return;
+  p.y = floor;
+  ctx.player.teleport(p.x, p.z);
 }
 
 function setup(ctx: GameContext): boolean {
@@ -189,6 +273,8 @@ function setup(ctx: GameContext): boolean {
   rt.cut = new ShellCut(mesh.material as ShaderMaterial);
   ctx.data.footprints.buildings.forEach((f, i) => rt!.fpIndex.set(f.id, i));
   rt.ready = true;
+  rt.provisional = false;
+  rt.catalogue.clear();
   installHooks(ctx);
   switchMode(ctx);
   return true;
@@ -200,6 +286,7 @@ function switchMode(ctx: GameContext): void {
   for (const b of rt.brt.values()) drop(ctx, b);
   rt.brt.clear();
   rt.pendingBlock.clear();
+  const previousRoom = rt.room >= 0 ? current()?.plan.rooms[rt.room] : undefined;
   rt.mode = modeOf(ctx.era.current);
   rt.era = ctx.era.current;
   const cur = current();
@@ -234,28 +321,9 @@ function switchMode(ctx: GameContext): void {
     });
   }
   // collision overlay: detailed footprints become passable, the plan's walls take over
-  const passable = new Set<number>();
-  if (rt.mode !== 'today') for (const bp of cur.plan.buildings) {
-    const i = rt.fpIndex.get(bp.id);
-    if (i !== undefined) passable.add(i);
-  }
-  ctx.world.collider.overlay = {
-    passable,
-    resolve: (x, z, r) => {
-      const c = current();
-      if (!c || rt!.mode === 'today') return { x, z, hit: false };
-      return c.query.resolve(x, z, r, playerY(ctx));
-    },
-    // the third-person camera's probes: walls from the knee up to over the lens (a lintel over a
-    // door stops a raised camera too)
-    hits: (x, z, r) => {
-      const c = current();
-      if (!c || rt!.mode === 'today') return false;
-      const y = playerY(ctx);
-      return c.query.hits(x, z, r, y + 0.45, y + 3.4);
-    },
-  };
-  updateRoom(ctx, true);
+  if (rt.mode === 'today') ctx.world.collider.overlay = { passable: new Set(), resolve: (x, z) => ({ x, z, hit: false }), hits: () => false };
+  else walkOverlay(ctx, cur.plan);
+  updateRoom(ctx, true, previousRoom);
 }
 
 function distTo(bp: BuildingPlan, x: number, z: number): number {
@@ -406,6 +474,7 @@ function setFire(ctx: GameContext, id: string, state: FireState | 'none'): void 
 
 function clearFires(ctx: GameContext): void {
   if (!rt) return;
+  clearFestsaal(ctx);
   for (const id of [...rt.fires.keys()]) setFire(ctx, id, 'none');
   rt.fires.clear();
   beams?.clear();
@@ -457,9 +526,25 @@ function animateFire(ctx: GameContext, dt: number): void {
   }
 }
 
+/** Take the Festsaal choice (and its E prompt and card hold) off the scene. */
+function clearFestsaal(ctx: GameContext): void {
+  festsaalPending = null;
+  festsaalShown = null;
+  if (!festsaal?.active) return;
+  festsaal.clear();
+  ctx.ui.cards.hold('festsaal', false);
+}
+
+/** A choice still open (shown or waiting, nothing taken): it comes back when the player returns. */
+function openFestsaal(ctx: GameContext): { room: string; era: Era } | null {
+  if (typeof ctx.state.state.flags['festsaal.took'] === 'string') return null;
+  if (festsaalPending) return festsaalPending;
+  return festsaal?.active && !festsaal.taken ? festsaalShown : null;
+}
+
 // ---- room tracking ----------------------------------------------------------------------------------
 
-function updateRoom(ctx: GameContext, force = false): void {
+function updateRoom(ctx: GameContext, force = false, previousRoom?: IRoom): void {
   if (!rt) return;
   const cur = current();
   const p = ctx.player.position;
@@ -467,8 +552,9 @@ function updateRoom(ctx: GameContext, force = false): void {
   if (ri === rt.room && !force) return;
   const prev = rt.room;
   rt.room = ri;
-  if (prev >= 0 && cur && cur.plan.rooms[prev] && prev !== ri) {
-    const r = cur.plan.rooms[prev]!;
+  // Room indices are local to a plan. A vanished upper floor can leave its index to another wing.
+  const r = previousRoom ?? cur?.plan.rooms[prev];
+  if (r && cur && r.id !== cur.plan.rooms[ri]?.id) {
     ctx.events.emit('room:leave', { roomId: r.roomId, building: r.building, id: r.id });
     if (rt.pendingBlock.has(prev)) {
       rt.pendingBlock.delete(prev);
@@ -679,8 +765,8 @@ let anchors: { plan: FullPlan; era: Era; set: Set<number> } | null = null;
 function installWorldHooks(ctx: GameContext): void {
   const w = ctx.world;
   w.groundOverride = (x, z, terrain, yHint) => {
-    const cur = current();
-    if (!cur || !rt || rt.mode === 'today') return null;
+    const cur = walkPlan();
+    if (!cur) return null;
     // a caller that knows its storey (an NPC placed in an upper room)
     if (yHint !== undefined) return cur.query.floorAt(x, z, yHint, terrain);
     const p = ctx.player.position;
@@ -963,8 +1049,12 @@ export default defineSystem({
       room: -1,
       fpIndex: new Map(),
       time: 0,
+      catalogue: new Map(),
+      provisional: false,
     };
     installWorldHooks(ctx);
+    // before setup: the shell's first room check then finds the saved storey
+    restoreStorey(ctx);
     registerEraMaterials('interiors.shell', '*', () => { const g = new GeoBuf(); g.tri([0, 0, 0], [0.01, 0, 0], [0, 0.01, 0], [0, 0, 1], { col: [1, 1, 1], mat: 0, room: 0 }); return new Mesh(g.toGeometry(), makeInteriorMaterial(new DataTexture(new Uint8Array(4), 1, 1), new Vector4(), 0)); });
     registerEraMaterials('interiors.fire', '1793-07', () => {
       const room = new Array<number>(MAX_ROOMS).fill(0);
@@ -973,19 +1063,33 @@ export default defineSystem({
       const layer = new FlameLayer([{ ...spot, kind: 1 }, { ...spot, kind: 3 }], room, room, room);
       return [layer.additive, layer.smoke];
     });
+    ctx.events.on('save:loaded', () => {
+      if (!rt) return;
+      // a choice the outgoing game left open (or queued) does not come back in the loaded one
+      festsaalPending = null;
+      restoreStorey(ctx);
+      if (rt.ready) updateRoom(ctx);
+    });
     ctx.events.on('era:change', ({ from, to }) => {
-      if (!(from === '1793-07' && to === '1793-07')) clearFires(ctx);
+      if (!(from === '1793-07' && to === '1793-07')) {
+        // shifting away mid-choice (Q held in the Festsaal): the things go, the choice waits for
+        // the player's return to its era (the beat runs on; its fallback may still decide)
+        const open = openFestsaal(ctx);
+        clearFires(ctx);
+        festsaalPending = open;
+      }
       if (rt?.ready) switchMode(ctx);
+      else if (rt?.provisional && modeOf(to) === 'today') {
+        rt.provisional = false;
+        ctx.world.collider.overlay = null;
+      }
     });
     ctx.events.on('fire:room', ({ roomId, state }) => setFire(ctx, roomId, state));
     ctx.events.on('story:cue', ({ id, data }) => {
       if (id === 'festsaal:objects') {
         const room = typeof data?.room === 'string' ? data.room : 'B01.2.og-festsaal';
-        festsaalPending = placeFestsaal(ctx, room) ? null : room;
-      } else if (id === 'festsaal:clear') {
-        festsaalPending = null;
-        festsaal?.clear();
-      }
+        festsaalPending = placeFestsaal(ctx, room) ? null : { room, era: ctx.era.current };
+      } else if (id === 'festsaal:clear') clearFestsaal(ctx);
     });
     ctx.events.on('threat:configure', (c) => {
       if (c.kind === 'fire' && !c.active) clearFires(ctx);
@@ -995,7 +1099,11 @@ export default defineSystem({
   update(_dt, ctx) {
     if (!rt?.ready) return;
     updateRoom(ctx);
-    if (festsaalPending && placeFestsaal(ctx, festsaalPending)) festsaalPending = null;
+    const pending = festsaalPending;
+    if (pending && pending.era === ctx.era.current) {
+      if (typeof ctx.state.state.flags['festsaal.took'] === 'string') festsaalPending = null;
+      else if (placeFestsaal(ctx, pending.room)) festsaalPending = null;
+    }
     festsaal?.update();
     // the Festsaal choice with the fire clock running: no card over Hanne and the clock (round 5)
     ctx.ui.cards.hold('festsaal', !!festsaal?.active);
@@ -1024,6 +1132,7 @@ export default defineSystem({
     beams?.dispose();
     beams = null;
     festsaalPending = null;
+    festsaalShown = null;
     rt = null;
   },
 });

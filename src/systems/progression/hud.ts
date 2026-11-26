@@ -8,6 +8,7 @@
  * High contrast: solid backings, ≥ 4.5 : 1 text; meaning never by colour alone (text + glyphs).
  */
 import { type PerspectiveCamera, Vector3 } from 'three';
+import { motionTime } from '../../core/motion';
 import { h, svg } from '../../ui/dom';
 import type { Hud } from '../../ui/hud';
 
@@ -47,6 +48,7 @@ export class ProgressionHud {
   private readonly tmp = new Vector3();
   private level = 0;
   private pct = 0;
+  private xpTimer: ReturnType<typeof setTimeout> | undefined;
   private plusTimer: ReturnType<typeof setTimeout> | null = null;
   private plusSum = 0;
   readonly history: FeedEntry[] = [];
@@ -79,6 +81,7 @@ export class ProgressionHud {
 
   /** Level, XP in the level (cur / need), total; animate: ghost first, fill follows. */
   setXp(level: number, cur: number, need: number, total: number, animate: boolean): void {
+    clearTimeout(this.xpTimer);
     const pct = need > 0 ? Math.max(0, Math.min(1, cur / need)) * 100 : 100;
     this.xp.dataset.level = String(level);
     this.xp.dataset.xp = String(total);
@@ -101,7 +104,7 @@ export class ProgressionHud {
       this.ghost.style.width = '100%';
       this.fill.style.transition = 'width .35s cubic-bezier(.3,.8,.4,1)';
       this.fill.style.width = '100%';
-      setTimeout(() => {
+      this.xpTimer = setTimeout(() => {
         this.fill.style.transition = this.ghost.style.transition = 'none';
         this.fill.style.width = '0%';
         this.ghost.style.width = `${pct}%`;
@@ -198,7 +201,7 @@ export class ProgressionHud {
     while (this.floats.length > 8) this.floats.shift()!.el.remove();
   }
 
-  frame(dt: number, camera: PerspectiveCamera, w: number, hgt: number): void {
+  frame(dt: number, camera: PerspectiveCamera, w: number, hgt: number, reducedMotion: boolean): void {
     for (let i = this.floats.length - 1; i >= 0; i--) {
       const f = this.floats[i]!;
       f.age += dt;
@@ -210,7 +213,7 @@ export class ProgressionHud {
       this.tmp.copy(f.pos).project(camera);
       const behind = this.tmp.z > 1;
       const sx = (this.tmp.x * 0.5 + 0.5) * w;
-      const sy = (-this.tmp.y * 0.5 + 0.5) * hgt - f.age * 46;
+      const sy = (-this.tmp.y * 0.5 + 0.5) * hgt - motionTime(f.age, reducedMotion) * 46;
       f.el.style.display = behind ? 'none' : '';
       f.el.style.transform = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px) translate(-50%, -100%)`;
       f.el.style.opacity = String(f.age < 0.15 ? f.age / 0.15 : Math.max(0, 1 - (f.age - 0.9) / 0.7));

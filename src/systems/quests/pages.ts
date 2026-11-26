@@ -3,6 +3,7 @@ import type { GameContext } from '../../core/context';
 import type { Confidence, Fact } from '../../content/types';
 import { t } from '../../i18n';
 import { h } from '../../ui/dom';
+import { preserveFocus } from '../../ui/focus';
 import { pageSections } from '../../ui/pause-pages';
 import type { ItemDef, QuestDef, QuestProgress } from '../../rpg/types';
 import { ENEMIES } from '../../rpg/enemies';
@@ -69,7 +70,7 @@ export function renderQuests(el: HTMLElement, d: PageData): void {
   if (!selQuest || ![...active, ...done].some((q) => q.id === selQuest)) selQuest = active[0]?.id ?? done[0]?.id ?? null;
   const unseen = new Set(d.unseen());
   if (selQuest && unseen.delete(`q:${selQuest}`)) d.seen(`q:${selQuest}`);
-  const rerender = () => renderQuests(el, d);
+  const rerender = () => preserveFocus(el, () => renderQuests(el, d));
 
   const row = (q: QuestDef) => {
     const s = st(q);
@@ -170,7 +171,7 @@ export function renderCodex(el: HTMLElement, d: PageData): void {
   const relief = facts.filter(isReliefPattern);
   const pool = codexFilter === 'relief' ? relief : codexFilter === 'new' ? facts.filter((f) => unseen.has(f.id) && have.has(f.id)) : cards;
   const sorted = [...pool.filter((f) => have.has(f.id)), ...(codexFilter === 'new' ? [] : pool.filter((f) => !have.has(f.id)))];
-  const rerender = () => renderCodex(el, d);
+  const rerender = () => preserveFocus(el, () => renderCodex(el, d));
   const nNew = facts.filter((f) => unseen.has(f.id) && have.has(f.id)).length;
   const filt = (id: typeof codexFilter, text: string) =>
     h('button.kq-btn.kqj-filter', { type: 'button', 'aria-pressed': String(codexFilter === id), dataset: { testid: `codex-filter-${id}` }, onclick: () => ((codexFilter = id), rerender()) }, text);
@@ -199,6 +200,7 @@ export function renderCodex(el: HTMLElement, d: PageData): void {
         {
           type: 'button',
           dataset: { fact: f.id, testid: `codex-card-${f.id}` },
+          'aria-pressed': String(codexSel === f.id),
           onclick: () => {
             codexSel = f.id;
             d.seen(f.id);

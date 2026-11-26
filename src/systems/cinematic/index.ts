@@ -405,6 +405,7 @@ export class CinematicRuntime {
     if (c) {
       this.cur = null;
       this.teardown(c);
+      // Keep the interrupted shot ID in the flushed save so a loaded story can receive its end.
       this.ctx.save.hold('cinematic', false);
     }
   }

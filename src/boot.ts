@@ -6,11 +6,13 @@ import type { EraController, GameContext, PauseController } from './core/context
 import { ERA_INFO, type Era, isEra } from './core/era';
 import { EventBus } from './core/events';
 import { FixedStepLoop, frameCap, renderRate } from './core/loop';
+import { motionTime, screenFlashScale } from './core/motion';
 import { SaveManager, SettingsStore, defaultStorage } from './core/save';
 import { DEFAULT_SPAWN, GameStateStore, createInitialState } from './core/state';
 import { SystemRegistry } from './core/systems';
 import { loadGameData } from './data/loader';
 import { installDebug } from './debug/hooks';
+import { spawnFromParams } from './debug/spawn';
 import { t } from './i18n';
 import { AVATAR_MODELS, Avatar, type AvatarModelId, avatarModelParam } from './player/avatar';
 import { cameraHints } from './player/camera';
@@ -61,6 +63,8 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.toneMapping = NoToneMapping;
   renderer.domElement.tabIndex = 0;
+  renderer.domElement.inert = true;
+  renderer.domElement.setAttribute('aria-label', t('game.field'));
   container.append(renderer.domElement);
   const scene = new Scene();
   const camera = new PerspectiveCamera(70, 1, 0.2, 7000);
@@ -210,6 +214,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
 
   // ---- input + player
   const input = new Input(renderer.domElement);
+  input.enabled = false;
   const player = new Player(
     {
       heightAt: (x, z) => world.heightAt(x, z),
@@ -290,7 +295,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     root.toggleAttribute('data-kq-reduced-flash', s.reducedFlash === true);
     root.toggleAttribute('data-kq-colorblind', s.colorblind === true);
     root.style.setProperty('--sub-bg', String(Math.max(0, Math.min(1, s.subtitleBg ?? 0.62))));
-    post.uniforms.uFlashScale!.value = s.reducedFlash ? 0.2 : 1;
+    post.uniforms.uFlashScale!.value = screenFlashScale(s.reducedMotion, s.reducedFlash);
     world.terrain.uniforms.uPalette!.value = s.colorblind ? 1 : 0;
   };
   settings.subscribe((_, key) => {
@@ -348,7 +353,8 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   function applyStartOverrides(): void {
     const qEra = params.get('era');
     if (isEra(qEra)) era.set(qEra);
-    if (params.has('x') && params.has('z')) player.teleport(Number(params.get('x')), Number(params.get('z')), params.has('yaw') ? (Number(params.get('yaw')) * Math.PI) / 180 : undefined);
+    const spawn = spawnFromParams(params);
+    if (spawn) player.teleport(spawn.x, spawn.z, spawn.yaw);
   }
   applyStartOverrides();
   ui.hud.setEraLabel(t(ERA_INFO[world.currentEra].labelKey));
@@ -408,11 +414,12 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     if (!pause.paused) player.look();
     player.applyCamera(camera, alpha, frameDt);
     cameraOverride.fn?.(camera);
-    if (reasons.has('title')) {
+    const titleActive = reasons.has('title');
+    const titleTime = titleActive ? motionTime(performance.now() / 1000, settings.state.reducedMotion) : 0;
+    if (titleActive) {
       // title backdrop: slow drift of the view
-      const tt = performance.now() / 1000;
-      camera.rotation.y += Math.sin(tt * 0.07) * 0.08;
-      camera.rotation.x = -0.02 + Math.sin(tt * 0.05) * 0.02;
+      camera.rotation.y += Math.sin(titleTime * 0.07) * 0.08;
+      camera.rotation.x = -0.02 + Math.sin(titleTime * 0.05) * 0.02;
     }
     systems.frame(frameDt, ctx);
     // the character (after the systems: combat's pose of this frame, cut-scene cameras known);
@@ -430,7 +437,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     // the HUD calm counts real play time (frames), so a fight's linger also ends in ?manual
     if (!pause.paused) ui.hud.tickCalm(frameDt);
     ui.cards.tick(frameDt);
-    world.frame(camera, frameDt, loop.time + (reasons.has('title') ? performance.now() / 1000 : 0));
+    world.frame(camera, frameDt, loop.time + titleTime);
     audio.updateListener(camera);
     ui.hud.setHeading(((-player.yaw * 180) / Math.PI + 360) % 360);
   }
@@ -567,6 +574,8 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   // ---- modals pause the game and free the mouse
   ui.modals.onChange = (n) => {
     modalOpen = n;
+    renderer.domElement.inert = n > 0 || !started;
+    if (!started) title.el.inert = n > 0;
     modalChanged = performance.now();
     loop.requestRender();
     input.enabled = n === 0 && started;
@@ -704,6 +713,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
       events.emit('save:loaded', { slot: 'new' });
     }
     started = true;
+    renderer.domElement.inert = modalOpen > 0;
     title.hide(settings.state.reducedMotion);
     ui.loading.setEnabled(!shifting);
     ui.hud.show(true);
@@ -727,6 +737,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     events.emit('game:title', {});
     save.flushAutosave('title');
     started = false;
+    renderer.domElement.inert = true;
     ui.loading.setEnabled(false);
     input.enabled = false;
     touch.setPlaying(false);

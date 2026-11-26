@@ -268,6 +268,7 @@ class Progression {
     on('settings:change', ({ key }) => {
       if (key === 'gentleMode' || key === 'rauhnacht') this.core.refreshStats();
       if (key === 'bindings') this.updateQuick();
+      if (key === 'reducedMotion') this.updateXp(false);
     });
     on('hub:enter', () => {
       this.atHome = true;
@@ -318,7 +319,7 @@ class Progression {
     const lvl = s.level;
     const base = LEVEL_XP[lvl - 1] ?? 0;
     const next = lvl >= MAX_LEVEL ? 0 : LEVEL_XP[lvl]! - base;
-    this.hud.setXp(lvl, s.xp - base, next, s.xp, animate);
+    this.hud.setXp(lvl, s.xp - base, next, s.xp, animate && !this.ctx.settings.state.reducedMotion);
   }
 
   private updateQuick(): void {
@@ -361,7 +362,7 @@ class Progression {
     if (!p) return 0;
     const got = this.core.take(id);
     if (got > 0) {
-      this.world.collect(id);
+      if (!this.core.slice().placed?.[id]) this.world.collect(id);
       // the first Messstab comes with two Kräuterbalsam in the bag (Marlene's radio line says
       // so; playtest: "Der Balsam ist in der Tasche" while the HUD showed ×0) — granted before the
       // save, which is forced (round 9: a reload right after the pickup lost the two Balsam, the
@@ -440,7 +441,7 @@ class Progression {
       this.xpDirty = false;
       this.updateXp(true);
     }
-    this.hud.frame(dt, ctx.camera, window.innerWidth, window.innerHeight);
+    this.hud.frame(dt, ctx.camera, window.innerWidth, window.innerHeight, reduced);
     const skillCard = !!document.querySelector('.kqk-card.kqk-in:not(.kqk-out):not(.kqk-held)');
     let hold = ctx.pause.reasons.has('title') || skillCard || ctx.ui.cards.held;
     // on touch a tap on the play surface sends the card off (CardDirector.dismissNotice); on a

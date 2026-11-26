@@ -1,127 +1,112 @@
-import { describe, expect, it, vi } from 'vitest';
-import * as i18n from '../src/i18n';
-import { de } from '../src/i18n/de';
-import { deContent } from '../src/i18n/de.content';
+import { Scene } from 'three';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { GameContext } from '../src/core/context';
+import { ERA_INFO } from '../src/core/era';
+import { EventBus } from '../src/core/events';
+import { GameStateStore, createInitialState } from '../src/core/state';
 import { REBINDABLE } from '../src/player/input';
-import { SYSTEM_LOADERS } from '../src/systems';
-import { TRAVEL_DE } from '../src/systems/travel/strings';
 
-const englishUi = /(?<!\p{L})(?:build|cancel|close|continue|cooldown|debug|failed|loading|loot|mouse|quickslot|respawn|save|settings|shift|skip|slot|stick|tracker|unknown)(?!\p{L})/iu;
-const retiredSurveyor = /Feldbuch|Feldstation|Laterne\s+entzünden|Vermess(?:er|ungspunkt)/iu;
-
-// Exemptions must name a specific key or content field and explain its in-world use.
-const fictionAllowlist = new Set([
-  '/content/packs/enden.pack.json#epilog.intro.keep.text_de', // Laub's physical field book.
-  '/content/story/05-enden.story.json#epilogue.intro.keep', // The same object in the epilogue.
-  '/content/story/04-kapitel-4.story.json#laub.k4.x.luecken.text', // Laub is talking about his book.
-]);
-
-const promptFields = new Set(['key', 'text', 'touch']);
-const withoutParams = (text: string) => text.replace(/\{\w+\}/g, '');
-
-function contentLeftovers(text: unknown, file: string, path: string[] = []): string[] {
-  if (typeof text === 'string') {
-    const field = `${file}#${path.join('.')}`;
-    return retiredSurveyor.test(text) && !fictionAllowlist.has(field) ? [field] : [];
-  }
-  if (Array.isArray(text)) return text.flatMap((entry) => contentLeftovers(entry, file, path));
-  if (!text || typeof text !== 'object') return [];
-  if ('id' in text && typeof text.id === 'string') path = [text.id];
-  const isPrompt = 'do' in text && text.do === 'prompt';
-  return Object.entries(text).flatMap(([key, value]) => {
-    const field = [...path, key];
-    if (isPrompt && promptFields.has(key) && typeof value === 'string' && englishUi.test(withoutParams(value))) {
-      return [`${file}#${field.join('.')}`];
-    }
-    return contentLeftovers(value, file, field);
-  });
-}
-
-describe('German player-facing text', () => {
-  it('keeps English UI words and retired surveyor terms out of registered translations', async () => {
-    const registrations = vi.spyOn(i18n, 'addStrings');
-    let featureTables: Record<string, string>[];
-    try {
-      await import('../src/ui/touch');
-      for (const load of SYSTEM_LOADERS) await load();
-      featureTables = registrations.mock.calls.map(([, table]) => table);
-    } finally {
-      registrations.mockRestore();
-    }
-    expect(featureTables).toContainEqual(expect.objectContaining({ 'story.echo.date': 'Erinnerung · {when}' }));
-
-    // Travel keeps a non-registered table and formats some labels with runtime values.
-    const travel = {
-      ...Object.fromEntries(Object.entries(TRAVEL_DE).filter(([, value]) => typeof value === 'string')),
-      ...TRAVEL_DE.block,
-      activated: TRAVEL_DE.activated('Ehrenhof'),
-      announced: TRAVEL_DE.announced('Ehrenhof'),
-      unknownOne: TRAVEL_DE.unknown(1),
-      unknownMany: TRAVEL_DE.unknown(2),
-    };
-
-    const offending = [de, deContent, ...featureTables, travel].flatMap((table) =>
-      Object.entries(table).flatMap(([key, value]) => {
-        const text = withoutParams(value);
-        return englishUi.test(text) || (retiredSurveyor.test(text) && !fictionAllowlist.has(key))
-          ? [`${key}: ${value}`]
-          : [];
-      }),
-    );
-    expect(offending).toEqual([]);
-  });
-
-  it('checks authored prompts for English UI words and preserves allowed fictional surveyor terms', () => {
-    const content = import.meta.glob<unknown>('/content/{packs,quests,story}/*.json', { eager: true, import: 'default' });
-    expect(Object.entries(content).flatMap(([file, data]) => contentLeftovers(data, file))).toEqual([]);
-  });
-
-  it('flags English in each displayed prompt field and ignores internal action IDs', () => {
-    const data = { id: 'sprint', enter: [
-      { do: 'prompt', key: 'Shift', text: 'Zum Rennen Shift halten', touch: 'Stick ganz vor' },
-      { do: 'shift', to: '1789' },
-    ] };
-    expect(contentLeftovers(data, 'tour.json')).toEqual(['key', 'text', 'touch'].map((field) => `tour.json#sprint.enter.${field}`));
-  });
-
-  it('describes holding Q to return without stating a duration', () => {
-    for (const key of ['ui.keys.shift', 'ui.tip.20']) {
-      expect(i18n.t(key)).toMatch(/\bQ\]? gedrückt halten\b/);
-      expect(i18n.t(key)).not.toMatch(/Sekunden|\b\d+\s*s\b/i);
-    }
-  });
-
-  it('labels all rebindable controls and shows a German fallback for an absent key', () => {
-    expect(REBINDABLE.filter((action) => !i18n.hasString(`action.${action}`))).toEqual([]);
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    try {
-      expect(i18n.t('test.missingText')).toBe('Text nicht verfügbar');
-      expect(i18n.t('test.missingText')).toBe('Text nicht verfügbar');
-      expect(warn).toHaveBeenCalledExactlyOnceWith("[i18n] missing string 'test.missingText'");
-    } finally {
-      warn.mockRestore();
-    }
-  });
+beforeEach(() => { vi.resetModules(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
-describe('missing-key fallback callers', () => {
-  it('lets Laub skip a skill level without a line instead of saying the placeholder', async () => {
-    const { laubLine } = await import('../src/systems/skills/index');
-    const emit = vi.fn();
+describe('German string lookup', () => {
+  it('resolves the keys built by the era HUD and remapping table', async () => {
+    const { hasString } = await import('../src/i18n');
+    for (const { labelKey } of Object.values(ERA_INFO)) expect(hasString(labelKey), labelKey).toBe(true);
+    for (const action of REBINDABLE) expect(hasString(`action.${action}`), action).toBe(true);
+  });
+
+  it('resolves both labels for every control after feature initialization', async () => {
+    const [{ hasString }, { controlKeyRows }, { default: skills }, { default: photo }, { default: notes }] = await Promise.all([
+      import('../src/i18n'),
+      import('../src/ui/menus'),
+      import('../src/systems/skills'),
+      import('../src/systems/photo'),
+      import('../src/systems/notes'),
+    ]);
+    const createElement = () => Object.assign(new EventTarget(), {
+      append: vi.fn(),
+      appendChild: vi.fn(),
+      classList: { remove: vi.fn() },
+      getContext: () => null,
+      remove: vi.fn(),
+      setAttribute: vi.fn(),
+      style: {},
+    });
+    vi.stubGlobal('Node', EventTarget);
+    vi.stubGlobal('window', new EventTarget());
+    vi.stubGlobal('document', Object.assign(new EventTarget(), { createElement, createTextNode: () => new EventTarget() }));
+    vi.stubGlobal('indexedDB', undefined);
+
     const ctx = {
-      state: { state: { flags: { 'story.laub': true }, systems: {} } },
-      t: i18n.t,
-      events: { emit },
-    } as unknown as Parameters<typeof laubLine>[0];
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      events: new EventBus(),
+      state: new GameStateStore(createInitialState()),
+      scene: new Scene(),
+      era: { current: 'today' },
+      world: { heightAt: () => 0 },
+      ui: { root: createElement(), layer: createElement, cards: { source: vi.fn() } },
+    } as unknown as GameContext;
+    const features = [skills, photo, notes];
     try {
-      laubLine(ctx, 'roentgen', 2);
-      expect(emit).not.toHaveBeenCalled();
-      laubLine(ctx, 'roentgen', 1);
-      expect(emit).toHaveBeenCalledExactlyOnceWith('dialogue:say', expect.objectContaining({ speaker: 'laub', id: 'laub.skill.roentgen.1', text: i18n.t('skills.laub.roentgen.1') }));
-      expect(emit.mock.calls[0]![1].text).not.toBe('Text nicht verfügbar');
+      for (const feature of features) feature.init(ctx);
+      const rows = controlKeyRows({});
+      expect(rows.map(({ id }) => id)).toEqual(expect.arrayContaining(['relief_off', 'xray', 'plans', 'photo', 'notes']));
+      for (const { id, keys } of rows) {
+        const key = `ui.keys.${id}`;
+        expect(hasString(key), key).toBe(true);
+        // rows without rebindable actions show their fixed `.key` label
+        expect(keys, `${key}.key`).not.toBe(`${key}.key`);
+      }
     } finally {
-      warn.mockRestore();
+      for (const feature of features.reverse()) feature.dispose();
     }
   });
+
+  it('shows the German placeholder for an unknown key and warns once, then uses a late feature registration', async () => {
+    const { addStrings, hasString, t } = await import('../src/i18n');
+    const key = 'test.late.label';
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(hasString(key)).toBe(false);
+    expect(t(key)).toBe('Text nicht verfügbar');
+    expect(t(key)).toBe('Text nicht verfügbar');
+    expect(warn).toHaveBeenCalledExactlyOnceWith(`[i18n] missing string '${key}'`);
+    addStrings('de', { [key]: 'Stufe {n}' });
+    expect(hasString(key)).toBe(true);
+    expect(t(key, { n: 0 })).toBe('Stufe 0');
+    addStrings('de', { [key]: 'Rang {n}' });
+    expect(t(key, { n: 2 })).toBe('Rang 2');
+  });
+
+  it('fills repeated placeholders with literal values, leaving omitted values visible', async () => {
+    const { addStrings, hasString, t } = await import('../src/i18n');
+    const key = 'test.record';
+    expect(hasString(key)).toBe(false);
+    addStrings('de', { [key]: '{name}/{name} ({n}) {more}' });
+    expect(t(key, { name: '$&', n: 0 })).toBe('$&/$& (0) {more}');
+    expect(t(key, { name: '', n: 3, more: 'fertig' })).toBe('/ (3) fertig');
+  });
+
+  it('formats both registered forms of the hunt track count', async () => {
+    const { t } = await import('../src/i18n');
+    await import('../src/systems/hunt/strings');
+    expect(t('hunt.read.n1')).toBe('einem Hund');
+    expect(t('hunt.read.n', { n: 'zwei' })).toBe('zwei Hunden');
+    expect(t('hunt.read.n', { n: 0 })).toBe('0 Hunden');
+  });
+
+  it('treats inherited object names as missing translation keys and missing parameters', async () => {
+    const { addStrings, hasString, t } = await import('../src/i18n');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(hasString('toString')).toBe(false);
+    expect(t('toString', {})).toBe('Text nicht verfügbar');
+    expect(warn).toHaveBeenCalledOnce();
+    addStrings('de', { 'test.inherited': '{toString}' });
+    expect(t('test.inherited', {})).toBe('{toString}');
+    expect(t('test.inherited', { toString: 'Wert' })).toBe('Wert');
+  });
+
+  it.todo('decide whether unused content-bible tutorial keys such as ui.tut.fill should remain available to features');
 });

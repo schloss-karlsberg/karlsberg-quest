@@ -189,6 +189,8 @@ export const de: Record<string, string> = {
   'fly.prompt.touch': 'Landen · Bewegungsregler: fliegen · Wischen: umsehen · Steigen und Sinken rechts',
 
   'modal.close': 'Schließen',
+  'modal.dialog': 'Dialog',
+  'game.field': 'Spielfeld',
   'modal.ok': 'Gut',
   'common.missingText': 'Text nicht verfügbar',
   'common.unknownPerson': 'Unbekannte Person',
