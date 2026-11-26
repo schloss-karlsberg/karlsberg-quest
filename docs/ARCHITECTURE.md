@@ -1066,7 +1066,8 @@ Round-4 (polish: set dressing) integration rules:
 - Data in `content/story/*.story.json` (schema notes: `content/story/README.md`, checked by
   `pnpm validate`): chapters → beats with conditions, actions, delays, checkpoints. Prologue and
   endings are scripted from the bible; chapters 1–4 are placeholder skeletons.
-- Emits `story:chapter/beat/ending`, `objective:set`, `threat:configure`, `shift:request`,
+- Emits `story:chapter/beat/ending` (`story:chapter/beat` carry `resume: true` when a boot, load
+  or capture re-enters them), `objective:set`, `threat:configure`, `shift:request`,
   `dialogue:say`, `hub:enter/leave`, `story:cue {id,data?}` and `story:credits`. Presents every `dialogue:say` (portrait card, typing,
   voice) and ContentDB dialogue triggers. Voice: a recorded clip when `voice/manifest.json`
   (under the Vite base; contract and FNV-1a `textHash` over the raw `text_de` in
@@ -1817,7 +1818,9 @@ pause the logic.
   killer kind, era and objective (a `caught` within 3 s of a `died` is the same KO), stuck episodes:
   ≥ 180 s of active play (fixed step, not paused) while there is an objective and no
   `quest:progress / objective / ready / completed / accepted`, `story:beat / chapter` or changed
-  `objective:set`; the episode grows until progress ends it. Lists capped at 500.
+  `objective:set`; the episode grows until progress ends it. Lists capped at 500. A beat or chapter
+  the story enters again (`resume: true` after a boot, a load or a capture) and the slot's saved
+  objective set again on resume are not progress.
 - Storage (`store.ts`): IndexedDB `kq-notes` v1, stores `notes` (auto-increment) and `meta`
   (`telemetry`, written at most every 5 s while it changes and when the tab hides); memory fallback
   when IndexedDB is blocked. **No network calls, ever.**

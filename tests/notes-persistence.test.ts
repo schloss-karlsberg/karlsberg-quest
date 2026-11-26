@@ -1,6 +1,15 @@
-import { expect, it, vi } from 'vitest';
-import { STUCK_SECONDS, Telemetry, normaliseTelemetry } from '../src/systems/notes/logic';
+import { PerspectiveCamera, Scene, Vector3 } from 'three';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { GameContext } from '../src/core/context';
+import notes from '../src/systems/notes';
+import { STUCK_SECONDS, Telemetry, createTelemetry, normaliseTelemetry } from '../src/systems/notes/logic';
+import * as noteStore from '../src/systems/notes/store';
 import { MemoryStore, openNoteStore } from '../src/systems/notes/store';
+import story from '../src/systems/story';
+import { createStorySlice } from '../src/systems/story/engine';
+import type { StoryFile } from '../src/systems/story/types';
+import { explorationSession } from './exploration-fixture';
+import { initStory } from './story-session-fixture';
 
 const situation = { x: 2, z: 7, era: '1789', quest: 'test', objective: 'gate', play: 0, at: '2026-11-26T10:00:00Z' };
 
@@ -59,4 +68,83 @@ it('persists objective progress even before there is a stuck episode to close', 
   expect(tele.dirty).toBe(true);
   expect(tele.tick(1, situation, true)).toBeNull();
   expect(tele.s.sinceProgress).toBe(1);
+});
+
+// ---- the Notes system with the real Story resume (a boot or a load replays the saved beat)
+
+// A two-beat campaign, no portraits and no rendered objective (story-session-fixture).
+vi.mock('../src/systems/story/stories', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../src/systems/story/stories')>(),
+  loadBundledStories: () => [{
+    file: 'session.story.json',
+    story: {
+      chapter: 'session', order: 0, title_de: 'Test', start: 'gate',
+      beats: [
+        { id: 'gate', enter: [{ do: 'objective', text: 'Zum Tor' }], complete: { manual: true } },
+        { id: 'yard', enter: [{ do: 'objective', text: 'Zum Hof' }], complete: { manual: true } },
+      ],
+    } satisfies StoryFile,
+  }],
+}));
+vi.mock('../src/systems/story/dialogue/portraits', () => ({ ensurePortraitDefs: vi.fn() }));
+vi.mock('../src/systems/story/objectives', () => ({
+  ObjectiveView: class { set() {} frame() {} },
+}));
+
+async function notesWithStory(storedSeconds: number) {
+  const { events, state, save, era, element } = explorationSession();
+  // the telemetry the last session left in the note store (IndexedDB in the browser)
+  const store = new MemoryStore();
+  await store.setMeta('telemetry', { ...createTelemetry(), sinceProgress: storedSeconds });
+  vi.spyOn(noteStore, 'openNoteStore').mockResolvedValue(store);
+  const player = { position: new Vector3(), yaw: 0, pitch: 0, stance: 'stand', frozen: false, teleport: vi.fn() };
+  const ctx = {
+    events, state, save, era, player, pause: { paused: false }, loop: { time: 0, tick: 0, manual: false },
+    scene: new Scene(), camera: new PerspectiveCamera(), systems: { get: vi.fn() },
+    audio: { bus: () => null }, t: (key: string) => key,
+    input: { wasPressed: () => false }, settings: { state: { reducedMotion: false } },
+    ui: { layer: element, modals: { count: 0 }, toast: vi.fn(), hud: { busy: vi.fn() }, cards: { soft: vi.fn() } },
+    world: { heightAt: () => 0 },
+  } as unknown as GameContext;
+  // the saved slot stands in the first beat with its objective
+  state.mutable.systems.story = { ...createStorySlice(), active: true, chapter: 'session', beat: 'gate', objective: { text: 'Zum Tor' } };
+  await initStory(ctx, element);
+  notes.init(ctx);
+  notes.frame(0); // installs kq.telemetry
+  await vi.waitFor(() => expect(window.kq!.telemetry!.state().sinceProgress).toBe(storedSeconds));
+  return { events, save, tele: window.kq!.telemetry! };
+}
+
+describe('the stuck clock across a story resume', () => {
+  afterEach(() => {
+    notes.dispose();
+    story.dispose();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it.each(['boot', 'load'])('keeps the stored clock when the story replays the saved beat (%s)', async (how) => {
+    const { events, save, tele } = await notesWithStory(STUCK_SECONDS - 1);
+    const beats = vi.fn();
+    events.on('story:beat', beats);
+    if (how === 'load') {
+      events.emit('game:start', { resumed: true });
+      save.save('same');
+      save.load('same');
+    } else events.emit('game:start', { resumed: true });
+    expect(beats).toHaveBeenLastCalledWith({ chapter: 'session', beat: 'gate', resume: true });
+    expect(tele.state().sinceProgress).toBe(STUCK_SECONDS - 1);
+    notes.update(1);
+    expect(tele.state().stuck).toMatchObject([{ seconds: STUCK_SECONDS, ended: false, objective: 'Zum Tor' }]);
+  });
+
+  it('still counts a beat that is reached anew and a changed objective as progress', async () => {
+    const { events, tele } = await notesWithStory(STUCK_SECONDS - 1);
+    events.emit('game:start', { resumed: true });
+    events.emit('story:beat', { chapter: 'session', beat: 'yard' });
+    expect(tele.state().sinceProgress).toBe(0);
+    notes.update(1);
+    events.emit('objective:set', { text: 'Zum Hof' });
+    expect(tele.state().sinceProgress).toBe(0);
+  });
 });

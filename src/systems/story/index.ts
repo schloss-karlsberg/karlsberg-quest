@@ -313,7 +313,7 @@ class StoryRuntime {
         this.gatePending = false;
         // the beat's spoken lines: fetch and decode their clips now (never waits)
         this.clips?.preload(sayLineIds(b).map((id) => ({ id })));
-        ctx.events.emit('story:beat', { chapter: ch, beat: b.id });
+        ctx.events.emit('story:beat', { chapter: ch, beat: b.id, ...(o.resume ? { resume: true as const } : {}) });
         if (!o.resume) this.pendingAutosave = true;
         if (this.storyPrompt) {
           ctx.ui.hud.prompt(null, undefined, 'story');
@@ -595,7 +595,7 @@ class StoryRuntime {
 
   private chapterEntered(f: StoryFile, resume: boolean): void {
     const ctx = this.ctx;
-    ctx.events.emit('story:chapter', { id: f.chapter });
+    ctx.events.emit('story:chapter', { id: f.chapter, ...(resume ? { resume: true as const } : {}) });
     if (resume) {
       if (ctx.era.current === 'today') {
         for (const a of missingTourChestnuts(f, this.slice, ctx.state.state.systems.progression)) this.exec(a);
