@@ -41,7 +41,7 @@ type SliceCase<K extends SliceId> = {
 
 const SEED = 0x0535a7e;
 const CASES = 200;
-const CORRUPT_CASES = Number(process.env.KQ_FUZZ_CASES ?? 400);
+const CORRUPT_CASES = Math.max(30, Number(process.env.KQ_FUZZ_CASES) || 400);
 const ROUTE = buildRoute(tourRoute as Parameters<typeof buildRoute>[0]);
 const BOTTLES = FLASCHEN.map(({ id }) => id);
 const HANGING_BOTTLES = FLASCHEN.filter(({ verb }) => verb === 'wucht').map(({ id }) => id);
