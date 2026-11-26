@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { SCREENS } from './helpers/common';
 
 /**
  * "Unauffällig" (src/systems/court, docs/IDEAS-ROUND11.md §2.6): watchers placed through the npc
@@ -8,7 +9,6 @@ import { type Page, expect, test } from '@playwright/test';
  * (refused / ejected / thrown out during the ring / passed → gate open), the costume per era and
  * the fast-travel arrival outside the gitter. Screenshots: test-results/screens/court-*.png.
  */
-const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 test.describe.configure({ timeout: 300_000 });
 

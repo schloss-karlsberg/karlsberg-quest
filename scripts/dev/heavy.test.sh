@@ -2,7 +2,7 @@
 # Tests for scripts/dev/heavy.sh. Run: bash scripts/dev/heavy.test.sh [--stress].
 # Uses a private lock path (KQ_HEAVY_LOCK) in a temp dir, so it never touches
 # /tmp/kq-heavy.lock (or its slots) and is safe while real heavy jobs hold the real lock.
-# Sections 1-15 run with KQ_HEAVY_SLOTS=1 (the single-lock behaviour); 16-25 with 3 slots.
+# Sections 1-15 run with KQ_HEAVY_SLOTS=1 (the single-lock behaviour); 16-27 with 3 slots.
 
 set -u
 HEAVY="$(cd "$(dirname "$0")" && pwd)/heavy.sh"
@@ -192,10 +192,47 @@ slot_stress() {
   unset KQ_HEAVY_STALE_AGE KQ_HEAVY_POLL KQ_HEAVY_TIMEOUT
 }
 
+# The real heavy.sh from before slots (#68), for the mixed old/new cases. Empty without git history.
+OLD68="$T/heavy-68.sh"
+git -C "$(dirname "$HEAVY")" show 3dafa0e:scripts/dev/heavy.sh >"$OLD68" 2>/dev/null && [ -s "$OLD68" ] && chmod +x "$OLD68" || OLD68=""
+
+# 3 slots, short: #68 copies and new copies (normal and one exclusive) arrive interleaved. A #68
+# job only knows slot 0, so at most one runs at a time; nothing runs beside the exclusive job;
+# never more than 3 at once; everything finishes and leaves no slot or ticket behind.
+mixed_stress() {
+  local log="$T/mstress.log" job p i pids="" failures=0 m
+  if [ -z "$OLD68" ]; then echo "skip mixed stress: git history not available"; return; fi
+  export KQ_HEAVY_SLOTS=3 KQ_HEAVY_POLL=0.05 KQ_HEAVY_TIMEOUT=60
+  : >"$log"
+  # sh -c "$job" m <start mark> <end mark> <log>
+  job='printf "%s\n" "$1" >>"$3"; [ "${KQ_HEAVY_HELD:-}" = 1 ] || exit 1; sleep 0.3; printf "%s\n" "$2" >>"$3"'
+  for i in 1 2 3 4 5 6 7 8 9; do
+    case $i in
+      2|5|8) "$OLD68" -- /bin/sh -c "$job" m OS OE "$log" 2>>"$T/mstress.err" & ;;
+      6) "$HEAVY" --exclusive -- /bin/sh -c "$job" m XS XE "$log" 2>>"$T/mstress.err" & ;;
+      *) "$HEAVY" -- /bin/sh -c "$job" m S E "$log" 2>>"$T/mstress.err" & ;;
+    esac
+    pids="$pids $!"; bgpids="$bgpids $!"
+    sleep 0.05
+  done
+  for p in $pids; do wait "$p" || failures=$((failures + 1)); done
+  m=$(awk '$1 ~ /S$/ { n++; if (n > m) m = n } $1 ~ /E$/ { n-- } END { print m + 0 }' "$log")
+  check "mixed stress: 9 jobs finished with KQ_HEAVY_HELD=1 (failures=$failures)" test "$failures" = 0
+  check "mixed stress: 9 starts and 9 ends" test "$(grep -c . "$log")" = 18
+  check "mixed stress: at most 3 at once (max $m)" sh -c "[ $m -ge 1 ] && [ $m -le 3 ]"
+  check "mixed stress: one #68 job at a time ($(tr '\n' ' ' <"$log"))" \
+    awk '$1 == "OS" { if (o) bad = 1; o = 1 } $1 == "OE" { o = 0 } END { exit bad }' "$log"
+  check "mixed stress: the exclusive job ran alone" \
+    awk '$1 == "XS" { if (n) bad = 1; x = 1 } ($1 == "S" || $1 == "OS") { if (x) bad = 1; n++ } ($1 == "E" || $1 == "OE") { n-- } $1 == "XE" { x = 0 } END { exit bad }' "$log"
+  check "mixed stress: slots released, queue empty" sh -c "[ -z \"\$(ls -d '$L' '$L'.slot[0-9]* 2>/dev/null)\" ] && [ -z \"\$(ls -A '$L.queue' 2>/dev/null)\" ]"
+  unset KQ_HEAVY_POLL KQ_HEAVY_TIMEOUT
+}
+
 if [ "${1:-}" = --stress ]; then
   stress
   orphaned_child
   slot_stress
+  mixed_stress
   echo "$pass passed, $fail failed"
   [ "$fail" = 0 ]
   exit $?
@@ -531,9 +568,7 @@ check "old holder gone: exclusive job clears slot 0 and runs (rc=$rc)" sh -c "[ 
 check "old holder gone: all released" no_slots
 
 # 19. mixed with the real heavy.sh from before slots (#68): it holds slot 0 and its guard
-OLD68="$T/heavy-68.sh"
-if git -C "$(dirname "$HEAVY")" show 3dafa0e:scripts/dev/heavy.sh >"$OLD68" 2>/dev/null && [ -s "$OLD68" ]; then
-  chmod +x "$OLD68"
+if [ -n "$OLD68" ]; then
   : >"$glog"; gp=""
   GJ_HEAVY=$OLD68 gjob o19 "$T/g19o"
   check "#68 holder: started in slot 0" sh -c "i=0; until [ -f '$T/o19.started' ] && [ -f '$L/pid' ]; do [ \$i -lt 100 ] || exit 1; sleep 0.05; i=\$((i+1)); done; [ ! -e '$L/mode' ]"
@@ -632,10 +667,48 @@ check "KQ_HEAVY_SLOT: 1 for the first normal job, 0 when exclusive or with 1 slo
 check "slots: no tickets left" no_tickets
 unset KQ_HEAVY_POLL
 
+# 26. a #68 waiter queued behind an --exclusive ticket: it does not take the free slot 0 while
+#     the exclusive job waits, the exclusive job runs alone, then the #68 waiter gets slot 0
+export KQ_HEAVY_POLL=0.1
+if [ -n "$OLD68" ]; then
+  : >"$glog"; gp=""
+  gjob a26 "$T/g26a"; wait_started a26
+  gjob x26 "$T/g26x" --exclusive; sleep 0.4
+  GJ_HEAVY=$OLD68 gjob o26 "$T/g26o"; sleep 0.8
+  "$HEAVY" --status >"$T/st26"
+  check "#68 behind exclusive: queued as 1. X x26, 2. o26 (slot 0 only)" sh -c "grep -Eq '^ +1\. +X x26 ' '$T/st26' && grep -Eq '^ +2\. +o26 \(pid [0-9]+\) waiting [0-9]+s \[old heavy.sh: slot 0 only\]' '$T/st26'"
+  check "#68 behind exclusive: waits although slot 0 is free" sh -c "[ ! -f '$T/o26.started' ] && [ ! -f '$T/x26.started' ] && [ ! -e '$L' ]"
+  : >"$T/g26a"
+  check "#68 behind exclusive: the exclusive job starts" wait_started x26
+  sleep 0.6
+  check "#68 behind exclusive: the #68 waiter waits while it runs" not_started o26
+  out=$("$HEAVY" --status | grep -c 'held by x26 .*\[exclusive\]')
+  check "#68 behind exclusive: exclusive holds all 3 slots ($out)" test "$out" = 3
+  : >"$T/g26x"
+  check "#68 behind exclusive: the #68 waiter runs after it" wait_started o26
+  check "#68 behind exclusive: in slot 0, as an old holder" sh -c "[ -f '$L/pid' ] && [ ! -e '$L/mode' ] && [ ! -e '$L.slot1' ]"
+  : >"$T/g26o"
+  wait_all; rc=$?
+  check "#68 behind exclusive: all finished (failures=$rc)" test "$rc" = 0
+  check "#68 behind exclusive: order ($(log_line))" test "$(log_line)" = "S a26 E a26 S x26 E x26 S o26 E o26"
+  check "#68 behind exclusive: all released, queue empty" sh -c "[ -z \"\$(ls -d '$L' '$L'.slot[0-9]* 2>/dev/null)\" ] && [ -z \"\$(ls -A '$Q')\" ]"
+else
+  echo "skip #68 behind exclusive: git history not available"
+fi
+
+# 27. KQ_HEAVY_MODE and KQ_HEAVY_LOCK reach the child
+out=$("$HEAVY" sh -c 'echo $KQ_HEAVY_MODE' 2>/dev/null; "$HEAVY" --exclusive sh -c 'echo $KQ_HEAVY_MODE' 2>/dev/null; KQ_HEAVY_SLOTS=1 "$HEAVY" sh -c 'echo $KQ_HEAVY_MODE' 2>/dev/null)
+check "KQ_HEAVY_MODE: normal, exclusive, normal with 1 slot ($(echo $out))" [ "$(echo $out)" = "normal exclusive normal" ]
+out=$("$HEAVY" sh -c 'echo $KQ_HEAVY_LOCK' 2>/dev/null)
+check "KQ_HEAVY_LOCK: the lock in use is exported ($out)" [ "$out" = "$L" ]
+check "slots: no tickets left after 26-27" no_tickets
+unset KQ_HEAVY_POLL
+
 # never leave the real lock behind
 stress
 orphaned_child
 slot_stress
+mixed_stress
 for f in $real_before; do check "real $f untouched" [ ! -e "$f" ]; done
 
 echo "$pass passed, $fail failed"

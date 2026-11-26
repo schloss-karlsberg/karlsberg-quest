@@ -125,7 +125,7 @@ The runner gives each issue a severity hint (`findings.json`). The playtester co
 | `e2e/mobile/devices.ts` | the unit matrix |
 | `e2e/mobile/tour.pw.ts` | the tour: states, touch, shots, `findings.json`. It is not a `*.spec.ts`, so the normal suite never runs it |
 | `e2e/mobile/measure.ts` | in-page measurements |
-| `e2e/mobile/playwright.config.ts` | its own config: real-GPU flags, preview server on port **5340** |
+| `e2e/mobile/playwright.config.ts` | its own config: real-GPU flags, preview server on port **5340** (`KQ_MOBILE_PORT`); refuses a normal `heavy.sh` slot, run it `--exclusive` |
 | `scripts/dev/mobile-tour.ts` | the CLI: `--device`, `--states`, `--build`, `--headed`, `--mask`, `--list` |
 
 **Real GPU.** The suite (`playwright.config.ts`) uses SwiftShader on purpose. The repo's real-GPU precedent is `scripts/dev/storyboard.mjs`: headless Chromium with `--use-angle=metal --enable-gpu --ignore-gpu-blocklist`, which logs `UNMASKED_RENDERER_WEBGL` and warns on a software renderer. The tour uses the same flags.
@@ -144,14 +144,14 @@ Run from this worktree. `dist/` must exist: `pnpm build` once, outside the lock.
 
 ```sh
 cd <this worktree>
-KQ_HEAVY_OWNER=kq-mobile scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device small-landscape
-KQ_HEAVY_OWNER=kq-mobile scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device large-landscape
-KQ_HEAVY_OWNER=kq-mobile scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device small-portrait
-KQ_HEAVY_OWNER=kq-mobile scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device large-portrait
-KQ_HEAVY_OWNER=kq-mobile scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device tablet-portrait
-KQ_HEAVY_OWNER=kq-mobile scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device tablet-landscape
+KQ_HEAVY_OWNER=kq-mobile scripts/dev/heavy.sh --exclusive --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device small-landscape
+KQ_HEAVY_OWNER=kq-mobile scripts/dev/heavy.sh --exclusive --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device large-landscape
+KQ_HEAVY_OWNER=kq-mobile scripts/dev/heavy.sh --exclusive --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device small-portrait
+KQ_HEAVY_OWNER=kq-mobile scripts/dev/heavy.sh --exclusive --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device large-portrait
+KQ_HEAVY_OWNER=kq-mobile scripts/dev/heavy.sh --exclusive --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device tablet-portrait
+KQ_HEAVY_OWNER=kq-mobile scripts/dev/heavy.sh --exclusive --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device tablet-landscape
 # re-shoot a subset:
-KQ_HEAVY_OWNER=kq-mobile scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device small-landscape --states journal,combat
+KQ_HEAVY_OWNER=kq-mobile scripts/dev/heavy.sh --exclusive --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device small-landscape --states journal,combat
 ```
 
 **Estimated time per unit.** Boot is about 1–1.5 min: the preview server, terrain and assets on the real GPU, the title flow. Each shot takes about 3 s: 0.6 s settle, 1.5 s frame sample, measurement and a DPR 3 PNG.

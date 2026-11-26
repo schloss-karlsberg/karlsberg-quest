@@ -1,11 +1,14 @@
 import type { Page } from '@playwright/test';
+import { slotDir } from '../../scripts/dev/heavy-env.mjs';
 
 /**
  * Shared glue for the chapter playthroughs (e2e/helpers/<chapter>.ts). Each chapter spec boots
  * its chapter directly and calls its play function; e2e/campaign.spec.ts chains all of them from
  * a new game on the title screen. Playwright creates the directory when it writes a screenshot.
+ * SCREENS is the screenshot dir of every spec: test-results/screens, or test-results/screens-slot<k>
+ * inside scripts/dev/heavy.sh slot k >= 1, so two jobs from one checkout never overwrite each other.
  */
-export const SCREENS = 'test-results/screens';
+export const SCREENS = slotDir('test-results/screens');
 
 export const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];
 

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { SCREENS } from './helpers/common';
 
 /**
  * Art foundation (docs/ART-DIRECTION.md): quality tiers (SwiftShader → low, ?q=high), sun
@@ -49,7 +50,7 @@ test.describe('art foundation', () => {
     });
     expect(s).toMatchObject({ level: 'high', shadows: true, bloom: true, ao: true, loaded: true });
     expect(s.patched).toBeGreaterThan(0);
-    await page.screenshot({ path: 'test-results/screens/art-high-stump.png' });
+    await page.screenshot({ path: `${SCREENS}/art-high-stump.png` });
     expect(errors).toEqual([]);
   });
 

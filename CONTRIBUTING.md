@@ -93,6 +93,17 @@ scripts/dev/heavy.sh --exclusive --max-hold 10 -- pnpm exec playwright test e2e/
 scripts/dev/heavy.sh --exclusive --max-hold 15 -- pnpm exec playwright test -c playwright.gpu.config.ts --workers=1
 ```
 
+The real-GPU and fixed-port tools refuse a normal slot (exit 2), so run them `--exclusive`:
+`scripts/dev/mobile-tour.ts` (mobile UI tour, port 5340), `scripts/dev/storyboard.mjs` (5370) and
+`scripts/dev/look.mjs` (5602). Each also takes its port from the slot (base + k in slot k) unless
+`KQ_MOBILE_PORT`, `KQ_STORYBOARD_PORT` or `KQ_LOOK_PORT` is set. `heavy.sh` passes the job
+`KQ_HEAVY_SLOT` and `KQ_HEAVY_MODE` (`exclusive` or `normal`). The walk "d" perf, framerate and perf specs and
+`playwright.gpu.config.ts` print a warning, but don't fail, when they run in a normal slot while other
+slots are busy. In slot k ≥ 1 the Playwright artifacts and screenshots go to
+`test-results/artifacts-slot<k>` and `test-results/screens-slot<k>`, so two jobs from the same checkout
+never wipe or overwrite each other's files. Slot 0 and exclusive jobs keep `test-results/artifacts`
+and `test-results/screens`.
+
 Pass `--max-hold 15` or less. The merge gate (`KQ_HEAVY_OWNER=kq-integrate` or `kq-integrate-*`)
 has a priority lane: it goes ahead of the queue, but after 2 priority holds in a row the oldest
 waiting normal job gets the next hold. A priority job without `--max-hold` of 15 or less is refused

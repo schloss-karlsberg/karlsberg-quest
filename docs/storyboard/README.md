@@ -14,11 +14,15 @@ pnpm exec vite build --outDir /tmp/kq-storyboard
 pnpm exec vite preview --outDir /tmp/kq-storyboard --port 5370 --strictPort --host localhost
 
 # 3. Capture in a second shell
-scripts/dev/heavy.sh -- node scripts/dev/storyboard.mjs http://localhost:5370/
+scripts/dev/heavy.sh --exclusive --max-hold 15 -- node scripts/dev/storyboard.mjs http://localhost:5370/
 ```
 
+The capture uses the real GPU, so it needs the exclusive lane of `heavy.sh`: in a normal slot it
+refuses to start (exit 2). Without a URL it uses `http://localhost:5370/` (`KQ_STORYBOARD_PORT`
+overrides the port).
+
 - `node scripts/dev/storyboard.mjs --list` prints the 68 shot IDs.
-- `scripts/dev/heavy.sh -- node scripts/dev/storyboard.mjs http://localhost:5370/ --only t6-reh-sicht,e-keep-fest` retakes two shots in script order.
+- `scripts/dev/heavy.sh --exclusive -- node scripts/dev/storyboard.mjs http://localhost:5370/ --only t6-reh-sicht,e-keep-fest` retakes two shots in script order.
 - `--out <dir>` writes to a different directory. `--quality 72` sets the JPEG quality, with 72 as the default.
 
 The script opens the game with `?debug&nosave&fresh&manual&q=high` and uses `window.kq` to stage the lighting, actors, effects and UI. Each frame is 1280 × 720. Check the `GPU:` line for the hardware renderer, the log for failed shots, and the final count for `68/68 shots`. A failed shot triggers a reload and the capture continues. Review every picture, then open the page from disk to check the thumbnails and lightbox.

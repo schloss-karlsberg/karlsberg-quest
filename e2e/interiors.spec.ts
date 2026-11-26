@@ -1,12 +1,12 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { SCREENS } from './helpers/common';
 
 /**
  * interiors system: walkable palace rooms. Drives window.kq.interiors; screenshots to
  * test-results/screens/interiors-*.png (Festsaal candle-lit 1789, gallery 1789, Festsaal burning
  * 1793-07, gallery as a ruin 1796, the doorway from outside), plus walking in through a door.
  */
-const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];
