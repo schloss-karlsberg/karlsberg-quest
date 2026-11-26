@@ -2054,10 +2054,14 @@ Each RPG track adds its own subsection here when it fills its system in.
   `save:loaded` **and on a state replace** (`state.subscribe` reason `new` / `replace`: a new game
   from the title replaces the whole state, and the book must follow the new slice). State
   `systems.quests` (`QuestSlice` + `bestiary`). Restore replays any newly credited progress through
-  the normal quest events and autosaves. Accept / complete / fail / stance are forced autosaves.
+  the normal quest events and autosaves. Recovered payouts queue their dialogue and reward notice
+  until Continue or until an in-game load finishes. Replacing the state clears the previous save’s
+  pending reward presentation. Accept / complete / fail / stance are forced autosaves.
   Saved clues, good photos and calms settle on restore and one tick after acceptance or objective
-  completion (`settleKnown`). Calm objectives match a saved spawn ID or species. „Der Jaguar“ can
-  also recover directly from `k3.jaguar` in the saved calm list after its spawn record was cleared.
+  completion (`settleKnown`). A newly accepted quest also checks its open calm objectives before
+  the acceptance autosave, including during a paused conversation. Calm objectives match a saved
+  spawn ID or species. „Der Jaguar“ can also recover directly from `k3.jaguar` in the saved calm
+  list after its spawn record was cleared.
   On `story:chapter`, main quests of earlier chapters still running and unaccepted offers of earlier
   chapters are reset (chapter jumps; the e2e `test` chapter counts as after the campaign). Side quests the
   player took keep running unless their chapter fails them. The book restores on a state `load`

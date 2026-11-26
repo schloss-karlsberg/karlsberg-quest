@@ -36,6 +36,9 @@ saved calm to award the existing quest payout in that order and recover active s
 - [x] Accepting first and calming it afterward still pays once.
 - [x] A stranded save with the animal absent recovers on load.
 - [x] Calming another species leaves the jaguar objective at 0/1.
+- [x] Early calm completes the quest and saves the payout while Hanne’s conversation is still open.
+- [x] Recovery pays exactly 200 base XP and two Lampenöl once. Continue presents the recovered
+  reward, and New Game discards the pending presentation.
 
 ## Plan
 
@@ -47,7 +50,7 @@ jaguar from its stable ID when its spawn record has been cleared.
 
 **Files to touch**
 
-- `tests/quests.test.ts` for the failing reproduction and payout regression tests.
+- `tests/quests.test.ts` and `tests/quests-runtime.test.ts` for saved calm, autosave and payout regressions.
 - `src/systems/quests/index.ts` and `logic.ts` for saved calm reconciliation.
 - `e2e/jaguar-quest.spec.ts` for the browser regression.
 - `docs/ARCHITECTURE.md`, `docs/ACTION-RPG.md` and `docs/PRD.md` for behavior and changelog entries.
@@ -69,6 +72,13 @@ reuse the normal objective progress and payout paths.
 
 **Open questions**. None.
 
+### Review fix round (2026-11-26)
+
+- [x] Reconcile an already-calmed jaguar during quest acceptance, before its forced autosave.
+- [x] Carry recovered reward presentation through Continue and clear it when starting a new game.
+- [x] Add unit regressions and tighten the browser checks for paused acceptance and exact payout.
+- [x] Update the behavior docs, attempt the four gates and the locked browser check, and record the results.
+
 ## Progress
 
 - Branch `dev/task-040`.
@@ -77,12 +87,23 @@ reuse the normal objective progress and payout paths.
 - 2026-11-26. All four acceptance cases passed after the fix, and the quest and photo suites reported `Tests  60 passed (60)`.
 - 2026-11-26. `pnpm typecheck`, `pnpm test` (`Tests  1577 passed (1577)`) and `pnpm build` passed. The sandbox blocked `pnpm validate` with `EPERM` when `tsx` tried to listen on its IPC socket.
 - 2026-11-26. The locked jaguar spec could not start Vite preview (`listen EPERM` on `127.0.0.1:5428`). Smoke was skipped because it uses the same server.
-- 2026-11-26. The sandbox denied `git add` access to the worktree `index.lock`. The patch is ready in the worktree.
+- 2026-11-26. The initial patch is committed as `c985e66`.
+- 2026-11-26. Review fixes cover the paused acceptance autosave, recovered reward presentation on
+  Continue and New Game, and exactly 200 XP and two Lampenöl on the first recovery. The quest,
+  quest runtime and photo suites reported `Tests  63 passed (63)`.
+- 2026-11-26. Review gates passed for `pnpm typecheck`, `pnpm test` (`Tests  1580 passed (1580)`,
+  zero failed) and `pnpm build`. `pnpm validate` hit the same `tsx` IPC permission error.
+- 2026-11-26. The locked jaguar spec again hit `listen EPERM` on `127.0.0.1:5428` before
+  Chromium could start. The smoke spec uses the same server and was skipped.
+- 2026-11-26. All three review findings are fixed. The unit suite covers the acceptance save,
+  the two title choices and the exact payout across reloads. Browser verification is pending.
+- 2026-11-26. The review patch was staged. `git commit` could not create the worktree’s
+  `index.lock` in the sandbox.
 
 ## Follow-ups
 
 - Run `pnpm validate` in an environment that allows the `tsx` IPC socket.
-- Stage and commit the fix, regression coverage and task record from an environment that can write the worktree index.
+- Commit the staged review patch from an environment that can create the worktree’s `index.lock`.
 - Run each browser spec with the shared lock and port 5428.
 
   ```sh

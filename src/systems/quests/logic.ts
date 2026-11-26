@@ -29,6 +29,8 @@ export interface QuestEnv {
   flags: Record<string, FlagValue>;
   /** state.codex.facts (mutable: turn-ins push the facts they unlock). */
   codex: string[];
+  /** The current save's menagerie, including animals calmed before a quest opens. */
+  readonly menagerie?: MenagerieSlice;
   emit<K extends keyof GameEvents>(name: K, payload: GameEvents[K]): void;
   /** Game seconds (meta.playSeconds) for QuestProgress.t. */
   now(): number;
@@ -302,6 +304,8 @@ export class QuestBook {
     this.track(id);
     this.env.emit('quest:accepted', { id });
     this.activate(q, new Set());
+    // A conversation pauses fixed updates, so credit saved calms before saving acceptance.
+    for (const o of this.openObjectives(q)) this.settleCalm(q, o);
     this.checkReady(q);
     this.onChange('accept');
     return true;
@@ -609,22 +613,26 @@ export class QuestBook {
   /**
    * Credit clues, good photos and calmed animals from the save when an objective opens or on load.
    */
-  settleKnown(found: (clue: string) => boolean, hasPhoto: (target: string) => boolean = () => false, menagerie?: MenagerieSlice): void {
+  settleKnown(found: (clue: string) => boolean, hasPhoto: (target: string) => boolean = () => false): void {
     for (const q of this.running())
       for (const o of this.openObjectives(q)) {
         if ((o.type === 'examine' || o.type === 'echo') && o.clue && found(o.clue)) this.progress(q.id, o.id, need(o));
         else if (o.type === 'photo' && o.target && hasPhoto(o.target)) this.progress(q.id, o.id, need(o));
-        else if (o.type === 'calm' && o.animal && Array.isArray(menagerie?.calmed)) {
-          const animals = Array.isArray(menagerie.animals) ? menagerie.animals : [];
-          const count = menagerie.calmed.filter((id) => {
-            const animal = animals.find((spawn) => spawn.id === id)?.animal;
-            // Older garden saves can retain the calm ID after the story clears its spawn record.
-            const kind = animal ?? (q.id === 'q.k3.jaguar' && id === 'k3.jaguar' ? 'jaguar' : undefined);
-            return id === o.animal || kind === o.animal;
-          }).length;
-          this.progress(q.id, o.id, count - this.count(q.id, o.id));
-        }
+        else this.settleCalm(q, o);
       }
+  }
+
+  private settleCalm(q: QuestDefIn, o: QuestObjective): void {
+    const menagerie = this.env.menagerie;
+    if (o.type !== 'calm' || !o.animal || !Array.isArray(menagerie?.calmed)) return;
+    const animals = Array.isArray(menagerie.animals) ? menagerie.animals : [];
+    const count = menagerie.calmed.filter((id) => {
+      const animal = animals.find((spawn) => spawn.id === id)?.animal;
+      // Older garden saves can retain the calm ID after the story clears its spawn record.
+      const kind = animal ?? (q.id === 'q.k3.jaguar' && id === 'k3.jaguar' ? 'jaguar' : undefined);
+      return id === o.animal || kind === o.animal;
+    }).length;
+    this.progress(q.id, o.id, count - this.count(q.id, o.id));
   }
 
   /**

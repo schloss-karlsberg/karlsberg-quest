@@ -15,13 +15,14 @@ const testFile = JSON.parse(readFileSync(new URL('../content/quests/99-test.ques
 
 type Ev = { n: string; p: Record<string, unknown> };
 
-function env(seed = 7): QuestEnv & { log: Ev[]; flags: Record<string, FlagValue>; codex: string[] } {
+function env(seed = 7, menagerie?: MenagerieSlice): QuestEnv & { log: Ev[]; flags: Record<string, FlagValue>; codex: string[] } {
   const log: Ev[] = [];
   const rng = seededRng(seed);
   return {
     log,
     flags: {},
     codex: [],
+    menagerie,
     emit: <K extends keyof GameEvents>(n: K, p: GameEvents[K]) => {
       if (n === 'xp:grant') {
         const grant = p as GameEvents['xp:grant'];
@@ -292,16 +293,15 @@ describe('Der Jaguar', () => {
   }
 
   it('credits a jaguar calmed before Hanne can offer the quest', () => {
-    const e = env();
+    const e = env(7, { animals: [spawn], calmed: [spawn.id] });
     const b = new QuestBook(quests, createQuestSlice(), e);
-    const menagerie: MenagerieSlice = { animals: [spawn], calmed: [spawn.id] };
     expect(b.offerAvailable('k3', '1793-07')).not.toContain(id);
     expect(b.handle('menagerie:calmed', { animal: spawn.animal, id: spawn.id })).toBe(false);
-    b.settleKnown(() => false, undefined, menagerie);
+    b.settleKnown(() => false);
     expect(b.count(id, 'jaguar')).toBe(0);
     accept(b);
-    b.settleKnown(() => false, undefined, menagerie);
-    b.settleKnown(() => false, undefined, menagerie);
+    expectPayout(b, e);
+    b.settleKnown(() => false);
     expectPayout(b, e);
   });
 
@@ -310,7 +310,7 @@ describe('Der Jaguar', () => {
     const b = new QuestBook(quests, createQuestSlice(), e);
     accept(b);
     b.handle('menagerie:calmed', { animal: spawn.animal, id: spawn.id });
-    b.settleKnown(() => false, undefined, { animals: [spawn], calmed: [spawn.id] });
+    b.settleKnown(() => false);
     b.handle('menagerie:calmed', { animal: spawn.animal, id: spawn.id });
     expectPayout(b, e);
   });
@@ -319,26 +319,28 @@ describe('Der Jaguar', () => {
     const slice = createQuestSlice();
     slice.quests[id] = { state: 'active', counts: { jaguar: 0 }, t: 0 };
     const menagerie: MenagerieSlice = { animals: [], calmed: [spawn.id] };
-    const e = env();
+    const e = env(7, menagerie);
+    e.codex.push('cx.12');
     const b = new QuestBook(quests, slice, e);
     b.mirror();
-    b.settleKnown(() => false, undefined, menagerie);
+    b.settleKnown(() => false);
     expectPayout(b, e);
+    expect(e.log.some(({ n }) => n === 'codex:unlocked')).toBe(false);
 
-    const reloadEnv = env();
+    const reloadEnv = env(7, menagerie);
     const reloaded = new QuestBook(quests, structuredClone(slice), reloadEnv);
-    reloaded.settleKnown(() => false, undefined, menagerie);
+    reloaded.settleKnown(() => false);
     expect(reloaded.state(id)).toBe('done');
     expect(reloadEnv.log).toEqual([]);
   });
 
   it('ignores an unrelated calmed species', () => {
-    const e = env();
-    const b = new QuestBook(quests, createQuestSlice(), e);
     const cassowary = { ...spawn, id: 'kasuar', animal: 'cassowary' } as const;
+    const e = env(7, { animals: [spawn, cassowary], calmed: [cassowary.id] });
+    const b = new QuestBook(quests, createQuestSlice(), e);
     accept(b);
     b.handle('menagerie:calmed', { animal: cassowary.animal, id: cassowary.id });
-    b.settleKnown(() => false, undefined, { animals: [spawn, cassowary], calmed: [cassowary.id] });
+    b.settleKnown(() => false);
     expect(b.count(id, 'jaguar')).toBe(0);
     expect(b.state(id)).toBe('active');
     expect(e.log.some(({ p }) => p.reason === `quest:${id}`)).toBe(false);

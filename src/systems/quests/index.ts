@@ -127,6 +127,8 @@ class QuestRuntime {
   private readonly feed = new Feed();
   private readonly layer: HTMLElement;
   private readonly reward: RewardNotice;
+  private readonly restoredPayouts: QuestPayout[] = [];
+  private restoring = false;
   private bannerQ: (() => void)[] = [];
   private readonly beacons: Beacons;
   private readonly sentTopics = new Map<string, string>();
@@ -173,6 +175,9 @@ class QuestRuntime {
       },
       get codex() {
         return ctx.state.mutable.codex.facts;
+      },
+      get menagerie() {
+        return ctx.state.state.systems.menagerie;
       },
       emit: (n, p) => ctx.events.emit(n, p),
       now: () => ctx.state.state.meta.playSeconds,
@@ -231,13 +236,24 @@ class QuestRuntime {
       }),
       ev.on('level:up', () => (this.availIn = 0)),
       ev.on('chronik:open', () => openPausePage(ctx.ui.modals, 'codex')),
-      ev.on('save:loaded', () => this.restore()),
+      ev.on('game:start', ({ resumed }) => {
+        if (resumed) this.presentRestoredPayouts();
+        else this.restoredPayouts.length = 0;
+      }),
+      ev.on('save:loaded', () => {
+        this.restore();
+        this.presentRestoredPayouts();
+      }),
       // a new game replaces the whole state: the book must follow the new slice, or it keeps
       // writing into the old one and nothing it records is saved any more
       // (a load too, at once: save:loaded reaches the story first, whose resume runs quest
       // commands that must land in the loaded slice, not in the one being replaced)
       ctx.state.subscribe((_s, reason) => {
-        if (reason === 'new' || reason === 'replace' || reason === 'load') this.restore();
+        if (reason !== 'new' && reason !== 'replace' && reason !== 'load') return;
+        this.restoredPayouts.length = 0;
+        this.reward.clear();
+        this.restore();
+        if (reason !== 'load') this.presentRestoredPayouts();
       }),
       ev.on('codex:unlocked', ({ factId }) => {
         const s = this.book.slice;
@@ -275,7 +291,10 @@ class QuestRuntime {
         this.book.handle(name, payload);
       }),
     );
-    this.book.onPayout = (p) => this.onPayout(p);
+    this.book.onPayout = (p) => {
+      if (this.restoring) this.restoredPayouts.push(p);
+      else this.presentPayout(p);
+    };
     this.restore();
   }
 
@@ -315,8 +334,8 @@ class QuestRuntime {
   }
 
   private settleKnown(): void {
-    const { inventory, systems } = this.ctx.state.state;
-    this.book.settleKnown((c) => inventory.clues.includes(c), (id) => this.hasPhoto(id), systems.menagerie);
+    const { inventory } = this.ctx.state.state;
+    this.book.settleKnown((c) => inventory.clues.includes(c), (id) => this.hasPhoto(id));
   }
 
   slice(): QuestSlice {
@@ -328,7 +347,12 @@ class QuestRuntime {
     this.book.slice = this.slice();
     this.book.mirror();
     this.book.reassert();
-    this.settleKnown();
+    this.restoring = true;
+    try {
+      this.settleKnown();
+    } finally {
+      this.restoring = false;
+    }
     this.sentTopics.clear();
     this.sentMarks.clear();
     for (const npc of [...this.following]) this.ctx.events.emit('npc:follow', { npc, follow: false });
@@ -436,8 +460,14 @@ class QuestRuntime {
     this.feed.push(t('quest.turnin.feed', { title: q.title_de }), 'ready', 4200);
   }
 
+  /** Story clears its dialogue queue on start and load. Present recovered payouts after that. */
+  private presentRestoredPayouts(): void {
+    if (this.ctx.pause.reasons.has('title')) return;
+    for (const p of this.restoredPayouts.splice(0)) this.presentPayout(p);
+  }
+
   /** Queue the payout notice; voice or auto turn-ins also give a short spoken line. */
-  private onPayout(p: QuestPayout): void {
+  private presentPayout(p: QuestPayout): void {
     const q = this.defs.get(p.id);
     if (!q) return;
     turninSound(this.ctx.audio, p.quiet);
