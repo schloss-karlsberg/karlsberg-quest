@@ -315,6 +315,8 @@ Rules
 - A system that throws in `init/update/frame` is disabled and logged; the game keeps running.
 - Talk to other features through `ctx.events` and `ctx.state`, not by importing each other.
 - Persist everything that must survive a reload in your slice (`ctx.state.slice(id, init)`),
+  JSON-serialisable only. Call `ctx.save.autosave('reason')` at meaningful moments. Passing
+  `true` bypasses the five-second success cooldown. All autosaves respect storage failure backoff.
   JSON-serialisable only. Call `ctx.save.autosave('reason')` at meaningful moments (throttled 5 s;
   `autosave(reason, true)` bypasses the interval and respects active save holds).
 - Persist everything that must survive a reload in your slice (`ctx.state.slice(id, init)`). Slices
@@ -473,6 +475,8 @@ Surveyor saves resume at the Chapter 1 checkpoint. The migration uses the archiv
 and reward data in `src/core/legacy-prologue-quests.ts` to retain deeds and settle pending payouts.
 The live `meta.savedAt` and the five-second autosave cooldown advance on successful writes.
 A storage failure leaves the previous checkpoint available and an eligible autosave can retry immediately.
+From the second consecutive failure onward, each failed autosave delays subsequent autosave attempts
+by one second. A successful autosave clears the failure streak. Manual saves can still be attempted.
 
 ## 8. Eras and world look
 

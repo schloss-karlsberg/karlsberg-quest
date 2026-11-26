@@ -1051,6 +1051,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Several autosave requests in one update can stall play if storage keeps failing (TASK-031, 2026-11-26) | The first failure allows an immediate retry. From the second consecutive failure onward, autosaves wait one second between attempts. |
 | A failed checkpoint or interrupted input can affect the next play session (TASK-031, 2026-11-26) | A rejected save preserves the last checkpoint time and retry eligibility. Pause and focus changes clear pending input. Switching touch off cancels queued taps, and two fingers holding Hieb sustain one attack. |
 | Photo mode interrupts story captions and overlaps survey tools (TASK-017, 2026-11-26) | Inline choices and required deer dialogue keep the phone down. Other captions wait through the viewfinder. The first good deer photo determines the reply, which resumes on Continue. Measurement and its surface taps pause in photo mode, and survey activation banners appear once the phone closes. |
 | HUD clutter and short deer photo range (TASK-017, 2026-11-26) | Photo mode hides gameplay overlays until the phone closes. A steady 2× shot of the pair works at about 20–25 m. Upright players build suspicion faster and crouching gives room to aim. [Tour tuning](design/tour/slice-v0.md#deer-photo-and-sneak-tuning-task-017) |

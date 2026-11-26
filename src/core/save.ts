@@ -7,6 +7,7 @@ export const STORAGE_PREFIX = 'kq.';
 export const SAVE_KEY = (slot: string) => `${STORAGE_PREFIX}save.v1.${slot}`;
 export const SETTINGS_KEY = `${STORAGE_PREFIX}settings.v1`;
 const BINDINGS_VERSION = 1;
+const AUTOSAVE_FAILURE_BACKOFF_MS = 1000;
 
 /** The subset of the Web Storage API we use (lets tests inject a Map-backed fake). */
 export interface KeyValueStorage {
@@ -159,7 +160,9 @@ type SlotRead =
  */
 export class SaveManager {
   private lastAuto = -Infinity;
-  /** Minimum ms between autosaves (forced saves ignore it). */
+  private autoWriteFailures = 0;
+  private nextAutoAttempt = -Infinity;
+  /** Minimum ms between successful autosaves (forced autosaves ignore it). */
   minIntervalMs = 5000;
   /** Disable all writes (e.g. e2e screenshots, `?nosave`). */
   enabled = true;
@@ -200,11 +203,19 @@ export class SaveManager {
     try {
       this.storage.setItem(SAVE_KEY(slot), serializeState({ ...s, meta: { ...s.meta, savedAt } }));
     } catch (err) {
+      if (autoTime !== undefined) {
+        this.autoWriteFailures++;
+        if (this.autoWriteFailures >= 2) this.nextAutoAttempt = autoTime + AUTOSAVE_FAILURE_BACKOFF_MS;
+      }
       console.warn('[save] write failed', err);
       return false;
     }
     s.meta.savedAt = savedAt;
-    if (autoTime !== undefined) this.lastAuto = autoTime;
+    if (autoTime !== undefined) {
+      this.lastAuto = autoTime;
+      this.autoWriteFailures = 0;
+      this.nextAutoAttempt = -Infinity;
+    }
     this.events?.emit('save:written', { slot, reason });
     return true;
   }
@@ -235,6 +246,7 @@ export class SaveManager {
       return false;
     }
     const t = this.now();
+    if (t < this.nextAutoAttempt) return false;
     if (!force && t - this.lastAuto < this.minIntervalMs) return false;
     return this.write('auto', reason, t);
   }
