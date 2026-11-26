@@ -8,7 +8,7 @@ import { sampleRenderWork } from './helpers/render-work';
 /**
  * WP-16 tour walk (src/systems/walk): the guide walks p-fuehrung with the group, the leash
  * (waiting / resumed), the snap ahead after a teleport and the story's warp, a perf sample with
- * 16 bodies at the high and the low tier (table in the log, test-results/walk/perf.json) and
+ * 16 bodies at each quality tier (table in the log, test-results/walk/perf.json) and
  * screenshots of the walking group (test-results/walk/walk-*.png).
  *
  * KQ_WALK_QUERY (env, optional) is appended to every boot URL, so the walk runs with other switches
@@ -151,34 +151,27 @@ test('walk (d): perf — 16 bodies vs. none at the high, medium and low tiers; s
   const rows = [];
   for (const tier of TIERS) {
     await boot(page, `&manual&idle&q=${tier}`);
-    const control = await page.evaluate(async ({ x, z }) => {
+    const setup = await page.evaluate(async ({ x, z }) => {
       const k = window.kq!;
       k.teleport(x, z - 8, 180, -6); // car park, looking south along the route
       await k.avatar!.ready();
-      await k.screenshotReady();
-      return { tier: k.ctx.quality.level, bodies: k.walk!.stats().bodies };
-    }, START);
-    expect(control).toEqual({ tier: tier === 'med' ? 'medium' : tier, bodies: 0 });
-    const empty = await page.evaluate(sampleRenderWork, SAMPLE);
-
-    const people = await page.evaluate(async () => {
-      const k = window.kq!;
-      const before = new Set(k.ctx.people!.list().map((p) => p.id));
       const w = k.walk!;
+      const startBodies = w.stats().bodies;
+      const before = new Set(k.ctx.people!.list().map((p) => p.id));
       w.demo();
       w.request({ op: 'follow', npc: 'child.compass', leader: 'imhoff' });
-      const group = k.ctx.people!.list().filter((p) => !before.has(p.id));
-      const loaded = await Promise.all(group.map((p) => p.ready));
-      await k.screenshotReady();
-      return { bodies: w.stats().bodies, loaded: group.filter((_, i) => loaded[i]).length };
-    });
-    expect(people).toEqual({ bodies: 16, loaded: 16 });
-    const populated = await page.evaluate(sampleRenderWork, SAMPLE);
-    const added = { calls: populated.calls - empty.calls, triangles: populated.triangles - empty.triangles };
-    rows.push({ tier, empty, populated, added });
+      const groupIds = k.ctx.people!.list().map((p) => p.id).filter((id) => !before.has(id));
+      return { tier: k.ctx.quality.level, startBodies, bodies: w.stats().bodies, groupIds };
+    }, START);
+    expect(setup).toMatchObject({ tier: tier === 'med' ? 'medium' : tier, startBodies: 0, bodies: 16 });
+    expect(setup.groupIds).toHaveLength(16);
+    const work = await page.evaluate(sampleRenderWork, { ...SAMPLE, groupIds: setup.groupIds });
+    const { added } = work;
+    rows.push({ tier, ...work });
 
-    expect(empty.frames, `${tier} empty frames sampled`).toBe(SAMPLE.frames);
-    expect(populated.frames, `${tier} populated frames sampled`).toBe(SAMPLE.frames);
+    expect(work.loaded, `${tier} loaded bodies`).toBe(16);
+    expect(work.frames, `${tier} matched frames sampled`).toBe(SAMPLE.frames);
+    expect(work.missing, `${tier} bodies missing geometry in the main view`).toEqual([]);
     const passes = tier === 'low' ? 1 : 2;
     expect.soft(added.calls, `${tier} added draw calls`).toBeGreaterThan(0);
     expect.soft(added.calls, `${tier} added draw calls`).toBeLessThanOrEqual(passes * GROUP_BUDGET.calls);
