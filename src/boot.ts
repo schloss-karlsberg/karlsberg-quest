@@ -359,13 +359,15 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
       state.mutable.meta.playSeconds += dt;
       input.endStep();
     },
-    render: (frameDt, alpha) => {
+    render: (frameDt, alpha, drawScene) => {
       // the first frame after a held view (menu, bullet time), or a bullet-time frame long after
       // the last one: the idle gap is no frame time
-      const now = performance.now();
-      if (loop.resumed || (loop.manual && holdIdle && now - lastRenderAt > 250)) perf.resetClock();
-      lastRenderAt = now;
-      perf.begin();
+      if (drawScene) {
+        const now = performance.now();
+        if (loop.resumed || (loop.manual && holdIdle && now - lastRenderAt > 250)) perf.resetClock();
+        lastRenderAt = now;
+        perf.begin();
+      }
       if (!pause.paused) player.look();
       player.applyCamera(camera, alpha, frameDt);
       cameraOverride.fn?.(camera);
@@ -394,6 +396,12 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
       world.frame(camera, frameDt, loop.time + (reasons.has('title') ? performance.now() / 1000 : 0));
       audio.updateListener(camera);
       ui.hud.setHeading(((-player.yaw * 180) / Math.PI + 360) % 360);
+      if (!drawScene) {
+        // Keep the transforms that the renderer normally updates for the next interaction.
+        scene.updateMatrixWorld();
+        camera.updateMatrixWorld();
+        return;
+      }
       // sun shadows around the player (box pushed ahead along the view) and the era sky IBL
       camera.getWorldDirection(camFwd);
       camFwd.y = 0;

@@ -34,9 +34,11 @@ import { expectHandover, throughTour } from './helpers/tour';
  * of an earlier run or, without one, from a new game with the skills and level of that point.
  *
  * Screenshots: test-results/screens/campaign-*.png (each chapter's start, the reload, the ending).
- * Takes 1.5–2 hours headless (software WebGL): the chapter screenshots are skipped here.
+ * CAMPAIGN_FASTSTEP=0 runs the same checks with ordinary manual drawing and voice playback.
  */
 test.describe.configure({ timeout: 4 * 3_600_000 });
+const fastStep = process.env.CAMPAIGN_FASTSTEP !== '0';
+const clockParams = fastStep ? 'manual&faststep' : 'manual';
 
 async function shot(page: Page, name: string): Promise<void> {
   // software WebGL on a loaded machine: a frame can stall; one retry, then go on
@@ -167,7 +169,7 @@ async function reloadAndContinue(page: Page): Promise<void> {
   expect(saved, 'an autosave exists').not.toBeNull();
   // the beat change / quest turn-in just before were forced saves: the slot is up to date
   expect(saved).toMatchObject({ chapter: live.chapter, beat: live.beat, era: live.era, quests: live.quests, level: live.level });
-  await page.goto('./?manual');
+  await page.goto(`./?${clockParams}`);
   const cont = page.getByTestId('title-continue');
   await expect(cont).toBeVisible({ timeout: 180_000 });
   await expect(cont).toBeEnabled({ timeout: 180_000 });
@@ -215,7 +217,7 @@ async function keepSave(page: Page, chapter: string): Promise<void> {
 async function resumeFrom(page: Page, chapter: string): Promise<void> {
   if (!existsSync(`${SAVES}/${chapter}.json`)) {
     const level: Record<string, number> = { k1: 3, k2: 5, k3: 8, k4: 10 };
-    await page.goto('./?notitle&fresh&manual');
+    await page.goto(`./?notitle&fresh&${clockParams}`);
     await waitForHooks(page, ['story', 'chronik', 'hunt', 'npc', 'menagerie']);
     await page.evaluate(
       ({ c, lvl }) => {
@@ -238,7 +240,7 @@ async function resumeFrom(page: Page, chapter: string): Promise<void> {
       sessionStorage.setItem('kq.campaign.seeded', '1');
     }
   }, raw);
-  await page.goto('./?manual');
+  await page.goto(`./?${clockParams}`);
   const cont = page.getByTestId('title-continue');
   await expect(cont).toBeEnabled({ timeout: 180_000 });
   await waitForHooks(page, ['story', 'chronik', 'hunt', 'npc', 'menagerie']);
@@ -263,7 +265,7 @@ test('campaign: new game → tour → chapters 1–4 → ending → credits', as
 
   if (from === 'tour') {
     // ---- a new game from the title screen, with saves on: it opens with the tour ----------------
-    await newGame(page, 'Mara', false, './?manual');
+    await newGame(page, 'Mara', false, `./?${clockParams}`);
     s = await story(page);
     expect(s).toMatchObject({ active: true, chapter: 'tour', beat: 't1', name: 'Mara', era: 'today' });
     expect(await page.evaluate(() => window.kq!.ctx.save.has())).toBe(true);
@@ -272,6 +274,12 @@ test('campaign: new game → tour → chapters 1–4 → ending → credits', as
 
     // ---- the tour (fast path) and the hand-over -------------------------------------------------
     await throughTour(page);
+    if (fastStep) {
+      const voice = await page.evaluate(() => window.kq!.story!.voice.stats());
+      expect(voice.manifest).toBe('none');
+      expect(voice.clips).toBe(0);
+      expect(voice.murmured).toBeGreaterThan(0);
+    }
     lap('tour');
     await chapterStart(page, 'tour', 'k1', 'k1_0');
     // chapter 1 opens at the Karlsbergquelle (its checkpoint)
@@ -371,7 +379,7 @@ test('campaign: all three endings render their scene, epilogue and credits', asy
   test.setTimeout(1_800_000);
   const errors = trackErrors(page);
   for (const e of ENDINGS) {
-    await page.goto('./?notitle&nosave&fresh&manual');
+    await page.goto(`./?notitle&nosave&fresh&${clockParams}`);
     await waitForHooks(page, ['story', 'chronik']);
     await page.evaluate(() => {
       const k = window.kq!;

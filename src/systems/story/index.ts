@@ -8,6 +8,7 @@
  */
 import './story.css';
 import './strings';
+import { fastManualSteps } from '../../core/bullet';
 import type { GameContext } from '../../core/context';
 import { type Era, ERA_INFO, isEra } from '../../core/era';
 import { defineSystem } from '../../core/systems';
@@ -230,7 +231,7 @@ class StoryRuntime {
   readonly endings: EndingScreen;
   readonly stage: EndingStage;
   readonly voice: Voice;
-  /** Recorded clips (null outside a browser). */
+  /** Recorded clips, when browser playback is enabled. */
   readonly clips: VoiceClips | null;
   private time = 0;
   private gen = 0;
@@ -338,7 +339,7 @@ class StoryRuntime {
       return { x, y: y + guide.info.height * 0.9, z };
     });
     this.voice = new Voice(ctx.audio);
-    this.clips = typeof window !== 'undefined' && typeof fetch === 'function' ? new VoiceClips(ctx.audio) : null;
+    this.clips = !fastManualSteps(ctx.params) && typeof window !== 'undefined' && typeof fetch === 'function' ? new VoiceClips(ctx.audio) : null;
     this.clips?.init();
     this.presenter = new DialoguePresenter({
       layer: this.layer,

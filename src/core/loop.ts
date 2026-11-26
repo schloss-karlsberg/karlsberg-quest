@@ -10,7 +10,7 @@
  */
 export interface LoopCallbacks {
   update(dt: number): void;
-  render(frameDt: number, alpha: number): void;
+  render(frameDt: number, alpha: number, drawScene: boolean): void;
 }
 
 /**
@@ -262,17 +262,15 @@ export class FixedStepLoop {
     this.held = false;
     const renderDt = first || this.resumed ? this.dt : Math.min(0.25, Math.max(0, gap));
     this.drawn++;
-    this.cb.render(renderDt, this.paused_ || this.manual_ ? 1 : this.acc / this.dt);
+    this.cb.render(renderDt, this.paused_ || this.manual_ ? 1 : this.acc / this.dt, true);
     this.resumed = false;
   }
 
-  /** Run exactly `n` fixed updates now (ignores pause), then render once. */
-  step(n = 1): void {
-    for (let i = 0; i < n; i++) {
-      this.cb.update(this.dt);
-      this.tick++;
-    }
-    this.cb.render(this.dt, 1);
+  /** Run n fixed updates and one presentation frame. Tests can omit the final GPU draw. */
+  step(n = 1, drawScene = true): void {
+    this.advance(n);
+    this.cb.render(this.dt, 1, drawScene);
+    if (!drawScene) this.requestRender();
   }
 
   /** Run exactly `n` fixed updates without rendering (the bullet-time pilot renders only the frames it captures). */
@@ -285,6 +283,6 @@ export class FixedStepLoop {
 
   /** Render once now; `frameDt` (s) is the time the visuals advance by (capped like a real frame). */
   renderOnce(frameDt = this.dt): void {
-    this.cb.render(Math.min(0.25, Math.max(0, frameDt)), 1);
+    this.cb.render(Math.min(0.25, Math.max(0, frameDt)), 1, true);
   }
 }
