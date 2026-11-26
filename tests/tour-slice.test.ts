@@ -8,12 +8,14 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { DialogueLine } from '../src/content/types';
+import { createInitialState, deserializeState, serializeState } from '../src/core/state';
 import { createDeer } from '../src/systems/animals/deer';
 import { restoreAnimals, serializeAnimals } from '../src/systems/animals/save';
 import type { CinematicFile } from '../src/systems/cinematic/types';
 import { answer } from '../src/systems/npc/logic';
 import { type StoryEnv, type StorySlice, StoryEngine, createStorySlice, runsOnResume } from '../src/systems/story/engine';
 import { objectivePoint } from '../src/systems/story/objectives';
+import { acceptTourDeerPhoto, restoreTourDeerPhoto } from '../src/systems/story/stories';
 import { type Action, type StoryFile, isWalkAction } from '../src/systems/story/types';
 import { validateStories } from '../src/systems/story/validate';
 import { loadStoryFiles, loadWalkRefs } from '../src/systems/story/validate-cli';
@@ -71,6 +73,20 @@ function harness(onAction?: (a: Action) => void | false) {
     engine,
     tick,
     ev,
+    photo: (state: string | undefined, id = 'reh.ricke') => {
+      const shot = { id, stars: 2, state };
+      const accepted = acceptTourDeerPhoto(slice, flags, shot);
+      ev('photo:good', shot);
+      return accepted;
+    },
+    resumeSaved: () => {
+      const saved = deserializeState(serializeState({ ...createInitialState(), flags, systems: { story: slice } }));
+      slice = saved.systems.story!;
+      for (const key of Object.keys(flags)) delete flags[key];
+      Object.assign(flags, saved.flags);
+      restoreTourDeerPhoto(slice, flags);
+      engine.resume();
+    },
     flags,
     pos,
     sent,
@@ -184,8 +200,7 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     expect(rustle).toBeGreaterThanOrEqual(0);
     expect(rustle).toBeLessThan(deerShot);
     // She was looking up when the shutter fired: Gerold's „Sie hat dich angesehen.“
-    h.ev('photo:good', { id: 'reh.ricke', stars: 2, state: 'alert' });
-    h.ev('photo:good', { id: 'reh.kitz', stars: 2, state: 'alert' });
+    h.photo('alert');
     h.tick();
     expect(h.said).toContain('imhoff.t.reh.alert');
     expect(h.said).not.toContain('imhoff.t.reh3');
@@ -260,7 +275,7 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     const a = harness();
     go(a);
     a.ev('animal:alert', { id: 'ricke' });
-    a.ev('photo:good', { id: 'reh.ricke', stars: 3, state: 'graze' });
+    a.photo('graze');
     a.tick();
     expect(a.said).toContain('imhoff.t.reh3');
     expect(a.said).not.toContain('imhoff.t.reh.alert');
@@ -281,30 +296,51 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     expect(c.beat()).not.toBe('t10');
   });
 
-  it.each([['graze', 'imhoff.t.reh3'], ['alert', 'imhoff.t.reh.alert']])(
-    'lowers a phone left open before the %s photo reaction',
-    (state, reaction) => {
-      let phoneOpen = true;
+  it.each([['graze', 'alert', 'imhoff.t.reh3'], ['alert', 'graze', 'imhoff.t.reh.alert']])(
+    'uses only the first good shot (%s), even if a %s shot arrives before the reaction finishes',
+    (first, second, reaction) => {
       const h = harness((a) => {
         // Simulate the completion flag waiting for the presenter to finish the reaction.
         if (a.do === 'flag' && a.set['tour.reh.done']) return false;
-        if (a.do === 'cue' && a.id === 'photo:lower') phoneOpen = false;
-        if (a.do === 'say' && (a.id === 'player.photo.gut' || a.id === reaction)) {
-          expect(phoneOpen).toBe(false);
-          expect(a.wait).toBe(true);
-          // The player can reach for the camera again before the guide speaks.
-          if (a.id === 'player.photo.gut') phoneOpen = true;
-        }
       });
       h.engine.goto('tour', 't10');
       h.tick(175);
-      h.ev('photo:good', { id: 'reh.ricke', stars: 2, state });
+      expect(h.photo(second, 'reh.kitz')).toBe(false);
+      expect(h.photo(first)).toBe(true);
+      expect(h.photo(second)).toBe(false);
       h.tick(20);
-      expect(h.said).toContain(reaction);
-      expect(phoneOpen).toBe(false);
+      expect(h.flags['tour.reh.photo']).toBe(first);
+      expect(h.said.slice(2)).toEqual(['player.photo.gut', reaction]);
       expect(h.beat()).toBe('t10');
     },
   );
+
+  it.each([false, true])('finishes an accepted shot on Continue (legacy save: %s)', (legacy) => {
+    let interrupted = true;
+    const h = harness((a) => {
+      if (interrupted && a.do === 'flag' && a.set['tour.reh.done']) return false;
+    });
+    h.engine.goto('tour', 't10');
+    if (legacy) {
+      h.engine.s.latched['br:foto-alert'] = 1;
+      h.engine.s.fired.push('b:foto-alert');
+      h.engine.s.said.push('player.photo.gut', 'imhoff.t.reh.alert');
+    } else {
+      expect(h.photo('alert')).toBe(true);
+      expect(h.said).toContain('imhoff.t.reh.alert');
+    }
+    expect(h.flags['tour.reh.done']).toBeUndefined();
+    expect(h.beat()).toBe('t10');
+
+    interrupted = false;
+    h.said.length = 0;
+    h.resumeSaved();
+    expect(h.engine.s.latched).toEqual({});
+    h.tick();
+    expect(h.said.slice(0, 2)).toEqual(['player.photo.gut', 'imhoff.t.reh.alert']);
+    expect(h.flags['tour.reh.done']).toBe(true);
+    expect(h.beat()).toBe('t11');
+  });
 
   it('resolves the continued t10 objective at the pre-branch saved doe position', () => {
     const h = harness();

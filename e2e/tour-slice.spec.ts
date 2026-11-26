@@ -167,11 +167,15 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   await shot(page, '06-reh-sicht');
   await page.evaluate(() => window.kq!.step(181));
   expect(await page.evaluate(() => window.kq!.cinematic!.playing())).toBeNull();
-  await page.waitForFunction(() => {
+  const instructions = await page.evaluate(() => {
     const k = window.kq!;
-    k.ctx.loop.requestRender();
-    return k.photo!.state().blocked === null;
+    const blocked = k.photo!.state().blocked;
+    const opened = k.photo!.open();
+    for (let i = 0; i < 20 && k.photo!.state().blocked === 'dialog'; i++) k.step(60);
+    return { blocked, opened, ready: k.photo!.state().blocked === null, shown: k.story!.shown() };
   });
+  expect(instructions).toMatchObject({ blocked: 'dialog', opened: false, ready: true });
+  expect(instructions.shown.filter((id) => id === 'imhoff.t.reh1' || id === 'imhoff.t.reh2')).toEqual(['imhoff.t.reh1', 'imhoff.t.reh2']);
   const opened = await page.evaluate(() => {
     const k = window.kq!;
     const targets = k.photo!.targets();
@@ -219,17 +223,20 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
     const master = k.ctx.audio.volumes.master;
     k.ctx.audio.setVolumes({ master: 0 });
     let viewfinderUp: boolean | null = null;
+    let reopened: boolean | null = null;
     const off = k.ctx.events.on('dialogue:say', ({ id }) => {
-      if (id && praise.includes(id)) viewfinderUp = k.photo!.state().open;
+      if (id && praise.includes(id)) {
+        viewfinderUp = k.photo!.state().open;
+        reopened = k.photo!.open();
+      }
     });
-    // Leave the phone controls alone for several dialogue-lengths after taking the shot.
     k.step(900);
     off();
     k.ctx.audio.setVolumes({ master });
     k.ctx.player.setStance('stand');
-    return { viewfinderUp, shown: k.story!.shown().some((id) => praise.includes(id)) };
+    return { viewfinderUp, reopened, shown: k.story!.shown().some((id) => praise.includes(id)) };
   });
-  expect(reaction).toEqual({ viewfinderUp: false, shown: true });
+  expect(reaction).toEqual({ viewfinderUp: false, reopened: false, shown: true });
   expect(await page.evaluate(() => window.kq!.photo!.has('reh.ricke'))).toBe(true);
   const tDeer = await time(page);
   await follow(page, 't12', 120);

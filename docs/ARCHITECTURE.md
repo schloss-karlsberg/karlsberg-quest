@@ -1939,16 +1939,18 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
   with `raw`. Esc is caught in the capture phase (and the pointer-lock loss marked as the game's
   own), so no pause menu opens.
 - The **viewfinder** uses `html[data-kq-photo]` to hide the gameplay HUD, prompts, waymarks, minimap,
-  measuring UI and quest giver glyphs while the phone is up. Touch keeps the phone toggle and shutter visible and accepts movement
-  and look gestures. Scene marker roots follow `photo:open` / `photo:close` alongside the
-  independent `world:quiet` reasons. Exiting photo mode reveals the current gameplay overlays.
+  measuring UI and quest giver glyphs while the phone is up. Touch keeps the phone toggle and
+  shutter visible and accepts movement and look gestures. The measuring scene and surface taps
+  pause with endpoints intact. Scene marker roots follow `photo:open` / `photo:close` alongside
+  the independent `world:quiet` reasons. Tripods still activate, with their banners queued until
+  the phone closes.
 - **Not now** (a toast, an open phone closes): a menu / modal or pause, a conversation
   (`npc:conversation`, `cameraHints.focus`), a fight (`cameraHints.fight` / `boss`), the spirit view,
   `player.frozen`, or the camera taken over (`camera:override` from boot's camera slot, which
   `kq.setCamera` and the coming cinematic use).
-- An inline story choice (`story:inline-choice { open }`) lowers the phone and blocks opening it
-  until the choice ends. The story can send the `photo:lower` cue before dialogue, as it does after
-  a good deer photo during the tour.
+- An inline story choice or a `say` action with `phoneDown: true` lowers the phone and keeps it
+  down until the choice or dialogue ends. Other story captions pause their queue, typing and
+  recorded voice while the viewfinder is up.
 - **Judging** (`core.ts`, pure, `tests/photo.test.ts`): geometric, never pixels. Per target of the
   era: project the bounding sphere; good = centre in the middle third (`centre: 'any'` allowed),
   diameter ≥ `minFrac` of the frame height, and a majority of sample rays clear. The rays aim at
@@ -1975,7 +1977,7 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
   `{ "type": "photo", "target": … }`, validated against the target list; a good shot taken before
   the objective started counts at once, on accept, on a newly active objective and on load:
   `QuestBook.settleKnown(found, hasPhoto)` reads `systems.photo.good`).
-- **Subject state:** `attachTarget(id, { at, calm, state })` / `registerTarget({ …, state })` take an optional `state()` getter (an opaque string, e.g. the deer's `graze` / `alert` / `flee` / `settled`), read at the shot for each good target and carried as `photo:good { id, stars, state }` (absent without a getter; also on the album entry); story matches `{ "event": "photo:good", "match": { "id": "reh.ricke", "state": "alert" } }`. Stars and verdicts ignore it, and `calm()` false still voids the shot (`?debug`: `kq.photo.deer.state('alert')`).
+- **Subject state:** `attachTarget(id, { at, calm, state })` / `registerTarget({ …, state })` take an optional `state()` getter (an opaque string, e.g. the deer's `graze` / `alert` / `flee` / `settled`), read at the shot for each good target and carried as `photo:good { id, stars, state }` (absent without a getter; also on the album entry). The tour saves the first accepted state with the album entry and finishes the corresponding reaction on Continue. Stars and verdicts ignore the state, and `calm()` false still voids the shot (`?debug`: `kq.photo.deer.state('alert')`).
 - **Targets are data:** `content/photo/targets.json` (kq-story; C3 shape: id, kind, era `today`,
   one anchor `at` / `npc` / `animal`, `r`, `frame`, `grants`, plus `cards[]`), validated by
   `pnpm validate` (`data.ts` `validatePhotoTargets`). A point anchor is static (ground + r without

@@ -79,7 +79,7 @@ framing and distance checks with shipped targets.
 - [x] Update design docs and changelogs.
 - [x] Run the gates and check browser availability under the shared lock. See Progress for the
   launcher and preview server results.
-- [ ] Commit the remaining scoring, documentation and test updates on `dev/task-017`.
+- [x] Record the scoring, documentation and test updates in `a36d40c`.
 
 ## Progress
 
@@ -106,14 +106,23 @@ framing and distance checks with shipped targets.
 - 2026-11-26: Playwright collected the photo, tour-slice and smoke specs. Execution was skipped
   after the locked photo run hit `EPERM` binding the preview server to `127.0.0.1:5403`.
 - 2026-11-26: Story, save compatibility and overlay fixes committed as `1380a93`. Git denied
-  the worktree's `index.lock` when staging the scoring, render-clock test and verification updates.
-  These changes are in the worktree.
+  the worktree's `index.lock` in that session. The subsequent scoring, render-clock test and
+  documentation updates are in `a36d40c`.
+- 2026-11-26: Second review fix. Required deer dialogue keeps the phone down, other captions
+  wait through photo mode, and the first accepted shot is saved before the reaction so Continue
+  can finish it. Measuring visuals and surface taps pause with endpoints intact. Survey points
+  still activate with the phone up and their banners wait. Replaced the CSS text test with
+  Playwright visibility checks and added focused dialogue, save and input regressions.
+- 2026-11-26: Typecheck, production build and all 1,595 Vitest tests in 119 files passed. The
+  sandbox denied pnpm's attempt to relink the pre-existing dependency symlink. Verification used
+  pnpm's dependency warning mode, the Vite runner and disabled Vitest disk caches. `node --import
+  tsx scripts/validate-content.ts` passed with the existing example-pack warning. Playwright
+  collected 49 tests in the follow-up specs. The sandbox denied a loopback listen and browser
+  execution remains pending. The second review fix is in the worktree.
 
 ## Follow-ups
 
-- On a host with local sockets, run `pnpm validate` and the photo, tour-slice and smoke specs under
-  the shared lock on port 5403. The original tuning still has a pending check in
-  `e2e/animals.spec.ts`. Check the deer framing visually on Mittel or Hoch.
+- On a host with local sockets, run `pnpm validate` and the Playwright specs `animals`, `party`,
+  `photo`, `skills`, `smoke`, `story`, `touch`, `tour-slice`, `travel-paths` and `world` with one
+  worker, one spec per shared lock acquisition. Check the deer framing visually on Mittel or Hoch.
 - Confirm the minimap hides once TASK-015 is available on the same branch.
-- Commit the remaining worktree changes as
-  `fix(camera): make timed deer framing work at wide field of view` with the Codex co-author trailer.

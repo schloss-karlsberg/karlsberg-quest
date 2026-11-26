@@ -30,6 +30,10 @@ export class QuietGate {
     return this.reasons.size > 0;
   }
 
+  get photoOpen(): boolean {
+    return this.photo;
+  }
+
   private apply(p: { on: boolean; reason: string } | undefined): void {
     if (!p || typeof p.reason !== 'string') return;
     const was = this.hidden;

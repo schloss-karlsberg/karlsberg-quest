@@ -200,6 +200,7 @@ class Photo {
   private cooldown = 0;
   private conversation = false;
   private inlineChoice = false;
+  private storyDialogue = false;
   private overridden = false;
   private readonly offs: (() => void)[] = [];
   private readonly el: HTMLElement;
@@ -270,8 +271,9 @@ class Photo {
         this.inlineChoice = open;
         if (open) this.close(true);
       }),
-      ev.on('story:cue', ({ id }) => {
-        if (id === 'photo:lower') this.close(true);
+      ev.on('story:phone-block', ({ active }) => {
+        this.storyDialogue = active;
+        if (active) this.close(true);
       }),
       ev.on('camera:override', ({ active }) => {
         this.overridden = active;
@@ -373,7 +375,7 @@ class Photo {
     const ctx = this.ctx;
     if (ctx.pause.paused || ctx.ui.modals.count > 0 || !ctx.input.enabled) return 'menu';
     if (this.overridden || ctx.player.frozen) return 'scene';
-    if (this.conversation || this.inlineChoice || cameraHints.focus) return 'dialog';
+    if (this.conversation || this.inlineChoice || this.storyDialogue || cameraHints.focus) return 'dialog';
     if (cameraHints.fight.length > 0 || cameraHints.boss > 0) return 'combat';
     if (ctx.player.flying) return 'fly';
     return null;

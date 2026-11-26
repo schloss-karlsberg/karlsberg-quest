@@ -35,8 +35,8 @@ Story schema additions (kq-story): look `tour`; `StoryFile.dev`; actions `{do:'n
 ## Deer photo and sneak tuning (TASK-017)
 
 - The phone hides gameplay overlays and world markers on desktop and touch, including the
-  measuring reticle and sheet and quest giver glyphs. Touch shows the camera toggle, shutter and
-  zoom controls. The gameplay overlays reappear when the phone closes.
+  measuring tape, reticle, sheet and quest giver glyphs. Touch shows the camera toggle, shutter
+  and zoom controls. Measuring taps pause and survey banners wait until the phone closes.
 - With 2× zoom, a steady shot of both animals in the middle third works from about 20–25 m. The
   doe's sphere must cover at least 5.5% of frame height and the fawn's at least 4.4%. Each needs
   three clear samples out of five (top, left, right, centre, bottom). Range is 27 m per target,
@@ -48,10 +48,11 @@ Story schema additions (kq-story): look `tour`; `StoryFile.dev`; actions `{do:'n
   within the notice radius. Moving at crouch speed at 13 m adds about 0.14/s. Holding still while
   crouched in range drains 0.5/s. The head-up tell starts at 0.5 and lasts at least 1.5 s before a
   full meter can trigger a 25 m flight.
-- A good photo lowers the phone before the reaction plays. Gerold responds to the doe's
-  `photo:good.state` at the instant of the shot, and the tour waits for the reaction to finish.
-  The phone prompt comes up within 26 m horizontally of the spawn or after 20 s. On Continue,
-  the objective points to the doe's restored position, including in saves with the old clearing.
+- The phone stays down through Gerold's stalking instructions and the good-photo reaction. The
+  first good shot's doe state determines one reply and is saved immediately. Continue replays an
+  unfinished reaction and the tour waits for it to finish. The phone prompt comes up within 26 m
+  horizontally of the spawn or after 20 s while awaiting a good shot. On Continue, the objective
+  points to the doe's restored position, including in saves with the old clearing.
 
 ## Chestnuts along the way (TASK-002)
 
@@ -107,7 +108,6 @@ Owner playtest: „lost the group and couldn't find it again“. The walk system
 
 ## Known issues
 
-- „Sie hat dich angesehen“ fires when the doe sounded the alert at any time before the good photo (no `state` on `photo:good` yet).
 - The group despawns in t17 at most ~20–40 m up the slope; it may vanish in view.
 - A good photo needs doe and fawn in the frame (`needAll` of the placeholder targets).
 - The chapter title card „Die Führung“ stays up through the first ~100 s (cards wait while someone talks, and Gerold talks a lot).

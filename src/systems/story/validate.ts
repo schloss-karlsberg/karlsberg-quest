@@ -335,6 +335,7 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
         if (a.id !== undefined && !ID_RE.test(a.id)) err(file, where, `say: malformed id '${a.id}'`);
         if (a.wait !== undefined && (typeof a.wait !== 'boolean' || (a.wait && !isStr(a.id ?? a.line))))
           err(file, where, 'say: wait must be a boolean and needs an id or line when enabled');
+        if (a.phoneDown !== undefined && typeof a.phoneDown !== 'boolean') err(file, where, 'say: phoneDown must be a boolean');
         // shown, not told (playtest round 5): a stage direction is an event (sound, cue, staging), never a speaker card
         for (const txt of [a.text, ...(Array.isArray(a.variants) ? a.variants : [])]) {
           if (!isStr(txt)) continue;

@@ -33,7 +33,7 @@ import { HOME, atHome, bringHome } from './hub/home';
 import { ObjectiveView, bearingDeg, objectivePoint } from './objectives';
 import { StoryOverlays, cardClockDt } from './overlays';
 import { playStorySound, playStorySoundAction } from './sfx';
-import { loadBundledStories, missingTourChestnuts, storiesInPlay } from './stories';
+import { acceptTourDeerPhoto, loadBundledStories, missingTourChestnuts, restoreTourDeerPhoto, storiesInPlay } from './stories';
 import { installTitleFlow } from './title/flow';
 import { titleHooks } from '../../ui/title';
 import { pauseHooks } from '../../ui/menus';
@@ -77,6 +77,8 @@ declare module '../../core/events' {
     'story:choice': { id: string; option: string };
     /** An inline choice started or stopped accepting answers. */
     'story:inline-choice': { open: boolean };
+    /** A required line is queued or playing. The phone must stay down. */
+    'story:phone-block': { active: boolean };
     /** A story meter ran full (meter action `full`). */
     'story:meter-full': { id: string };
   }
@@ -295,6 +297,7 @@ class StoryRuntime {
   private choiceAction: ChoiceAction | null = null;
   /** An NPC conversation is open (npc:conversation). */
   private talking = false;
+  private phoneBlocked = false;
   /** Ids of the lines shown so far (hook `shown`, tests). */
   private readonly shownIds: string[] = [];
   private stillT = 0;
@@ -414,6 +417,12 @@ class StoryRuntime {
     // ---- events
     ctx.events.onAny((name, payload) => this.onEvent(name, payload));
     ctx.events.on('dialogue:say', (p) => this.showLine(p));
+    ctx.events.on('photo:open', () => this.presenter.setSuspended(true));
+    ctx.events.on('photo:close', () => this.presenter.setSuspended(false));
+    ctx.events.on('photo:good', (shot) => {
+      // Photo has already booked this shot. Save the accepted outcome with its album entry.
+      if (acceptTourDeerPhoto(this.slice, ctx.state.mutable.flags, shot)) ctx.save.autosave('tour-deer-photo', true);
+    });
     ctx.events.on('game:start', ({ resumed }) => this.onStart(resumed));
     ctx.events.on('settings:change', ({ key }) => {
       if (key === 'bindings' && this.promptShown?.action) this.renderPrompt();
@@ -602,6 +611,7 @@ class StoryRuntime {
     const ctx = this.ctx;
     ctx.events.emit('story:chapter', { id: f.chapter });
     if (resume) {
+      restoreTourDeerPhoto(this.slice, ctx.state.mutable.flags);
       if (ctx.era.current === 'today') {
         for (const a of missingTourChestnuts(f, this.slice, ctx.state.state.systems.progression)) this.exec(a);
       }
@@ -798,7 +808,7 @@ class StoryRuntime {
           // a running joke: count how often it was told
           s.sayCount = { ...(s.sayCount ?? {}), [a.id]: (s.sayCount?.[a.id] ?? 0) + 1 };
         } else if (id && !s.said.includes(id)) s.said.push(id);
-        ctx.events.emit('dialogue:say', { speaker, text, ms: a.ms, id, fiction: a.echo ? true : undefined, until: a.until });
+        ctx.events.emit('dialogue:say', { speaker, text, ms: a.ms, id, fiction: a.echo ? true : undefined, until: a.until, phoneDown: a.phoneDown });
         return;
       }
       case 'objective': {
@@ -1292,12 +1302,14 @@ class StoryRuntime {
     const low = isLowLine(p.id);
     const pos = this.ctx.player.position;
     const where = sc?.where ?? (low ? { x: pos.x, z: pos.z, r: 0 } : null);
+    if (p.phoneDown) this.setPhoneBlocked(true);
     this.presenter.enqueue({
       id: p.id,
       speaker: p.speaker,
       text: p.text,
       ms: p.ms,
       fiction: p.fiction,
+      phoneDown: p.phoneDown,
       source: src ? (src.label ?? src.url) : undefined,
       beat: p.keep ? null : sc ? sc.beat : this.slice.beat,
       where,
@@ -1307,6 +1319,12 @@ class StoryRuntime {
       // sourced lines teach history: they wait out a fight (and are dropped if it lasts too long)
       lore: p.lore || !!src || undefined,
     });
+  }
+
+  private setPhoneBlocked(active: boolean): void {
+    if (this.phoneBlocked === active) return;
+    this.phoneBlocked = active;
+    this.ctx.events.emit('story:phone-block', { active });
   }
 
   /**
@@ -1602,6 +1620,8 @@ class StoryRuntime {
     this.tickMeters(dt);
     this.updateInlineChoice(env);
     this.engine.tick(dt, env);
+    // A waiting action can start the next required line in the same tick.
+    this.setPhoneBlocked(this.presenter.needsPhoneDown);
     if (this.pendingAutosave) {
       this.pendingAutosave = false;
       ctx.save.autosave('beat', true);

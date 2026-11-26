@@ -147,22 +147,49 @@ test.describe('photo mode', () => {
   test('the viewfinder hides an active measuring tool and a visible quest giver glyph', async ({ page }) => {
     await boot(page);
     await standAtBoard(page);
-    await page.evaluate(({ x, z }) => {
+    const before = await page.evaluate(({ x, z }) => {
       const k = window.kq!;
       k.skills!.grant('kartograf', 3, true);
-      k.tools!.measure.start();
+      k.tools!.measure.at(x - 2, z - 5, x + 2, z - 9);
       k.npc!.spawn({ npc: 'marlene', x: x + 2, z: z - 7, era: 'today' });
       k.ctx.events.emit('npc:marker', { npc: 'marlene', mark: 'offer' });
+      return k.tools!.measure.state();
     }, STAND);
+    expect(before.mode).toBe('done');
     const overlays = ['measure-reticle', 'measure-sheet', 'npc-glyph-marlene'].map((id) => page.getByTestId(id));
     for (const overlay of overlays) await expect(overlay).toBeVisible();
+    const tapeVisible = () => page.evaluate(() => window.kq!.ctx.scene.getObjectByName('kq-measure')?.visible);
+    expect(await tapeVisible()).toBe(true);
 
     expect(await page.evaluate(() => window.kq!.photo!.open())).toBe(true);
+    expect(await tapeVisible()).toBe(false);
     for (const overlay of overlays) await expect(overlay).toBeHidden();
 
     await page.evaluate(() => window.kq!.photo!.close());
+    expect(await tapeVisible()).toBe(true);
     for (const overlay of overlays) await expect(overlay).toBeVisible();
-    expect(await page.evaluate(() => window.kq!.tools!.measure.state().mode)).toBe('a');
+    expect(await page.evaluate(() => window.kq!.tools!.measure.state())).toEqual(before);
+  });
+
+  test('survey activation stays live and its banner waits for the phone to close', async ({ page }) => {
+    await boot(page);
+    await standAtBoard(page);
+    const point = await page.evaluate(() => window.kq!.travel!.points().find((p) => p.id === 'taleingang')!);
+    expect(point.activated).toBe(false);
+    expect(await page.evaluate(({ x, z }) => {
+      const k = window.kq!;
+      if (!k.photo!.open()) return false;
+      k.teleport(x, z, 0);
+      return true;
+    }, point)).toBe(true);
+
+    const banner = page.getByTestId('travel-card-activated');
+    await expect.poll(() => page.evaluate((id) => window.kq!.travel!.state().activated.includes(id), point.id)).toBe(true);
+    expect(await page.evaluate(() => window.kq!.photo!.state().open)).toBe(true);
+    await expect(banner).toHaveCount(0);
+    await page.evaluate(() => window.kq!.photo!.close());
+    await expect(banner).toBeVisible();
+    await expect(banner).toContainText(point.name);
   });
 });
 
@@ -191,6 +218,12 @@ test.describe('photo mode on a phone (iPhone 13 landscape)', () => {
     const errors = trackErrors(page);
     await boot(page);
     await standAtBoard(page);
+    const measurement = await page.evaluate(({ x, z }) => {
+      const k = window.kq!;
+      k.skills!.grant('kartograf', 3, true);
+      k.tools!.measure.at(x - 2, z - 5, x + 2, z - 9);
+      return k.tools!.measure.state();
+    }, STAND);
     await expect(page.getByTestId('touch')).toBeVisible();
     const cdp = await page.context().newCDPSession(page);
     const cam = await center(page, 'touch-photo');
@@ -202,6 +235,12 @@ test.describe('photo mode on a phone (iPhone 13 landscape)', () => {
     await expect(page.getByTestId('photo-zoom-2')).toBeVisible();
     await expect(page.getByTestId('touch-attack')).toHaveAttribute('aria-label', 'Auslöser: Foto machen');
     await page.waitForTimeout(700);
+    const surface = { x: 460, y: 174 };
+    expect(await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.getAttribute('data-testid'), surface)).toBe('touch');
+    await tap(cdp, surface.x, surface.y);
+    await page.evaluate(() => window.kq!.screenshotReady());
+    expect(await page.evaluate(() => window.kq!.photo!.state().lastShot)).toBeNull();
+    expect(await page.evaluate(() => window.kq!.tools!.measure.state())).toEqual(measurement);
     await page.screenshot({ path: `${SCREENS}/photo-touch-frame.png` });
     const shutter = await center(page, 'touch-attack');
     await tap(cdp, shutter.x, shutter.y);
@@ -218,6 +257,7 @@ test.describe('photo mode on a phone (iPhone 13 landscape)', () => {
     await expectGameplayHud(page, true);
     await expect(page.getByTestId('touch-pause')).toBeVisible();
     await expect(page.getByTestId('touch-attack')).toHaveAttribute('aria-label', 'Hieb (halten: Wuchthieb)');
+    expect(await page.evaluate(() => window.kq!.tools!.measure.state())).toEqual(measurement);
     expect(errors).toEqual([]);
   });
 });

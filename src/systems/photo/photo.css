@@ -171,7 +171,7 @@ html[data-kq-touch] .kq-photo-hint {
 /* Gameplay overlays keep their state behind the viewfinder. */
 html[data-kq-photo] :is(
   .kq-hud, .kqq-layer, .kqs-bussole, .kqs-card, .kqs-dlg, .kqs-choice-card,
-  .kq-minimap, [data-testid="minimap"], [data-layer="chronik-hud"],
+  .kq-minimap, .kqt-card, [data-testid="minimap"], [data-layer="chronik-hud"],
   [data-layer="tools"], [data-layer="npc-glyphs"]
 ) {
   display: none;
