@@ -18,7 +18,7 @@ for (const ending of ['museum', 'burn', 'keep'] as const) {
 
     await page.getByTestId(`ending-${ending}`).click();
     await page.getByRole('button', { name: 'Ja', exact: true }).click();
-    await page.getByTestId('ending-stage-skip').click();
+    await page.evaluate(() => window.kq!.story!.stageSkip());
     await page.getByTestId('ending-next').click();
     const epilogue = page.getByTestId('epilogue');
     const text = await epilogue.innerText();
@@ -34,6 +34,7 @@ for (const ending of ['museum', 'burn', 'keep'] as const) {
     await page.goto('./?manual&q=low');
     await page.getByTestId('title-continue').click({ timeout: 60_000 });
     await expect(epilogue).toBeVisible();
+    expect(await page.evaluate(() => window.kq!.ctx.input.locked)).toBe(false);
     expect(await epilogue.innerText()).toBe(text);
     await expect(page.getByTestId('ending-stage')).toHaveCount(0);
     await page.getByTestId('ending-credits').click();

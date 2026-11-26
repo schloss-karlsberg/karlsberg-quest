@@ -1,25 +1,30 @@
+import { PerspectiveCamera } from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import endingChapter from '../content/story/05-enden.story.json';
+import { startPlay } from '../src/boot';
 import type { GameContext } from '../src/core/context';
 import { EventBus } from '../src/core/events';
 import { MemoryStorage, SaveManager } from '../src/core/save';
 import { createInitialState, deserializeState, GameStateStore } from '../src/core/state';
 import story from '../src/systems/story';
+import { STAGE_SECONDS_REDUCED } from '../src/systems/story/endings/stage';
 import { createStorySlice } from '../src/systems/story/engine';
 import type { EndingId } from '../src/systems/story/types';
 import { titleHooks } from '../src/ui/title';
+import { ERA_LOOKS } from '../src/world/eraPresets';
 
 // Exercise the story runtime and ending screen in Node with a stand-in for the DOM builder.
 class ElementStub extends EventTarget {
   readonly dataset: Record<string, string> = {};
   readonly style = {};
-  readonly classList = { add() {}, remove() {} };
+  readonly classList = { add() {}, remove() {}, toggle() {}, contains: () => false };
   constructor(readonly selector = '', readonly props: Record<string, unknown> = {}, readonly children: unknown[] = []) {
     super();
   }
   append() {}
   prepend() {}
   querySelector() { return null; }
+  remove() {}
   replaceChildren() {}
 }
 
@@ -41,29 +46,42 @@ async function boot(ending: EndingId, flags: Record<string, string> = {}, beat =
   const state = new GameStateStore(deserializeState(JSON.stringify(saved)));
   const events = new EventBus();
   const save = new SaveManager(state, new MemoryStorage(), events);
-  const modal = { el: new ElementStub(), closed: false, setBody: vi.fn<(body: ElementStub[]) => void>() };
+  const modal = { el: new ElementStub(), closed: true, setBody: vi.fn<(body: ElementStub[]) => void>() };
   const open = vi.fn(() => {
     modal.closed = false;
     return { ...modal, get closed() { return modal.closed; }, close: () => { modal.closed = true; } };
   });
+  const requestLock = vi.fn();
+  const hooks: Pick<NonNullable<Window['kq']>, 'story'> = {};
   const ctx = {
     state,
     events,
     params: new URLSearchParams(),
+    settings: { state: { reducedMotion: true } },
     assets: { licences: async () => null },
     systems: { get: () => undefined },
     content: { packs: [], cases: new Map(), dialogue: new Map(), dialogueFor: () => [] },
     era: { current: 'today' },
-    world: { applyLook() {} },
+    world: { look: structuredClone(ERA_LOOKS.today), heightAt: () => 0, applyLook() {} },
+    player: { position: { x: 0, y: 0, z: 0 }, yaw: 0, pitch: 0, stance: 'stand', stats: { lanternLit: false, speed: 0 } },
+    camera: new PerspectiveCamera(),
+    loop: { manual: true },
+    pause: { paused: false },
     audio: { bindVoiceEmitter: () => () => {} },
-    input: { touchMode: false },
-    ui: { layer: () => new ElementStub(), hud: { stack() {}, setMarker() {} }, modals: { open } },
+    input: { touchMode: false, requestLock, wasPressed: () => false },
+    ui: {
+      layer: () => new ElementStub(),
+      hud: { el: new ElementStub(), stack() {}, setMarker() {}, show() {} },
+      cards: { soft() {}, hold() {} },
+      modals: { open, get count() { return modal.closed ? 0 : 1; } },
+    },
     save,
   } as unknown as GameContext;
-  vi.stubGlobal('window', { addEventListener() {}, removeEventListener() {}, setInterval() {} });
+  vi.stubGlobal('window', { kq: hooks, addEventListener() {}, removeEventListener() {}, setInterval() {} });
   vi.stubGlobal('fetch', undefined);
+  vi.stubGlobal('requestAnimationFrame', () => 1);
   await story.init(ctx);
-  return { events, state, save, modal, open };
+  return { ctx, events, state, save, modal, open, requestLock, hooks };
 }
 
 afterEach(() => {
@@ -73,10 +91,11 @@ afterEach(() => {
 
 describe('continuing a saved epilogue', () => {
   it.each(['museum', 'burn', 'keep'] as const)('restores the %s epilogue and hands off to the party once', async (ending) => {
-    const { events, state, modal, open } = await boot(ending);
-    events.emit('game:start', { resumed: true });
+    const { ctx, state, modal, open, requestLock } = await boot(ending);
+    startPlay(ctx, true);
 
     expect(open).toHaveBeenCalledTimes(1);
+    expect(requestLock).not.toHaveBeenCalled();
     expect(modal.el.dataset.stage).toBe('epilogue');
     const body = modal.setBody.mock.lastCall![0];
     const [epilogue, actions] = body;
@@ -97,16 +116,47 @@ describe('continuing a saved epilogue', () => {
     expect(onParty.mock.calls).toEqual([[ending]]);
   });
 
-  it('leaves an e2 save with a pending party handoff ready to advance', async () => {
-    const { events, open } = await boot('museum', { 'story.party': 'museum' });
-    events.emit('game:start', { resumed: true });
+  it.each([
+    { beat: 'e2', ending: 'museum', flag: 'museum' },
+    { beat: 'e3', ending: 'keep', flag: 'behalten' },
+  ] as const)('continues $beat at the $ending celebration without reopening the epilogue', async ({ beat, ending, flag }) => {
+    const { ctx, events, state, modal, open, requestLock } = await boot(ending, { 'story.party': ending, 'flag.end': flag }, beat);
+    const onParty = vi.fn();
+    events.on('story:cue', ({ id, data }) => {
+      if (id === 'party:set') onParty(data);
+    });
+
+    startPlay(ctx, true);
+    for (let i = 0; i < 3; i++) story.update(1 / 60);
+
+    expect(state.state.systems.story?.beat).toBe('e3');
+    expect(onParty.mock.calls).toEqual([[{ variant: ending }]]);
     expect(open).not.toHaveBeenCalled();
+    expect(modal.closed).toBe(true);
+    expect(requestLock).toHaveBeenCalledTimes(1);
   });
 
-  it('leaves an e3 save at the party', async () => {
-    const { events, open } = await boot('keep', { 'story.party': 'keep' }, 'e3');
-    events.emit('game:start', { resumed: true });
-    expect(open).not.toHaveBeenCalled();
+  it.each(['active', 'finished'] as const)('leaves the ending card available when the skip hook runs with the scene %s', async (scene) => {
+    const { hooks, modal } = await boot('museum');
+    vi.stubGlobal('document', Object.assign(new EventTarget(), { body: { appendChild() {} }, querySelector: () => null }));
+    story.frame(0);
+    const debugStory = hooks.story!;
+    debugStory.ending('museum', true);
+    expect(debugStory.stage().active).toBe(true);
+
+    if (scene === 'finished') {
+      debugStory.stageHold(STAGE_SECONDS_REDUCED);
+      story.frame(0);
+      expect(debugStory.stage().active).toBe(false);
+    }
+    debugStory.stageSkip();
+
+    expect(debugStory.stage().active).toBe(false);
+    expect(modal.el.dataset.stage).toBe('scene');
+    expect(modal.setBody).toHaveBeenCalledTimes(1);
+    const actions = modal.setBody.mock.lastCall![0].at(-1)!;
+    const [next] = actions.children as ElementStub[];
+    expect(next?.props['data-testid']).toBe('ending-next');
   });
 
   it('loads the separate pre-choice slot for Ende noch einmal wählen', async () => {

@@ -203,7 +203,8 @@ Lines with `step` play in order as one sequence. Who speaks what:
 takes the line whose `value` equals the flag (reading flags: `n.r_x` ≡ `x`), else its `offen`
 line (`nichts` for the object). Without such lines the story file's `epilogue` data is used.
 Continuing from `enden/e2` restores the chosen epilogue from the saved ending and deeds while
-`story.party` is pending. Abspann sets `story.party` to start `e3`. The `ending` save slot holds
+`story.party` is pending. Boot checks the modal count after `game:start` handlers run, so the mouse
+stays free to click Abspann. Abspann sets `story.party` to start `e3`. The `ending` save slot holds
 the pre-choice state for Ende noch einmal wählen.
 
 ## Skills and survey tools
