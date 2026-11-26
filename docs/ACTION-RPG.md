@@ -973,6 +973,11 @@ As built (`content/quests/02-kapitel-2.quests.json`, `scripts/content-build/kapi
 | `q.k2.lichter` "Lichter im Wald" | side | Laub (after `q.k2.wachbuch`) → Laub | three lights on the slope, each two Irrlichter; the kiln (`clue.k2.koehler`) | irrlicht ×6 | 120 XP, Kalkstaub ×3; stance `flag.k2_lichter` (kalkoefen / fackeln / wachfeuer / laternen / offen) | cx.19, rm.03 |
 | `q.k2.kisten` "Bepackte Wagen" | side | the servant (`diener`, 1268/−950) → servant (after `q.k2.spur`) | 4 crates for Mannheim in the snow; **4 Streuner** sniff at them | streuner ×4 | 110 XP, Riechsalz ×2 | cx.20 |
 
+The Landremont echo and the Pikeur fight can happen in either order. Hearing the echo after the
+fight credits the recorded clear of `k2.pikeur` and opens the return to the Quelle. Loading a stalled
+save applies the same credit. If the player is already in the present, the quest also credits the
+return. The combat payout belongs to the original fight.
+
 ### 11.3 Kapitel 3 "Die Nacht" (28 Jul 1793, afternoon → fire) — tier 3, levels 8–10
 
 | Id | Kind | Giver → turn-in | Objectives (place) | Enemies | Rewards | History taught |
@@ -1112,6 +1117,8 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | Dialogue and bark state after load (TASK-054, 2026-11-26) | Loading ends the previous session's clip and clears its waiting subtitles and bark requests. Saved bark cooldowns resume with the loaded clock. When a recording is unavailable at playback time, the subtitle and murmur start immediately and the recording moves to the head of the preload queue. |
 | Fast travel can save the departure pose or leave a curtain on a newly opened game (TASK-030, 2026-11-26) | The autosave captures the arrival pose before the travel pause is released. Loading a slot or starting a game clears the curtain during its fade. |
 | Travel effects can outlast the action that started them (TASK-030, 2026-11-26) | A loaded game cancels pending fast travel. The outdoor sprint boost clears on combat entry. Regression tests also exercise one-time lore XP and the 120-second Wegstein cooldown across a reload. |
+| The Pikeur browser fixture can reset to the Quelle or start the earlier Orangerie echo (TASK-036 review, 2026-11-26) | The fixture jumps to the dam beat before setting the era and position. It records the earlier Orangerie and Fackeln echoes as heard so E starts Landremont after the fight. |
+| An early Pikeur fight stalls Chapter 2 (TASK-036, 2026-11-26) | Once the Landremont echo is complete, the quest credits the saved clear of the named Pikeur encounter during play and on load (§11.2). |
 | The Chapter 4 kennel reminder could highlight a button the player had already used or could no longer see (TASK-035, 2026-11-26) | The reminder follows flight, stance and the lantern. Ending replay refreshes the touch controls once the player is back on foot. |
 | Touch players could stall at the Chapter 4 kennel (TASK-035, 2026-11-26) | Hinlegen and Laterne expose the two finale actions. Hinlegen suffices in one-key mode. Continuing at „Sich stellen“ restores the encounter and the empty-lantern fallback. |
 | A combat autosave records Die Enge kills before their rewards, or Laub warns from the present-day wake point (TASK-038 review, 2026-11-26) | Combat releases the autosave after all rewards from the tick have been applied. The reinforcement reaction waits for 1789. Unit and browser coverage check the survivors' regular and elite XP. |

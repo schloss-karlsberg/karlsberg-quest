@@ -19,7 +19,8 @@
 import { allOf, isOneOf, numberRecord } from '../../core/saved';
 import type { Era } from '../../core/era';
 import type { GameEvents } from '../../core/events';
-import type { FlagValue, ItemDef, QuestDef, QuestObjective, QuestPlace, QuestProgress, QuestRewards, QuestSlice, QuestState, QuestTopic, GiverMark, SpawnSpec } from '../../rpg/types';
+import type { EnemyGroupState, FlagValue, ItemDef, QuestDef, QuestObjective, QuestPlace, QuestProgress, QuestRewards, QuestSlice, QuestState, QuestTopic, GiverMark, SpawnSpec } from '../../rpg/types';
+import { isCleared } from '../../rpg/enemy-groups';
 import '../contracts';
 import type { MenagerieSlice } from '../menagerie';
 
@@ -685,13 +686,24 @@ export class QuestBook {
   /**
    * Credit clues, good photos and calmed animals from the save when an objective opens or on load.
    */
-  settleKnown(found: (clue: string) => boolean, hasPhoto: (target: string) => boolean = () => false): void {
+  settleKnown(
+    found: (clue: string) => boolean,
+    hasPhoto: (target: string) => boolean = () => false,
+    pikeur?: { group: EnemyGroupState; era: Era },
+  ): void {
     for (const q of this.running())
       for (const o of this.openObjectives(q)) {
         if ((o.type === 'examine' || o.type === 'echo') && o.clue && found(o.clue)) this.progress(q.id, o.id, need(o));
         else if (o.type === 'photo' && o.target && hasPhoto(o.target)) this.progress(q.id, o.id, need(o));
         else this.settleCalm(q, o);
       }
+
+    // The story can spawn the Pikeur before the Landremont echo opens his objective.
+    // Settle from the saved clear without replaying the kill event or its rewards.
+    if (!pikeur || pikeur.group.group !== 'k2.pikeur' || pikeur.group.kind !== 'pikeur' || !isCleared(pikeur.group)) return;
+    this.progress('q.k2.parforce', 'pikeur');
+    // A stalled save may already be in the present. The normal prerequisite still applies.
+    if (pikeur.era === 'today') this.progress('q.k2.parforce', 'heim');
   }
 
   private settleCalm(q: QuestDefIn, o: QuestObjective): void {
