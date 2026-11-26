@@ -1083,6 +1083,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | Interrupted memories affect quest credit and scene-dependent choices (TASK-029, 2026-11-26) | The end event releases the scene and lets Chapter 2's lantern choice resolve as the departure closes. Clue discovery and quest credit require a completed or skipped memory. |
 | A full dialogue queue can swallow the dodge tutorial (TASK-029 review, 2026-11-26) | Urgent tutorials can interrupt a regular line even when all six waiting slots hold a sequence's next lines. The remaining lines keep their places. |
 | Interrupted memories advance quests and story beats (TASK-029, 2026-11-26) | Capture and era changes can interrupt memory playback. The end event releases the scene and signals the interruption so the quest and story engines wait for a heard memory. |
+| The K2 sneak passes only because the pack runs off on the Warner's trail (TASK-065, 2026-11-26) | Since TASK-048 the hounds ignore the Warner's prints, so the sentries walk their beats for the first time. While calm on their beats they notice you only by sight and hearing, as their cones show, and do not pick up your prints. Once they have noticed you, the searching pack picks your prints up where it lost you. The e2e sneak waits for gaps between the cones instead of walking straight. |
 | Palace interiors and the Festsaal fire miss 60 fps (TASK-021, 2026-11-26) | The sun-depth pass skips palace surface shading after applying cutouts. Room lights keep their existing budget and Festsaal sparks use smaller quads. The reference benchmark checks Hoch p95 at fixed and advancing fire clocks. Hardware timing, matched stills and a physical-phone check are pending (PERFORMANCE §3.8). |
 | Palace interiors and the Festsaal fire miss 60 fps (TASK-021, 2026-11-26) | The sun-depth pass skips palace surface shading after applying cutouts. Room lights keep their existing budget and Festsaal sparks use smaller quads. Hardware timing and look checks are pending (PERFORMANCE §3.8). |
 | Cache XP raises max HP during a checkpoint (TASK-025, 2026-11-26) | Combat mirrors the live HP after the XP grant and before travel releases the cache's save hold. Reloading preserves the HP from the new level. |
@@ -1475,7 +1476,8 @@ Results: Steinbrecher win 68 → 88 %, Raffschatten pack HP left 39 → 46 %. Th
   308 m crouch-walk is now a ≤ 60 s sneak — three hounds patrol a 34 m area across the trail, each
   casting an amber sight cone on the frost (`flags['hunt.cones']`: as long as the range it would
   notice you at right now, as wide as its view; it deepens to red when it sees you), until the
-  hedge 80 m on: "Sicher. Aufstehen." (toast + Laub), the pack leaves. The Kabinett door (68 s of
+  hedge 80 m on: "Sicher. Aufstehen." (toast + Laub), the pack leaves. Sentries on their beats keep
+  their noses up: only the cones and their ears give you away, never your prints (TASK-065). The Kabinett door (68 s of
   listening) is two short looks through the crack (< 20 s together): E puts your eye to the gap
   between the dark door leaves (DOM frame over the world), behind it the candlelit room plays —
   the Duke at his desk, Schügens, the physician, Pfeffel bursting in; A / D moves your eye to the
