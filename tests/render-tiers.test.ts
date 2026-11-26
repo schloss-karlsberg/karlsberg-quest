@@ -1,5 +1,6 @@
-import { LessEqualCompare, LinearFilter, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, Points, Scene, ShaderLib, Vector3, type WebGLProgramParametersWithUniforms, type WebGLRenderer } from 'three';
+import { LessEqualCompare, LinearFilter, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, Points, Scene, ShaderLib, ShaderMaterial, Vector3, type WebGLProgramParametersWithUniforms, type WebGLRenderer } from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { sampleSunShadow } from '../src/debug/shadowProbe';
 import { QUALITY_PRESETS, isSoftwareGpu, parseQualityParam } from '../src/render/quality';
 import { SHADOW_FOCUS_LEAD, SHADOW_RECEIVER_SCALE, SunShadows, castsShadow } from '../src/render/shadows';
 import { kqStandard } from '../src/render/standard';
@@ -131,5 +132,31 @@ describe('sun shadow pass', () => {
     expect(shader.fragmentShader).toContain('#include <alphahash_fragment>\nif (uShadowPass > 0.5)');
     expect(shader.fragmentShader.indexOf('if (uShadowPass > 0.5)')).toBeLessThan(shader.fragmentShader.indexOf('#include <normal_fragment_maps>'));
     material.dispose();
+  });
+
+  it.each(['high', 'medium', 'low'] as const)('reads controlled ground pixels using the %s shadow map setting', (tier) => {
+    const preset = QUALITY_PRESETS[tier];
+    const before = atmosphere.uShadowParams.value.clone();
+    const sun = atmosphere.uSunDir.value.clone();
+    const draw = vi.fn((scene: Scene) => {
+      const { material } = scene.children[0] as Mesh<never, ShaderMaterial>;
+      if (atmosphere.uShadowPass.value) {
+        expect(material.vertexShader).toContain('kqTreeOutsideShadow(uTree, 0)');
+      } else {
+        expect(material.fragmentShader).toContain('kqShadow(vWorld,');
+        expect(atmosphere.uShadowParams.value.x).toBe(preset.shadowSize > 0 ? 1 : 0);
+        if (preset.shadowSize > 0) expect(atmosphere.uShadowParams.value.z).toBe(preset.shadowTaps);
+      }
+    });
+    const read = vi.fn((_target: unknown, x: number, y: number, w: number, h: number, data: Uint8Array) => {
+      expect([x, w, h]).toEqual([4, 1, 1]);
+      data[0] = y === 4 && preset.shadowSize > 0 ? 38 : 255;
+    });
+    const device = { ...renderer, render: draw, readRenderTargetPixels: read } as unknown as WebGLRenderer;
+    expect(sampleSunShadow(device, preset)).toEqual({ occluded: tier === 'low' ? 255 : 38, lit: 255 });
+    expect(read.mock.calls.map(([, , y]) => y)).toEqual([4, 0]);
+    expect(draw).toHaveBeenCalledTimes(tier === 'low' ? 1 : 2);
+    expect(atmosphere.uShadowParams.value.equals(before)).toBe(true);
+    expect(atmosphere.uSunDir.value.equals(sun)).toBe(true);
   });
 });

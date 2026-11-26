@@ -241,10 +241,10 @@ test.describe('world', () => {
     expect(errors).toEqual([]);
   });
 
-  test('binds sun shadows on Hoch and Mittel and releases them on Niedrig', async ({ page }) => {
+  test('darkens an occluded receiver on Hoch and Mittel and clears it on Niedrig', async ({ page }) => {
     const errors = trackErrors(page);
     await show(page, { x: 1632, z: -1640, yaw: 260, pitch: -6 });
-    const draws = await page.evaluate(async () => {
+    const samples = await page.evaluate(async () => {
       const k = window.kq!;
       const { world, settings } = k.ctx;
       const results = [];
@@ -252,13 +252,20 @@ test.describe('world', () => {
         const before = world.shadows.stats.drawn;
         settings.update((s) => { s.graphics = graphics; }, 'graphics');
         await k.screenshotReady();
-        results.push(world.shadows.stats.drawn - before);
+        results.push({ graphics, draws: world.shadows.stats.drawn - before, ...await k.shadowProbe() });
       }
       return results;
     });
-    expect(draws[0]).toBeGreaterThan(0);
-    expect(draws[1]).toBeGreaterThan(0);
-    expect(draws[2]).toBe(0);
+    for (const { graphics, draws, occluded, lit } of samples) {
+      expect(lit, graphics).toBeGreaterThan(245);
+      if (graphics === 'low') {
+        expect(draws).toBe(0);
+        expect(occluded).toBe(lit);
+      } else {
+        expect(draws).toBeGreaterThan(0);
+        expect(lit - occluded, graphics).toBeGreaterThan(100);
+      }
+    }
     expect(errors).toEqual([]);
   });
 

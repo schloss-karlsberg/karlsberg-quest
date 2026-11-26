@@ -9,6 +9,7 @@ import {
   InstancedBufferGeometry,
   LinearFilter,
   LinearMipmapLinearFilter,
+  Matrix4,
   Mesh,
   type Object3D,
   OrthographicCamera,
@@ -22,8 +23,7 @@ import {
   WebGLRenderTarget,
   type WebGLRenderer,
 } from 'three';
-import { SHADOW_RECEIVER_SCALE } from '../../render/shadows';
-import { ATMOS_GLSL, SEE_FRAG_GLSL, SEE_GLSL } from '../atmosphere';
+import { ATMOS_GLSL, SEE_FRAG_GLSL, SEE_GLSL, atmosphere } from '../atmosphere';
 import { FOLIAGE_GLSL } from './foliage';
 
 /**
@@ -73,16 +73,29 @@ export const TREE_N1 = 72;
 export const TREE_BAND = 5;
 
 /**
- * Shadow casters (phase B): the shadow pass draws every model tree with the lod1 geometry (lod0
- * trees too: in the 2048² Hoch map a texel is about 6 cm). The vertex shader clips trees outside
- * the receiver radius plus `SHADOW_REACH` m. The sorted lists skip those draws on the CPU too,
- * with a margin for the distance between the list's origin and the current focus.
+ * The shadow footprint is the trunk segment projected into the light's image plane, padded
+ * for the crown and wind. Along a sun ray, a tree vertex and its shadow on any slope project
+ * to the same point. The square map's distance metric is the greater of the two axis distances.
  */
-export const SHADOW_REACH = 30;
-
-export function treeShadowCasterLimit(range: number, drift = 0): number {
-  return range * SHADOW_RECEIVER_SCALE + SHADOW_REACH + drift;
+export function treeShadowFootprintDistance(fromFocus: Vector3, height: number, right: Vector3, up: Vector3, pad: number): number {
+  const base = fromFocus.dot(up);
+  return Math.max(Math.abs(fromFocus.dot(right)), base, -(base + up.y * height)) - pad;
 }
+
+// The CPU sorts from the unsnapped focus. The shader uses the current, snapped shadow camera.
+const SHADOW_SNAP_MARGIN = 0.1;
+const SHADOW_LIST_DRIFT = 24;
+export const TREE_SHADOW_CULL_GLSL = /* glsl */ `
+uniform float uTreeShadowPad[${TREE_VARIANTS.length}];
+bool kqTreeOutsideShadow(vec4 tree, int variant) {
+  vec2 base = (viewMatrix * vec4(tree.xyz, 1.0)).xy;
+  float tipY = base.y + viewMatrix[1].y * tree.w;
+  float distance = max(abs(base.x), max(base.y, -tipY));
+  float tiltPad = uSunDir.y > 0.45 ? 0.5 * (1.0 - viewMatrix[1].y) : 0.0;
+  float reach = 1.0 / projectionMatrix[0].x + tree.w * (uTreeShadowPad[variant] + tiltPad);
+  return distance > reach;
+}
+`;
 
 /** Shadow-pass level of a main-pass level: lod0 casts as lod1 (pure; tested). */
 export function shadowLevel(level: number): number {
@@ -182,6 +195,7 @@ export const FAMILY_CROWN: [number, number][] = [
 const MODEL_VERT = /* glsl */ `
 ${ATMOS_GLSL}
 ${SEE_GLSL}
+${TREE_SHADOW_CULL_GLSL}
 attribute float aPart;
 attribute float aAo;
 attribute float aSeed;
@@ -207,6 +221,10 @@ varying float vSee;
 ${FOLIAGE_GLSL}
 ${SHAPE_GLSL}
 void main() {
+  if (uShadowPass > 0.5 && kqTreeOutsideShadow(aInst, int(aVar.y))) {
+    gl_Position = vec4(0.0, 0.0, -2.0, 1.0);
+    return;
+  }
   float h = aInst.w;
   float dist = length(aInst.xz - uCamPos.xz);
   float fade = 1.0 - smoothstep(uFar * 0.82, uFar, dist);
@@ -244,8 +262,6 @@ void main() {
   // in the way of the third-person view (trunk, low crown): thinned in the fragment shader
   vSee = kqSee(aInst.xyz, 0.1 + h * 0.016, aInst.y + h, wp);
   gl_Position = projectionMatrix * viewMatrix * vec4(wp, 1.0);
-  // shadow pass: trees beyond the shadow box (plus a crown's reach) cost fill for nothing
-  if (uShadowPass > 0.5 && length(aInst.xz - uShadowCenter.xz) > uShadowCenter.w + ${SHADOW_REACH.toFixed(1)}) gl_Position = vec4(0.0, 0.0, -2.0, 1.0);
 }
 `;
 
@@ -374,6 +390,7 @@ void main() {
 
 const IMP_VERT = /* glsl */ `
 ${ATMOS_GLSL}
+${TREE_SHADOW_CULL_GLSL}
 attribute vec4 aInst;
 attribute vec4 aVar;
 uniform float uFar;
@@ -398,12 +415,16 @@ varying vec2 vDither;
 varying float vH;
 ${SHAPE_GLSL}
 void main() {
+  int vi = int(aVar.y);
+  if (uShadowPass > 0.5 && kqTreeOutsideShadow(aInst, vi)) {
+    gl_Position = vec4(0.0, 0.0, -2.0, 1.0);
+    return;
+  }
   float h = aInst.w;
   float dist = length(aInst.xz - uCamPos.xz);
   float fade = 1.0 - smoothstep(uFar * 0.82, uFar, dist);
   float sr = length(aInst.xz - uScanCenter.xz);
   fade *= 1.0 - smoothstep(0.0, 0.8, max(uScanMix, uMapMix)) * (1.0 - smoothstep(uScanRadius * 0.85, uScanRadius, sr));
-  int vi = int(floor(aVar.y));
   float var = fract(aVar.y);
   vec4 box = uBox[vi];   // x radius, y bottom, z top (unit tree), w family
   vec2 shape = uShape[vi];
@@ -452,8 +473,6 @@ void main() {
   vH = yf;
   vWorld = wp;
   gl_Position = projectionMatrix * viewMatrix * vec4(wp, 1.0);
-  // shadow pass: trees beyond the shadow box (plus a crown's reach) cost fill for nothing
-  if (uShadowPass > 0.5 && length(aInst.xz - uShadowCenter.xz) > uShadowCenter.w + ${SHADOW_REACH.toFixed(1)}) gl_Position = vec4(0.0, 0.0, -2.0, 1.0);
 }
 `;
 
@@ -757,8 +776,8 @@ function writeInst(b: Batch, i: number, x: number, y: number, z: number, h: numb
 }
 
 /**
- * Shadow-pass-only instances of one batch, sorted by the distance from the rebuild's reference
- * point, so a pass draws just the leading ones within reach (`show`). Hidden outside the pass.
+ * Shadow-pass-only instances of one batch, sorted by footprint distance from the reference
+ * focus, so a pass draws just the leading ones within reach (`show`). Hidden outside the pass.
  */
 class ShadowList {
   n = 0;
@@ -858,13 +877,19 @@ export class ModelTrees {
   private readonly lv: number[] = [];
   /** lod1 → impostor ring (× k); `TREE_N1`, a field for look checks. */
   impAt = TREE_N1;
-  /** Shadow casters per variant (lod1 geometry) and impostors, sorted by distance (`ShadowList`). */
+  /** Shadow casters per variant (lod1 geometry) and impostors, sorted by footprint distance. */
   private readonly shadowLod: ShadowList[] = [];
   private readonly shadowImp: ShadowList;
-  /** Rebuild-time reference point of the shadow lists (the expected shadow focus) and their radius. */
-  private refX = 0;
-  private refZ = 0;
-  private castMax = Infinity;
+  private readonly shadowPad: number[];
+  private readonly shadowSun = new Vector3();
+  private readonly shadowRef = new Vector3();
+  private readonly shadowRight = new Vector3();
+  private readonly shadowUp = new Vector3();
+  private readonly shadowRotation = new Matrix4();
+  private readonly shadowOffset = new Vector3();
+  private readonly up = new Vector3(0, 1, 0);
+  private castMax = 0;
+  private tiltPad = 0;
   private readonly mainVis: boolean[] = [];
   private mainBatches: Batch[] | null = null;
 
@@ -888,6 +913,16 @@ export class ModelTrees {
       shapes.push({ l0, l1, tex: { geo: l0.geo, leaf: false, bark: bark.bark, barkN: bark.barkN, leafTex: leaf?.leafTex ?? null } });
     }
     this.variants = shapes.length;
+    this.shadowPad = shapes.map(({ l0, l1 }, i) => {
+      const crown = FAMILY_CROWN[TREE_VARIANTS[i]!.family]![0];
+      const radius = Math.max(l0.radius * 1.02, l1.radius) * crown * 1.15;
+      const overhang = Math.max(0, (Math.max(l0.top * 1.01, l1.top) - 1) * crown);
+      const roots = Math.max(0, -l0.bottom / l0.crownBase, -l1.bottom / l1.crownBase);
+      const yf = Math.max(1 + overhang, roots);
+      const wind = 0.015 * yf ** 2 + 0.01 * (0.4 + yf);
+      return radius + Math.max(overhang, roots) + wind;
+    });
+    const shadowPad = { value: this.shadowPad };
     // per family: one material (textures + colour references)
     const famTex = TREE_FAMILIES.map((_, f) => shapes[TREE_VARIANTS.findIndex((v) => v.family === f)]!.tex);
     const barkMean = famTex.map((t) => textureMean(t.bark));
@@ -901,6 +936,7 @@ export class ModelTrees {
         side: DoubleSide,
         uniforms: {
           ...shared,
+          uTreeShadowPad: shadowPad,
           uBark: { value: t.bark },
           uBarkN: { value: t.barkN },
           uLeaf: { value: t.leafTex ?? t.bark },
@@ -987,6 +1023,7 @@ export class ModelTrees {
       side: DoubleSide,
       uniforms: {
         ...shared,
+        uTreeShadowPad: shadowPad,
         uAtlasTex: { value: this.atlas.texture },
         uAtlas: { value: [1 / AZ, 1 / shapes.length] },
         uBox: { value: Array.from({ length: shapes.length }, (_, i) => new Vector4(boxes[i * 4]!, boxes[i * 4 + 1]!, boxes[i * 4 + 2]!, boxes[i * 4 + 3]!)) },
@@ -1015,19 +1052,23 @@ export class ModelTrees {
     }
   }
 
-  /**
-   * Start a rebuild. (refX, refZ): where the shadow focus is expected (the shadow lists are sorted
-   * by the distance from it); `castMax`: the radius around it that may cast at all (the shadow box
-   * plus `SHADOW_REACH` plus room for the focus to move until the next rebuild).
-   */
-  begin(refX = 0, refZ = 0, castMax = Infinity): void {
+  shadowListsStale(focus: Vector3): boolean {
+    return !this.shadowSun.equals(atmosphere.uSunDir.value) || this.shadowRef.distanceToSquared(focus) > SHADOW_LIST_DRIFT ** 2;
+  }
+
+  /** Start a rebuild around the expected shadow focus, with room for it to drift. */
+  begin(focus: Vector3, range: number): void {
     for (const l of this.lod) for (const b of l) b.n = 0;
     this.imp.n = 0;
     for (const s of this.shadowLod) s.n = 0;
     this.shadowImp.n = 0;
-    this.refX = refX;
-    this.refZ = refZ;
-    this.castMax = castMax;
+    this.shadowRef.copy(focus);
+    this.shadowSun.copy(atmosphere.uSunDir.value);
+    this.shadowRotation.lookAt(focus, this.shadowOffset.copy(focus).sub(this.shadowSun), this.up);
+    this.shadowRight.setFromMatrixColumn(this.shadowRotation, 0);
+    this.shadowUp.setFromMatrixColumn(this.shadowRotation, 1);
+    this.tiltPad = this.shadowSun.y > 0.45 ? 0.5 * (1 - this.shadowUp.y) : 0;
+    this.castMax = range + SHADOW_LIST_DRIFT + SHADOW_SNAP_MARGIN;
   }
 
   /**
@@ -1045,7 +1086,9 @@ export class ModelTrees {
       writeInst(b, b.n++, x, y, z, h, rot, vr, lv[j * 3 + 1]!, lv[j * 3 + 2]!);
     }
     // shadow casters: lod0 as lod1 (a tree fading lod0 → lod1 is one full lod1 caster)
-    const ds = Math.hypot(x - this.refX, z - this.refZ);
+    const offset = this.shadowOffset.set(x, y, z).sub(this.shadowRef);
+    const pad = h * (this.shadowPad[variant]! + this.tiltPad);
+    const ds = treeShadowFootprintDistance(offset, h, this.shadowRight, this.shadowUp, pad);
     if (ds > this.castMax) return;
     if (n === 2 && lv[0] === 0) {
       this.shadowLod[variant]?.add(ds, x, y, z, h, rot, vr, 0, 2);
@@ -1059,16 +1102,13 @@ export class ModelTrees {
   }
 
   /**
-   * Shadow pass hook (render/shadows.ts `onPass`): during the pass only the caster lists draw,
-   * each up to the trees within the receiver radius plus `SHADOW_REACH` (and the focus's drift from
-   * the rebuild's reference point, so the cut never drops a tree the shader would have kept).
-   * Returns that drift (m).
+   * During the shadow pass, submit the footprints within the map plus focus drift and snapping.
+   * The shader applies the final cut using the live shadow camera.
    */
-  shadowPass(on: boolean, fx: number, fz: number, range: number): number {
+  shadowPass(on: boolean, focus: Vector3, range: number): void {
     const main = (this.mainBatches ??= [...this.lod[0]!, ...this.lod[1]!, this.imp]);
-    const drift = Math.hypot(fx - this.refX, fz - this.refZ);
     if (on) {
-      const limit = treeShadowCasterLimit(range, drift);
+      const limit = range + focus.distanceTo(this.shadowRef) + SHADOW_SNAP_MARGIN;
       let lod = 0;
       let imp = 0;
       for (let i = 0; i < main.length; i++) {
@@ -1084,7 +1124,6 @@ export class ModelTrees {
       for (const s of this.shadowLod) s.batch.mesh.visible = false;
       this.shadowImp.batch.mesh.visible = false;
     }
-    return drift;
   }
 
   end(): void {

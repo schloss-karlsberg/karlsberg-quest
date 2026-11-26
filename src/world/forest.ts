@@ -18,7 +18,7 @@ import { SHADOW_FOCUS_LEAD } from '../render/shadows';
 import { ATMOS_GLSL, SEE_FRAG_GLSL, SEE_GLSL, atmosphere } from './atmosphere';
 import type { Heightfield } from './heightfield';
 import { FOLIAGE_GLSL } from './vegetation/foliage';
-import { type ModelTrees, pickVariant, treeShadowCasterLimit } from './vegetation/trees';
+import { type ModelTrees, pickVariant } from './vegetation/trees';
 import { ViewCone } from './viewCone';
 
 /**
@@ -897,6 +897,7 @@ export class Forest {
 
   /** Half extent of the sun shadow box (m), for the model trees' caster lists. */
   private shadowRange = 0;
+  private readonly shadowFocus = new Vector3();
 
   setShadowRange(range: number): void {
     if (range !== this.shadowRange) {
@@ -907,10 +908,7 @@ export class Forest {
 
   /** Shadow pass hook (render/shadows.ts `onPass`): the model trees draw their caster lists. */
   shadowPass(on: boolean, focus: Vector3, range: number): void {
-    const drift = this.models?.shadowPass(on, focus.x, focus.z, range) ?? 0;
-    // the lists hold the casters within 24 m of drift (a turn in the full-ring mode does not
-    // rebuild them): past 20 m rebuild before the next pass
-    if (drift > 20) this.dirty = true;
+    this.models?.shadowPass(on, focus, range);
   }
 
   /** Switch to the CC0 model trees (vegetation/trees.ts) or back to the procedural forest (null). */
@@ -967,6 +965,16 @@ export class Forest {
   update(camera: PerspectiveCamera, agl = 0): void {
     const p = camera.position;
     camera.getWorldDirection(this.dir);
+    const hl = Math.hypot(this.dir.x, this.dir.z) || 1;
+    const fx = this.dir.x / hl;
+    const fz = this.dir.z / hl;
+    const models = this.models;
+    if (models) {
+      const lead = this.shadowRange * SHADOW_FOCUS_LEAD;
+      const scale = this.dir.x ** 2 + this.dir.z ** 2 > 1e-6 ? lead / hl : lead;
+      this.shadowFocus.set(p.x + this.dir.x * scale, p.y, p.z + this.dir.z * scale);
+      if (models.shadowListsStale(this.shadowFocus)) this.dirty = true;
+    }
     const down = this.dir.y < -0.55;
     const mode = forestCullMode(this.cull, this.dir.y, agl);
     const yaw = Math.atan2(this.dir.x, -this.dir.z);
@@ -984,9 +992,6 @@ export class Forest {
     const cone = mode === 'cone';
     if (cone) this.cone.set(camera, 0.7);
     // horizontal view direction and the sector's cosine limit
-    const hl = Math.hypot(this.dir.x, this.dir.z) || 1;
-    const fx = this.dir.x / hl;
-    const fz = this.dir.z / hl;
     const halfH = Math.atan(Math.tan((camera.fov * Math.PI) / 360) * camera.aspect);
     const sector = halfH + 0.7;
     const cosLimit = this.cull && !down && sector < Math.PI ? Math.cos(sector) : -2;
@@ -996,14 +1001,10 @@ export class Forest {
     counts.fill(0);
     let culled = 0;
     const far = this.farDist;
-    const models = this.models;
     // February 1793: bare broadleaf crowns (the dead models); a few snags in every stand
     const winter = atmosphere.uSeason.value > 1.6;
     const snagRate = atmosphere.uSeason.value > 0.5 ? 0.05 : 0.025;
-    // the shadow lists are sorted from where the shadow focus will be (boot.ts: ahead of the camera
-    // by 0.35 × the box's half extent); trees past the box + reach + 24 m of drift never cast
-    const lead = this.shadowRange * SHADOW_FOCUS_LEAD;
-    models?.begin(p.x + fx * lead, p.z + fz * lead, treeShadowCasterLimit(this.shadowRange, 24));
+    models?.begin(this.shadowFocus, this.shadowRange);
     const t0x = Math.floor((p.x - far) / TILE);
     const t1x = Math.floor((p.x + far) / TILE);
     const t0z = Math.floor((p.z - far) / TILE);

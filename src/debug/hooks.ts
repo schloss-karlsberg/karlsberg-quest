@@ -31,6 +31,8 @@ export interface KqHooks {
   perf(): PerfSummary;
   /** Scripted benchmark route over all eras (see src/debug/bench.ts); also Shift+F3. */
   bench(opts?: BenchOptions): Promise<BenchResult>;
+  /** Read a controlled occluded/lit pixel pair with the active graphics preset. */
+  shadowProbe(): Promise<{ occluded: number; lit: number }>;
   /** Result of the last bench run. */
   lastBench: BenchResult | null;
   /** Place a manifest asset in the world (dev / art review): ground height at x/z, yaw degrees. */
@@ -150,6 +152,10 @@ export function installDebug(ctx: GameContext, info: DebugInfo): KqHooks {
       }
     },
     lastBench: null,
+    async shadowProbe() {
+      const { sampleSunShadow } = await import('./shadowProbe');
+      return sampleSunShadow(ctx.renderer, ctx.quality.preset);
+    },
     async spawnAsset(id, x, z, opts = {}) {
       const o = await ctx.assets.instance(id);
       o.position.set(x, ctx.world.heightAt(x, z), z);

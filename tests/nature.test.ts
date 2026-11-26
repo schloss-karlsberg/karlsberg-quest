@@ -1,5 +1,5 @@
-import { InstancedBufferGeometry, Mesh, PerspectiveCamera } from 'three';
-import { describe, expect, it } from 'vitest';
+import { BoxGeometry, Color, Group, InstancedBufferGeometry, Mesh, MeshBasicMaterial, PerspectiveCamera, ShaderMaterial, Vector3, type WebGLRenderer } from 'three';
+import { describe, expect, it, vi } from 'vitest';
 import { GROUND } from '../src/data/types';
 import { clearings } from '../src/systems/quelle/layout';
 import { Heightfield } from '../src/world/heightfield';
@@ -10,7 +10,8 @@ import { GROUND_LAYERS, GROUND_TILE_M, BARK_LAYERS } from '../src/world/vegetati
 import { PROP_KINDS } from '../src/world/vegetation/props';
 import NATURE1 from '../src/assets/manifests/nature';
 import NATURE2 from '../src/assets/manifests/nature2';
-import { FAMILY_CROWN, SHADOW_REACH, TREE_BAND, TREE_N0, TREE_N1, TREE_VARIANTS, castCount, pickVariant, shadowLevel, treeLevels, treeScaleY, treeShadowCasterLimit } from '../src/world/vegetation/trees';
+import { FAMILY_CROWN, ModelTrees, TREE_BAND, TREE_N0, TREE_N1, TREE_SHADOW_CULL_GLSL, TREE_VARIANTS, castCount, pickVariant, shadowLevel, treeLevels, treeScaleY, treeShadowFootprintDistance } from '../src/world/vegetation/trees';
+import { atmosphere } from '../src/world/atmosphere';
 
 const NATURE_ASSETS = [...NATURE1, ...NATURE2];
 
@@ -301,12 +302,10 @@ describe('model trees (nature round 2)', () => {
     expect(out[0]).toBe(1);
   });
 
-  it('shadow casters: lod0 casts as lod1, the CPU cut matches the shader reach', () => {
+  it('shadow casters: lod0 casts as lod1 and sorted footprint distances can be clipped', () => {
     expect(shadowLevel(0)).toBe(1);
     expect(shadowLevel(1)).toBe(1);
     expect(shadowLevel(2)).toBe(2);
-    // the vertex shaders drop casters past uShadowCenter.w + 30.0
-    expect(SHADOW_REACH).toBe(30);
     const d = new Float32Array([1, 5, 5, 9, 40, 120, 0]);
     expect(castCount(d, 6, 0.5)).toBe(0);
     expect(castCount(d, 6, 5)).toBe(3);
@@ -315,13 +314,66 @@ describe('model trees (nature round 2)', () => {
     expect(castCount(d, 0, 1e9)).toBe(0);
   });
 
-  it('uses the fitted receiver radius for caster lists, with room for focus drift', () => {
-    const d = new Float32Array([40, 74, 75, 88, 89, 105]);
-    expect(treeShadowCasterLimit(60)).toBeCloseTo(88.8);
-    expect(castCount(d, d.length, treeShadowCasterLimit(60))).toBe(4);
-    expect(castCount(d, d.length, treeShadowCasterLimit(45))).toBe(2);
-    expect(castCount(d, d.length, treeShadowCasterLimit(60, 3))).toBe(5);
-    expect(castCount(d, d.length, treeShadowCasterLimit(60, 24))).toBe(6);
+  it('keeps a 26 m tree at low sun while culling footprints laterally outside the map', () => {
+    const root = new Group();
+    const geometry = new BoxGeometry(1, 2, 1).translate(0, 1, 0);
+    const bark = new MeshBasicMaterial();
+    for (const { name } of TREE_VARIANTS) {
+      for (const id of [name, `${name}_lod1`]) {
+        const mesh = new Mesh(geometry, bark);
+        mesh.name = id;
+        root.add(mesh);
+      }
+    }
+    const renderer = {
+      getRenderTarget: () => null, setRenderTarget: vi.fn(),
+      getClearAlpha: () => 1, getClearColor: () => new Color(),
+      setClearColor: vi.fn(), clear: vi.fn(), render: vi.fn(),
+    } as unknown as WebGLRenderer;
+    const trees = new ModelTrees(root, renderer, 8, atmosphere);
+    const sun = atmosphere.uSunDir.value;
+    const savedSun = sun.clone();
+    try {
+      const elevation = 13 * Math.PI / 180;
+      sun.set(Math.cos(elevation), Math.sin(elevation), 0);
+      const focus = new Vector3(21, 2, 0);
+      const tree = new Vector3(115, 0, 0);
+      const right = new Vector3(0, 0, -1);
+      const up = new Vector3(-sun.y, sun.x, 0);
+      const offset = tree.clone().sub(focus);
+      expect(offset.x).toBeGreaterThan(60 * 0.98 + 30); // old per-instance cutoff
+      expect(tree.x - 26 / Math.tan(elevation)).toBeCloseTo(2.4, 0);
+      const footprint = treeShadowFootprintDistance(offset, 26, right, up, 0);
+      expect(footprint).toBe(0); // the segment crosses the focus in light space
+      expect(treeShadowFootprintDistance(offset.clone().setZ(100), 26, right, up, 0)).toBe(100);
+
+      trees.begin(focus, 60);
+      trees.push(tree.x, tree.y, 0, 26, 0, 0, 0, 115, 1.8); // LOD1
+      trees.push(tree.x, tree.y, 2, 26, 0, 0, 0, 115, 1); // impostor
+      trees.push(tree.x, tree.y, 100, 26, 0, 0, 0, 152, 1); // outside
+      trees.end();
+      trees.shadowPass(true, focus, 60);
+      expect(trees.stats).toMatchObject({ shadowLod: 1, shadowImp: 1 });
+      const casters = trees.object.children.filter((o) => o.visible) as Mesh<InstancedBufferGeometry, ShaderMaterial>[];
+      expect(casters.map((o) => o.name)).toEqual(['trees-common1-shadow', 'trees-impostor-shadow']);
+      for (const { material } of casters) {
+        expect(material.vertexShader).toContain(TREE_SHADOW_CULL_GLSL);
+        expect(material.vertexShader).toContain('kqTreeOutsideShadow(aInst,');
+      }
+      const turnedFocus = new Vector3(0, 2, -8);
+      expect(trees.shadowListsStale(turnedFocus)).toBe(false);
+      trees.shadowPass(false, focus, 60);
+      trees.shadowPass(true, turnedFocus, 60);
+      expect(trees.stats).toMatchObject({ shadowLod: 1, shadowImp: 1 });
+      expect(trees.shadowListsStale(new Vector3(-10, 2, 0))).toBe(true);
+      sun.copy(savedSun);
+      expect(trees.shadowListsStale(focus)).toBe(true);
+    } finally {
+      sun.copy(savedSun);
+      trees.dispose();
+      geometry.dispose();
+      bark.dispose();
+    }
   });
 
   it('the stand height maps the crown base and keeps the crown size', () => {

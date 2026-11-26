@@ -498,7 +498,18 @@ all within 30 m); looking steeply down keeps the full ring only more than 20 m a
 (`update(camera, agl)`: flying, spirit view), on foot whole 64 m tiles outside the 3D view cone
 (`src/world/viewCone.ts`: frustum corner + 40°) are dropped.
 
-Model trees (`src/world/vegetation/trees.ts`, docs/ART-DIRECTION.md §5.2): on medium / high `world.nature` loads `nature2.trees` and hands a `ModelTrees` to `forest.setModels`; the forest keeps placement, culling and LOD rings and pushes each tree to the model batches (lod0 / lod1 per variant, one InstancedBufferGeometry each) or the impostor batch (atlas baked once at load by rendering every variant from 8 azimuths into an MSAA target). All share the `atmosphere` uniforms; `uShadowPass` (set by `render/shadows.ts`) lets every vegetation shader skip lighting in the depth pass, and trees outside the shadow box collapse there. Rings (× k = preset · tree height): lod0 → lod1 at `TREE_N0` 30, lod1 → impostor at `TREE_N1` 72 (78 before tri phase B), ±5 dithered. Shadow casters (docs/PERFORMANCE.md §3.1b and §3.5): `ModelTrees.shadowPass` swaps in per-variant `ShadowList`s with lod1 geometry (including lod0 trees) and an impostor list. Each rebuild sorts the lists by distance from the expected focus (the camera plus 0.35 of the box's half extent ahead). The CPU submits casters within 30 m of the receiver radius, with a margin for focus drift. The shader uses the current focus for its final cut. A drift past 20 m triggers a list rebuild. The low tier never fetches the models.
+On medium and high, `world.nature` loads `nature2.trees` and gives `ModelTrees` to
+`forest.setModels` (`src/world/vegetation/trees.ts`, docs/ART-DIRECTION.md §5.2). The forest
+keeps placement and view culling and feeds the lod0 and lod1 model batches or the impostor
+batch. The impostor atlas bakes each variant from eight azimuths. The LOD rings scale with tree
+height and the preset, with dithered transitions around `TREE_N0` (30) and `TREE_N1` (72).
+
+During the depth pass, `ModelTrees.shadowPass` swaps in sorted lod1 and impostor caster batches.
+The CPU projects each tree's base and top into the sun's image plane and pads the segment for
+the crown and wind. The sort uses the distance from the expected shadow focus to that
+footprint. The CPU allows for focus drift and texel snapping, and both vertex shaders apply
+the final cut against the snapped shadow camera. A sun change or focus drift beyond 24 m
+rebuilds the lists before rendering. Niedrig uses the procedural forest.
 
 Nature layers (`src/world/vegetation/`, docs/ART-DIRECTION.md §5.1): `world.nature` (`Nature`) owns
 `cover` (`GroundCover`: instanced grass / flowers / reeds, 8 m tiles; only what lies in the 3D view
