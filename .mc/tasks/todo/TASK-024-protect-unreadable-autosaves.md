@@ -37,6 +37,9 @@ confirms replacement and completes the new-game flow.
 - [x] Opening the title and cancelling „Neues Spiel“ preserve the exact stored bytes.
 - [x] Occupied unreadable slots require overwrite confirmation. Empty slots start normally.
 - [x] MemoryStorage regression tests cover every case, including the newer-version slot.
+- [x] Malformed system slices disable „Weiter“ and leave the slot intact.
+- [x] A changed autosave needs fresh confirmation before a new game can replace it.
+- [x] A rejected new-game flow leaves the exact autosave bytes intact.
 
 ## Plan
 
@@ -73,7 +76,22 @@ startup and check the title, overwrite prompt and stored bytes after cancellatio
 **Risks**
 
 The autosave can change after the title becomes ready. Continue must still load
-successfully before play starts, and New Game should check occupancy on selection.
+successfully before play starts.
+
+### Review fixes
+
+_Status: implementation requested 2026-11-26_
+
+- [x] Validate the `systems` record and each present slice in the shared state
+  decoder before migration. Preserve missing fields and partial legacy slices.
+- [x] Track confirmed autosave bytes and recheck them after the new-game flow
+  and each late confirmation. Apply the tour name only when the game starts.
+- [x] Treat a rejected new-game hook as cancellation and keep the title usable.
+- [x] Add MemoryStorage regressions for all three findings and cover a late
+  cancellation followed by Continue in `e2e/smoke.spec.ts`.
+- [x] Update the save contract and changelogs.
+- [x] Pass typecheck, unit tests and production build.
+- [ ] Pass content validation and locked smoke.
 
 ## Progress
 
@@ -93,23 +111,35 @@ successfully before play starts, and New Game should check occupancy on selectio
   smoke run hit `listen EPERM` on `127.0.0.1:5412` before launching the browser.
   Playwright listed all eight smoke cases.
 - 2026-11-26 — Git could not create the worktree's `index.lock`. The full task
-  remains in the worktree and `HEAD` is still at the TASK-019 base.
+  stayed in the worktree until the initial commit.
+- 2026-11-26 — The initial task changes were committed as `e2f6e2b` before review.
+- 2026-11-26 — Addressed all three review findings. The malformed-slice acceptance
+  and the fail-open hook both existed on `origin/main` and were small fixes within
+  scope. The final overwrite check now compares bytes and defers the chosen name
+  until start. The focused title, core and legacy checks reported `Tests  76 passed (76)`.
+- 2026-11-26 — Review fixes and regressions committed as `a7d07c5`.
+  `pnpm typecheck` passed. `pnpm test` reported `Test Files  120 passed (120)`
+  and `Tests  1596 passed (1596)` with zero failures. `pnpm build` reported
+  `✓ built in 388ms`.
+- 2026-11-26 — `pnpm validate` was blocked by `listen EPERM` on the tsx IPC socket.
+  The locked `e2e/smoke.spec.ts` run was blocked by `listen EPERM` on
+  `127.0.0.1:5412` before Chromium launched.
+- 2026-11-26 — Git could not create the worktree's `index.lock` for the docs
+  commit. The task file and changelog changes remain in the worktree.
 
 ## Follow-ups
 
-- Complete the content gate and smoke spec in an environment that permits the
-  listeners. No voiced lines require new text.
+- Run the content gate and smoke spec in an environment that permits local
+  listeners. All three review findings were fixed. No voiced lines require new text.
 
 ```sh
 pnpm validate
 KQ_E2E_PORT=5412 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line
 ```
 
-- Commit the two changesets where the worktree's index is writable.
+- Commit the documentation and task update where the worktree index is writable.
 
 ```sh
-git add -- src/core/save.ts src/boot.ts src/ui/title.ts src/i18n/de.ts tests/title.test.ts e2e/smoke.spec.ts
-git commit -m 'fix(ui): protect unreadable autosaves at the title' -m 'Refs: TASK-024' -m 'Co-Authored-By: Codex <noreply@openai.com>'
-git add -- docs/PRD.md docs/ACTION-RPG.md docs/ARCHITECTURE.md .mc/tasks/todo/TASK-024-protect-unreadable-autosaves.md
-git commit -m 'docs(ui): document unreadable autosave handling' -m 'Refs: TASK-024' -m 'Co-Authored-By: Codex <noreply@openai.com>'
+git add -- docs/ACTION-RPG.md docs/ARCHITECTURE.md docs/PRD.md .mc/tasks/todo/TASK-024-protect-unreadable-autosaves.md
+git commit -m 'docs(ui): record autosave review fixes and verification' -m 'Refs: TASK-024' -m 'Co-Authored-By: Codex <noreply@openai.com>'
 ```
