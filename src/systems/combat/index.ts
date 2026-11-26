@@ -525,6 +525,7 @@ class Combat {
       moveZ,
       attackDown: inp.isDown('attack'),
       attackPressed,
+      attackCancelled: inp.wasCancelled('attack'),
       bannPressed: inp.wasPressed('bannlicht'),
       dodgePressed: inp.wasPressed('dodge'),
       skill,

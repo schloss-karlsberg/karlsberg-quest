@@ -52,7 +52,7 @@ vi.mock('../src/systems/story/objectives', async (original) => ({
 }));
 vi.mock('../src/systems/story/overlays', async (original) => ({
   ...await original<typeof import('../src/systems/story/overlays')>(),
-  StoryOverlays: class { fade() {} gauge() {} tickCard() {} tickChoice() {} closeChoice() {} },
+  StoryOverlays: class { fade() {} gauge() {} tickCard() {} tickChoice() {} closeChoice() {} clearCurtain() {} },
 }));
 
 const FIRST = 'k1.enge';
@@ -105,7 +105,7 @@ async function encounter(storage = new MemoryStorage(), continued?: 'auto' | 'ma
   const context = {
     events, state, save, content: new ContentDB([]), params: new URLSearchParams(),
     assets: { licences: async () => null }, audio: { bindVoiceEmitter: () => noop, noise: () => null },
-    input: { isDown: () => false, wasPressed: () => false },
+    input: { isDown: () => false, wasPressed: () => false, wasCancelled: () => false },
     loop: { manual: true, time: 0, tick: 0 }, pause: { paused: false, reasons: new Set<string>() }, settings: { state: defaultSettings() },
     era: { get current() { return state.state.era; }, get info() { return ERA_INFO[state.state.era]; } },
     player: { position: playerPosition, stance: 'stand', yaw: 0, stats: { speed: 0 } },
