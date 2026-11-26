@@ -220,6 +220,18 @@ export class Input {
       this.down.clear();
       this.clearPending();
     });
+    let hadLock = this.locked;
+    on(document, 'pointerlockchange', () => {
+      const locked = this.locked;
+      if (hadLock && !locked) {
+        // A release can swallow mouseup. Keyboard and touch holds still belong to their inputs.
+        for (const codes of [this.down, this.pressedCodes, this.shiftedCodes]) {
+          for (const code of codes) if (code.startsWith('Mouse')) codes.delete(code);
+        }
+        this.mdx = this.mdy = this.wheel = 0;
+      }
+      hadLock = locked;
+    });
     on(document, 'mousemove', (e) => {
       if (!this.locked || !this.enabled) return;
       const ev = e as MouseEvent;

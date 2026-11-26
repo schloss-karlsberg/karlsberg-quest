@@ -520,11 +520,14 @@ export class CameraRig {
     // the shoulder: shrink it when a wall stands right beside the head, and as the boom gets short
     // (a short boom at full offset would park the lens beside the ear)
     wantShoulder *= 0.45 + 0.55 * smooth01(BOOM_MIN, NEAR_COMFORT + 0.4, this.distance);
+    const probeShoulder = Math.max(this.shoulder, wantShoulder);
     for (let k = 1; k >= 0; k -= 0.25) {
-      const sx = this.pivot.x + _r.x * wantShoulder * k;
-      const sz = this.pivot.z + _r.z * wantShoulder * k;
+      const allowed = probeShoulder * k;
+      const sx = this.pivot.x + _r.x * allowed;
+      const sz = this.pivot.z + _r.z * allowed;
       if (k === 0 || this.free(world, sx, sz, o.y, space0)) {
-        wantShoulder *= k;
+        wantShoulder = Math.min(wantShoulder, allowed);
+        this.shoulder = Math.min(this.shoulder, allowed);
         break;
       }
     }

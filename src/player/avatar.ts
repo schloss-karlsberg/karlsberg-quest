@@ -706,6 +706,8 @@ export class Avatar {
     if (!show) {
       lanternPose.anchor = null;
       this.trail.clear();
+      this.vel.x = this.vel.z = 0;
+      this.speed = 0;
       this.last.copy(pl.renderPos);
       return;
     }
@@ -718,10 +720,14 @@ export class Avatar {
       const vz = (p.z - this.last.z) / dt;
       const jump = Math.hypot(vx, vz) > 40;
       // a teleport: face where the view looks
-      if (jump) this.facing = pl.yaw;
-      const k = Math.min(1, dt * 10);
-      this.vel.x += ((jump ? 0 : vx) - this.vel.x) * k;
-      this.vel.z += ((jump ? 0 : vz) - this.vel.z) * k;
+      if (jump) {
+        this.facing = pl.yaw;
+        this.vel.x = this.vel.z = 0;
+      } else {
+        const k = Math.min(1, dt * 10);
+        this.vel.x += (vx - this.vel.x) * k;
+        this.vel.z += (vz - this.vel.z) * k;
+      }
       this.speed = Math.hypot(this.vel.x, this.vel.z);
     }
     this.last.copy(p);

@@ -53,6 +53,57 @@ describe('third-person camera rig', () => {
     expect(rig.distance).toBeGreaterThanOrEqual(BOOM_MIN);
   });
 
+  it('shortens the boom in a single frame and eases it back out when the obstruction clears', () => {
+    const rig = new CameraRig();
+    const cam = new PerspectiveCamera();
+    const wall: CameraWorld = { ...flat, blocked: (_x, z, r) => z + r > 1.5 };
+    rig.update(cam, input(), flat, noHints());
+    expect(rig.distance).toBeCloseTo(rig.zoom);
+    rig.update(cam, input(), wall, noHints());
+    expect(cam.position.z).toBeLessThan(1.5);
+    const compressed = rig.distance;
+    expect(compressed).toBeLessThan(1.5);
+    rig.update(cam, input(), flat, noHints());
+    expect(rig.distance).toBeGreaterThan(compressed);
+    expect(rig.distance).toBeLessThan(rig.zoom);
+    settle(rig, cam, flat);
+    expect(rig.distance).toBeCloseTo(rig.zoom);
+  });
+
+  it('clears a wall beside the shoulder on the first frame and eases outward when it opens', () => {
+    const rig = new CameraRig();
+    const cam = new PerspectiveCamera();
+    const wall: CameraWorld = { ...flat, blocked: (x, _z, radius) => x + radius > 0.4 };
+    rig.update(cam, input(), flat, noHints());
+    const openX = cam.position.x;
+    expect(openX).toBeGreaterThan(0.4);
+
+    rig.update(cam, input(), wall, noHints());
+    const squeezedX = cam.position.x;
+    expect(wall.blocked(squeezedX, cam.position.z, 0)).toBe(false);
+    expect(rig.distance).toBeCloseTo(rig.zoom);
+
+    rig.update(cam, input(), flat, noHints());
+    expect(cam.position.x).toBeGreaterThan(squeezedX);
+    expect(cam.position.x).toBeLessThan(openX);
+    settle(rig, cam, flat);
+    expect(cam.position.x).toBeCloseTo(openX);
+  });
+
+  it('smooths a small height change and snaps the pivot when placed at another location', () => {
+    const rig = new CameraRig();
+    const cam = new PerspectiveCamera();
+    rig.update(cam, input(), flat, noHints());
+    const initialY = cam.position.y;
+    rig.update(cam, input({ y: 1 }), flat, noHints());
+    expect(cam.position.y).toBeGreaterThan(initialY);
+    expect(cam.position.y).toBeLessThan(initialY + 1);
+    rig.reset();
+    rig.update(cam, input({ x: 10, y: 1 }), flat, noHints());
+    expect(cam.position.x).toBeGreaterThan(10);
+    expect(cam.position.y).toBeCloseTo(initialY + 1);
+  });
+
   it('a thin trunk on the boom does not pull the camera into the head (it dithers instead, round 10)', () => {
     const rig = new CameraRig();
     const cam = new PerspectiveCamera();
