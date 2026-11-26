@@ -61,6 +61,8 @@ export interface Settings {
   subtitleSize: 's' | 'm' | 'l' | 'xl';
   /** Opacity of the subtitle backing 0..1. */
   subtitleBg: number;
+  /** Sound captions (default on in new and older saves). */
+  subtitles?: boolean;
   volume: { master: number; music: number; sfx: number; ambience: number; voice: number };
   fov: number;
   /**

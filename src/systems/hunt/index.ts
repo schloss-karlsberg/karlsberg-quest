@@ -164,8 +164,6 @@ declare module '../../core/save' {
   interface Settings {
     /** Rauhnacht hard mode: faster pack, 30 % less oil, the Pikeur rides from the start. */
     rauhnacht?: boolean;
-    /** Hunt captions as subtitles (default on). */
-    subtitles?: boolean;
     /** Direction arrows at the screen edge for threat sounds (default on). */
     soundIndicators?: boolean;
     /** "Eine Taste für Aktionen": lying flat in the finale lights the lantern too (bible 05 §9). */

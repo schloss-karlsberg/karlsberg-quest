@@ -288,6 +288,11 @@ public/assets/voice/manifest.json   { lineId: { file, ms, speaker, textHash, too
 | Settings | The voice volume slider already exists (`settings.volume.voice`). Add "Sprachausgabe: Stimmen / Gemurmel / Aus". Subtitles stay on in every mode. |
 | Size budget | All 95 min of speech in Opus at 24 kbps is about **17 MB**, and the AAC copies add about 28 MB to `dist`. Each player downloads only one format, chapter by chapter, 2 to 4 MB per chapter. Tier 1 alone is about 3.4 MB. Today `public/` is 41 MB, and GitHub Pages allows a published site of up to 1 GB ([GH Pages limits][gh-pages]). **Budget: at most 50 MB of voice in `dist`, at most 5 MB per chapter.** |
 
+The production policy adopted after this proposal warns above 60 MB of encoded clips and caps the
+shipped `public/voice/` directory at 80 MB (decimal). On 2026-11-26 it totalled **12.97 MB**
+(12,968,959 bytes), including both audio formats and the manifest. `tests/voice-assets.test.ts`
+checks the shipped total and the voice credits.
+
 **Decisions for the owner**
 
 1. Approve the asset rule above, or keep CC0-only. CC0-only allows only permissive models whose output we dedicate to CC0.

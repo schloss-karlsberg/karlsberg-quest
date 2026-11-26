@@ -1,13 +1,35 @@
 /**
  * Story sound cues, all synthesised (Web Audio): a distant howl, horn signals of the hunt, the radio
- * crackle, the laptop beep, the brass ring of the compass, hoarfrost on glass, a struck match.
- * Every cue that can mean danger also gets a caption (handled by the caller).
+ * crackle, the brass ring of the compass, and the tour's dogs and deer.
+ * Scripted cues can also present a German sound caption through the HUD.
  */
 import type { AudioManager } from '../../audio/audio';
 import { hornCall, noiseBurst, windLoop } from '../../audio/synth';
+import type { GameContext } from '../../core/context';
+import { bearingDeg } from './objectives';
+import type { SoundAction } from './types';
 
-export type StorySound = 'howl' | 'horn' | 'radio' | 'beep' | 'compass' | 'frost' | 'match' | 'crowbar' | 'wind' | 'bark';
+export const STORY_SOUNDS = ['howl', 'horn', 'radio', 'beep', 'compass', 'frost', 'match', 'crowbar', 'wind', 'bark', 'deer-rustle'] as const;
+export type StorySound = (typeof STORY_SOUNDS)[number];
 export type HornSignal = 'anblasen' | 'faehrte' | 'verloren' | 'sammeln';
+
+/** Play a scripted cue and present its caption even when the audio is muted or unavailable. */
+export function playStorySoundAction(ctx: GameContext, { sound, x, z, caption, signal }: SoundAction): void {
+  const source = x !== undefined && z !== undefined
+    ? ctx.audio.createSource3D('sfx', { refDistance: 90, maxDistance: 4000, rolloff: 0.5 })
+    : null;
+  if (x !== undefined && z !== undefined) {
+    if (source) source.setPosition(x, ctx.world.heightAt(x, z) + 3, z);
+    if (sound === 'howl' || sound === 'horn') {
+      const p = ctx.player.position;
+      ctx.ui.hud.setMarker('story-sound', bearingDeg(p.x, p.z, x, z), '#b0402a');
+      window.setTimeout(() => ctx.ui.hud.setMarker('story-sound', null), 6000);
+    }
+  }
+  const duration = playStorySound(ctx.audio, sound, source?.input ?? null, signal);
+  if (source) window.setTimeout(() => source.dispose(), (duration + 6) * 1000);
+  if (caption && ctx.settings.state.subtitles !== false) ctx.ui.hud.subtitle(null, caption, Math.max(3500, duration * 1000 + 1500));
+}
 
 /** Horn signals as harmonic numbers of a natural D horn (bible 05-jagd: four signals). */
 export const HORN_SIGNALS: Record<HornSignal, { notes: number[]; durations: number[] }> = {
@@ -134,13 +156,21 @@ export function playStorySound(am: AudioManager, kind: StorySound, dest: AudioNo
       return 9;
     }
     case 'bark': {
-      // two dogs barking off into the trees (placeholder: filtered noise yelps, no samples)
-      for (let i = 0; i < 7; i++) {
-        const when = i * 0.32 + Math.random() * 0.12;
-        noiseBurst(am, out, { duration: 0.09, freq: 700 + Math.random() * 500, q: 3.5, gain: 0.32, attack: 0.008, when });
-        osc(ctx, out, 'sawtooth', 380 + Math.random() * 160, t + when, 0.11, 0.05, 0.005);
+      // Bijou yaps first, then Diane answers from the trail with a lower bark.
+      for (const [when, pitch] of [[0.02, 420], [0.24, 390], [0.82, 255], [1.16, 240], [1.51, 225]] as const) {
+        noiseBurst(am, out, { duration: 0.12, freq: pitch * 2.6, q: 2.4, gain: 0.23, when });
+        const voice = osc(ctx, out, 'sawtooth', pitch, t + when, 0.14, 0.07);
+        voice.frequency.exponentialRampToValueAtTime(pitch * 0.72, t + when + 0.12);
       }
-      return 2.4;
+      return 1.7;
+    }
+    case 'deer-rustle': {
+      // Light footfalls and a short shuffle through the leaf litter below the path.
+      for (const [when, freq, gain] of [[0, 1900, 0.11], [0.16, 2800, 0.13], [0.39, 2200, 0.08]] as const) {
+        noiseBurst(am, out, { when, duration: 0.19, freq, q: 0.9, gain });
+        noiseBurst(am, out, { when, duration: 0.07, freq: 530, gain: gain * 0.6 });
+      }
+      return 0.58;
     }
     case 'match': {
       noiseBurst(am, out, { duration: 0.18, freq: 2600, q: 0.8, gain: 0.35, type: 'highpass' });

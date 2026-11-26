@@ -80,6 +80,29 @@ function harness() {
 }
 
 describe('tour slice v0 (00-tour.story.json)', () => {
+  it('has a guide line for every stop on the guided route', () => {
+    const beatsByStop: Record<string, string[]> = {
+      parkplatz: ['t1', 't2'],
+      abzweig: ['t3', 't4'],
+      einstieg: ['t4'], // Imhoff announces the shortcut before the fade and warp.
+      felsen: ['t6'],
+      wind: ['t8'],
+      reh: ['t10'],
+      damm: ['t11', 't12'],
+      weiher: ['t13'],
+      quelle: ['t15'],
+    };
+    for (const { id } of route.stops) {
+      const associatedBeats = beatsByStop[id];
+      expect(associatedBeats, id).toBeDefined();
+      const actions = associatedBeats!.flatMap((beatId) => {
+        const beat = tour.beats.find((beat) => beat.id === beatId)!;
+        return [...(beat.enter ?? []), ...(beat.exit ?? [])];
+      });
+      expect(actions.some((a) => a.do === 'say' && a.speaker === 'imhoff' && Boolean(a.text?.trim())), id).toBe(true);
+    }
+  });
+
   it('validates against the routes and opens the game, leading into chapter 1', () => {
     const questItems = new Set<string>();
     for (const f of readdirSync(`${ROOT}content/quests`).filter((n) => n.endsWith('.quests.json')))
@@ -93,6 +116,15 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     const stops = route.stops.map((s) => s.id);
     for (const u of used.filter((u) => u !== 'plateau' && u !== '1789')) expect(stops, u).toContain(u);
     expect(stops.indexOf('reh')).toBeGreaterThan(stops.indexOf('wind'));
+  });
+
+  it('rejects a tour sound with a blank caption', () => {
+    const story = structuredClone(tour);
+    const cue = story.beats.find((beat) => beat.id === 't10')?.enter?.find((a) => a.do === 'sound');
+    expect(cue?.sound).toBe('deer-rustle');
+    cue!.caption = ' ';
+    const r = validateStories([{ file: '00-tour.story.json', story }]);
+    expect(r.errors.map((e) => e.message)).toContain("tour sound 'deer-rustle' needs a caption");
   });
 
   it('runs beat by beat from the car park to the shift to 1789 and into chapter 1', () => {
@@ -131,6 +163,7 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     h.ev('npc:arrived', { npc: 'imhoff', at: 'wind', route: 'p-fuehrung', skipped: false });
     expect(h.beat()).toBe('t8');
     expect(h.sent.some((s) => s.kind === 'cinematic')).toBe(true);
+    expect(h.sent.map(({ a }) => a).filter((a) => a.do === 'sound').map((a) => a.sound)).toEqual(['wind', 'bark']);
     h.ev('animal:returned', { id: 'diane' });
     h.ev('animal:returned', { id: 'bijou' });
     for (let i = 0; i < 20; i++) h.tick();
@@ -142,6 +175,10 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     expect(Math.hypot(ricke.x - reh.x, ricke.z - reh.z)).toBeLessThanOrEqual(45);
     h.ev('npc:arrived', { npc: 'imhoff', at: 'reh', route: 'p-fuehrung', skipped: false });
     expect(h.beat()).toBe('t10');
+    const rustle = h.sent.findIndex(({ a }) => a.do === 'sound' && a.sound === 'deer-rustle');
+    const deerShot = h.sent.findIndex(({ a }) => a.do === 'cinematic' && a.ref === 'reh');
+    expect(rustle).toBeGreaterThanOrEqual(0);
+    expect(rustle).toBeLessThan(deerShot);
     // she looked up, then the good photo: Gerold's „Sie hat dich angesehen.“
     h.ev('animal:alert', { id: 'ricke' });
     h.ev('photo:good', { id: 'reh.ricke', stars: 2 });
@@ -171,6 +208,7 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     Object.assign(h.pos, { x: 1059.3, z: -833.1 });
     for (let i = 0; i < 25; i++) h.tick();
     expect(h.beat()).toBe('t17');
+    expect(h.sent.map(({ a }) => a)).toContainEqual({ do: 'sound', sound: 'compass', caption: '[Messing klirrt auf Stein]' });
     expect(h.flags['story.compass']).toBe(true);
     expect(h.flags['quelle.call']).toBe(true);
     expect(h.said).toEqual(expect.arrayContaining(['player.q.fund', 'laub.t.intro', 'player.q.laub', 'laub.t.trog']));
@@ -269,7 +307,7 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     const enter = tour.beats.find((b) => b.id === 't10')!.enter!;
     // The cinematic hides the HUD until it ends. A delayed line would also delay later actions.
     const setup = enter.slice(0, enter.findIndex((a) => a.do === 'say'));
-    expect(setup.map((a) => a.do)).toEqual(['npc', 'cinematic', 'prompt', 'objective']);
+    expect(setup.map((a) => a.do)).toEqual(['npc', 'sound', 'cinematic', 'prompt', 'objective']);
     expect(setup.every((a) => (a.delay ?? 0) === 0)).toBe(true);
 
     const h = harness();

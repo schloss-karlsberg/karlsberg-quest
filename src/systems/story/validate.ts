@@ -11,6 +11,7 @@ import { ITEM_IDS } from '../../rpg/items';
 import { normalize as normalizeCinematic } from '../cinematic/keys';
 import { checkPath, checkRoute } from '../walk/route';
 import type { Route } from '../walk/types';
+import { STORY_SOUNDS } from './sfx';
 import { ACTION_KINDS, CONDITION_KEYS, type Action, type AnimalStoryAction, type Condition, type NpcAction, type NpcWalkAction, type StoryFile, isWalkAction } from './types';
 
 export interface StoryValidation {
@@ -77,7 +78,7 @@ export function stageDirection(text: string, speaker?: string): string | null {
   return null;
 }
 
-const SOUNDS = new Set(['howl', 'horn', 'radio', 'beep', 'compass', 'frost', 'match', 'crowbar', 'wind', 'bark']);
+const SOUNDS = new Set(STORY_SOUNDS);
 const ENDINGS = ['museum', 'burn', 'keep'] as const;
 const NPCS = new Set(['soll', 'hanne', 'jost', 'peter', 'matthes', 'pikeur', 'gaertner', 'diener', 'mann', 'liese', 'hofgaertner', 'gardist', 'gardist-tor', 'lakai']);
 /** Speakers that stand as people (the party's guide and doubles, bible 06-enden §8): bound to a live person, no ghost. */
@@ -392,8 +393,8 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
         break;
       case 'sound':
         if (!SOUNDS.has(a.sound)) err(file, where, `sound: unknown sound '${String(a.sound)}'`);
-        // threat sounds must always be captioned (deaf / hard-of-hearing players)
-        if (!isStr(a.caption) && (a.sound === 'howl' || a.sound === 'horn')) err(file, where, `threat sound '${a.sound}' needs a caption`);
+        if (!isStr(a.caption) && (where.startsWith('tour/') || where.startsWith('tour:'))) err(file, where, `tour sound '${a.sound}' needs a caption`);
+        else if (!isStr(a.caption) && (a.sound === 'howl' || a.sound === 'horn')) err(file, where, `threat sound '${a.sound}' needs a caption`);
         else if (!isStr(a.caption) && a.sound !== 'match') warn(file, where, `sound '${a.sound}' has no caption (accessibility)`);
         break;
       case 'look':

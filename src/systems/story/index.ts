@@ -29,9 +29,9 @@ import { endingScenes } from './endings/scenes';
 import { EndingStage } from './endings/stage';
 import { EndingScreen } from './endings/ui';
 import { HOME, atHome, bringHome } from './hub/home';
-import { ObjectiveView, bearingDeg } from './objectives';
+import { ObjectiveView } from './objectives';
 import { StoryOverlays, cardClockDt } from './overlays';
-import { playStorySound } from './sfx';
+import { playStorySound, playStorySoundAction } from './sfx';
 import { loadBundledStories, missingTourChestnuts, storiesInPlay } from './stories';
 import { installTitleFlow } from './title/flow';
 import { titleHooks } from '../../ui/title';
@@ -843,7 +843,7 @@ class StoryRuntime {
         this.overlays.card(a.title, a.sub, a.note, a.seconds);
         return;
       case 'sound':
-        this.sound(a.sound, a.x, a.z, a.caption, a.signal);
+        playStorySoundAction(ctx, a);
         return;
       case 'look':
         if (a.era && a.era !== 'today') s.lookPast = a.time === 'day' ? null : { era: a.era, time: a.time };
@@ -1199,29 +1199,6 @@ class StoryRuntime {
       teleport: (x, z, yaw) => this.teleport(x, z, yaw),
       arrived: (reason) => this.ctx.events.emit('home:arrived', { reason }),
     });
-  }
-
-  private sound(kind: Parameters<typeof playStorySound>[1], x?: number, z?: number, caption?: string, signal?: Parameters<typeof playStorySound>[3]): void {
-    const ctx = this.ctx;
-    let dest: AudioNode | null = null;
-    let dispose: (() => void) | null = null;
-    if (x !== undefined && z !== undefined) {
-      const src = ctx.audio.createSource3D('sfx', { refDistance: 90, maxDistance: 4000, rolloff: 0.5 });
-      if (src) {
-        src.setPosition(x, ctx.world.heightAt(x, z) + 3, z);
-        dest = src.input;
-        dispose = () => src.dispose();
-      }
-      // visual cue on the compass strip for directional (threat) sounds
-      if (kind === 'howl' || kind === 'horn') {
-        const p = ctx.player.position;
-        ctx.ui.hud.setMarker('story-sound', bearingDeg(p.x, p.z, x, z), '#b0402a');
-        window.setTimeout(() => ctx.ui.hud.setMarker('story-sound', null), 6000);
-      }
-    }
-    const dur = playStorySound(ctx.audio, kind, dest, signal ?? 'anblasen');
-    if (dispose) window.setTimeout(dispose, (dur + 6) * 1000);
-    if (caption) ctx.ui.hud.subtitle(null, caption, Math.max(3500, dur * 1000 + 1500));
   }
 
   private applyLook(): void {
