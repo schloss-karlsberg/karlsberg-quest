@@ -80,6 +80,9 @@ Record design-dependent ownership decisions only if encountered during the audit
 - 2026-11-26: Traced lifecycle entry points and matched them to `tests/`.
 - 2026-11-26: Reproduced cumulative paper instance buffers, surviving stone and rewind instance
   buffers, and duplicate rewind cart geometry disposal. All three checks passed after the fix.
+- 2026-11-26: Each Festsaal replacement left eight prop materials live and disposed one shared
+  geometry twice. The regression now observes exactly one disposal per prop resource and one
+  glint texture for the feature's lifetime.
 
 ## Coverage map
 

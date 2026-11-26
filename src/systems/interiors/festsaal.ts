@@ -12,9 +12,11 @@
 import {
   AdditiveBlending,
   BoxGeometry,
+  type BufferGeometry,
   CanvasTexture,
   CylinderGeometry,
   Group,
+  type Material,
   Mesh,
   MeshStandardMaterial,
   type Object3D,
@@ -232,15 +234,20 @@ export class FestsaalObjects {
   }
 
   clear(): void {
+    const geometries = new Set<BufferGeometry>();
+    const materials = new Set<Material>();
     for (const i of this.items) {
       i.obj.traverse((o) => {
-        const m = o as Mesh;
-        if (m.isMesh) m.geometry.dispose();
+        if (!(o instanceof Mesh)) return;
+        geometries.add(o.geometry);
+        for (const mat of Array.isArray(o.material) ? o.material : [o.material]) materials.add(mat);
       });
       i.obj.removeFromParent();
       i.glint?.material.dispose();
       i.glint?.removeFromParent();
     }
+    for (const geometry of geometries) geometry.dispose();
+    for (const material of materials) material.dispose();
     this.items = [];
     this.setPrompt(null);
   }
