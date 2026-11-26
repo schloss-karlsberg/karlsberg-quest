@@ -211,11 +211,7 @@ class Combat {
       { gentle: ctx.settings.state.gentleMode, reducedMotion: ctx.settings.state.reducedMotion, stats: this.computeStats(), sweep: false, konter: false, waerme: false, dritter: false },
     );
     this.applyStats();
-    // restore the saved resources
-    const s = this.slice();
-    if (s.hp > 0) this.sim.p.hp = Math.min(this.sim.p.max, s.hp);
-    this.sim.p.st.stamina = Math.min(this.sim.p.st.max, s.stamina);
-    this.sim.p.bann = Math.min(this.sim.p.bannMax, s.bann);
+    this.loadResources();
     ctx.scene.add(this.visuals.object);
     ctx.scene.add(this.viewmodel.root);
     this.visuals.setQuality(ctx.quality.level);
@@ -370,8 +366,7 @@ class Combat {
       this.sim.groups = this.slice().groups;
       this.sim.dematerialise();
       this.applyStats();
-      const s = this.slice();
-      this.sim.p.hp = s.hp > 0 ? Math.min(this.sim.p.max, s.hp) : this.sim.p.max;
+      this.loadResources();
       this.sim.p.dead = false;
       this.deadT = -1;
       this.hud.clearWorld();
@@ -422,10 +417,7 @@ class Combat {
     if (!e) return;
     const s = this.sim.opt.stats;
     if (e.heal || e.stamina || e.bann || e.burst) this.sim.drink();
-    if (e.heal) {
-      const a = this.sim.heal(e.heal * s.healing, item);
-      if (a > 0) this.emit('player:healed', { amount: a, hp: this.sim.p.hp, max: this.sim.p.max, by: item });
-    }
+    const healed = e.heal ? this.sim.heal(e.heal * s.healing, item) : 0;
     if (e.stamina) {
       const st = this.sim.p.st;
       st.stamina = Math.min(st.max, st.stamina + e.stamina);
@@ -436,6 +428,24 @@ class Combat {
       const n = this.sim.burst(e.burst);
       if (n) this.hud.caption(t('combat.burst'), 'info');
     }
+    // Progression saves as soon as item use returns, even with the simulation paused.
+    this.syncResources();
+    if (healed > 0) this.emit('player:healed', { amount: healed, hp: this.sim.p.hp, max: this.sim.p.max, by: item });
+  }
+
+  private loadResources(): void {
+    const s = this.slice();
+    const p = this.sim.p;
+    p.hp = s.hp > 0 ? Math.min(p.max, s.hp) : p.max;
+    p.st.stamina = Math.min(p.st.max, s.stamina);
+    p.bann = Math.min(p.bannMax, s.bann);
+  }
+
+  private syncResources(): void {
+    const s = this.slice();
+    s.hp = Math.round(this.sim.p.hp * 10) / 10;
+    s.stamina = Math.round(this.sim.p.st.stamina);
+    s.bann = this.sim.p.bann;
   }
 
   // ---- input ----------------------------------------------------------------------------------
@@ -599,11 +609,7 @@ class Combat {
       // no story to wake us (or it never teleports): get up after a while
       if (this.caughtSent && this.deadT > 8 && !pl.frozen) this.revive();
     }
-    // mirror the resources into the slice (saved)
-    const s = this.slice();
-    s.hp = Math.round(this.sim.p.hp * 10) / 10;
-    s.stamina = Math.round(this.sim.p.st.stamina);
-    s.bann = this.sim.p.bann;
+    this.syncResources();
   }
 
   /** What the fight log needs each step: the camera frustum as last drawn and the feedback settings. */

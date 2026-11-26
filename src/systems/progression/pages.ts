@@ -14,6 +14,7 @@ export interface PageApi {
   name(id: string): string;
   atHome(): boolean;
   quickKey(): string;
+  use(id: string): boolean;
   /** Equipment or talents changed (save, HUD). */
   changed(reason: string): void;
 }
@@ -138,7 +139,7 @@ function renderGear(api: PageApi, talentHeading: HTMLElement): HTMLElement {
           { 'data-testid': `gear-quick-${id}`, 'aria-pressed': isQuick ? 'true' : 'false', title: 'Auf die Schnelltaste legen', onclick: () => (core.setQuick(id), api.changed('quick')) },
           isQuick ? `Auf ${api.quickKey()} ✓` : `Auf ${api.quickKey()}`,
         ),
-        h('button.kq-btn.kqp-g-btn', { 'data-testid': `gear-use-${id}`, disabled: n < 1, onclick: () => (core.use(id), api.changed('use')) }, 'Benutzen'),
+        h('button.kq-btn.kqp-g-btn', { 'data-testid': `gear-use-${id}`, disabled: n < 1, onclick: () => api.use(id) }, 'Benutzen'),
       ]);
     }),
   ]);

@@ -150,6 +150,7 @@ class Progression {
       name: (id) => this.name(id),
       atHome: () => this.atHome,
       quickKey: () => this.key('quickUse'),
+      use: (id) => this.quickUse(id),
       changed: (reason) => this.changed(reason),
     });
     this.wire();
@@ -309,10 +310,10 @@ class Progression {
     this.world.sync(this.core.pickups(), animate);
   }
 
-  private changed(reason: string): void {
+  private changed(reason: string, force = false): void {
     this.updateQuick();
     this.pages.refresh();
-    if (this.started) this.ctx.save.autosave(`progression-${reason}`);
+    if (this.started) this.ctx.save.autosave(`progression-${reason}`, force);
   }
 
   private updateXp(animate: boolean): void {
@@ -338,7 +339,7 @@ class Progression {
   quickUse(item?: string): boolean {
     const id = item ?? this.core.quickItem();
     if (this.core.use(id)) {
-      this.changed('use');
+      this.changed('use', true);
       return true;
     }
     this.hud.quickPulse(false);
