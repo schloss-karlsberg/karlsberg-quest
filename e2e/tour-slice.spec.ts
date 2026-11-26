@@ -379,6 +379,11 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   await shot(page, '09b-gruppe-verloren');
   for (let i = 0; i < 80 && !(await page.evaluate(() => window.kq!.walk!.find().prompt)); i++) await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
   expect(await page.evaluate(() => window.kq!.walk!.find().prompt)).toBe(true);
+  const waitBarks = await page.evaluate((since) => {
+    const { tourRec } = window as unknown as { tourRec: { n: string; p: { id?: string; npc?: string }; t: number }[] };
+    return tourRec.filter((r) => r.t >= since && r.n === 'walk:bark' && r.p.npc === 'imhoff' && r.p.id === 'imhoff.bark.wait').length;
+  }, tStray0);
+  expect(waitBarks).toBeGreaterThan(0);
   await page.waitForTimeout(800);
   await shot(page, '09c-zur-gruppe');
   await page.evaluate(() => {
@@ -416,7 +421,8 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   await page.evaluate(() => window.kq!.step(240));
   await shot(page, '11-bussole-laub');
   expect(await page.evaluate(() => window.kq!.state().flags['story.compass'])).toBe(true);
-  expect(await page.evaluate(() => window.kq!.walk!.stats().bodies)).toBe(0);
+  expect(await page.evaluate(() => window.kq!.walk!.stats().bodies)).toBe(15);
+  expect(await page.evaluate(() => window.kq!.animals!.stats().dogs)).toBe(2);
   // Laub's lines run, then the hand into the water (the Quelle's own E)
   for (let i = 0; i < 60 && !(await page.evaluate(() => window.kq!.quelle!.info().prompt)); i++) await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
   const tTouch = await time(page);
@@ -444,6 +450,8 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   }
   expect(era).toBe('1789');
   await page.evaluate(() => window.kq!.step(300));
+  expect(await page.evaluate(() => window.kq!.walk!.stats().visible)).toBe(0);
+  expect(await page.evaluate(() => window.kq!.animals!.stats().visible)).toBe(0);
   await shot(page, '12-1789');
   // a look round in 1789, then the hand-over into chapter 1 (no „Fortsetzung folgt“)
   for (let i = 0; i < 80 && (await page.evaluate(() => window.kq!.story!.state().chapter)) === 'tour'; i++) await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
@@ -451,6 +459,7 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   expect(s1.completed).toContain('tour');
   expect(s1.chapter).toBe('k1');
   expect(s1.beat).toBe('k1_0');
+  expect(await page.evaluate(() => window.kq!.walk!.stats().bodies)).toBe(0);
   await expectHandover(page);
   // the deer photo is a tour-only extra on top
   expect(await page.evaluate(() => window.kq!.photo!.has('reh.ricke'))).toBe(true);

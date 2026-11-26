@@ -1,6 +1,10 @@
 /** WP-16 tour walk: the walk system's runtime (src/systems/walk/runtime.ts) with fake bodies and a fake bus. */
 import { describe, expect, it, vi } from 'vitest';
+import tourPack from '../content/packs/tour.pack.json';
 import route from '../content/routes/p-fuehrung.json';
+import { isBarkLine, matchTrigger } from '../src/content/triggers';
+import type { DialogueLine } from '../src/content/types';
+import { chooseBark, newMemory } from '../src/systems/barks/rules';
 import { PEOPLE_MISSING, walkBodies, type PeopleApiLike } from '../src/systems/walk/bodies';
 import { WalkRuntime, memberLooks, specFor, type Body, type BodyFactory, type BodySpawn, type WalkBus } from '../src/systems/walk/runtime';
 import type { Route, WalkRequest, WalkSlice } from '../src/systems/walk/types';
@@ -286,6 +290,9 @@ describe('walk system', () => {
     expect(waiting[0]).toMatchObject({ group: 'fuehrung', leader: 'imhoff' });
     expect(waiting[0].dist).toBeGreaterThanOrEqual(25);
     expect(s.bus.of('walk:bark')).toEqual([{ npc: 'imhoff', id: 'imhoff.bark.wait' }]);
+    const matching = (tourPack.dialogue as DialogueLine[]).filter((line) => isBarkLine(line.id) &&
+      matchTrigger(line, 'walk:bark', s.bus.of('walk:bark')[0], { era: 'today', chapter: 'tour', beat: 't14', flags: {} }));
+    expect(chooseBark(matching, newMemory(), s.rt.now, () => 0)).toMatchObject({ speaker: 'imhoff', id: 'imhoff.bark.wait.01' });
     expect(s.rt.groupList()[0]!.waiting).toBe(true);
     // a conversation is open: the 20 s re-bark stays silent
     s.bus.emit('npc:conversation', { npc: 'hanne', open: true });
@@ -420,6 +427,7 @@ describe('walk system', () => {
       const n = s.rt.npcs.get(m)!;
       expect(Math.hypot(n.x - L.x, n.z - L.z)).toBeLessThan(6);
       expect(n.speed).toBe(0);
+      expect(s.bodies.find((b) => b.spawn.npc === m)).toMatchObject({ pos: [n.x, 300, n.z], yaw: n.yaw });
     }
     // no catch-up run after the fade
     s.step(0.5);

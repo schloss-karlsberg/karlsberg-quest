@@ -1355,7 +1355,7 @@ the guide, opt-in with `?people=authored`), and callers do not change.
     and stays invisible until then.
 - **Distance LOD** (`PEOPLE_LOD`, measured from the camera):
   - animation at full rate within 25 m, about 10 Hz within 40 m, frozen beyond
-  - hidden beyond the draw limit (stand-in: 60 m)
+  - hidden beyond 60 m, drawn again within 58 m
   - frustum culling stays on
 - **Budget tiers** (`TIER_BUDGET`, for the authored meshes; the stand-ins only report them):
   - hero: ≤ 25k tris, ≤ 8 draw calls
@@ -1388,10 +1388,10 @@ the guide, opt-in with `?people=authored`), and callers do not change.
     per loop per metre of height.
   - `face` is an eased turn, capped at 5 rad/s. `lookAt` turns neck and head
     (`Rig.turnBone`, ±60°, no owl neck).
-  - 'solid' = per-person clones of the model's slots lit by `kqStandard`. 'ghost' = the NPC ghost
-    shader with its depth pre-pass.
-  - Each skinned part gets one conservative bound round the whole body, so frustum culling works
-    on skinned meshes.
+  - The solid look uses opaque per-person clones of the model's material slots lit by
+    `kqStandard`. The ghost look uses its own shader and depth pre-pass.
+  - Skinned parts and their ghost depth twins use a shared body sphere anchored to the person's
+    root, independently of pose and mesh level.
   - `dispose()` frees the materials, the clone's skeletons, the mixer's actions and the fallback
     capsule. Geometry belongs to the asset cache.
   - A failed load shows a capsule.
@@ -1403,8 +1403,7 @@ the guide, opt-in with `?people=authored`), and callers do not change.
     draws with the one shared toon twin `peopleMaterial(eye, 'toon')`).
   - **Switch:** `PEOPLE_AUTHORED_DEFAULT` (`specs.ts`, one line) turns authored bodies on or off;
     `?people=authored` / `?people=standin` force either for the session (read once at people init).
-    It is `false` for now: the authored guide is opt-in (`?people=authored`) until his look passes
-    review; by default every person, the guide too, draws its stand-in.
+    The authored guide is enabled by default. The visitors draw their stand-ins.
   - **One shared material.** The pipeline bakes every surface colour of a body into its vertex
     colours and gives the mesh ONE material `People` (`kqchar/palette.py`). The people system draws
     every such mesh, in every authored person and every GLB, with the same `MeshStandardMaterial`
@@ -1592,8 +1591,11 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   `setSpeed` on change, `play(clip)` only when the clip hint changes.
 - Dog leaders: `npc:double.*` / `npc:extra.*` / `npc:guide` → the live person with that `specId`
   (`ctx.people.list()`, `root.position`, `root.rotation.y`), other `npc:<id>` → `kq.npc.list()`,
-  `player`, `animal:<id>`. Speed and heading from the motion between ticks (a jump > 15 m/s counts as
-  0). Unresolvable → the dog idles where it is.
+  `player`, `animal:<id>`. Speed and heading come from movement between ticks. A jump over
+  15 m/s counts as zero speed. An unresolved leader leaves the dog idling in place. Walk
+  relocations land the dogs in their new slots immediately using the leader poses supplied in
+  `group:relocated`. Dogs plant on sharp reversals and turn at up to 5 rad/s, with an
+  immediate facing change in reduced motion.
 - Events: the core's `animal:alert {id}`, `animal:fled {id, by, dist}`, `animal:settled {id}`,
   `animal:returned {id}` go onto the bus 1:1; `bark` / `shake` cues play as one-shots on the body (no
   dog bark SFX yet).
@@ -1920,6 +1922,8 @@ pause the logic.
   past it the walk ends there (`to` becomes the warp stop, arrived); members land in their slots at
   once (mode unchanged), one `npc:arrived {skipped: true}`. Works while bodies are hidden; it never
   moves the player.
+- Both paths update the body roots and emit `group:relocated {group, poses}` after landing the
+  members and before reporting arrival. The animals system places the dogs using these poses.
 - **Bodies** (`bodies.ts`): `ctx.people` (people contract v0.1) first — spec per npc (`imhoff` →
   `guide`, spec ids pass through), tier hero / featured / extra, `root.position` moved, turns via
   `face`, locomotion via `setSpeed` (no `play` for walking, no `root.rotation`, no `lookAt`). A

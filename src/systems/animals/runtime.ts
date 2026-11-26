@@ -6,7 +6,9 @@
  * tests/animals-system.test.ts drives it with fakes.
  */
 import type { Stance } from '../../player/stance';
+import { CROWD_LEVEL_TOLERANCE, DOG_RADIUS, PLAYER_RADIUS, separateFromCrowd, type CrowdCircle } from '../../world/crowd';
 import type { Animal, AnimalClip, AnimalSpawnOpts, FaunaApi } from '../fauna/types';
+import type { GroupRelocation } from '../walk/types';
 import {
   DEER,
   calmDeer,
@@ -20,8 +22,7 @@ import {
   type Deer,
   type DeerInput,
 } from './deer';
-import { applyDogRequest, createDog, DOGS, dogSlot, stepDog, type Dog, type DogTarget } from './dogs';
-import { CROWD_LEVEL_TOLERANCE, DOG_RADIUS, PLAYER_RADIUS, separateFromCrowd, type CrowdCircle } from '../../world/crowd';
+import { applyDogRequest, createDog, DOGS, dogSlot, relocateDog, stepDog, type Dog, type DogTarget } from './dogs';
 import { createCinematicBridge, createPhotoBridge, type CinematicBridge, type P3, type PhotoBridge } from './photoBridge';
 import { restoreAnimals, serializeAnimals } from './save';
 import { specIdFor, toRequest, type AnimalAction, type AnimalEvent, type AnimalKind, type AnimalRequest, type AnimalSave } from './types';
@@ -69,6 +70,7 @@ export interface AnimalsWorld {
   heightAt(x: number, z: number): number;
   era(): string;
   player(): AnimalsPlayer;
+  reducedMotion?(): boolean;
   walkable?(x: number, z: number): boolean;
   tourVisitors?(): readonly CrowdCircle[];
   /** Can the deer at (ax, az) see the player at (bx, bz) in this stance? Default: yes. */
@@ -151,7 +153,26 @@ export class AnimalsRuntime {
       if (c && c.id === 'animal' && c.data) this.request(c.data as unknown as AnimalAction);
     });
     deps.bus.on('save:loaded', () => this.restore());
+    deps.bus.on('group:relocated', (relocation: GroupRelocation) => this.relocateFollowers(relocation));
     this.active = deps.world.era() === ANIMAL_ERA;
+  }
+
+  private relocateFollowers({ poses }: GroupRelocation): void {
+    if (this.paused || !this.dogs.length) return;
+    const returned: AnimalEvent[] = [];
+    let moved = false;
+    for (const dog of this.dogs) {
+      const ref = dog.state === 'lie' ? dog.lie?.follow : dog.follow;
+      const pose = poses.find((p) => ref === `npc:${p.npc}`);
+      if (!pose || !ref) continue;
+      this.refs.delete(ref);
+      this.tickRefs.delete(ref);
+      if (relocateDog(dog, { ...pose, speed: 0 })) returned.push({ type: 'animal:returned', id: dog.id });
+      moved = true;
+    }
+    if (!moved) return;
+    this.writeSave();
+    this.cues(returned);
   }
 
   // ---- requests -------------------------------------------------------------------------------
@@ -435,9 +456,10 @@ export class AnimalsRuntime {
         Math.hypot(dog.x - other.x, dog.z - other.z) <= clearance + DOGS.PATH_EPS &&
         Math.abs(w.heightAt(x, z) - other.y) <= CROWD_LEVEL_TOLERANCE;
     }) : undefined;
+    const reducedMotion = this.dogs.length > 0 && w.reducedMotion?.();
     for (const dog of this.dogs) {
       const crowded = dog.follow === 'npc:double.jost' && blockers?.length;
-      stepDog(dog, dt, this.resolve, evs, crowded ? reachedBlocker : undefined);
+      stepDog(dog, dt, this.resolve, evs, reducedMotion, crowded ? reachedBlocker : undefined);
       if (!crowded) continue;
       const body = { x: dog.x, y: w.heightAt(dog.x, dog.z), z: dog.z, radius: DOG_RADIUS };
       const from = { x: dog.x + Math.sin(dog.yaw), z: dog.z + Math.cos(dog.yaw) };

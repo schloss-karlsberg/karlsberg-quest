@@ -9,7 +9,7 @@ import { VISITOR_RADIUS, type CrowdCircle } from '../../world/crowd';
 import { buildRoute, type BuiltRoute } from './route';
 import { MEMBER_SPEEDS, assignSlots, followSlots, gatherSlots, pushOutOfTrunks, separate, stepMember, type MemberSpeeds, type Slot, type TrunksNear } from './group';
 import { arriveAtTarget, createWalker, earlyArrival, headingOf, restoreWalker, serializeWalker, snapAhead, stepWalker, type WalkEvent, type Walker } from './walker';
-import type { GatherOp, GroupSave, Route, WalkRequest, WalkSlice } from './types';
+import type { GatherOp, GroupRelocation, GroupSave, Route, WalkRequest, WalkSlice } from './types';
 
 /** Clips the walk system asks for (a subset of the people API's PersonClip). */
 export type BodyClip = 'idle' | 'walk' | 'run';
@@ -495,7 +495,19 @@ export class WalkRuntime {
     L.z = w.z;
     L.yaw = w.yaw;
     L.speed = 0;
-    for (const g of this.groups.values()) if (g.leader === w.npc) this.landMembers(g);
+    this.placeBody(L, true);
+    for (const g of this.groups.values()) {
+      if (g.leader !== w.npc) continue;
+      this.landMembers(g);
+      const poses: GroupRelocation['poses'][number][] = [{ npc: L.id, x: L.x, z: L.z, yaw: L.yaw }];
+      for (const id of g.members) {
+        const n = this.npcs.get(id);
+        if (!n) continue;
+        this.placeBody(n, true);
+        poses.push({ npc: id, x: n.x, z: n.z, yaw: n.yaw });
+      }
+      this.o.bus.emit('group:relocated', { group: g.id, poses } satisfies GroupRelocation);
+    }
     if (emit) this.o.bus.emit('npc:arrived', { npc: w.npc, at, route: w.route, skipped: true });
   }
 
@@ -737,6 +749,13 @@ export class WalkRuntime {
     n.body?.setVisible(on);
   }
 
+  private placeBody(n: NpcRt, snap?: boolean): void {
+    if (!n.body) return;
+    n.body.setPos(n.x, this.o.world.heightAt(n.x, n.z), n.z);
+    n.body.face(n.yaw, snap);
+    n.body.setSpeed(n.speed);
+  }
+
   /** Bodies follow the runtime: ground height, heading, speed, clip, distance culling. */
   sync(): void {
     const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
@@ -753,9 +772,7 @@ export class WalkRuntime {
         b.setSpeed(0);
         continue;
       }
-      b.setPos(n.x, this.o.world.heightAt(n.x, n.z), n.z);
-      b.face(n.yaw, this.o.world.reducedMotion?.());
-      b.setSpeed(n.speed);
+      this.placeBody(n, this.o.world.reducedMotion?.());
       const clip: BodyClip = n.speed < 0.1 ? 'idle' : n.speed > 2.2 ? 'run' : 'walk';
       if (clip !== n.clip) {
         n.clip = clip;

@@ -61,6 +61,12 @@ export interface WalkSlice {
   pendingTravelSnap?: true;
 }
 
+export interface GroupRelocation {
+  group: string;
+  /** Authoritative landing poses, including the leader, after slots and trunk clearance. */
+  poses: readonly { npc: string; x: number; z: number; yaw: number }[];
+}
+
 declare module '../../core/events' {
   interface GameEvents {
     /** Request: walk / group / follow / gather / hold / release / despawn. Owner: story → walk system. */
@@ -71,6 +77,8 @@ declare module '../../core/events' {
     'group:waiting': { group: string; leader: string; dist: number };
     /** The player caught up; the leader walks on. */
     'group:resumed': { group: string; leader: string };
+    /** A story warp or catch-up snap has placed the group. Followers can land in the same step. */
+    'group:relocated': GroupRelocation;
     /**
      * A come-along bark from a waiting walker (`wait.bark`, a line-group id such as
      * 'imhoff.bark.wait'). The barks system picks it up like any event: bark lines with

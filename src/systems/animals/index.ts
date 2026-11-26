@@ -95,6 +95,7 @@ class AnimalsSystem {
       world: {
         heightAt: (x, z) => w.heightAt(x, z),
         era: () => ctx.era.current,
+        reducedMotion: () => ctx.settings.state.reducedMotion,
         player: () => {
           const pl = ctx.player;
           return { x: pl.position.x, y: pl.position.y, z: pl.position.z, speed: pl.stats.speed, stance: pl.stance, flying: pl.flying };

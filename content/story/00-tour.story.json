@@ -7,7 +7,7 @@
   "start": "t1",
   "next": "k1",
   "leave": [
-    { "do": "flag", "set": { "combat.disabled": null, "laub.silent": null, "tour.slice": null, "tour.ende": null, "tour.welcome": null, "tour.station1.ready": null, "quelle.call": null, "quelle.guide": null } },
+    { "do": "flag", "set": { "combat.disabled": null, "laub.silent": null, "tour.slice": null, "tour.ende": null, "tour.welcome": null, "tour.station1.ready": null, "quelle.call": null, "quelle.guide": null, "walk.find": null } },
     { "do": "npc", "op": "despawn", "group": "fuehrung" },
     { "do": "npc", "op": "despawn", "npc": "imhoff" },
     { "do": "npc", "op": "despawn", "npc": "marlene" },
@@ -384,12 +384,9 @@
       "id": "t17",
       "title_de": "Die Bussole",
       "enter": [
-        { "do": "npc", "op": "despawn", "group": "fuehrung" },
-        { "do": "animal", "op": "despawn", "id": "diane" },
-        { "do": "animal", "op": "despawn", "id": "bijou" },
         { "do": "sound", "sound": "compass", "caption": "[Messing klirrt auf Stein]" },
         { "do": "give", "item": "item.bussole", "toast": "Eine Messing-Bussole, grün angelaufen. Der Deckel klemmt." },
-        { "do": "flag", "set": { "story.compass": true, "laub.silent": null, "story.laub": true } },
+        { "do": "flag", "set": { "story.compass": true, "laub.silent": null, "story.laub": true, "walk.find": false } },
         { "do": "say", "id": "laub.t.intro", "speaker": "laub", "text": "Nicht fallen lassen. Ich bin schon einmal gefallen, das genügt.", "delay": 1.5 },
         { "do": "say", "id": "player.q.laub", "speaker": "player", "text": "…Hat der Kompass gerade geredet?" },
         { "do": "say", "id": "laub.t.intro.b", "speaker": "laub", "text": "Laub, Quirin, königlich bayerischer Geometer, abgeordnet zur Landesaufnahme im Rheinkreis. Seit November 1840 verwaltungstechnisch verschollen. Sie haben mich aus dem Wasser gezogen. Danke. Es war kalt, und es war lang." },

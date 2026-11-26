@@ -415,6 +415,8 @@ Source: the playtest report of 2026-11-21 (tour-playtest @ 69c1fc0). It lives in
 - Findings 1–4 are FIXED (MR 14 `feat/tour-find-group` c2843ce + slice `tour/slice-find` 3997f28).
 - Findings 5–6 (dogs not moved by fades/warps; dogs slide backwards on 180° turns) are with kq-characters.
 - TASK-017 addresses findings 12–13. See the [implementation and tuning notes](design/tour/slice-v0.md#deer-photo-and-sneak-tuning-task-017).
+- TASK-022 addresses findings 5–6 and the slice findings on walker dithering, the group disappearing
+  in view and wait-bark coverage. See the [tour systems notes](design/tour/systems.md).
 - TASK-016 addresses findings 7, 9, 10, 11 and 18. See the [tour systems notes](design/tour/systems.md).
 
 | # | Severity | Essence |
@@ -439,10 +441,7 @@ Slice polish list:
 
 - The „Die Führung“ chapter card lingers ~100 s.
 - The spring prompt and Marlene's radio lines bleed in at the Quelle.
-- Walkers look dithered at 10 m.
 - The Bussole objective lags.
-- The wait barks are untested in e2e.
-- The group vanishes in view.
 - The slice runs too short: 4:41 / 8:16 against the targets of 8 / 12 min.
 - Laub's 1789 arrival line from main does not fit the tour.
 

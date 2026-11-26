@@ -6,11 +6,14 @@
  * between speeds and clips.
  */
 import { describe, expect, it } from 'vitest';
+import tourRoute from '../content/routes/p-fuehrung.json';
 import type { Animal, AnimalSpawnOpts } from '../src/systems/fauna/types';
 import { createCinematicBridge, createPhotoBridge } from '../src/systems/animals/photoBridge';
 import { AnimalsRuntime, type AnimalsBus, type PersonLike } from '../src/systems/animals/runtime';
 import { DOGS, applyDogRequest, createDog, dogSlot, headingOf, stepDog, type DogTarget } from '../src/systems/animals/dogs';
 import { FACE_SECONDS, easeYaw, wrapPi } from '../src/systems/people/locomotion';
+import { WalkRuntime } from '../src/systems/walk/runtime';
+import type { Route, WalkSlice } from '../src/systems/walk/types';
 
 const DT = 1 / 60;
 const DEG = 180 / Math.PI;
@@ -252,6 +255,56 @@ describe('dogs land in their places when the leader jumps (a fade warp, kq.walk.
     for (const id of ['diane', 'bijou']) expect(rt.state(id)!['speed'] as number).toBeLessThan(1);
   });
 
+  it('both tour fades and the catch-up snap place the dogs in the same step as the group', () => {
+    const { player, bus, rt, bodies } = rig();
+    const route = tourRoute as Route;
+    const slice: WalkSlice = { walkers: [], groups: [] };
+    const walk = new WalkRuntime({
+      bus, routes: new Map([[route.id, route]]), bodies: () => null, slice: () => slice,
+      world: { player: () => player, era: () => 'today', heightAt: () => 0 },
+    });
+    const stops = route.stops;
+    walk.ensureNpc('imhoff', stops[0]!.x, stops[0]!.z);
+    bus.emit('npc:walk', { op: 'group', group: 'fuehrung', leader: 'imhoff', members: ['double.jost'] });
+    bus.emit('npc:walk', { op: 'follow', group: 'fuehrung', leader: 'imhoff' });
+    for (const look of ['diane', 'bijou']) {
+      bus.emit('animal:request', { op: 'spawn', kind: 'hund', look, id: look, follow: 'npc:double.jost' });
+    }
+    bus.emit('animal:request', { op: 'spawn', kind: 'hund', id: 'other', x: 20, z: 15, follow: 'player' });
+    const check = (precision = 8) => {
+      // No animals update or fresh leader sample: a render immediately sees the landed dogs.
+      rt.sync();
+      const jost = walk.npcs.get('double.jost')!;
+      for (const [id, slot] of [['diane', 0], ['bijou', 1]] as const) {
+        const expected = dogSlot(jost, slot, DOGS.SPACING);
+        const body = bodies.get(id)!;
+        expect(body.x).toBeCloseTo(expected.x, precision);
+        expect(body.z).toBeCloseTo(expected.z, precision);
+        expect(body.yaw).toBeCloseTo(jost.yaw, precision);
+        expect(rt.state(id)).toMatchObject({ speed: 0 });
+      }
+      expect(bodies.get('other')).toMatchObject({ x: 20, z: 15 });
+    };
+    for (const stop of ['einstieg', 'damm']) {
+      bus.emit('npc:walk', { op: 'warp', group: 'fuehrung', to: stop, route: route.id });
+      check();
+    }
+    // A second warp at the same stop still lands the dogs, even on an interrupted bolt.
+    const returned: { id: string }[] = [];
+    bus.on('animal:returned', (ev: { id: string }) => returned.push(ev));
+    bus.emit('animal:request', { op: 'run', id: 'diane', path: [[0, 0], [1, 1]], back: true });
+    expect(walk.snap('fuehrung', 'damm')).toBe(true);
+    check();
+    bus.emit('npc:walk', { op: 'walk', npc: 'imhoff', route: route.id, to: 'quelle' });
+    const quelle = stops.find((s) => s.id === 'quelle')!;
+    Object.assign(player, { x: quelle.x, z: quelle.z });
+    bus.emit('player:teleport', player);
+    walk.update(DT);
+    expect(walk.groupList()[0]?.at).toBe('quelle');
+    check(1); // one ordinary group tick has already followed the catch-up snap
+    expect(returned).toEqual([{ id: 'diane' }]);
+  });
+
   it('a player teleport lands the dogs that follow the player; a dog near its new place just walks', () => {
     const { player, bus, bodies, step } = rig();
     bus.emit('animal:request', { op: 'spawn', kind: 'hund', look: 'diane', id: 'diane', x: 4, z: 7, follow: 'player' });
@@ -283,6 +336,20 @@ describe('dogs land in their places when the leader jumps (a fade warp, kq.walk.
 });
 
 describe('dogs: the core moves a dog only forward along its yaw', () => {
+  it.each([false, true])('plants before translating into a 180° reversal (reduced motion: %s)', (reducedMotion) => {
+    const dog = createDog({ op: 'spawn', id: 'diane', kind: 'hund', x: 0, z: 0 });
+    dog.v = 2;
+    applyDogRequest(dog, { op: 'run', id: dog.id, path: [[0, 8]] });
+    stepDog(dog, DT, () => null, [], reducedMotion);
+    expect(dog.motion).toMatchObject({ speed: 0, clip: 'idle' });
+    expect(dog).toMatchObject({ x: 0, z: 0 });
+    expect(Math.abs(dog.yaw)).toBeCloseTo(reducedMotion ? Math.PI : DOGS.TURN * DT);
+    for (let i = 0; i < 60 && dog.v === 0; i++) stepDog(dog, DT, () => null, [], reducedMotion);
+    expect(dog.v).toBeGreaterThan(0);
+    expect(dog.z).toBeGreaterThan(0);
+    expect(headingOf(dog.x, dog.z)).toBeCloseTo(dog.yaw);
+  });
+
   it('in every state (follow through a stop and turn, the bolt with its U-turn, the return, the lie), turning at most TURN', () => {
     const jost: DogTarget = { x: 0, z: 0, yaw: 0, speed: 0 };
     const player: DogTarget = { x: 6, z: 3, yaw: Math.PI / 2, speed: 0 };

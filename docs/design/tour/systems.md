@@ -67,7 +67,7 @@ visitor occupies a run waypoint, a dog can round it from the edge of the collisi
 
 ## 3. Tour group that follows the guide
 
-**What it does.** Gerold walks the route stop by stop; 14 group NPCs (7 doubles, 7 extras) follow him in a loose cluster; two dogs follow Jost. At each stop the group gathers in a half circle facing the guide; Gerold speaks when the player is within 12 m. If the player is > 25 m behind, the group **waits** (Gerold turns, bark „{Name}, kommst du?“); if the player runs ahead > 30 m, Gerold calls „Nicht so schnell, das Schloss läuft nicht weg.“ and the next stop still triggers only when the guide arrives. Ops: `walk`, `hold` (the deer), `gather`, `despawn` (out of sight at the Quelle).
+**What it does.** Gerold walks the route stop by stop. Fourteen visitors follow him in a loose cluster, and two dogs follow Jost. At each stop the group gathers around the guide. Gerold speaks when the player is within 12 m. If the player falls more than 25 m behind, the group waits and Gerold requests a wait bark. After the Quelle stop the group continues towards the plateau through the Bussole beat. The era shift hides today's group and the tour's chapter cleanup disposes of it.
 
 **Reusable code (audit §8).** **No NPC path-walk exists**: only `spawn`/`despawn` (`story/types.ts:424`). Templates:
 - `npc:follow` escort (`src/systems/npc/index.ts:122–165`, `:512` `followStep`, 2.4 m behind) — follower logic for the group around the guide.
@@ -85,9 +85,19 @@ visitor occupies a run waypoint, a dog can round it from the edge of the collisi
 { "do": "npc", "op": "hold", "group": "fuehrung" }
 // events: 'npc:arrived' {npc, at, route, skipped}, 'group:waiting' {group, leader, dist}, 'group:resumed' {group, leader}  (contract C2)
 ```
-`path` names a polyline registered from `paths.json` node ids (route `p-fuehrung`, segments between stops). Followers: a boids-lite offset (slot ring behind the guide, 1.2–4 m, jitter), terrain-snapped, trunk avoidance via `forest.trunksNear`. Walk speed 1.6 m/s for the group when the player is close, catching up at 2.4 m/s; the player's walk is 3.2 m/s (`STANCES.stand.speed`), so the player is never held back. Performance: 14 figures at low tier use the K3 crowd's cheap path; full rigs only within 25 m.
+`path` names a polyline registered from `paths.json` node ids (route `p-fuehrung`, segments between stops). Followers: a boids-lite offset (slot ring behind the guide, 1.2–4 m, jitter), terrain-snapped, trunk avoidance via `forest.trunksNear`. Walk speed 1.6 m/s for the group when the player is close, catching up at 2.4 m/s; the player's walk is 3.2 m/s (`STANCES.stand.speed`), so the player is never held back.
 
-**Tests.** Unit: `tests/npc-walk.test.ts` (polyline progress, leash wait/resume, gather slots don't overlap, no follower inside a trunk); validator: every `walk` path resolves to `paths.json` nodes and stays inside the extent. e2e: `e2e/tour.spec.ts` (a walk-only bot follows the marker from the car park to the Quelle; the group arrives at each stop; standing still 40 s → group waits and barks; total time within the pacing budget below).
+**Rendering (TASK-022).** The solid stand-ins previously used a 350 ms alpha-hash fade when
+their models loaded, visible as a screen-door pattern even at 10 m. They draw opaque from the
+first frame. Skinned parts use a shared root-space frustum bound across poses and mesh levels.
+Animation runs at full rate through 25 m from the camera, at about 10 Hz through 40 m, and holds
+its pose farther out. The crowd hides beyond 60 m and draws again within 58 m. The authored
+guide switches meshes outside the 14.5–15.5 m hysteresis band. Each stand-in uses its one mesh
+level throughout. See [the performance note](../../PERFORMANCE.md#38-tour-crowd-task-022).
+
+**Tests.** `tests/walk-system.test.ts` covers the leash and verifies that the real tour pack
+matches its wait-bark event. `e2e/tour-slice.spec.ts` checks for that event in its existing
+lagging-player sequence and checks that the group remains present at the Bussole until the shift.
 
 **Stop staging (TASK-016).** Stopped members turn toward Gerold. He faces the player during
 conversation and nearby story dialogue while he is stopped. Reduced motion sets the heading
@@ -107,7 +117,11 @@ circles' ground heights are refreshed when the visitors move.
 
 **What it does.**
 - **Roe doe and fawn** (`reh.ricke`, `reh.kitz`): grey winter coat, fawn without spots, nearly the doe's size, follows her within 2 m. Idle graze / ear flick / head-up „sichern“ (1.5 s tell). A perception meter like the pack's but inverted in purpose: crouch + slow lowers it, standing / running / sprinting raises it; at the threshold both bound 25 m and stop again (no fail state). Today only.
-- **Diane and Bijou** (present-day dogs): follow Jost (`npc:follow`), sniff, sit at stops; scripted bolt in t5 (run a path uphill, bark, return); at the party they lie down (keep ending: at the player's feet).
+- **Diane and Bijou** (present-day dogs) follow Jost, sniff and sit at stops. In the Wind scene they bolt uphill, bark and return. At the party they lie down, at the player's feet in the keep ending.
+
+The walk system's `group:relocated` event puts both dogs in their slots beside Jost during
+both fades and catch-up snaps. A dog plants its feet when reversing, then moves forward as it
+lines up. Reduced motion turns the body immediately while planted.
 
 **Reusable code.** `src/systems/menagerie/*` (cassowary, dromedary, jaguar: story-spawned `menagerie:spawn`, era-bound, knockdown, never "caught", persisted) — the deer are a new species there with a **non-hostile, shy** mode. Perception: `src/systems/hunt/perception.ts` (`lineOfSight`), noise / visibility from `STANCES` (`src/player/stance.ts`). The hunt's `hunt:tableau` cues (lie / eyes / rest) for the dogs' poses. Models: CC0 base + Blender pipeline (memory rule: authored, critic score ≥ 8 before the owner sees them).
 
