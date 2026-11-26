@@ -111,6 +111,9 @@ describe('story actions and conditions of the RPG layer', () => {
           { do: 'enemy', op: 'spawn', group: 'k1.weiher', kind: 'irrlicht', x: 1854, z: 214, era: '1789', count: 5, radius: 18 },
           { do: 'enemy', op: 'despawn', group: '*' },
           { do: 'loot', id: 'k1.zettel', item: 'item.balsam', x: 1262, z: -1224, era: '1789' },
+          // a group of pickups, cleared together (the tour's chestnuts)
+          { do: 'loot', id: 'tour.kastanie.01', item: 'item.kastanie', x: 515, z: -740, group: 'tour.kastanien' },
+          { do: 'loot', group: 'tour.kastanien', clear: true },
           { do: 'xp', amount: 50 },
           { do: 'item', item: 'item.stab.esche', quiet: true },
         ],
@@ -127,6 +130,9 @@ describe('story actions and conditions of the RPG layer', () => {
           { do: 'quest', op: 'explode' as 'offer', id: 'lohn' },
           { do: 'enemy', op: 'spawn', group: 'g', kind: 'drache' },
           { do: 'loot', id: 'l', item: 'item.gold' },
+          { do: 'loot', clear: true },
+          { do: 'loot', id: 'l1', group: 'some.group', clear: true },
+          { do: 'loot', id: 'l2', item: 'item.balsam', group: 'kein gruppenname' },
           { do: 'xp', amount: 0 },
           { do: 'item', item: 'item.gold' },
           { do: 'quest', op: 'progress', id: 'q.k1.lohn' },
@@ -135,7 +141,7 @@ describe('story actions and conditions of the RPG layer', () => {
       },
     ]);
     const m = errors(bad).join(' | ');
-    for (const s of ["unknown op 'explode'", "malformed id 'lohn'", "unknown kind 'drache'", "loot: unknown item 'item.gold'", 'xp needs an amount', "item: unknown item 'item.gold'", 'quest progress needs an objective', "unknown state 'vergessen'", 'level must be 1..12']) expect(m).toContain(s);
+    for (const s of ["unknown op 'explode'", "malformed id 'lohn'", "unknown kind 'drache'", "loot: unknown item 'item.gold'", 'loot needs an id', 'loot clear needs either id or group', "loot: bad group 'kein gruppenname'", 'xp needs an amount', "item: unknown item 'item.gold'", 'quest progress needs an objective', "unknown state 'vergessen'", 'level must be 1..12']) expect(m).toContain(s);
   });
   it('quest condition reads the flag mirror: default done, active also while ready, objective counts', () => {
     const f = { 'quest.q.k1.lohn': 'ready', 'quest.q.k1.lohn.zettel': 1 };

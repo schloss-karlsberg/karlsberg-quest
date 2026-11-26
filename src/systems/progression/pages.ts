@@ -142,17 +142,19 @@ function renderGear(el: HTMLElement, api: PageApi): void {
     }),
   ]);
 
-  // ---- quest items, keys, lore
-  const quest = [...owned('quest'), ...owned('key')];
+  // ---- quest items, keys, collectibles, lore
+  const found = [...owned('quest'), ...owned('key'), ...owned('collectible')];
   const finds = h('section.kqp-g-sec', [
     h('h3', 'Fundstücke'),
-    ...quest.map((id) =>
-      h('div.kqp-g-row', { 'data-testid': `gear-quest-${id}` }, [
+    ...found.map((id) => {
+      const def = api.item(id);
+      const count = inv[id] ?? 0;
+      return h('div.kqp-g-row', { 'data-testid': `gear-${def?.kind === 'collectible' ? 'collectible' : 'quest'}-${id}` }, [
         icon(id),
-        h('div.kqp-g-grow', [h('div.kqp-g-name', [api.name(id), (inv[id] ?? 0) > 1 ? h('span.kqp-g-count', ` ×${inv[id]}`) : null]), api.item(id)?.text_de ? h('p.kqp-g-text', api.item(id)!.text_de) : null]),
-      ]),
-    ),
-    !quest.length ? h('p.kqp-g-empty', 'Nichts, was jemand vermisst. Noch nicht.') : null,
+        h('div.kqp-g-grow', [h('div.kqp-g-name', [api.name(id), count > 1 || def?.kind === 'collectible' ? h('span.kqp-g-count', ` ×${count}`) : null]), def?.text_de ? h('p.kqp-g-text', def.text_de) : null]),
+      ]);
+    }),
+    !found.length ? h('p.kqp-g-empty', 'Nichts, was jemand vermisst. Noch nicht.') : null,
   ]);
   const lore = owned('lore');
   const writings = h('section.kqp-g-sec', [

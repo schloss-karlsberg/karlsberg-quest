@@ -33,7 +33,7 @@ import { HOME, bringHome, hubAt } from './hub/home';
 import { ObjectiveView, bearingDeg } from './objectives';
 import { StoryOverlays, cardClockDt } from './overlays';
 import { playStorySound } from './sfx';
-import { loadBundledStories, storiesInPlay } from './stories';
+import { loadBundledStories, missingTourChestnuts, storiesInPlay } from './stories';
 import { installTitleFlow } from './title/flow';
 import { titleHooks } from '../../ui/title';
 import { pauseHooks } from '../../ui/menus';
@@ -645,7 +645,12 @@ class StoryRuntime {
   private chapterEntered(f: StoryFile, resume: boolean): void {
     const ctx = this.ctx;
     ctx.events.emit('story:chapter', { id: f.chapter });
-    if (resume) return;
+    if (resume) {
+      if (ctx.era.current === 'today') {
+        for (const a of missingTourChestnuts(f, this.slice, ctx.state.state.systems.progression)) this.exec(a);
+      }
+      return;
+    }
     // the previous chapter's queued lines and delayed actions end with it: the new title card
     // starts clean (in a campaign Laub's prologue rules ran on into "Der Hof")
     this.cancelScheduled();
@@ -995,11 +1000,12 @@ class StoryRuntime {
       }
       case 'loot': {
         if (a.clear) {
-          ctx.events.emit('loot:clear', { id: a.id });
+          if (a.group && !a.id) ctx.events.emit('loot:clear', { quest: a.group });
+          else if (a.id && !a.group) ctx.events.emit('loot:clear', { id: a.id });
           return;
         }
-        if (!a.item) return;
-        const l: { id: string; item: string; x: number; z: number; era: Era; count?: number; room?: string } = {
+        if (!a.item || !a.id) return;
+        const l: { id: string; item: string; x: number; z: number; era: Era; count?: number; room?: string; quest?: string } = {
           id: a.id,
           item: a.item,
           x: a.x ?? ctx.player.position.x,
@@ -1008,6 +1014,7 @@ class StoryRuntime {
         };
         if (a.count !== undefined) l.count = a.count;
         if (a.room) l.room = a.room;
+        if (a.group) l.quest = a.group;
         ctx.events.emit('loot:place', l);
         return;
       }

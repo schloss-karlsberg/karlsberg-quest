@@ -77,6 +77,7 @@ export function stackLimit(def: ItemDef | undefined): number {
     case 'consumable':
       return def.stack ?? 9;
     case 'quest':
+    case 'collectible':
       return def.stack ?? 99;
     default:
       return def.stack ?? 1;

@@ -359,7 +359,12 @@ every frame from the request until 1 s after `shift:done`). Before = `01c3eef`.
   that disposes its materials at the switch would otherwise free the program (three deletes a
   program with its last material), and the new era's identical materials would compile again.
   Registered so far: ambient layers, chronik markers, set workers and signs, Flaschen bottles,
-  travel tripod and shrine, the photo board, the interior shells (KB-B02 and the rest). A sample is best a real object (its own geometry
+  travel tripod and shrine, the photo board, the interior shells (KB-B02 and the rest), and the
+  world pickups (TASK-002: `PickupWorld.samples()`, one plain and one with its light column). Each
+  pickup builds its materials anew and frees them when it goes, so the first one of a session
+  compiled its three programs in the frame it appeared. With the tour's chestnuts that frame is in
+  t3 of every new game. Iris Xe, D3D11, the first chestnuts in view: 3 programs compiled at the
+  appearance without the warm-up (`?nowarm`), 0 with it. A sample is best a real object (its own geometry
   layout); a bare material is drawn on a small triangle. Measured today → 1789 against
   `9b7972d`:
 

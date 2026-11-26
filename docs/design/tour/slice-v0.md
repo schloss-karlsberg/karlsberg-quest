@@ -19,7 +19,7 @@ path to chapter 1: `throughTour(page)` (`e2e/helpers/tour.ts`).
 | --- | --- |
 | t1 Treffpunkt | Car park 524/−770 (checkpoint 529/−777). Gerold + 14 members (`double.*`, `child.compass`, `extra.1…6`) gathered, Diane and Bijou at Jost's heels. Lines `imhoff.t.01`, Herr Soll counts, Mats' compass. Prompt WASD. |
 | t2 Station 1 | Camera prompt; E talks to Gerold (his people body is bound to the `imhoff` placement): `imhoff.t.station1/1b` (the Baumagazin as „ein einziges Gebäude“, Privatbesitz; 1778/1793). Timer fallback 60 s. |
-| t3 | The group walks to `abzweig` (1.9 m/s, leash 25 m, barks `imhoff.bark.wait.01–03`). |
+| t3 | The group walks to `abzweig` (1.9 m/s, leash 25 m, barks `imhoff.bark.wait.01–03`). The first three chestnuts lie by the path; t5, t7, t9, t12 and t14 place the rest of the 24 (see „Chestnuts along the way“). |
 | t4 fade 1 | „Kommt, wir kürzen ab.“ → fade → `warp` to `einstieg` → player teleported behind the group → fade in. |
 | t5–t6 Felsenpfad | Station 2: Buntsandstein, no climbing; quarrying by the duke: **offen** („Ehrlich: Das weiß man nicht.“), Hohenburg as quarry (cx.31). `player.t.fuehrer`. |
 | t7–t8 Wind | At `wind`: gust (synth wind, caption), both dogs bolt barking uphill and come back (`animal:run` with `back`), a 6 s skippable cinematic on the dogs, `player.t.wind`, Jost, `player.t.hunde`, Gerold „Wildschweine, wahrscheinlich. Oder Rehe.“ |
@@ -31,6 +31,44 @@ path to chapter 1: `throughTour(page)` (`e2e/helpers/tour.ts`).
 | t18 Sommer 1789 | `player.q.wo`, `laub.t.1789`, `laub.t.seite`; fade out. Exit: the hand-over grants (relief 3, Kartograf 1, „Seite im Deckel der Bussole“, 4 balms, 1 oil, 549 XP), k1 unlocked; the chapter's `leave` lifts `combat.disabled` / `laub.silent` / `tour.slice` and despawns the group and animals; chapter 1 (k1_0, at the Quelle in the present) follows. |
 
 Story schema additions (kq-story): look `tour`; `StoryFile.dev`; actions `{do:'npc', op: walk|group|follow|gather|hold|release|warp}` and `{do:'npc', op:'despawn', group}` → `npc:walk` (C2), `{do:'cinematic', …}` → `cinematic:play` (C1), `{do:'animal', …}` → `animal:request` (C5), `{do:'fade', to, seconds}`; sounds `wind`, `bark`; validator cases incl. route / stop checks against `content/routes/*.json`. Tests: `tests/tour-slice.test.ts` (headless beat-by-beat run), `e2e/tour-slice.spec.ts`.
+
+## Chestnuts along the way (TASK-002)
+
+Owner feedback: just following the group is boring. 24 chestnuts (`item.kastanie`, „Kastanie“) now
+lie along the walked sections:
+
+| Section | Beat | Chestnuts |
+| --- | --- | --- |
+| parkplatz → abzweig | t3 | 3 |
+| einstieg → felsen | t5 | 6 |
+| felsen → wind | t7 | 3 |
+| wind → reh | t9 | 6 |
+| damm → weiher | t12 | 2 |
+| weiher → quelle | t14 | 4 |
+
+Placement:
+- Each beat places its section's chestnuts with story `loot` (group `tour.kastanien`, era `today`).
+- They lie in clusters of two or three, mostly 1.5–4 m off the path; six are 6–10 m off.
+- None are within 8 m of a stop, none within 40 m of the doe, none on the last ~90 m before the deer, and none within 6 m of a Fläschchen.
+- Spots were checked against the heightfield, water and solids; the steepest is a slope of 0.44, on the Felsenpfad climb.
+
+Picking up:
+- E (or the touch interact button) picks one up within 2.7 m, „Kastanie aufheben“; walking over one (1.3 m) picks it up too.
+- The feed counts them („+ Kastanie ×1 (7)“), and the count is part of the inventory and the save.
+- The saved count is visible under Ausrüstung → Fundstücke. When a present-day tour save predates
+  TASK-002, Continue places any missing chestnuts from the walking beats already completed.
+
+Lines (fictional dialogue on `item:pickup`, with the voice fallback):
+- 1st, Gerold mentions the Herzogskastanien and their reported age. [Codex cx.39](../../../content/bible/07-codex.md#cx39--der-karlsberg-heute) records the sources and the uncertainty about which trees survived the 1990 storm.
+- 12th, Herr Soll: „Zwölf Kastanien. Ich zähl ja sowieso.“
+- 24th, Gerold: „Alle vierundzwanzig? Die Eichhörnchen werden sich beschweren.“
+
+Limits:
+- No XP and no reward item, so the handover and the prologue's level margin are unchanged.
+- The tour's `leave` clears chestnuts left lying.
+- There is no row in Pause → Sammlungen yet (a possible follow-up).
+
+Tests: `tests/tour-kastanien.test.ts`, `e2e/kastanien.spec.ts`.
 
 ## Finding the group (round 2)
 

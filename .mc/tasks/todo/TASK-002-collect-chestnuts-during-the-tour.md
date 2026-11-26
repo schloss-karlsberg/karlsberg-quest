@@ -4,7 +4,7 @@ aliases:
 - TASK-002
 title: Collect chestnuts during the tour
 slug: collect-chestnuts-during-the-tour
-status: todo
+status: review
 priority: 3
 owner: ''
 projects: []
@@ -17,7 +17,7 @@ milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-25
 ---
 
 # Collect chestnuts during the tour
@@ -58,6 +58,125 @@ Relevant code and content:
 - [ ] Count is saved and survives reload; works with touch controls
 - [ ] All player-facing text is German; any new art is CC0 and credited in `public/assets/LICENSES.json`
 - [ ] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
+
+## Plan
+_Status: approved 2026-11-25_
+
+**Approach:** Chestnuts reuse the progression system's world pickups. `{ "do": "loot" }` places them, and they persist in `systems.progression.placed`. You pick one up by walking over it (1.3 m) or with E / the touch action (2.7 m). Each pickup shows a line in the pickup feed and plays the pickup sound. The count lives in the inventory, so the save keeps it.
+
+A new item kind `collectible` makes them plain:
+- smaller glow, no light column, ordinary pickup sound;
+- not usable and not gear;
+- stacks to 99;
+- the feed shows the running count (`+ Kastanie ×1 (7)`).
+
+The tour places 24 chestnuts (`tour.kastanie.01`–`24`), each when the walk on its section of `p-fuehrung` starts. They lie in small clusters, mostly 1.5–4 m off the path, about five of them 6–10 m off. There are none near the stops (talk E) and none on the last stretch before the deer. Three chapter-wide reactions in the tour comment on them (first, 12th, all 24). There is no XP, no collection reward and no `item` action, so the XP band and the handover stay as they are. At the tour's `leave`, chestnuts nobody took are cleared, so nothing glows on the paths in chapter 1.
+
+**Files to touch:**
+- `src/rpg/types.ts` - `ItemKind` gains `collectible`.
+- `src/rpg/items.ts` - `item.kastanie` („Kastanie“, kind `collectible`, stack 99, German text).
+- `src/systems/progression/logic.ts` - `stackLimit` for `collectible` (99); not usable.
+- `src/systems/progression/index.ts` - feed shows the running count for `collectible`, like consumables; verb „aufheben“.
+- `src/systems/progression/icons.ts` - a chestnut icon, or the default icon for the kind.
+- `src/systems/story/types.ts`, `src/systems/story/index.ts` - `LootAction` gets an optional `group` (the pickup's existing `quest` field), passed on `loot:place`. `loot:clear` can then clear by group.
+- `content/story/00-tour.story.json` - 24 `loot` actions in t3, t5, t7, t9, t12 and t14 (the beat in which the group walks that section); chapter `on` with three reactions; `leave` clears group `tour.kastanien`.
+- `tests/tour-kastanien.test.ts` (new) - placement rules, reactions, cleanup, no XP / item grants.
+- `tests/progression.test.ts` - `collectible` stacks, is not usable, keeps its count across serialise / load.
+- `e2e/kastanien.spec.ts` (new) - in the tour at t3: walk over one, E-pick one, feed and count, touch prompt, save and reload keeps the count.
+- `docs/design/tour/slice-v0.md` (beats table plus a „Kastanien“ line), `docs/ACTION-RPG.md` §7 (item kind) and §14, `docs/PRD.md` changelog.
+
+**Steps:**
+- [x] 1. Item kind `collectible` and `item.kastanie`: types, stack, not usable, no beam, ordinary sound, feed count, icon; unit tests.
+- [x] 2. Story `loot` with `group` (place and clear); validator accepts it; unit test.
+- [x] 3. Positions: pick 24 spots along the walked sections with a script (route offset, terrain height and slope from the heightfield). Check them in the dev build (`?debug`, teleport): on walkable ground, not in a rock or the Weiher, visible from the path.
+- [x] 4. `00-tour.story.json`: `loot` actions per section beat, chapter `on` reactions, `leave` cleanup; `pnpm validate`.
+- [x] 5. `tests/tour-kastanien.test.ts`, written to fail before step 4 and pass after it.
+- [x] 6. `e2e/kastanien.spec.ts`; run it with one worker.
+- [x] 7. Manual check in the dev build: new game → tour; collect a few while following; the group waits as before; feed, count and lines; reload keeps the count; touch mode (E button) and reduced motion.
+- [x] 8. Docs: `slice-v0.md`, ACTION-RPG §7 and §14, PRD changelog.
+- [x] 9. Gates: `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build`; `pnpm build && pnpm exec playwright test e2e/kastanien.spec.ts e2e/tour-slice.spec.ts --workers=1`.
+
+**Placement (24):**
+
+| Beat | Section | Count |
+| --- | --- | --- |
+| t3 | parkplatz → abzweig | 3 |
+| t5 | einstieg → felsen | 6 |
+| t7 | felsen → wind | 3 |
+| t9 | wind → reh | 6 |
+| t12 | damm → weiher | 2 |
+| t14 | weiher → quelle | 4 |
+
+Rules, checked by the unit test:
+- each chestnut is within 12 m of its section's route line;
+- each is ≥ 8 m from every route stop (talk circles, the group's gather points);
+- each is ≥ 40 m from the doe's spawn (704 / −779) and ≥ 15 m from the `reh` stop;
+- the ids are unique and all lie in era `today`.
+
+**Lines (German, dialogue fallback, no voice clip yet):**
+- First chestnut, imhoff: „Esskastanien. Hier oben stehen alte Bäume, die man Herzogskastanien nennt, über zweihundert Jahre alt.“ The fact is from cx.39, sources SBT and HP. The line makes no claim about which tree these chestnuts fell from.
+- 12th, solld (Herr Soll, who counts the group in t1): „Zwölf Kastanien. Ich zähl ja sowieso.“ (FIKTION, a running gag)
+- All 24, imhoff: „Alle vierundzwanzig? Die Eichhörnchen werden sich beschweren.“
+
+Each reaction is chapter-wide and fires once, on `item:pickup` with `match {item}` and `gte {total}`.
+
+**Test plan:**
+- Unit: `pnpm exec vitest run tests/tour-kastanien.test.ts tests/tour-slice.test.ts tests/tour-handover.test.ts tests/quests-content-a.test.ts tests/progression.test.ts`.
+- e2e: `e2e/kastanien.spec.ts` and `e2e/tour-slice.spec.ts` (the tour still runs through, timings logged), with one worker.
+- Manual: `http://localhost:5280/?debug&nosave&fresh` → „Neues Spiel“, follow the tour.
+- Screenshots, saved to `test-results/contribute/TASK-002/`:
+  - before: `before-1-path-t3.png`, the path from the car park at t3, 7 m short of the first chestnut, looking north;
+  - after: `after-1-path-t3.png`, the same view with chestnuts;
+  - after: `after-2-feed.png`, the pickup feed with the count.
+  - (Changed from a t9 view in step 6: there the first t9 cluster lies behind a rise and does not show.)
+
+**Risks:**
+- A new `ItemKind` member: exhaustive switches and validators must accept it (typecheck finds them).
+- Draw calls: each pickup is about four draws, visible within 95 m. A cluster adds about 10–25 draws near the path (docs/PERFORMANCE.md budget; checked with `?debug` stats). Measured in step 6: about seven per chestnut (+41 for the six t9 ones, 134 → 175 of the 300 budget).
+- The E prompt must not shadow a talk E. That's why they keep ≥ 8 m from the stops, and the pickup prompt already yields to an NPC's prompt.
+- Lines may overlap Gerold's station talk. Reactions queue like other `say` lines.
+- `voice-assets` manifest coverage might demand clips for new line ids. If so, use the dialogue fallback as the Marlene loan line does, and note it.
+- The positions need an in-game look: the terrain is LiDAR, with rocks at the Felsenpfad.
+
+**Open questions:** none. The plan was approved as written on 2026-11-25. That settles 24 chestnuts with the small glow. A row in Pause → Sammlungen („Kastanien: 7 von 24“) is not in this cut; it is noted as a possible follow-up.
+
+## Progress
+- Branch: `feat/task-002-chestnuts` (from `main` `fd18dcd`)
+- 2026-11-25: plan approved. Before shot taken (SwiftShader, a t9 view); replaced in step 6 by `before-1-path-t3.png` (real GPU, t3 at 509.2 / −753.1 looking north, tour file from `main`), since the t9 cluster does not show from the path.
+- 2026-11-25: step 1 done - `ItemKind` `collectible`, `item.kastanie` („Kastanie“, stack 99). A collectible is not precious: smaller glow, no light column, the ordinary pickup sound (`BEAM_KINDS` / `pickupSound` leave it out). It is not usable or equippable. The feed shows the running count like consumables, and there is a chestnut glyph in `icons.ts`. Quest files keep their own kind list (a core-only kind). `tests/progression.test.ts` gains a collectibles case. The progression test and every test touching `ITEMS` are green (6 files, 113 tests), typecheck green.
+- 2026-11-25: step 2 done - `LootAction.group`: on place it becomes the pickup's `quest` tag. `{ group, clear: true }` (no `id`) sends `loot:clear {quest: group}`. The validator checks the group's form and allows a clear by group without an id. `content/story/README.md` row updated; `tests/rpg-contracts.test.ts` covers the good and bad cases. Typecheck and `pnpm validate` green.
+- 2026-11-25: step 3 done (data side) - spots chosen as (arc length, side offset) per walked section of `p-fuehrung`, then checked against the running dev build's world (`heightAt`, slope over 1 m, `surfaceAt`, `collider.solidAt` r 0.3).
+  - No spot is in water or in a solid. Two first picks on the Felsenpfad were steep (0.68, 0.52): 08 moved to the other side and 04 moved closer to the path; the steepest left is 0.44, on the climb itself.
+  - Trees and rocks drawn as scenery are not in the collider, so the visual check follows in step 7 (after shots).
+- 2026-11-25: step 4 done - `00-tour.story.json`: 24 `loot` actions (era `today`, group `tour.kastanien`), three chapter `on` reactions (first, 12th, 24th pickup; `item:pickup` + `match.item` + `gte.total`), and `{ group, clear: true }` in `leave` before the fade.
+  - Plan adjusted: sections einstieg → felsen and damm → weiher place their chestnuts in **t5** and **t12**, the beats in which the group walks them, not in t4 and t11. Those two beats end on a flag right after the fade, and `tests/tour-slice.test.ts` reads t4's last six actions. t4 and t11 are unchanged.
+  - `pnpm validate` green (214 lines). `tour-slice`, `tour-handover`, `quests-content-a`, `flaschen` and story tests green. `voice-assets` shows only its 2 known Windows path failures (same on `main`).
+- 2026-11-25: step 5 done - `tests/tour-kastanien.test.ts` (5 cases): the item; 24 chestnuts per walking beat (t3 3, t5 6, t7 3, t9 6, t12 2, t14 4), one group, era today; ≤ 12 m from their section (≥ 16 within 4 m, ≥ 3 further off), ≥ 8 m from every stop, ≥ 40 m from the doe, ≥ 15 m from the reh stop, ≥ 6 m from the today Fläschchen, > 1.4 m apart; the three reactions (totals 1 / 12 / 24, `imhoff` / `solld`, no XP, no item grant) and the `leave` cleanup before the fade; the engine says each line once as the count rises, across later beats. Fails on the tour before step 4 (4 of 5), passes now. Note: `goto` restarts a chapter's reactions (a debug jump or chapter start); play advances beats and a reload resumes, so a line is said once.
+- 2026-11-25: step 6 done - `e2e/kastanien.spec.ts`, 1 test (touch context). It covers:
+  - t3 places 01–03; E picks the nearest (desktop) and Gerold's first line fires (`c:kastanie-1`);
+  - walking over one picks it up, and the feed reads `+ Kastanie`, `+ Kastanie ×1 (2)`;
+  - the touch interact button carries „Kastanie aufheben“ and takes one;
+  - an autosave and a reload keep the count 3 and the fired line, and a jump back into t3 asks for 01–03 again but places none (taken);
+  - t5 places 6, and `goto k1` (the tour's `leave`) clears them, with the count kept.
+  - First run failed on the test's own standing point (2 m south of 01 is 1.75 m from 02, and E took the nearest); fixed the offsets. Then green, 2.9 min (`pnpm build && pnpm exec playwright test e2e/kastanien.spec.ts --workers=1`).
+- 2026-11-25: findings while taking the after shots:
+  - **Icon:** the first chestnut glyph read as a drop (next to the Lampenöl's), so it was redrawn wider, with a tassel and a dotted base.
+  - **Screenshot hang:** `page.screenshot` under SwiftShader hangs at this t9 spot even after the chestnuts are cleared (the same hang as `cinematic.spec.ts` on `main`), so the shots use the real GPU (Iris Xe, D3D11).
+  - **Draw calls:** the 6 t9 chestnuts add 41 (134 → 175, budget 300).
+  - **First-use compile:** the frame in which the first pickups of a session appear compiled their 3 programs. Pickup materials were not in the era prewarm registry, and with the chestnuts that frame comes in t3 of every new game. Added `PickupWorld.samples()` plus `registerEraMaterials('progression.pickups', '*', …)`. Measured on the real GPU (`?warm` / `?nowarm`, running loop): 0 programs compiled at the appearance with it, 3 without. The longest frame is 83 ms in both (the rAF clock is coarse there); docs/PERFORMANCE.md §3.6 notes it.
+- 2026-11-25: step 8 done - docs: `slice-v0.md` (t3 row and a „Chestnuts along the way“ section), ACTION-RPG §7 (collectibles) and §14, PRD changelog, PERFORMANCE §3.6 (pickups in the prewarm registry).
+- 2026-11-25: step 9 - gates on the final state (Windows 11, Node 22.18):
+  - `pnpm typecheck`, `pnpm validate`, `pnpm build` green.
+  - `pnpm test`: 1,498 passed, 4 failed, the same 4 Windows-only files as on untouched `main` (`content-packs`, `voice-moss`, `voice-assets`, `voice-service`).
+  - e2e, one worker: `kastanien`, `progression` (3), `chapter-prolog` (2) and `touch` (7) all green.
+  - `tour-slice` fails here, as it does on untouched `main` (`fd18dcd`, run the same day): `page.screenshot` hangs under SwiftShader at shot `05-wind-hunde` (line 146), and the run hits the 10 min limit.
+  - With two local-only, uncommitted changes (no `page.screenshot`, a 45 min limit), the full tour passes with the chestnuts: car park → Felsenpfad → wind → deer photo („gut“, 2 stars) → stray and find the group → Weiher → Quelle → 1789 → k1 (37.5 min here). Expected to pass on CI (Linux) unchanged; not verified there.
+- 2026-11-25: step 7 - checked by script and screenshot, not by hand-played run:
+  - the e2e above cover collecting while following, the group waiting (the tour run's stray check), feed, count, lines, reload and touch;
+  - one real-GPU view per cluster (10, `test-results/contribute/TASK-002/clusters/`): every chestnut lies visible on open ground, none in a rock, a trunk or the Weiher (21 / 22 at the bank path, by the reeds);
+  - before / after shots: `before-1-path-t3.png`, `after-1-path-t3.png`, `after-2-feed.png`;
+  - reduced motion was not looked at separately: the pickups' reduced-motion path (no pop or fly, fade only) is unchanged code.
+- 2026-11-25: shipped - self-review of `git diff main...HEAD` (no leftovers; corrected one comment that quoted an inflated 1.8 s). PR: https://github.com/schloss-karlsberg/karlsberg-quest/pull/39
 
 ## Notes
 - Owner's words: "just following the group is very boring; the player could collect chestnuts along the way".

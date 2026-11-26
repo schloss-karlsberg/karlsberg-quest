@@ -587,10 +587,14 @@ export interface EnemyAction extends ActionBase {
    */
   near?: number;
 }
-/** Place a glowing pickup (`loot:place`); `clear: true` removes it (`loot:clear`). */
+/**
+ * Place a glowing pickup (`loot:place`); `clear: true` removes it (`loot:clear`). `group` tags the
+ * pickup (its `quest` field). A clear targets either an `id` or all pickups with a `group`.
+ */
 export interface LootAction extends ActionBase {
   do: 'loot';
-  id: string;
+  id?: string;
+  group?: string;
   item?: string;
   x?: number;
   z?: number;

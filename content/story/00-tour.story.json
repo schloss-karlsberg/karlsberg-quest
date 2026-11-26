@@ -15,10 +15,19 @@
     { "do": "animal", "op": "despawn", "id": "bijou" },
     { "do": "animal", "op": "despawn", "id": "ricke" },
     { "do": "animal", "op": "despawn", "id": "kitz" },
+    { "do": "loot", "group": "tour.kastanien", "clear": true },
     { "do": "fade", "to": 0, "seconds": 1.2 }
   ],
   "checkpoint": { "x": 529, "z": -777, "yaw": 215, "era": "today" },
   "wake": { "x": 1059.3, "z": -833.1, "yaw": 50, "era": "today" },
+  "on": [
+    { "id": "kastanie-1", "when": { "event": "item:pickup", "match": { "item": "item.kastanie" } },
+      "do": [{ "do": "say", "id": "imhoff.t.kastanie1", "speaker": "imhoff", "text": "Esskastanien. Am Karlsberg gab es die Herzogskastanien. Die sollen über zweihundert Jahre alt gewesen sein." }] },
+    { "id": "kastanie-12", "when": { "event": "item:pickup", "match": { "item": "item.kastanie" }, "gte": { "total": 12 } },
+      "do": [{ "do": "say", "id": "solld.t.kastanie12", "speaker": "solld", "text": "Zwölf Kastanien. Ich zähl ja sowieso." }] },
+    { "id": "kastanie-24", "when": { "event": "item:pickup", "match": { "item": "item.kastanie" }, "gte": { "total": 24 } },
+      "do": [{ "do": "say", "id": "imhoff.t.kastanie24", "speaker": "imhoff", "text": "Alle vierundzwanzig? Die Eichhörnchen werden sich beschweren." }] }
+  ],
   "beats": [
     {
       "id": "t1",
@@ -82,7 +91,10 @@
         { "do": "say", "id": "imhoff.t.los", "speaker": "imhoff", "text": "So. Dann mal los. Bleibt zusammen, der Weg ist schmal." },
         { "do": "npc", "op": "follow", "group": "fuehrung", "leader": "imhoff" },
         { "do": "npc", "op": "walk", "npc": "imhoff", "route": "p-fuehrung", "to": "abzweig", "speed": 1.9, "wait": { "for": "player", "r": 25, "bark": "imhoff.bark.wait" } },
-        { "do": "objective", "id": "tour", "text": "Der Gruppe folgen", "x": 515.2, "z": -729.9 }
+        { "do": "objective", "id": "tour", "text": "Der Gruppe folgen", "x": 515.2, "z": -729.9 },
+        { "do": "loot", "id": "tour.kastanie.01", "item": "item.kastanie", "x": 509.2, "z": -760.1, "era": "today", "group": "tour.kastanien" },
+        { "do": "loot", "id": "tour.kastanie.02", "item": "item.kastanie", "x": 510.9, "z": -758.5, "era": "today", "group": "tour.kastanien" },
+        { "do": "loot", "id": "tour.kastanie.03", "item": "item.kastanie", "x": 505.9, "z": -754, "era": "today", "group": "tour.kastanien" }
       ],
       "complete": { "event": "npc:arrived", "match": { "npc": "imhoff", "at": "abzweig" } }
     },
@@ -104,7 +116,15 @@
     {
       "id": "t5",
       "title_de": "Zum Felsenpfad",
-      "enter": [{ "do": "prompt", "key": "Shift", "text": "Rennen, wenn die Gruppe zu weit vorn ist", "touch": "Stick ganz vor: Rennen", "delay": 4 }],
+      "enter": [
+        { "do": "loot", "id": "tour.kastanie.04", "item": "item.kastanie", "x": 625.6, "z": -511.8, "era": "today", "group": "tour.kastanien" },
+        { "do": "loot", "id": "tour.kastanie.05", "item": "item.kastanie", "x": 630.1, "z": -515.3, "era": "today", "group": "tour.kastanien" },
+        { "do": "loot", "id": "tour.kastanie.06", "item": "item.kastanie", "x": 619.8, "z": -517.7, "era": "today", "group": "tour.kastanien" },
+        { "do": "loot", "id": "tour.kastanie.07", "item": "item.kastanie", "x": 659.9, "z": -564.8, "era": "today", "group": "tour.kastanien" },
+        { "do": "loot", "id": "tour.kastanie.08", "item": "item.kastanie", "x": 662.9, "z": -567.3, "era": "today", "group": "tour.kastanien" },
+        { "do": "loot", "id": "tour.kastanie.09", "item": "item.kastanie", "x": 667.5, "z": -567.4, "era": "today", "group": "tour.kastanien" },
+        { "do": "prompt", "key": "Shift", "text": "Rennen, wenn die Gruppe zu weit vorn ist", "touch": "Stick ganz vor: Rennen", "delay": 4 }
+      ],
       "on": [{ "id": "prompt-weg", "when": { "timer": 12 }, "do": [{ "do": "prompt", "key": null, "text": null }] }],
       "complete": { "event": "npc:arrived", "match": { "npc": "imhoff", "at": "felsen" } },
       "exit": [{ "do": "prompt", "key": null, "text": null }]
@@ -127,7 +147,10 @@
       "enter": [
         { "do": "npc", "op": "follow", "group": "fuehrung", "leader": "imhoff" },
         { "do": "npc", "op": "walk", "npc": "imhoff", "route": "p-fuehrung", "to": "wind", "speed": 1.9, "wait": { "for": "player", "r": 25, "bark": "imhoff.bark.wait" } },
-        { "do": "objective", "id": "tour", "text": "Der Gruppe folgen: am Hang entlang", "x": 676.1, "z": -635.7 }
+        { "do": "objective", "id": "tour", "text": "Der Gruppe folgen: am Hang entlang", "x": 676.1, "z": -635.7 },
+        { "do": "loot", "id": "tour.kastanie.10", "item": "item.kastanie", "x": 678.7, "z": -606.1, "era": "today", "group": "tour.kastanien" },
+        { "do": "loot", "id": "tour.kastanie.11", "item": "item.kastanie", "x": 680.2, "z": -611.3, "era": "today", "group": "tour.kastanien" },
+        { "do": "loot", "id": "tour.kastanie.12", "item": "item.kastanie", "x": 671.8, "z": -608, "era": "today", "group": "tour.kastanien" }
       ],
       "complete": { "event": "npc:arrived", "match": { "npc": "imhoff", "at": "wind" } }
     },
@@ -172,7 +195,13 @@
         { "do": "npc", "op": "walk", "npc": "imhoff", "route": "p-fuehrung", "to": "reh", "speed": 1.9, "wait": { "for": "player", "r": 25, "bark": "imhoff.bark.wait" } },
         { "do": "animal", "op": "spawn", "kind": "reh", "look": "ricke", "id": "ricke", "x": 704, "z": -779, "yaw": 300, "era": "today", "shy": { "notice": 30, "flee": 20, "settle": 25 } },
         { "do": "animal", "op": "spawn", "kind": "reh", "look": "kitz", "id": "kitz", "follow": "animal:ricke", "spacing": 1.5, "era": "today" },
-        { "do": "objective", "id": "tour", "text": "Der Gruppe folgen", "x": 727.4, "z": -751.5 }
+        { "do": "objective", "id": "tour", "text": "Der Gruppe folgen", "x": 727.4, "z": -751.5 },
+        { "do": "loot", "id": "tour.kastanie.13", "item": "item.kastanie", "x": 637.9, "z": -633.9, "era": "today", "group": "tour.kastanien" },
+        { "do": "loot", "id": "tour.kastanie.14", "item": "item.kastanie", "x": 639.1, "z": -639.6, "era": "today", "group": "tour.kastanien" },
+        { "do": "loot", "id": "tour.kastanie.15", "item": "item.kastanie", "x": 629.6, "z": -632.3, "era": "today", "group": "tour.kastanien" },
+        { "do": "loot", "id": "tour.kastanie.16", "item": "item.kastanie", "x": 654, "z": -689.7, "era": "today", "group": "tour.kastanien" },
+        { "do": "loot", "id": "tour.kastanie.17", "item": "item.kastanie", "x": 652.8, "z": -695.3, "era": "today", "group": "tour.kastanien" },
+        { "do": "loot", "id": "tour.kastanie.18", "item": "item.kastanie", "x": 660.4, "z": -690.1, "era": "today", "group": "tour.kastanien" }
       ],
       "complete": { "event": "npc:arrived", "match": { "npc": "imhoff", "at": "reh" } }
     },
@@ -254,6 +283,8 @@
       "id": "t12",
       "title_de": "Am Damm",
       "enter": [
+        { "do": "loot", "id": "tour.kastanie.19", "item": "item.kastanie", "x": 858.6, "z": -841.7, "era": "today", "group": "tour.kastanien" },
+        { "do": "loot", "id": "tour.kastanie.20", "item": "item.kastanie", "x": 874, "z": -839.9, "era": "today", "group": "tour.kastanien" },
         { "do": "say", "id": "marlene.t.cameo", "speaker": "marlene", "text": "Gerold! Ich mess grad den Damm nach. Lass mir die Leute nicht in den Weiher fallen.", "delay": 2 },
         { "do": "say", "id": "imhoff.t.marlene", "speaker": "imhoff", "text": "Das ist Marlene vom Forstamt. Die misst den Wald." }
       ],
@@ -279,7 +310,11 @@
         { "do": "npc", "op": "despawn", "npc": "marlene" },
         { "do": "npc", "op": "follow", "group": "fuehrung", "leader": "imhoff" },
         { "do": "npc", "op": "walk", "npc": "imhoff", "route": "p-fuehrung", "to": "quelle", "speed": 1.9, "wait": { "for": "player", "r": 25, "bark": "imhoff.bark.wait" } },
-        { "do": "objective", "id": "tour", "text": "Der Gruppe folgen: hinauf zur Karlsbergquelle", "x": 1059.3, "z": -833.1 }
+        { "do": "objective", "id": "tour", "text": "Der Gruppe folgen: hinauf zur Karlsbergquelle", "x": 1059.3, "z": -833.1 },
+        { "do": "loot", "id": "tour.kastanie.21", "item": "item.kastanie", "x": 936, "z": -855.2, "era": "today", "group": "tour.kastanien" },
+        { "do": "loot", "id": "tour.kastanie.22", "item": "item.kastanie", "x": 939.8, "z": -851.4, "era": "today", "group": "tour.kastanien" },
+        { "do": "loot", "id": "tour.kastanie.23", "item": "item.kastanie", "x": 1004.7, "z": -868.8, "era": "today", "group": "tour.kastanien" },
+        { "do": "loot", "id": "tour.kastanie.24", "item": "item.kastanie", "x": 1009.7, "z": -858.6, "era": "today", "group": "tour.kastanien" }
       ],
       "complete": { "event": "npc:arrived", "match": { "npc": "imhoff", "at": "quelle" } }
     },

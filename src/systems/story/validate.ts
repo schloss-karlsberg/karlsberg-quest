@@ -496,7 +496,10 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
         }
         break;
       case 'loot':
-        if (!isStr(a.id) || !ID_RE.test(a.id)) err(file, where, 'loot needs an id');
+        if (a.group !== undefined && (!isStr(a.group) || !ID_RE.test(a.group))) err(file, where, `loot: bad group '${String(a.group)}'`);
+        if (a.clear && a.id !== undefined && a.group !== undefined) err(file, where, 'loot clear needs either id or group');
+        // a clear by group needs no id; everything else does
+        if (!(a.clear && a.group !== undefined) && (!isStr(a.id) || !ID_RE.test(a.id))) err(file, where, 'loot needs an id');
         if (!a.clear) {
           if (!isStr(a.item) || !(ITEM_IDS.has(a.item) || refs.items?.has(a.item))) err(file, where, `loot: unknown item '${String(a.item)}'`);
           if ((a.x === undefined) !== (a.z === undefined) || (a.x !== undefined && (!isNum(a.x) || !isNum(a.z)))) err(file, where, 'loot needs both numeric x and z (or neither: at the player)');

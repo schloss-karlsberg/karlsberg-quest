@@ -33,6 +33,7 @@ import { LEVEL_XP, MAX_LEVEL } from '../../rpg/stats';
 import type { DerivedStats, ItemDef, ItemKind, PlacedPickup, ProgressionSlice } from '../../rpg/types';
 import { openPausePage, pausePageHandle } from '../../ui/pause-pages';
 import { actionLabel } from '../../ui/actionLabel';
+import { registerEraMaterials } from '../fx/shift/prewarm';
 import { loadBundledQuests, questsInPlay } from '../quests/data';
 import { collectionSound, levelSound, pickupSound, useSound, xpTick } from './audio';
 import { ProgressionHud } from './hud';
@@ -141,6 +142,8 @@ class Progression {
       (id) => (this.item(id)?.kind ?? 'opaque') as ItemKind | 'opaque',
     );
     ctx.scene.add(this.world.group);
+    // the pickups' programs compile in the idle warm-up, not in the frame the first one appears
+    disposeFns.push(registerEraMaterials('progression.pickups', '*', () => this.world.samples()));
     this.pages = installProgressionPages({
       core: this.core,
       item: (id) => this.item(id),
@@ -221,7 +224,9 @@ class Progression {
       if (!this.core.quietNow) {
         const def = this.item(item);
         if (!reason?.startsWith('quest:')) {
-          this.hud.line('item', `+ ${this.name(item)}`, iconFor(item, def), count > 1 || (def?.kind === 'consumable' && total > 1) ? `×${count}${total > count ? ` (${total})` : ''}` : undefined);
+          // consumables and collectibles show the running count: "×1 (7)"
+          const counted = def?.kind === 'consumable' || def?.kind === 'collectible';
+          this.hud.line('item', `+ ${this.name(item)}`, iconFor(item, def), count > 1 || (counted && total > 1) ? `×${count}${total > count ? ` (${total})` : ''}` : undefined);
         }
         pickupSound(ctx.audio, def?.kind ?? 'quest');
       }
@@ -447,7 +452,7 @@ class Progression {
     pausePageHandle('gear')?.close();
     pausePageHandle('talents')?.close();
     this.cards.clear();
-    this.world.clear();
+    this.world.dispose();
     this.ctx.scene.remove(this.world.group);
   }
 }

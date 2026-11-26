@@ -38,6 +38,9 @@ export const ITEMS: readonly ItemDef[] = [
     text_de: 'Ein angesengtes Blatt, Handschrift des 18. Jahrhunderts: „Was der Hof schuldig blieb“. Darunter Spalten: Wem – Was – Wann – Wo. Unten in Laubs Kurrent: „Fortgesetzt Nov. 1840. Nicht vollendet.“ (Fiktion)',
   },
 
+  // ---- gathered for the count (TASK-002: the tour's chestnuts, placed by 00-tour.story.json) ----
+  { id: 'item.kastanie', kind: 'collectible', name_de: 'Kastanie', text_de: 'Eine Esskastanie, glatt und glänzend braun, aus der stacheligen Schale gefallen. Einschneiden, rösten, heiß schälen.', stack: 99 },
+
   // ---- the hunting horn (finale) -------------------------------------------------------
   { id: 'item.horn', kind: 'key', name_de: 'Das Horn', text_de: 'Josts Horn, das Mundstück zuerst gereicht. Kalt und echt.' },
 ];

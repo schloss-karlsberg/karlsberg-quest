@@ -215,6 +215,7 @@ interface Vis {
 export class PickupWorld {
   readonly group = new Group();
   private readonly items = new Map<string, Vis>();
+  private warmSamples: Vis[] = [];
   private readonly tmp = new Vector3();
   private readonly tmp2 = new Vector3();
 
@@ -258,7 +259,27 @@ export class PickupWorld {
     for (const id of [...this.items.keys()]) this.remove(id);
   }
 
-  private create(p: PlacedPickup, animate: boolean): Vis {
+  dispose(): void {
+    this.clear();
+    for (const v of this.warmSamples) this.disposeMaterials(v);
+    this.warmSamples = [];
+  }
+
+  /**
+   * Stand-ins for the shader warm-up (src/systems/fx/shift/prewarm.ts): a plain pickup and a precious
+   * one (with its light column), not added to the world. Each pickup builds its materials anew and
+   * frees them when it goes, so without this the first pickup of a session compiles its three
+   * programs in the frame it appears (the tour's chestnuts in t3; docs/PERFORMANCE.md §3.6).
+   */
+  samples(): Group[] {
+    if (!this.warmSamples.length) {
+      const make = (item: string) => this.create({ id: `prewarm.${item}`, item, x: 0, z: 0, era: 'today' }, false, false);
+      this.warmSamples = [make('item.kastanie'), make('prewarm.opaque')];
+    }
+    return this.warmSamples.map((v) => v.root);
+  }
+
+  private create(p: PlacedPickup, animate: boolean, attach = true): Vis {
     const kind = this.kindOf(p.item);
     const precious = BEAM_KINDS.has(kind);
     // (round 9: at ×5–6 HDR the glints bloomed into huge white orbs that washed out the frame)
@@ -327,8 +348,8 @@ export class PickupWorld {
     root.name = `pickup:${p.id}`;
     root.add(pool, glow, motes, token);
     if (beam) root.add(beam);
-    this.group.add(root);
-    const ground = this.heightAt(p.x, p.z, p.y);
+    if (attach) this.group.add(root);
+    const ground = attach ? this.heightAt(p.x, p.z, p.y) : 0;
     return { p, root, glow, motes, pool, beam, token, vis: 0, born: animate ? 0 : -1, taken: -1, seed, ground, pull: new Vector3() };
   }
 
@@ -336,12 +357,16 @@ export class PickupWorld {
     const v = this.items.get(id);
     if (!v) return;
     this.group.remove(v.root);
+    this.disposeMaterials(v);
+    this.items.delete(id);
+  }
+
+  private disposeMaterials(v: Vis): void {
     v.glow.material.dispose();
     v.motes.material.dispose();
     v.pool.material.dispose();
     v.beam?.material.dispose();
     v.token.material.dispose();
-    this.items.delete(id);
   }
 
   /**
