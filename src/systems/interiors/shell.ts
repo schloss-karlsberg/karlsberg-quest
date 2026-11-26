@@ -8,7 +8,7 @@
  *   away (real see-through windows), door boxes are cut through the wall, and in the ruin era the
  *   whole shell dissolves in favour of the interior's own broken walls.
  */
-import { type BufferGeometry, type Mesh, type ShaderMaterial, Vector2, Vector4 } from 'three';
+import { type BufferGeometry, type Mesh, type ShaderMaterial, Vector2, Vector3, Vector4 } from 'three';
 import type { ShellOpening } from './types';
 
 export const MAX_OPEN = 8;
@@ -213,7 +213,7 @@ export function extractOpenings(geo: BufferGeometry, buildings: ReadonlyMap<numb
   return out;
 }
 
-/** A box cut through the shell: centre/axis (x, z, ux, uz), half extents, height range. */
+/** A box cut through the shell: centre, unit axis (ux, uz), half extents and height range. */
 export interface CutBox {
   x: number;
   z: number;
@@ -230,27 +230,39 @@ const DECL = /* glsl */ `
 uniform float uKqIntBld[${MAX_OPEN}];
 uniform float uKqIntFade[${MAX_OPEN}];
 uniform vec2 uKqIntY[${MAX_OPEN}];
+uniform int uKqOpenN;
 uniform float uKqIntRuin;
 uniform vec4 uKqCutA[${MAX_CUTS}];
 uniform vec4 uKqCutB[${MAX_CUTS}];
+uniform vec3 uKqCutMin;
+uniform vec3 uKqCutMax;
+uniform int uKqCutN;
 uniform vec4 uKqClipA[${MAX_CLIPS}];
 uniform vec4 uKqClipB[${MAX_CLIPS}];
+uniform vec3 uKqClipMin;
+uniform vec3 uKqClipMax;
 uniform int uKqClipN;
+bool kqInsideBounds(vec3 p, vec3 lo, vec3 hi) {
+  return all(greaterThanEqual(p, lo)) && all(lessThanEqual(p, hi));
+}
+bool kqInsideCut(vec3 p, vec4 a, vec4 b) {
+  vec2 d = p.xz - a.xy;
+  return abs(dot(d, a.zw)) < b.x && abs(dot(d, vec2(-a.w, a.z))) < b.y;
+}
 `;
 
 const CUT = /* glsl */ `
   {
     // overlapping model parts (neighbouring wings, terraces) inside a built room
-    for (int i = 0; i < ${MAX_CLIPS}; i++) {
-      if (i >= uKqClipN) break;
-      vec4 a = uKqClipA[i];
-      vec4 b = uKqClipB[i];
-      vec2 d = vWorld.xz - a.xy;
-      if (abs(dot(d, a.zw)) < b.x && abs(dot(d, vec2(-a.w, a.z))) < b.y && vWorld.y > b.z && vWorld.y < b.w) discard;
+    if (uKqClipN > 0 && kqInsideBounds(vWorld, uKqClipMin, uKqClipMax)) {
+      for (int i = 0; i < uKqClipN; i++) {
+        vec4 b = uKqClipB[i];
+        if (vWorld.y > b.z && vWorld.y < b.w && kqInsideCut(vWorld, uKqClipA[i], b)) discard;
+      }
     }
     float kqOpen = -1.0;
     vec2 kqY = vec2(0.0);
-    for (int i = 0; i < ${MAX_OPEN}; i++) {
+    for (int i = 0; i < uKqOpenN; i++) {
       if (abs(vBld - uKqIntBld[i]) < 0.5) { kqOpen = uKqIntFade[i]; kqY = uKqIntY[i]; }
     }
     if (kqOpen > 0.0) {
@@ -260,12 +272,11 @@ const CUT = /* glsl */ `
       } else {
         float kqGlass = 1.0 - step(0.06, max(vColor.r, max(vColor.g, vColor.b)));
         if (kqGlass > 0.5 && vWorld.y > kqY.x && vWorld.y < kqY.y && kqHash12(gl_FragCoord.xy + 7.0) < kqOpen) discard;
-        for (int i = 0; i < ${MAX_CUTS}; i++) {
-          vec4 a = uKqCutA[i];
-          vec4 b = uKqCutB[i];
-          if (b.x <= 0.0) continue;
-          vec2 d = vWorld.xz - a.xy;
-          if (abs(dot(d, a.zw)) < b.x && abs(dot(d, vec2(-a.w, a.z))) < b.y && vWorld.y > b.z && vWorld.y < b.w) discard;
+        if (uKqCutN > 0 && kqInsideBounds(vWorld, uKqCutMin, uKqCutMax)) {
+          for (int i = 0; i < uKqCutN; i++) {
+            vec4 b = uKqCutB[i];
+            if (vWorld.y > b.z && vWorld.y < b.w && kqInsideCut(vWorld, uKqCutA[i], b)) discard;
+          }
         }
       }
     }
@@ -285,11 +296,17 @@ export class ShellCut {
     u.uKqIntBld = { value: new Array<number>(MAX_OPEN).fill(-10) };
     u.uKqIntFade = { value: new Array<number>(MAX_OPEN).fill(0) };
     u.uKqIntY = { value: Array.from({ length: MAX_OPEN }, () => new Vector2()) };
+    u.uKqOpenN = { value: 0 };
     u.uKqIntRuin = { value: 0 };
     u.uKqCutA = { value: Array.from({ length: MAX_CUTS }, () => new Vector4()) };
     u.uKqCutB = { value: Array.from({ length: MAX_CUTS }, () => new Vector4()) };
+    u.uKqCutMin = { value: new Vector3() };
+    u.uKqCutMax = { value: new Vector3() };
+    u.uKqCutN = { value: 0 };
     u.uKqClipA = { value: Array.from({ length: MAX_CLIPS }, () => new Vector4()) };
     u.uKqClipB = { value: Array.from({ length: MAX_CLIPS }, () => new Vector4()) };
+    u.uKqClipMin = { value: new Vector3() };
+    u.uKqClipMax = { value: new Vector3() };
     u.uKqClipN = { value: 0 };
     this.u = u as Record<string, { value: unknown }>;
     let fs = material.fragmentShader;
@@ -313,40 +330,56 @@ export class ShellCut {
     const b = this.u.uKqIntBld!.value as number[];
     const f = this.u.uKqIntFade!.value as number[];
     const y = this.u.uKqIntY!.value as Vector2[];
-    for (let i = 0; i < MAX_OPEN; i++) {
-      const o = list[i];
-      b[i] = o ? o.index : -10;
-      f[i] = o ? o.fade : 0;
-      y[i]!.set(o?.y0 ?? 0, o?.y1 ?? 0);
+    const n = Math.min(MAX_OPEN, list.length);
+    for (let i = 0; i < n; i++) {
+      const o = list[i]!;
+      b[i] = o.index;
+      f[i] = o.fade;
+      y[i]!.set(o.y0, o.y1);
     }
+    this.u.uKqOpenN!.value = n;
     this.u.uKqIntRuin!.value = ruin ? 1 : 0;
   }
 
   setCuts(boxes: CutBox[]): void {
-    const A = this.u.uKqCutA!.value as Vector4[];
-    const B = this.u.uKqCutB!.value as Vector4[];
-    for (let i = 0; i < MAX_CUTS; i++) {
-      const c = boxes[i];
-      if (!c) {
-        B[i]!.set(0, 0, 0, 0);
-        continue;
-      }
-      A[i]!.set(c.x, c.z, c.ux, c.uz);
-      B[i]!.set(c.hu, c.hv, c.y0, c.y1);
-    }
+    this.setBoxes('uKqCut', boxes);
   }
 
   /** Room boxes (same layout as CutBox: u along the room's long side). */
   setClips(boxes: CutBox[]): void {
-    const A = this.u.uKqClipA!.value as Vector4[];
-    const B = this.u.uKqClipB!.value as Vector4[];
-    const n = Math.min(MAX_CLIPS, boxes.length);
+    this.setBoxes('uKqClip', boxes);
+  }
+
+  private setBoxes(prefix: 'uKqCut' | 'uKqClip', boxes: CutBox[]): void {
+    const A = this.u[`${prefix}A`]!.value as Vector4[];
+    const B = this.u[`${prefix}B`]!.value as Vector4[];
+    const lo = this.u[`${prefix}Min`]!.value as Vector3;
+    const hi = this.u[`${prefix}Max`]!.value as Vector3;
+    const n = Math.min(A.length, boxes.length);
+    lo.set(Infinity, Infinity, Infinity);
+    hi.set(-Infinity, -Infinity, -Infinity);
+    let count = 0;
     for (let i = 0; i < n; i++) {
       const c = boxes[i]!;
-      A[i]!.set(c.x, c.z, c.ux, c.uz);
-      B[i]!.set(c.hu, c.hv, c.y0, c.y1);
+      if (c.hu <= 0 || c.hv <= 0 || c.y1 <= c.y0) continue;
+      A[count]!.set(c.x, c.z, c.ux, c.uz);
+      B[count]!.set(c.hu, c.hv, c.y0, c.y1);
+      count++;
+      const dx = Math.abs(c.ux) * c.hu + Math.abs(c.uz) * c.hv;
+      const dz = Math.abs(c.uz) * c.hu + Math.abs(c.ux) * c.hv;
+      lo.set(Math.min(lo.x, c.x - dx), Math.min(lo.y, c.y0), Math.min(lo.z, c.z - dz));
+      hi.set(Math.max(hi.x, c.x + dx), Math.max(hi.y, c.y1), Math.max(hi.z, c.z + dz));
     }
-    this.u.uKqClipN!.value = n;
+    // The oriented tests use float32 world coordinates and axes. Keep the broad-phase
+    // bounds slightly wider at touching edges so it can only reject whole misses.
+    if (count > 0) {
+      lo.addScalar(-0.002);
+      hi.addScalar(0.002);
+    } else {
+      lo.set(0, 0, 0);
+      hi.set(0, 0, 0);
+    }
+    this.u[`${prefix}N`]!.value = count;
   }
 
   dispose(): void {

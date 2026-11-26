@@ -452,6 +452,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     });
   sync();
   if (params.has('manual')) loop.manual = true;
+  loop.holdVisualTime = params.has('holdvisuals');
   let frames = 0;
   let lastRenderAt = 0;
   let zoomTimer = 0;

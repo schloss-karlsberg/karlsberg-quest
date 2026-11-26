@@ -184,6 +184,24 @@ describe('render pacing (frame cap)', () => {
     expect(renders).toBe(2);
   });
 
+  it('keeps the visual clock at the explicitly rendered time during manual capture', () => {
+    const deltas: number[] = [];
+    const loop = new FixedStepLoop({ update: () => {}, render: (dt) => deltas.push(dt) });
+    loop.manual = true;
+    loop.holdVisualTime = true;
+    loop.frame(0);
+    loop.frame(0.22);
+    loop.advance(3);
+    loop.renderOnce(0.1);
+    loop.renderOnce(0.1);
+    loop.frame(1.5);
+    expect(deltas).toEqual([0, 0, 0.1, 0.1, 0]);
+    expect(loop.tick).toBe(3);
+    loop.manual = false;
+    loop.frame(1.7);
+    expect(deltas.at(-1)).toBeCloseTo(0.2);
+  });
+
   it('parks the rAF loop while nothing moves and nothing is asked for; wakes on a request', () => {
     // a fake requestAnimationFrame whose cancel really removes the callback
     const queue = new Map<number, FrameRequestCallback>();

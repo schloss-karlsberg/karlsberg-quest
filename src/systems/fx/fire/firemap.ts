@@ -2,7 +2,7 @@
  * A top-down raster of the burning palace for the palace shader: per cell which fire unit is
  * the ground floor and which the upper floors (and where the split lies), so the real windows of
  * the 1789 model can glow room by room and the walls blacken where the fire has been.
- * The raster is pure (unit-tested); `FireMap.fill` writes an RGBA8 buffer each frame:
+ * `FireMap.fill` updates an RGBA8 buffer when a contributing room's quantized state changes:
  *   R = ground-floor burn, G = upper-floor burn, B = split height, A = soot.
  */
 import { bbox, pointInPolygon } from '../geom';
@@ -102,10 +102,24 @@ export function rasterizeUnits(units: FireUnit[], cell = 1.5, grow = 2): FireRas
 /** Raster + per-frame RGBA8 fill from unit burn intensities and soot. */
 export class FireMap {
   readonly data: Uint8Array;
+  private readonly units: number[];
+  private readonly burn: Uint8Array;
+  private readonly soot: Uint8Array;
 
   constructor(readonly r: FireRaster) {
     this.data = new Uint8Array(r.w * r.h * 4);
-    for (let c = 0; c < r.w * r.h; c++) this.data[c * 4 + 2] = Math.round(255 * Math.max(0, Math.min(1, (r.split[c]! - r.y0) / r.yRange)));
+    const units = new Set<number>();
+    let last = -1;
+    for (let c = 0; c < r.w * r.h; c++) {
+      this.data[c * 4 + 2] = Math.round(255 * Math.max(0, Math.min(1, (r.split[c]! - r.y0) / r.yRange)));
+      units.add(r.lower[c]!);
+      units.add(r.upper[c]!);
+      last = Math.max(last, r.lower[c]!, r.upper[c]!);
+    }
+    units.delete(-1);
+    this.units = [...units];
+    this.burn = new Uint8Array(last + 1);
+    this.soot = new Uint8Array(last + 1);
   }
 
   /** x0, z0, width, depth (m) of the raster, for the shader's uv. */
@@ -113,18 +127,27 @@ export class FireMap {
     return [this.r.x0, this.r.z0, this.r.w * this.r.cell, this.r.h * this.r.cell];
   }
 
-  fill(intensity: (i: number) => number, soot: (i: number) => number): void {
+  /** Resolve each room once. Keep the previous texture when its input bytes match. */
+  fill(intensity: (i: number) => number, soot: (i: number) => number): boolean {
+    let dirty = false;
+    for (const i of this.units) {
+      const burnByte = Math.round(255 * Math.min(1, intensity(i)));
+      const sootByte = Math.round(255 * soot(i));
+      if (this.burn[i] === burnByte && this.soot[i] === sootByte) continue;
+      this.burn[i] = burnByte;
+      this.soot[i] = sootByte;
+      dirty = true;
+    }
+    if (!dirty) return false;
     const { lower, upper } = this.r;
     const d = this.data;
     for (let c = 0; c < lower.length; c++) {
       const li = lower[c]!;
       const ui = upper[c]!;
-      const lo = li >= 0 ? intensity(li) : 0;
-      const up = ui >= 0 ? intensity(ui) : 0;
-      const s = Math.max(li >= 0 ? soot(li) : 0, ui >= 0 ? soot(ui) : 0);
-      d[c * 4] = Math.round(255 * Math.min(1, lo));
-      d[c * 4 + 1] = Math.round(255 * Math.min(1, up));
-      d[c * 4 + 3] = Math.round(255 * s);
+      d[c * 4] = this.burn[li] ?? 0;
+      d[c * 4 + 1] = this.burn[ui] ?? 0;
+      d[c * 4 + 3] = Math.max(this.soot[li] ?? 0, this.soot[ui] ?? 0);
     }
+    return true;
   }
 }
