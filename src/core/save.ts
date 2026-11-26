@@ -7,6 +7,7 @@ export const STORAGE_PREFIX = 'kq.';
 export const SAVE_KEY = (slot: string) => `${STORAGE_PREFIX}save.v1.${slot}`;
 export const SETTINGS_KEY = `${STORAGE_PREFIX}settings.v1`;
 const BINDINGS_VERSION = 1;
+const AUTOSAVE_FAILURE_BACKOFF_MS = 1000;
 
 /** The subset of the Web Storage API we use (lets tests inject a Map-backed fake). */
 export interface KeyValueStorage {
@@ -48,6 +49,8 @@ export interface Settings {
   /** Invert horizontal mouse look. */
   invertX: boolean;
   gentleMode: boolean;
+  /** Show the local map in the HUD. */
+  minimap: boolean;
   reducedMotion: boolean;
   /**
    * No bright full-screen flashes (era-shift brass flash, fire collapse flashes, flicker). Read by
@@ -100,6 +103,7 @@ export function defaultSettings(): Settings {
     mouseSensitivity: 1,
     invertY: false,
     gentleMode: false,
+    minimap: true,
     invertX: false,
     reducedMotion: reduced,
     reducedFlash: reduced,
@@ -144,13 +148,21 @@ export class SettingsStore extends Store<Settings> {
   }
 }
 
+type SaveAvailability = 'empty' | 'readable' | 'unreadable';
+type SlotRead =
+  | { status: 'empty' }
+  | { status: 'readable'; state: GameState }
+  | { status: 'unreadable'; error: unknown };
+
 /**
  * Save slots in localStorage. `autosave(reason)` is the API features call at meaningful moments
  * (era shift, clue confirmed); it is throttled so it can be called freely.
  */
 export class SaveManager {
   private lastAuto = -Infinity;
-  /** Minimum ms between autosaves (forced saves ignore it). */
+  private autoWriteFailures = 0;
+  private nextAutoAttempt = -Infinity;
+  /** Minimum ms between successful autosaves (forced autosaves ignore it). */
   minIntervalMs = 5000;
   /** Disable all writes (e.g. e2e screenshots, `?nosave`). */
   enabled = true;
@@ -158,27 +170,55 @@ export class SaveManager {
   private readonly holds = new Set<string>();
   /** An autosave asked for while held: written when the last hold ends. */
   private heldReason: { reason: string; force: boolean } | null = null;
+  /** The latest forced checkpoint awaiting a successful write. */
+  private retryReason: string | null = null;
 
   constructor(
     private readonly store: GameStateStore,
     private readonly storage: KeyValueStorage,
     private readonly events?: EventBus,
-    private readonly now: () => number = () => Date.now(),
+    private readonly wallNow: () => number = () => Date.now(),
+    private readonly elapsedNow: () => number = () => performance.now(),
   ) {}
 
   has(slot = 'auto'): boolean {
-    return this.storage.getItem(SAVE_KEY(slot)) !== null;
+    return this.readRaw(slot) !== null;
+  }
+
+  /** Read a slot's exact stored bytes, including unreadable saves. */
+  readRaw(slot = 'auto'): string | null {
+    return this.storage.getItem(SAVE_KEY(slot));
+  }
+
+  /** Check a slot without changing the game state or stored bytes. */
+  availability(slot = 'auto'): SaveAvailability {
+    return this.read(slot).status;
   }
 
   save(slot = 'auto', reason = 'manual'): boolean {
+    return this.write(slot, reason);
+  }
+
+  private write(slot: string, reason: string, autoTime?: number): boolean {
     if (!this.enabled) return false;
     const s = this.store.mutable;
-    s.meta.savedAt = new Date(this.now()).toISOString();
+    const savedAt = new Date(this.wallNow()).toISOString();
     try {
-      this.storage.setItem(SAVE_KEY(slot), serializeState(s));
+      this.storage.setItem(SAVE_KEY(slot), serializeState({ ...s, meta: { ...s.meta, savedAt } }));
     } catch (err) {
+      if (autoTime !== undefined) {
+        this.autoWriteFailures++;
+        if (this.autoWriteFailures >= 2) this.nextAutoAttempt = autoTime + AUTOSAVE_FAILURE_BACKOFF_MS;
+      }
       console.warn('[save] write failed', err);
       return false;
+    }
+    s.meta.savedAt = savedAt;
+    if (slot === 'auto' && !this.held) this.retryReason = null;
+    if (autoTime !== undefined) {
+      this.lastAuto = autoTime;
+      this.autoWriteFailures = 0;
+      this.nextAutoAttempt = -Infinity;
     }
     this.events?.emit('save:written', { slot, reason });
     return true;
@@ -205,44 +245,67 @@ export class SaveManager {
 
   /** Throttled save to the 'auto' slot. Returns true if written. */
   autosave(reason: string, force = false): boolean {
-    if (this.holds.size > 0) {
+    return this.checkpoint(reason, force);
+  }
+
+  /** Give tab hide or return to title one write attempt even during backoff. */
+  flushAutosave(reason: string): boolean {
+    return this.checkpoint(reason, true, true);
+  }
+
+  /** Retry a pending forced checkpoint from the game loop, subject to backoff and holds. */
+  retryAutosave(): void {
+    if (this.retryReason !== null && !this.held) this.autosave(this.retryReason, true);
+  }
+
+  private checkpoint(reason: string, force: boolean, flush = false): boolean {
+    if (!this.enabled) return false;
+    if (this.held) {
       this.heldReason = { reason, force: force || this.heldReason?.force === true };
       return false;
     }
-    const t = this.now();
+    if (force) this.retryReason = reason;
+    const t = this.elapsedNow();
+    if (!flush && t < this.nextAutoAttempt) return false;
     if (!force && t - this.lastAuto < this.minIntervalMs) return false;
-    this.lastAuto = t;
-    return this.save('auto', reason);
+    return this.write('auto', reason, t);
   }
 
   /** Load a slot into the store. Returns false when the slot is empty or unreadable. */
   load(slot = 'auto'): boolean {
-    const raw = this.storage.getItem(SAVE_KEY(slot));
-    if (!raw) return false;
-    let s: GameState;
-    try {
-      s = deserializeState(raw);
-    } catch (err) {
-      console.warn('[save] unreadable save, ignoring', err);
+    const result = this.read(slot);
+    if (result.status !== 'readable') {
+      if (result.status === 'unreadable') console.warn('[save] unreadable save, ignoring', result.error);
       return false;
     }
-    this.store.replace(s, 'load');
+    this.heldReason = null;
+    this.retryReason = null;
+    this.store.replace(result.state, 'load');
     this.events?.emit('save:loaded', { slot });
     return true;
   }
 
   /** Read a slot without loading it (null when empty or unreadable). */
   peek(slot = 'auto'): GameState | null {
-    const raw = this.storage.getItem(SAVE_KEY(slot));
-    if (!raw) return null;
+    const result = this.read(slot);
+    return result.status === 'readable' ? result.state : null;
+  }
+
+  private read(slot: string): SlotRead {
+    const raw = this.readRaw(slot);
+    if (raw === null) return { status: 'empty' };
     try {
-      return deserializeState(raw);
-    } catch {
-      return null;
+      return { status: 'readable', state: deserializeState(raw) };
+    } catch (error) {
+      return { status: 'unreadable', error };
     }
   }
 
   delete(slot = 'auto'): void {
-    this.storage.removeItem(SAVE_KEY(slot));
+    if (this.enabled) this.storage.removeItem(SAVE_KEY(slot));
+    if (slot === 'auto') {
+      this.heldReason = null;
+      this.retryReason = null;
+    }
   }
 }

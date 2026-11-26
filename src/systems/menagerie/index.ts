@@ -8,7 +8,7 @@
  *   (switching back brings it back). Spawns persist in the 'menagerie' state slice.
  * - Behaviour: logic.ts (pure). Visuals: models.ts (procedural low-poly rigs). Sound: audio.ts.
  * - No combat, never "caught": the cassowary's charge or the jaguar's shove KNOCK YOU DOWN for a
- *   few seconds (frozen, prone, the view tips towards the sky; reduced motion: no roll), then you
+ *   few seconds (frozen, prone, the view tips towards the sky; reduced motion holds the view), then you
  *   get up. Dromedaries block (collision) and give way only to patience.
  * - gentleMode: slower cassowary, shorter knockdowns, the jaguar never shoves.
  *
@@ -18,6 +18,7 @@
 import './strings';
 import { Color } from 'three';
 import type { GameContext } from '../../core/context';
+import { screenFlashScale } from '../../core/motion';
 import { defineSystem } from '../../core/systems';
 import { atmosphere } from '../../world/atmosphere';
 import type { MenagerieAnimal } from '../contracts';
@@ -40,6 +41,13 @@ export interface MenagerieSlice {
   animals: SavedAnimal[];
   /** Animals calmed by the player (combat track: never fought — calmed and led home). */
   calmed?: string[];
+  /** Progress toward calming, keyed by the simulated animal's id. */
+  misses?: Record<string, number>;
+  flares?: Record<string, number>;
+}
+
+function calmingCount(counts: Record<string, number> | undefined, id: string): number {
+  return counts && Object.hasOwn(counts, id) ? counts[id] ?? 0 : 0;
 }
 
 declare module '../../core/state' {
@@ -162,8 +170,9 @@ class MenagerieSystem {
         const dz = a.z - z;
         const d = Math.hypot(dx, dz);
         if (d > range + 4 || (d > 1.5 && (dx * fx + dz * fz) / d < cosHalf * 0.8)) continue;
-        const n = (this.flares.get(a.id) ?? 0) + 1;
-        this.flares.set(a.id, n);
+        const sl = this.slice();
+        const n = calmingCount(sl.flares, a.id) + 1;
+        sl.flares = { ...sl.flares, [a.id]: n };
         a.state = 'retreat' as Animal['state'];
         this.audio.hiss(this.pos3(a.x, a.z, 0.6), true);
         if (n >= 3) this.calm(a.id, 'jaguar');
@@ -281,18 +290,16 @@ class MenagerieSystem {
     }
   }
 
-  /** Spawn ids (groupId) per counted cassowary misses / jaguar flares. */
-  private readonly misses = new Map<string, number>();
-  private readonly flares = new Map<string, number>();
   private leadPrompt = false;
 
   /** A tired cassowary (3 charges past you) lets itself be led home: E within 3 m. */
   private updateLeadHome(): void {
     const ctx = this.ctx;
     const pl = ctx.player.position;
+    const misses = this.slice().misses;
     let near: Animal | null = null;
     for (const a of this.sim.animals) {
-      if (a.kind !== 'cassowary' || (this.misses.get(a.id) ?? 0) < 3) continue;
+      if (a.kind !== 'cassowary' || calmingCount(misses, a.id) < 3) continue;
       if (Math.hypot(a.x - pl.x, a.z - pl.z) < 3.5) near = a;
     }
     if (near && !ctx.player.frozen) {
@@ -313,8 +320,8 @@ class MenagerieSystem {
     const sl = this.slice();
     const id = groupId(animalId);
     sl.calmed = [...new Set([...(sl.calmed ?? []), id])];
-    this.misses.delete(animalId);
-    this.flares.delete(animalId);
+    delete sl.misses?.[animalId];
+    delete sl.flares?.[animalId];
     if (animal === 'jaguar') this.caption('jag-calm', this.ctx.t('menagerie.jaguar.calmed'), 2, 3600);
     this.ctx.events.emit('menagerie:calmed', { id, animal });
     if (this.leadPrompt) {
@@ -343,8 +350,9 @@ class MenagerieSystem {
         this.caption('cas-charge', t('menagerie.cassowary.charge'), 4, 2400);
         break;
       case 'miss': {
-        const n = (this.misses.get(e.id) ?? 0) + 1;
-        this.misses.set(e.id, n);
+        const sl = this.slice();
+        const n = calmingCount(sl.misses, e.id) + 1;
+        sl.misses = { ...sl.misses, [e.id]: n };
         if (n >= 3) this.caption('cas-tired', t('menagerie.cassowary.tired'), 4, 3200);
         else this.caption('cas-miss', t('menagerie.cassowary.miss'), 4, 2000);
         break;
@@ -442,7 +450,7 @@ class MenagerieSystem {
     if (d) {
       const k = d.t < 0.35 ? d.t / 0.35 : d.t > d.dur - 0.6 ? Math.max(0, (d.dur - d.t) / 0.6) : 1;
       const e = k * k * (3 - 2 * k);
-      ctx.player.pitch = d.pitch0 + (0.85 - d.pitch0) * e;
+      ctx.player.pitch = reduced ? d.pitch0 : d.pitch0 + (0.85 - d.pitch0) * e;
       if (!reduced) {
         ctx.camera.rotation.set(ctx.player.pitch, ctx.player.yaw, 0.45 * d.side * e, 'YXZ');
         if (d.t < 0.5) {
@@ -454,8 +462,7 @@ class MenagerieSystem {
     }
     if (this.flashT >= 0) {
       this.flashT += dt;
-      // reduced motion: a short dim instead of the hard flash
-      const peak = reduced ? 0.45 : 0.85;
+      const peak = 0.85 * screenFlashScale(reduced, ctx.settings.state.reducedFlash);
       const f = this.flashT < 0.08 ? (this.flashT / 0.08) * peak : Math.max(0, peak * (1 - (this.flashT - 0.08) / 0.7));
       this.flash.style.opacity = f.toFixed(3);
       if (this.flashT > 0.8) {

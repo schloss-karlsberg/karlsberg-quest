@@ -79,6 +79,7 @@ uniform vec4 uLmBox;
 uniform float uLmSplit;
 uniform vec4 uLightPos[${MAX_LIGHTS}];
 uniform vec4 uLightCol[${MAX_LIGHTS}];
+uniform int uLightCount;
 uniform float uRoomFire[${MAX_ROOMS}];
 uniform float uRoomSmoke[${MAX_ROOMS}];
 uniform float uRoomChar[${MAX_ROOMS}];
@@ -102,7 +103,7 @@ float h21(vec2 p) { return kqHash12(p); }
 float vnoise(vec2 p) { return kqNoise(p); }
 
 // Versailles panel parquet: framed squares with a woven diagonal lattice
-vec3 parquet(vec2 p, vec3 base, out float spec) {
+vec3 parquet(vec2 p, vec3 base) {
   float cell = 1.12;
   vec2 c = floor(p / cell);
   vec2 f = p / cell - c;
@@ -134,7 +135,6 @@ vec3 parquet(vec2 p, vec3 base, out float spec) {
   // joints
   float j = min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y));
   col *= 1.0 - 0.35 * (1.0 - smoothstep(0.0, 0.006, abs(j - border)));
-  spec = 0.35;
   return col;
 }
 
@@ -198,29 +198,26 @@ void main() {
   int m = int(vMat + 0.5);
   int room = int(vRoom + 0.5);
   bool hasRoom = vRoom > -0.5;
-  float fire = 0.0;
-  float smoke = 0.0;
-  float charr = 0.0;
-  float gone = 0.0;
-  float heat = 0.0;
-  float ceil = vWorld.y + 10.0;
-  float rfloor = vWorld.y - 1.0;
-  if (hasRoom) {
-    for (int i = 0; i < ${MAX_ROOMS}; i++) {
-      if (i == room) {
-        fire = uRoomFire[i];
-        smoke = uRoomSmoke[i];
-        charr = uRoomChar[i];
-        gone = uRoomGone[i];
-        ceil = uRoomCeil[i];
-        heat = uRoomHeat[i];
-        rfloor = uRoomFloor[i];
-      }
-    }
-  }
+  bool roomState = hasRoom && room < ${MAX_ROOMS};
+  float fire = roomState ? uRoomFire[room] : 0.0;
+  float gone = roomState ? uRoomGone[room] : 0.0;
   if (m == ${M.CEILING} && gone > 0.5) discard;
   // exposed joists of a burning ceiling: only there while the room burns
   if (vAux.w > 6.5 && (fire < 0.15 || gone > 0.5)) discard;
+  if (uShadowPass > 0.5) { gl_FragColor = vec4(1.0); return; }
+
+  float smoke = 0.0;
+  float charr = 0.0;
+  float heat = 0.0;
+  float ceil = vWorld.y + 10.0;
+  float rfloor = vWorld.y - 1.0;
+  if (roomState) {
+    smoke = uRoomSmoke[room];
+    charr = uRoomChar[room];
+    ceil = uRoomCeil[room];
+    heat = uRoomHeat[room];
+    rfloor = uRoomFloor[room];
+  }
 
   vec3 n = normalize(vNormal);
   if (!gl_FrontFacing) n = -n;
@@ -282,7 +279,8 @@ void main() {
       spec = motif * 0.25;
     }
   } else if (m == ${M.PARQUET}) {
-    alb = parquet(uv, base, spec);
+    alb = uSurfOn > 0.5 ? base * 1.15 : parquet(uv, base);
+    spec = 0.35;
   } else if (m == ${M.FLAGS}) {
     alb = flags(uv, base);
   } else if (m == ${M.CHECKER}) {
@@ -457,7 +455,7 @@ void main() {
     float L = -1.0;
     float k = 1.0;
     if (m == ${M.PLASTER} || m == ${M.CEILING} || m == ${M.BARE} || m == ${M.BOISERIE}) { L = ${SURF.PLASTER}.0; k = 0.45; }
-    else if (m == ${M.PARQUET}) { L = ${SURF.PARQUET}.0; alb = base * 1.15; }
+    else if (m == ${M.PARQUET}) L = ${SURF.PARQUET}.0;
     else if (m == ${M.BOARDS} || m == ${M.CHARRED}) L = ${SURF.PLANKS}.0;
     else if (m == ${M.WOOD}) L = ${SURF.FINEWOOD}.0;
     else if (m == ${M.MASONRY} || m == ${M.STEP} || m == ${M.FLAGS}) L = ${SURF.STONE}.0;
@@ -501,29 +499,32 @@ void main() {
     // light falls in from the windows: walls facing the windows catch more
     col = alb * amb * ao;
     // candles, chandeliers
-    for (int i = 0; i < ${MAX_LIGHTS}; i++) {
-      vec4 lp = uLightPos[i];
+    vec3 viewDir = spec > 0.0 ? normalize(uCamPos - vWorld) : vec3(0.0);
+    for (int i = 0; i < uLightCount; i++) {
       vec4 lc = uLightCol[i];
-      if (lp.w <= 0.0) continue;
       if (lc.w > -0.5 && abs(lc.w - vRoom) > 0.5) continue;
+      vec4 lp = uLightPos[i];
       vec3 d = lp.xyz - vWorld;
-      float dist = length(d);
+      float d2 = dot(d, d);
+      if (lp.w <= 0.0 || d2 >= lp.w * lp.w) continue;
+      float dist = sqrt(d2);
       float att = 1.0 / (1.0 + dist * dist * 0.35) * smoothstep(lp.w, lp.w * 0.5, dist);
       float ndl = max(dot(n, d / max(dist, 1e-3)), 0.0) * 0.8 + 0.2;
       col += alb * lc.rgb * att * ndl;
       // a soft highlight on polished / gilt surfaces
       if (spec > 0.0) {
-        vec3 v = normalize(uCamPos - vWorld);
-        vec3 hv = normalize(v + d / max(dist, 1e-3));
+        vec3 hv = normalize(viewDir + d / max(dist, 1e-3));
         col += lc.rgb * att * spec * 0.35 * pow(max(dot(n, hv), 0.0), 24.0);
       }
     }
     // lantern
-    vec3 ld = uLanternPos - vWorld;
-    float dl = length(ld);
-    float lat = clamp(1.0 - dl / uLanternRadius, 0.0, 1.0);
-    lat *= lat;
-    col += alb * uLantern * lat * (0.35 + 0.65 * max(dot(n, ld / max(dl, 1e-3)), 0.0));
+    if (any(greaterThan(uLantern, vec3(0.0)))) {
+      vec3 ld = uLanternPos - vWorld;
+      float dl = length(ld);
+      float lat = clamp(1.0 - dl / uLanternRadius, 0.0, 1.0);
+      lat *= lat;
+      col += alb * uLantern * lat * (0.35 + 0.65 * max(dot(n, ld / max(dl, 1e-3)), 0.0));
+    }
     // the fire outside (1793-07) glows in through the windows
     col += alb * uGlowColor * 0.12 * (sky + 0.1);
   }
@@ -531,7 +532,10 @@ void main() {
   float hgt = vWorld.y - rfloor;
   float roomH = max(2.5, ceil - rfloor);
   float tt = uTime;
-  float fl = 0.75 + 0.15 * sin(tt * 11.0 + vWorld.x * 1.3) + 0.1 * sin(tt * 23.0 + vWorld.z * 2.1);
+  float fl = 1.0;
+  if (fire > 0.0 || heat > 0.0) {
+    fl = 0.75 + 0.15 * sin(tt * 11.0 + vWorld.x * 1.3) + 0.1 * sin(tt * 23.0 + vWorld.z * 2.1);
+  }
   if (fire > 0.0) {
     float low = 1.0 - smoothstep(0.0, 3.5, vWorld.y - (ceil - 5.0));
     float patchy = 0.45 + 0.8 * kqNoise(vWorld.xz * 0.45 + vec2(tt * 0.2, -tt * 0.13));
@@ -618,6 +622,7 @@ export function makeInteriorMaterial(lightMap: DataTexture, lmBox: Vector4, lmSp
       uLmSplit: { value: lmSplit },
       uLightPos: { value: Array.from({ length: MAX_LIGHTS }, () => new Vector4()) },
       uLightCol: { value: Array.from({ length: MAX_LIGHTS }, () => new Vector4()) },
+      uLightCount: { value: 0 },
       uRoomFire: { value: new Array<number>(MAX_ROOMS).fill(0) },
       uRoomSmoke: { value: new Array<number>(MAX_ROOMS).fill(0) },
       uRoomChar: { value: new Array<number>(MAX_ROOMS).fill(0) },

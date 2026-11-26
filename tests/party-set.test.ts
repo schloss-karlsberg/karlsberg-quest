@@ -12,13 +12,14 @@ import { PROP_EMISSIVE_HOOK, festPropMaterial } from '../src/systems/party/festf
 import { PROPS, TABLE_TOP, partyLayout, propsFor } from '../src/systems/party/placements';
 import { PARTY_VARIANTS, type PartyVariant } from '../src/systems/party/types';
 import { propMaterial } from '../src/systems/scenery/material';
+import { atmosphere } from '../src/world/atmosphere';
 
 /** A gently sloped plateau at ~350 m. */
 const heightAt = (x: number, z: number) => 350 + (x - 1216) * 0.03 - (z + 1114) * 0.02 + Math.sin(x * 0.7) * 0.05;
 
-function build(variant: PartyVariant, level: GraphicsLevel = 'high') {
+function build(variant: PartyVariant, level: GraphicsLevel = 'high', reducedMotion = () => false) {
   const scene = new Group();
-  const set = new FestPartySet(heightAt, () => level);
+  const set = new FestPartySet(heightAt, () => level, reducedMotion);
   const h = set.build(scene, partyLayout(variant), variant);
   return { scene, h };
 }
@@ -119,5 +120,40 @@ describe('party set (fest.ts)', () => {
     const herzog = layout.people.find((p) => p.who === 'double.herzog')!;
     expect(Math.hypot(herzog.x - layout.props.chair.x, herzog.z - layout.props.chair.z)).toBeLessThan(0.4);
     h.dispose();
+  });
+
+  it('holds firelight still and removes bursts and smoke when reduced motion is enabled', () => {
+    let reduced = false;
+    const { h } = build('burn', 'high', () => reduced);
+    const glows = h.root.getObjectByName('party-glows') as Mesh;
+    const flames = h.root.getObjectByName('party-flames') as Mesh;
+    const steam = h.root.getObjectByName('party-steam')!;
+    const sprites = glows.geometry.getAttribute('aSprite');
+    const liveSprites = () => Array.from({ length: sprites.count }, (_, i) => sprites.getY(i)).filter((y) => y > 0).length;
+    const still = liveSprites();
+    const clocks = [flames, glows].map((mesh) => (mesh.material as ShaderMaterial).uniforms.uTime!);
+    const previousTime = atmosphere.uTime.value;
+    try {
+      h.burst();
+      atmosphere.uTime.value = 7;
+      h.update(1 / 60);
+      expect(liveSprites()).toBeGreaterThan(still);
+      expect(clocks.map((clock) => clock.value)).toEqual([7, 7]);
+      reduced = true;
+      for (const time of [11, 19]) {
+        atmosphere.uTime.value = time;
+        h.update(1 / 60);
+        expect(clocks.map((clock) => clock.value)).toEqual([0, 0]);
+        expect(atmosphere.uTime.value).toBe(time);
+      }
+      expect(liveSprites()).toBe(still);
+      expect(steam.visible).toBe(false);
+      reduced = false;
+      h.update(1 / 60);
+      expect(clocks.map((clock) => clock.value)).toEqual([19, 19]);
+    } finally {
+      atmosphere.uTime.value = previousTime;
+      h.dispose();
+    }
   });
 });

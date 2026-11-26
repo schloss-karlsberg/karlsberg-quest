@@ -236,7 +236,9 @@ export class SunShadows {
   private collectSkips(scene: Scene): void {
     this.skipAge = 0;
     const out: Object3D[] = [];
-    scene.traverseVisible((o) => {
+    // every object, hidden ones too: a non-caster shown between two scans (interior smoke when a
+    // room ignites) must not draw into the depth target until the next scan
+    scene.traverse((o) => {
       if (o === scene) return;
       if (!castsShadow(o)) out.push(o);
     });

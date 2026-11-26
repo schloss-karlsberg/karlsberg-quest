@@ -4,14 +4,16 @@
 //   pnpm exec tsx scripts/dev/mobile-tour.ts --list
 //
 // Runs e2e/mobile/tour.pw.ts with e2e/mobile/playwright.config.ts (real GPU, ANGLE Metal; preview
-// server on port 5340, or KQ_MOBILE_PORT). Builds dist/ first when it is missing (or with --build).
+// server on port 5340, see below). Builds dist/ first when it is missing (or with --build).
 // Output: test-results/mobile-tour/<device>/<NN>-<state>[-<sub>].png + findings.json.
-// Heavy: always wrap it in scripts/dev/heavy.sh (one device per lock hold, ≤ 15 min).
+// Heavy: always wrap it in the EXCLUSIVE lane of scripts/dev/heavy.sh (real GPU; one device per hold,
+// ≤ 15 min); a normal slot is refused. KQ_MOBILE_PORT, else 5340 + heavy.sh slot.
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MOBILE_UNITS, findUnit } from '../../e2e/mobile/devices';
+import { requireExclusive } from './heavy-env.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const argv = process.argv.slice(2);
@@ -33,6 +35,8 @@ if (!device) {
   process.exit(64);
 }
 findUnit(device); // throws on a typo, with the list
+// Before the build: refuse a normal heavy.sh slot (e2e/mobile/playwright.config.ts checks again).
+requireExclusive('mobile-tour', `scripts/dev/heavy.sh --exclusive --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device ${device}`);
 
 if (argv.includes('--build') || !existsSync(resolve(ROOT, 'dist/index.html'))) {
   const b = spawnSync('pnpm', ['build'], { cwd: ROOT, stdio: 'inherit' });

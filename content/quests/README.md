@@ -33,13 +33,44 @@ The guided tour uses story beats. Surveyor quest history and pending payouts for
   `escort`, `survive`, `use`, `event`, `manual`. `after` orders them; `optional` + `bonus_xp` for bonus
   objectives. Spawns name enemy kinds from `src/rpg/enemies.ts`; positions must be inside the playable
   area (checked) and on walkable ground (check with `scripts/content-build/probe.mjs`).
+- An `echo` objective or an `event` objective for `echo:end` counts a heard or skipped memory.
+  Interrupted playback leaves the objective open.
 - Never an enemy: real people, victims, menagerie animals (use `calm`). No spawns at memorials.
 - Rewards: `xp`, `items` (`src/rpg/items.ts` or this file's `items`), `codex` (fact ids), `skills`
   (`{id, tier}`), `flags`, `talentPoints`.
+
+## Progression and one-shot events
+
+A beat that waits for a quest needs a reachable offer or start, a way to finish each required
+objective in `after` order, and an available turn-in. The validator runs the quest state machine
+against the chapter's actions. It follows chained offers, checks side-quest prerequisites and
+reports a blocked gate with the quest id and the outstanding objectives or missing giver.
+It also checks that every main quest has an offer or start and a completion on a reachable
+path, even when no beat explicitly waits for it. NPC acceptance and turn-in depend on the
+placement's era. A voice turn-in needs a story completion command, and rewards apply at
+completion. The chapter transition resets unfinished earlier main quests and applies the
+runtime expiry rules to side quests.
+
+A collect objective needs a known RPG item and enough pickups while that objective is open.
+Objective placements, positive-chance drops, story loot, direct grants and quest payouts are
+possible sources. A pickup can wait on the ground. A direct grant pays immediately. An item
+granted before acceptance can satisfy a later use objective, but collecting it requires a new
+pickup. Pickups only credit the amount that fits in the item's stack. Deeds can come from
+world pickups as well as grants, including pickups unrelated to any quest. Kill objectives
+with authored spawns or groups count the remaining enemies in reachable eras.
+An objective cannot fund itself with its own turn-in reward.
+
+Raw event objectives count matching notifications after activation. The check scans literal
+emitters in `src/`. Dynamically dispatched names belong in the small list in
+`scripts/content-validation/catalog.ts`, with the emitting system identified. For one-shot
+notifications such as a story cue or another quest's payout, put acceptance and any preceding
+objectives ahead of the emission. For a clue or a photo the player can find early, the typed
+`examine`, `echo` and `photo` objectives credit saved discoveries. Warnings about a voluntary
+NPC offer or pickup timing identify the sequence to try in play.
 
 ## Check
 
 ```
 pnpm validate          # quest files, then story files with the quest / item references
-pnpm vitest run tests/rpg-contracts.test.ts
+pnpm exec vitest run tests/rpg-contracts.test.ts tests/content-progression.test.ts
 ```

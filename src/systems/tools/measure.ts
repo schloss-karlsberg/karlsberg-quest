@@ -105,6 +105,7 @@ export class MeasureTool {
   private previewT = 0;
   private profileT = 0;
   private livePalace: PickHit | null = null;
+  private suspended = false;
   // DOM
   private readonly reticle: HTMLElement;
   private readonly sheet: HTMLElement;
@@ -165,11 +166,16 @@ export class MeasureTool {
     return this.mode !== 'off';
   }
 
+  suspend(on: boolean): void {
+    this.suspended = on;
+    this.group.visible = this.active && !on;
+  }
+
   start(): void {
     this.mode = 'a';
     this.a = this.b = null;
     this.result = null;
-    this.group.visible = true;
+    this.group.visible = !this.suspended;
     this.renderSheet();
   }
 
@@ -191,8 +197,10 @@ export class MeasureTool {
   }
 
   /** A click: set the start, then the end; a third click starts a new measurement. */
-  click(hit: PickHit | null = this.pickCentre()): void {
-    if (this.mode === 'off' || !hit) return;
+  click(hit?: PickHit | null): void {
+    if (!this.active || this.suspended) return;
+    if (hit === undefined) hit = this.pickCentre();
+    if (!hit) return;
     if (this.mode === 'a' || this.mode === 'done') {
       this.a = hit;
       this.b = null;
@@ -253,7 +261,7 @@ export class MeasureTool {
   }
 
   frame(dt: number): void {
-    if (this.mode === 'off') return;
+    if (!this.active || this.suspended) return;
     const ctx = this.ctx;
     this.reticle.classList.toggle('kqt-show', this.mode === 'a' || this.mode === 'b' || this.mode === 'done');
     const place = ctx.t(`tools.measure.hint.${this.mode}`);

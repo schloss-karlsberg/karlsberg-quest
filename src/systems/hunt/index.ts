@@ -350,7 +350,7 @@ class Hunt {
     ev.on('npc:conversation', ({ open }) => (this.talking = open));
     // round 2: the story's oil meter lights (and refills) the lantern for a timed beat
     ev.on('lantern:request', ({ lit, refill }) => {
-      if (refill) this.refill();
+      if (refill) this.refill(refill === true ? undefined : refill);
       this.setLit(lit, false);
     });
     // arriving home (the spring's hub ring, src/systems/home.ts; the story emits hub:enter) ends the
@@ -361,14 +361,23 @@ class Hunt {
     });
     // the pack belongs to the era it was configured in: a shift (or the return after being caught)
     // ends it; the story re-issues threat:configure when the beat wants it again
-    ev.on('era:change', () => {
-      this.stop('era');
+    ev.on('era:change', ({ from }) => {
+      // On a slot load the store already contains the destination era's pack.
+      const slice = this.slice();
+      if (slice.pack?.era === from) slice.pack = null;
+      this.dismissPack('era');
       this.tracks.clear();
       this.lastStep = null;
     });
     ev.on('save:loaded', () => {
       this.syncLantern(true);
-      if (this.sim) this.stop('debug', true);
+      this.endCaught();
+      if (this.sim) this.dismissPack('debug', true);
+      // staged (ending) and dissolving hounds belong to the outgoing game; hunt runs before the
+      // story, so a tableau the incoming slot sets again comes after this
+      this.tableau = null;
+      this.fading = null;
+      this.visuals.clear();
       this.restorePending = true;
     });
     // story set pieces (ch. 2): the Warner's trail in the hoarfrost; the pack holds still during W4
@@ -538,9 +547,9 @@ class Hunt {
     return r;
   }
 
-  refill(): void {
+  refill(amount?: number): void {
     const L = this.slice().lantern;
-    refill(L);
+    refill(L, amount);
     this.lowWarned = false;
     this.ctx.events.emit('lantern:oil', { oil: L.oil });
   }
@@ -602,14 +611,17 @@ class Hunt {
     const sameArea = s && this.caughtT < 0 && (c.center === undefined || Math.hypot(c.center.x - s.opt.x, c.center.z - s.opt.z) < 5) && (c.radius === undefined || c.radius === s.opt.radius) && (c.hounds === undefined || Math.round(c.hounds) === s.hounds.length) && (c.pikeur === undefined || c.pikeur === !!s.pikeur);
     if (s && sameArea) {
       const mode = c.mode ?? s.mode;
+      const intensity = c.intensity ?? s.opt.intensity;
+      const saved = this.slice().pack;
       const sameTarget = !c.target || (s.opt.target && Math.hypot(c.target.x - s.opt.target.x, c.target.z - s.opt.target.z) < 1);
       if (mode === s.mode && sameTarget) {
         // same beat, new difficulty
-        s.retune({ intensity: c.intensity ?? s.opt.intensity, ...this.mode() });
+        s.retune({ intensity, ...this.mode() });
+        if (saved) saved.opts.intensity = intensity;
         return;
       }
       // same pack, new behaviour (drive → finale at the kennel): they stay where they are
-      const extra: Partial<PackOptions> = {};
+      const extra: HuntStartOptions = {};
       if (o.flankers !== undefined) extra.flankers = o.flankers;
       if (o.lunges !== undefined) extra.lunges = o.lunges;
       if (o.pikeurFar !== undefined) extra.pikeurFar = o.pikeurFar;
@@ -618,9 +630,12 @@ class Hunt {
       if (o.heel !== undefined) extra.heel = o.heel;
       if (o.burst !== undefined) extra.burst = o.burst;
       if (o.keepPace !== undefined) extra.keepPace = o.keepPace;
-      s.switchMode({ mode, target: o.target ?? s.opt.target ?? null, via: o.via ?? [], from: o.from ?? null, headStart: o.headStart, goalRadius: o.goalRadius, oneKey: this.oneKey(), intensity: c.intensity ?? s.opt.intensity, ...extra }, makeMode);
-      const saved = this.slice().pack;
-      if (saved) saved.opts = { ...saved.opts, ...o, mode };
+      const changes = {
+        ...extra, mode, intensity, target: o.target ?? s.opt.target ?? undefined,
+        via: o.via ?? [], from: o.from, headStart: o.headStart, goalRadius: o.goalRadius,
+      };
+      s.switchMode({ ...changes, target: changes.target ?? null, from: changes.from ?? null, oneKey: this.oneKey() }, makeMode);
+      if (saved) Object.assign(saved.opts, changes);
       this.escapedT = -1;
       this.clearFinalePrompt();
       return;
@@ -702,8 +717,12 @@ class Hunt {
   }
 
   stop(reason: HuntEndReason, silent = false): void {
-    const s = this.sim;
     this.slice().pack = null;
+    this.dismissPack(reason, silent);
+  }
+
+  private dismissPack(reason: HuntEndReason, silent = false): void {
+    const s = this.sim;
     this.snowOverride = null;
     this.clearFinalePrompt();
     this.escapedT = -1;
@@ -1488,12 +1507,12 @@ class Hunt {
         dt,
         camera: ctx.camera,
         viewportH: window.innerHeight,
-        hornGlow: this.hornGlowT > 0 ? Math.min(1, this.hornGlowT / Math.min(0.4, this.hornGlowDur)) * (ctx.settings.state.reducedFlash ? 0.8 : 0.6 + 0.4 * Math.sin(ctx.loop.time * 30)) : 0,
+        hornGlow: this.hornGlowT > 0 ? Math.min(1, this.hornGlowT / Math.min(0.4, this.hornGlowDur)) * (reducedMotion || ctx.settings.state.reducedFlash ? 0.8 : 0.6 + 0.4 * Math.sin(ctx.loop.time * 16)) : 0,
         caught: this.caughtT >= 0 && this.caughtT < 2.2 && !this.caughtSoft ? { t: this.caughtT } : null,
         mist: sim?.mode === 'kennel' ? 0 : ctx.era.current === '1793-02' ? 1 : ctx.era.info.night ? 0.55 : 0.3,
         real: sim?.mode === 'kennel',
         reducedMotion,
-        reducedFlash: ctx.settings.state.reducedFlash,
+        reducedFlash: ctx.settings.state.reducedFlash || reducedMotion,
         heightAt: (x: number, z: number) => ctx.world.heightAt(x, z),
         snap,
         settle: sim?.ctl instanceof FinaleMode ? sim.ctl.calm : 0,
@@ -1550,6 +1569,7 @@ class Hunt {
       prone: pl.stance === 'prone',
       moving: Math.min(1, pl.stats.speed / 4),
       reducedMotion,
+      reducedFlash: ctx.settings.state.reducedFlash,
       snap,
     });
     const showGauge = L.lit || L.oil < 0.999 || !!sim || ctx.era.info.night;

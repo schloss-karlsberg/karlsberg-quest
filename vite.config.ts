@@ -160,5 +160,7 @@ export default defineConfig({
   test: {
     include: ['tests/**/*.test.ts'],
     environment: 'node',
+    // Keep named FAIL lines in captured logs and avoid an overwriting terminal progress panel.
+    reporters: [['default', { summary: false }], ...(process.env.GITHUB_ACTIONS === 'true' ? ['github-actions'] : [])],
   },
 });

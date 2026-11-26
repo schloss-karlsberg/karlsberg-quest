@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { SCREENS } from './helpers/common';
 
 /**
  * Combat variety pass (docs/ACTION-RPG.md §4.2, §5.1, §5.5): the Foliant's guard, the Scherbling's
@@ -7,7 +8,6 @@ import { type Page, expect, test } from '@playwright/test';
  * abilities (Ausfall, Erdstoß, Wirbel) with their HUD slots and cooldown rings.
  * Screenshots: test-results/screens/s5-combat-*.png — look at them after visual changes.
  */
-const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];

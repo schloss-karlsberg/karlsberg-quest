@@ -21,7 +21,7 @@
  */
 import type { Mesh, Object3D } from 'three';
 import type { GameContext } from '../../core/context';
-import { prefersReducedMotion } from '../../core/save';
+import { creditsReducedMotion } from '../../core/motion';
 import { defineSystem } from '../../core/systems';
 import { addStrings } from '../../i18n';
 import { creditLines, creditSections } from './creditContent';
@@ -69,6 +69,7 @@ class PartySystem {
     this.setBuilder = new FestPartySet(
       (x, z) => ctx.world.heightAt(x, z),
       () => ctx.quality.level,
+      () => ctx.settings.state.reducedMotion,
     );
     const strip = new CreditsStrip({
       label: ctx.t('party.credits'),
@@ -90,7 +91,7 @@ class PartySystem {
       },
       slice: () => this.slice,
       defaultLines,
-      reduced: () => ctx.settings.state.reducedMotion || prefersReducedMotion(),
+      reduced: () => creditsReducedMotion(ctx.settings.state.reducedMotion),
       strip,
       cinematic: {
         available: () => !!ctx.systems.get('cinematic') && !ctx.systems.stats().find((s) => s.id === 'cinematic')?.failed,

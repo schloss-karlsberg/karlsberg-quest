@@ -184,6 +184,24 @@ describe('render pacing (frame cap)', () => {
     expect(renders).toBe(2);
   });
 
+  it('keeps the visual clock at the explicitly rendered time during manual capture', () => {
+    const deltas: number[] = [];
+    const loop = new FixedStepLoop({ update: () => {}, render: (dt) => deltas.push(dt) });
+    loop.manual = true;
+    loop.holdVisualTime = true;
+    loop.frame(0);
+    loop.frame(0.22);
+    loop.advance(3);
+    loop.renderOnce(0.1);
+    loop.renderOnce(0.1);
+    loop.frame(1.5);
+    expect(deltas).toEqual([0, 0, 0.1, 0.1, 0]);
+    expect(loop.tick).toBe(3);
+    loop.manual = false;
+    loop.frame(1.7);
+    expect(deltas.at(-1)).toBeCloseTo(0.2);
+  });
+
   it('parks the rAF loop while nothing moves and nothing is asked for; wakes on a request', () => {
     // a fake requestAnimationFrame whose cancel really removes the callback
     const queue = new Map<number, FrameRequestCallback>();
@@ -295,7 +313,7 @@ describe('GameState + SaveManager', () => {
     const bus = new EventBus();
     let now = 1_000_000;
     const store = new GameStateStore(createInitialState());
-    const saves = new SaveManager(store, storage, bus, () => now);
+    const saves = new SaveManager(store, storage, bus, () => now, () => now);
     const written: string[] = [];
     bus.on('save:written', (p) => written.push(p.reason));
 
@@ -323,6 +341,29 @@ describe('GameState + SaveManager', () => {
     saves.enabled = false;
     expect(saves.save('x')).toBe(false);
     expect(saves.has('x')).toBe(false);
+  });
+
+  it('preserves saved slots through a nosave new game and allows deletion when enabled', () => {
+    const storage = new MemoryStorage();
+    const store = new GameStateStore(createInitialState());
+    const saves = new SaveManager(store, storage);
+    store.mutable.flags.played = true;
+    saves.save();
+    saves.save('ending');
+    const original = storage.getItem(SAVE_KEY('auto'));
+    const ending = storage.getItem(SAVE_KEY('ending'));
+    saves.enabled = false;
+    saves.delete();
+    saves.delete('ending');
+    store.replace(createInitialState(), 'new');
+    expect(saves.autosave('start', true)).toBe(false);
+    expect(store.state.flags.played).toBeUndefined();
+    expect(storage.getItem(SAVE_KEY('auto'))).toBe(original);
+    expect(storage.getItem(SAVE_KEY('ending'))).toBe(ending);
+    saves.enabled = true;
+    saves.delete();
+    expect(saves.has()).toBe(false);
+    expect(saves.has('ending')).toBe(true);
   });
 
   it('persists settings', () => {

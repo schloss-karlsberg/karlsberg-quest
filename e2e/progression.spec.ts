@@ -383,10 +383,19 @@ test('I and Pause open Ausrüstung & Talente, and learning a talent changes the 
   await expect(badge).toBeHidden();
   await expect(progressionEntry).toBeFocused();
   await page.keyboard.press('Escape');
-  // H now pours oil: the lantern is asked to light and refill
-  await page.evaluate(() => window.kq!.press('KeyH', 2));
+  // H now pours half a tank and lights the lantern.
+  const lantern = await page.evaluate(() => {
+    const k = window.kq!;
+    k.lantern!.toggle(false);
+    k.lantern!.setOil(0.2);
+    k.press('KeyH', 2);
+    return k.lantern!.state();
+  });
   expect(await events(page, 'item:use')).toEqual([{ item: 'item.lampenoel' }]);
-  expect(await events(page, 'lantern:request')).toContainEqual({ lit: true, refill: true });
+  expect(await events(page, 'lantern:request')).toContainEqual({ lit: true, refill: 0.5 });
+  expect(lantern.lit).toBe(true);
+  expect(lantern.oil).toBeCloseTo(0.7);
+  expect((await prog(page)).inventory['item.lampenoel']).toBe(1);
   // the codex pays once per fact
   await page.evaluate(() => {
     const k = window.kq!;

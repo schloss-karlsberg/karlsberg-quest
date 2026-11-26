@@ -92,6 +92,21 @@ describe('the opening beat timeline waits for the chapter card', () => {
     expect(first[0]!.at).toBeLessThan(first[1]!.at);
   });
 
+  it('kapitel 4: jumping to k4_13, the resting pack round Jost waits for the card', () => {
+    // e2e/stage-k2k4.spec.ts stepped 208 updates (3.5 s) after goto('k4', 'k4_13') and found no
+    // tableau: the cue waits for the chapter card (5.5 s + 0.8 s), so the spec flushes the timeline
+    const b = story('04-kapitel-4.story.json').beats.find((x) => x.id === 'k4_13')!;
+    const cue = (b.enter ?? []).find((a) => a.do === 'cue' && a.id === 'hunt:tableau')!;
+    expect(waitsForChapterCard(cue, cue.delay ?? 0)).toBe(true);
+    const h = new CardLineHold();
+    h.show(true);
+    for (const n of [4, 4, 200]) {
+      for (let i = 0; i < n; i++) h.tick(cardClockDt('update', true, false, 1 / 60));
+      h.tick(cardClockDt('frame', true, false, 1 / 60));
+    }
+    expect(h.holding()).toBe(true);
+  });
+
   it('kapitel 1: the radio crackle and Marlene stay 0.3 s apart (both wait for the card)', () => {
     const k1 = opening(story('01-kapitel-1.story.json'));
     const crackle = k1.find((x) => x.a.do === 'sound')!;

@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { SCREENS } from './helpers/common';
 
 /**
  * Playtest round 10 (F-10, "no visible Waldweg to follow"): in the present day the Wegweiser
@@ -8,7 +9,6 @@ import { type Page, expect, test } from '@playwright/test';
  * instead of along the crow line. Unit side: tests/travel.test.ts ("the Wegweiser follows the
  * paths"). Screenshot: test-results/screens/travel-paths-damm.png.
  */
-const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];

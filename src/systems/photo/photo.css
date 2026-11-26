@@ -168,9 +168,13 @@
 html[data-kq-touch] .kq-photo-hint {
   display: none;
 }
-/* the HUD's crosshair and prompt step back while the phone is up */
-html[data-kq-photo] .kq-crosshair {
-  visibility: hidden;
+/* Gameplay overlays keep their state behind the viewfinder. */
+html[data-kq-photo] :is(
+  .kq-hud, .kqq-layer, .kqs-bussole, .kqs-card, .kqs-dlg, .kqs-choice-card,
+  .kq-minimap, .kqt-card, [data-testid="minimap"], [data-layer="chronik-hud"],
+  [data-layer="tools"], [data-layer="npc-glyphs"]
+) {
+  display: none;
 }
 
 /* flash */
@@ -190,9 +194,11 @@ html[data-kq-photo] .kq-crosshair {
   0% { opacity: 0.92; }
   100% { opacity: 0; }
 }
-html[data-kq-reduced-motion] .kq-photo-flash.go,
 html[data-kq-reduced-flash] .kq-photo-flash.go {
   animation: kq-photo-flash-soft 0.2s linear;
+}
+html[data-kq-reduced-motion] .kq-photo-flash.go {
+  animation: none;
 }
 @keyframes kq-photo-flash-soft {
   0% { opacity: 0.3; }

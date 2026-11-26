@@ -27,6 +27,8 @@ export interface DialogueItem extends QueuedLine {
   fiction?: boolean;
   /** Source label for historical quotes. */
   source?: string;
+  /** The viewfinder stays down until the line finishes. */
+  phoneDown?: boolean;
   /** The place the line is about: skipped if the player is far from it when its turn comes. */
   where?: { x: number; z: number; r: number } | null;
 }
@@ -105,15 +107,17 @@ export class DialoguePresenter {
   private skipTouch: boolean | null = null;
   /** Waiting lines (cap, stale and place rules: ./queue.ts). */
   private readonly queue: LineQueue<DialogueItem>;
+  private readonly interruptedGroups = new Set<number>();
   private cur: Active | null = null;
   private hideTimer = 0;
   private mouthTimer = 0;
   private lastPortrait = '';
   private prune = 0;
   private paused = false;
+  private suspended = false;
   readonly voiceStats: PresenterVoiceStats = { clips: 0, murmured: 0, lastClip: null };
   constructor(private readonly o: PresenterOptions) {
-    this.queue = new LineQueue<DialogueItem>(() => this.cur?.item.group, o.valid);
+    this.queue = new LineQueue<DialogueItem>((group) => this.cur?.item.group === group || this.interruptedGroups.has(group), o.valid);
     ensurePortraitDefs();
     this.portraitEl = h('div.kqs-portrait');
     this.whoEl = h('span.kqs-who');
@@ -121,7 +125,7 @@ export class DialoguePresenter {
     this.typedEl = h('span.kqs-typed');
     this.restEl = h('span.kqs-rest');
     this.srcEl = h('span.kqs-src');
-    this.skipEl = h('span.kqs-skip');
+    this.skipEl = h('button.kqs-skip', { type: 'button', 'aria-label': t('story.dialogue.next'), onclick: () => this.skip() });
     this.skipHint();
     this.el = h('div.kqs-dlg', { 'data-testid': 'dialogue', role: 'status' }, [
       this.portraitEl,
@@ -134,6 +138,7 @@ export class DialoguePresenter {
     // a click, and on a phone a tap (its compatibility mousedown), advances
     this.el.addEventListener('mousedown', (e) => {
       e.stopPropagation();
+      if (e.target instanceof Node && this.skipEl.contains(e.target)) return;
       this.skip();
     });
     o.layer.append(this.el);
@@ -149,6 +154,10 @@ export class DialoguePresenter {
 
   get pending(): number {
     return this.queue.length;
+  }
+
+  get needsPhoneDown(): boolean {
+    return this.cur?.item.phoneDown === true || this.queue.some((item) => item.phoneDown === true);
   }
 
   hasLine(id: string, beat: string | null): boolean {
@@ -167,12 +176,14 @@ export class DialoguePresenter {
   }
 
   enqueue(item: DialogueItem): void {
-    this.queue.push(item);
+    // while the viewfinder suspends the presenter, a 'now' line only queues (it plays on resume)
+    const canInterrupt = !this.suspended && item.priority === 'now' && this.cur?.item.priority !== 'now' && !this.o.held?.(item);
+    const interrupt = this.queue.push(item, canInterrupt);
     // the clip is hashed over the raw template ({Name} …); the displayed text is tried too
     if (this.o.clips) this.o.clips.preload([{ id: item.id, text: [item.text, substituteName(item.text, this.o.name())], speaker: this.o.meta(item.speaker).id }]);
-    if (!this.cur) this.next();
-    // a 'now' line cuts in: the line on screen ends at once (unless it is 'now' itself)
-    else if (item.priority === 'now' && this.cur.item.priority !== 'now') this.next();
+    if (this.suspended) return;
+    if (interrupt) this.next(interrupt);
+    else if (!this.cur || (canInterrupt && this.queue.urgent)) this.next();
   }
 
   /** A beat began: waiting lines of other beats retire (./queue.ts). */
@@ -182,6 +193,7 @@ export class DialoguePresenter {
 
   clear(): void {
     this.queue.clear();
+    this.interruptedGroups.clear();
     this.stopClip();
     this.cur = null;
     this.el.classList.remove('kqs-show', 'kqs-speaking');
@@ -189,7 +201,7 @@ export class DialoguePresenter {
 
   /** Finish typing, or advance to the next line. */
   skip(): void {
-    if (!this.cur) return;
+    if (this.suspended || !this.cur) return;
     this.stopClip();
     if (this.cur.typed < this.cur.text.length) {
       this.cur.typed = this.cur.text.length;
@@ -203,9 +215,19 @@ export class DialoguePresenter {
    */
   setPaused(paused: boolean): void {
     this.paused = paused;
+    this.syncClip();
+  }
+
+  /** The viewfinder hides the presenter. Freeze the current line and leave new lines queued. */
+  setSuspended(suspended: boolean): void {
+    this.suspended = suspended;
+    this.syncClip();
+  }
+
+  private syncClip(): void {
     const clip = this.cur?.clip;
     if (!clip || clip.done) return;
-    if (paused) clip.pause();
+    if (this.paused || this.suspended) clip.pause();
     else if (!clip.playing) clip.start(); // no-op until the context runs again
   }
 
@@ -221,9 +243,19 @@ export class DialoguePresenter {
     }
   }
 
-  private next(): void {
+  private next(interrupt?: DialogueItem): void {
     this.stopClip();
-    const item = this.queue.take(this.o.held);
+    const item = interrupt ?? this.queue.take(this.o.held);
+    const previous = this.cur?.item;
+    if (item?.priority === 'now' && previous?.priority !== 'now' && previous?.group !== undefined) {
+      this.interruptedGroups.add(previous.group);
+    }
+    if (item?.group !== undefined) this.interruptedGroups.delete(item.group);
+    if (item?.priority !== 'now') {
+      for (const group of this.interruptedGroups) {
+        if (!this.queue.some((q) => q.group === group)) this.interruptedGroups.delete(group);
+      }
+    }
     if (!item) {
       this.cur = null;
       this.el.classList.remove('kqs-speaking');
@@ -285,6 +317,7 @@ export class DialoguePresenter {
 
   /** Advance typing / hold (seconds of game time). */
   update(dt: number): void {
+    if (this.suspended) return;
     this.queue.tick(dt);
     this.prune += dt;
     if (this.prune >= 0.25) {

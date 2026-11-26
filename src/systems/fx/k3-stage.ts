@@ -274,13 +274,16 @@ export class K3Stage {
     this.torch.object.visible = showTorch;
     if (this.torch.ready) {
       const hand = this.crowd.hand.ok ? this.crowd.hand : { ...court(36, -4), y: ctx.world.heightfield.heightAt(court(36, -4).x, court(36, -4).z) + 3.2 };
-      this.torch.update(t, fireAll, hand, pointScale, st.reducedFlash);
+      this.torch.update(t, fireAll, hand, pointScale, st.reducedFlash || st.reducedMotion, st.reducedMotion);
     }
     // impact: a flash, then the court lit by the windows (before the fire controller takes over)
-    if (t >= FLIGHT && t < FLIGHT + dt + 0.05 && showTorch && !fireAll) this.flash = Math.max(this.flash, st.reducedFlash ? 0.2 : 0.85);
-    this.flash = Math.max(0, this.flash - dt * 2.2);
+    if (st.reducedMotion) this.flash = 0;
+    else {
+      if (t >= FLIGHT && t < FLIGHT + dt + 0.05 && showTorch && !fireAll) this.flash = Math.max(this.flash, st.reducedFlash ? 0.2 : 0.85);
+      this.flash = Math.max(0, this.flash - dt * 2.2);
+    }
     this.litFrac = showTorch ? Math.min(1, Math.max(0, (t - FLIGHT) / (Math.max(1, this.torch.wins.length) * 0.16 + 0.5))) : 0;
-    this.frameGlow(fireAll > 0);
+    this.frameGlow(fireAll > 0, st.reducedFlash || st.reducedMotion);
     // the view turns to the window as the torch leaves the hand (a look-at cue, not a lock)
     if (this.echoOn && this.torchManual === null && t > -0.5 && t < FLIGHT + 1.6) this.turnView(dt, t);
     // the torch is the chapter's climax: no card or toast slides over it (hud action reason 'stage')
@@ -332,20 +335,20 @@ export class K3Stage {
 
     // ---- the Bussole's cold smoke ------------------------------------------------------------
     const wt = this.wispAt >= 0 ? this.T - this.wispAt : -1;
-    this.wisp.visible = wt >= 0 && wt < 9;
+    this.wisp.visible = !st.reducedMotion && wt >= 0 && wt < 9;
     (this.wisp.material as ShaderMaterial).uniforms.uT!.value = wt;
     if (wt > 9) this.wispAt = -1;
   }
 
   /** Before the fire runs, the burning windows light the court themselves. */
-  private frameGlow(fireOn: boolean): void {
+  private frameGlow(fireOn: boolean, steady: boolean): void {
     if (fireOn) {
       this.glowOwned = false;
       return;
     }
     const tgt = this.torch.target();
     if (this.litFrac > 0.001 && tgt) {
-      const flick = 0.85 + 0.1 * Math.sin(atmosphere.uTime.value * 7.1) + 0.05 * Math.sin(atmosphere.uTime.value * 17.3);
+      const flick = steady ? 0.85 : 0.85 + 0.1 * Math.sin(atmosphere.uTime.value * 7.1) + 0.05 * Math.sin(atmosphere.uTime.value * 17.3);
       atmosphere.uGlowPos.value.set(COURT_CENTER.x + 18, tgt.y + 4, COURT_CENTER.z);
       atmosphere.uGlowColor.value.set('#ff5a14').multiplyScalar((0.3 + 1.0 * this.litFrac) * flick + this.flash * 2);
       this.glowOwned = true;

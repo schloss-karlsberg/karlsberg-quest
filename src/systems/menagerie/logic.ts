@@ -297,19 +297,38 @@ export class Menagerie {
     // animals don't walk through each other
     for (let i = 0; i < this.animals.length; i++)
       for (let j = i + 1; j < this.animals.length; j++) {
-        const a = this.animals[i]!;
-        const b = this.animals[j]!;
-        const d = Math.hypot(a.x - b.x, a.z - b.z);
-        const min = a.radius + b.radius;
-        if (d > 1e-4 && d < min) {
-          const k = (min - d) / 2 / d;
-          a.x += (a.x - b.x) * k;
-          a.z += (a.z - b.z) * k;
-          b.x -= (a.x - b.x) * k;
-          b.z -= (a.z - b.z) * k;
-        }
+        this.separate(this.animals[i]!, this.animals[j]!);
       }
     return ev;
+  }
+
+  private separate(a: Animal, b: Animal): void {
+    const d = Math.hypot(a.x - b.x, a.z - b.z);
+    const min = a.radius + b.radius;
+    if (!(d < min)) return;
+    const nx = d === 0 ? 1 : (a.x - b.x) / d;
+    const nz = d === 0 ? 0 : (a.z - b.z) / d;
+    const push = (min - d) / 2;
+    if (this.separateAlong(a, b, nx * push, nz * push)) return;
+    // If the direct push is blocked, try separating at right angles along the available ground.
+    const slide = Math.sqrt(min * min - d * d) / 2;
+    this.separateAlong(a, b, -nz * slide, nx * slide);
+  }
+
+  private separateAlong(a: Animal, b: Animal, dx: number, dz: number): boolean {
+    const canMoveA = this.world.walkable?.(a.x + dx, a.z + dz) !== false;
+    const canMoveB = this.world.walkable?.(b.x - dx, b.z - dz) !== false;
+    // Split the displacement on open ground. At a bank one animal may take the whole step.
+    const scaleA = canMoveA ? (canMoveB ? 1 : 2) : 0;
+    const scaleB = canMoveB ? (canMoveA ? 1 : 2) : 0;
+    if (!scaleA && !scaleB) return false;
+    if (scaleA === 2 && this.world.walkable?.(a.x + 2 * dx, a.z + 2 * dz) === false) return false;
+    if (scaleB === 2 && this.world.walkable?.(b.x - 2 * dx, b.z - 2 * dz) === false) return false;
+    a.x += scaleA * dx;
+    a.z += scaleA * dz;
+    b.x -= scaleB * dx;
+    b.z -= scaleB * dz;
+    return true;
   }
 
   /**
@@ -598,6 +617,10 @@ export class Menagerie {
         break;
       }
       case 'pounce':
+        if (this.gentle) {
+          this.set(a, 'retreat');
+          break;
+        }
         this.turnTo(a, toP, 4, dt);
         this.forward(a, J.runSpeed, dt);
         if (p.lanternLit) {

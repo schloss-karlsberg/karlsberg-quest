@@ -5,6 +5,8 @@
  * Wheel zooms, dragging pans, a click on a point selects it, Enter / the button travels.
  */
 import type { GameContext } from '../../core/context';
+import { motionTime } from '../../core/motion';
+import { drawMapFootprints, drawMapGoal, drawMapPaper, drawMapPlayer, mapImage, type MapView } from './map-art';
 import type { Poi } from './pois';
 import type { SurveyPoint } from './points';
 import { TRAVEL_DE } from './strings';
@@ -27,16 +29,6 @@ export interface MapActions {
   layer(id: 0 | 1840 | 1935): void;
 }
 
-const LAND = { x0: 150, z0: -2150, x1: 2300, z1: 500 };
-
-let img: HTMLImageElement | null = null;
-function mapImage(ctx: GameContext): HTMLImageElement {
-  if (img) return img;
-  img = new Image();
-  img.src = `${ctx.data.baseUrl}${ctx.data.meta.hist1840.path}`;
-  return img;
-}
-
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
@@ -45,7 +37,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: 
 }
 
 /** Fit a view (centre, metres per css pixel) round the points of interest. */
-function fitView(m: MapModel, W: number, H: number): { cx: number; cz: number; mpp: number } {
+function fitView(m: MapModel, W: number, H: number): MapView {
   const xs = [m.player.x, ...m.known.map((p) => p.x)];
   const zs = [m.player.z, ...m.known.map((p) => p.z)];
   if (m.goal) {
@@ -57,7 +49,7 @@ function fitView(m: MapModel, W: number, H: number): { cx: number; cz: number; m
   const z0 = Math.min(...zs) - 120;
   const z1 = Math.max(...zs) + 120;
   const mpp = Math.max((x1 - x0) / W, (z1 - z0) / H, 1.2);
-  return { cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, mpp };
+  return { cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, mpp, width: W, height: H };
 }
 
 /** Builds the map page into `root` (the modal body); returns a cleanup. */
@@ -88,49 +80,18 @@ export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapM
   const toPx = (x: number, z: number): [number, number] => [(x - view.cx) / view.mpp + W / 2, (z - view.cz) / view.mpp + H / 2];
   const toWorld = (px: number, py: number): [number, number] => [(px - W / 2) * view.mpp + view.cx, (py - H / 2) * view.mpp + view.cz];
 
-  function draw(time: number): void {
+  function draw(frameTime: number): void {
     if (!g || !alive) return;
+    const time = motionTime(frameTime, ctx.settings.state.reducedMotion);
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    g.fillStyle = '#e8dcc0';
-    g.fillRect(0, 0, W, H);
-    const im = mapImage(ctx);
-    if (im.complete && im.naturalWidth) {
-      // image px = (x − 150) / 2, (z + 2150) / 2 (2 m per pixel, aligned to the grid)
-      const [ax, az] = toWorld(0, 0);
-      const [bx, bz] = toWorld(W, H);
-      const sx = (ax - LAND.x0) / 2;
-      const sy = (az - LAND.z0) / 2;
-      const sw = (bx - ax) / 2;
-      const sh = (bz - az) / 2;
-      g.globalAlpha = 0.92;
-      g.drawImage(im, sx, sy, sw, sh, 0, 0, W, H);
-      g.globalAlpha = 1;
-    }
-    // paper wash and a vignette
-    g.fillStyle = 'rgba(232, 214, 176, 0.22)';
-    g.fillRect(0, 0, W, H);
+    drawMapPaper(g, mapImage(ctx.data), view);
+    // vignette
     const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.72);
     vg.addColorStop(0, 'rgba(60, 40, 20, 0)');
     vg.addColorStop(1, 'rgba(60, 40, 20, 0.35)');
     g.fillStyle = vg;
     g.fillRect(0, 0, W, H);
-    // the palace and its buildings, inked
-    g.lineWidth = 1;
-    for (const b of ctx.data.footprints.buildings) {
-      const r = b.ring;
-      if (!r.length) continue;
-      g.beginPath();
-      r.forEach(([x, z], i) => {
-        const [px, py] = toPx(x, z);
-        if (i) g.lineTo(px, py);
-        else g.moveTo(px, py);
-      });
-      g.closePath();
-      g.fillStyle = 'rgba(140, 47, 31, 0.16)';
-      g.fill();
-      g.strokeStyle = 'rgba(42, 33, 24, 0.7)';
-      g.stroke();
-    }
+    drawMapFootprints(g, ctx.data.footprints.buildings, view);
     // POIs seen
     for (const p of m.pois) {
       const [px, py] = toPx(p.x, p.z);
@@ -162,16 +123,8 @@ export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapM
     // the goal
     if (m.goal) {
       const [px, py] = toPx(m.goal.x, m.goal.z);
-      const s = 7 + Math.sin(time / 300) * 1.5;
-      g.save();
-      g.translate(Math.max(8, Math.min(W - 8, px)), Math.max(8, Math.min(H - 8, py)));
-      g.rotate(Math.PI / 4);
-      g.fillStyle = 'rgba(181, 139, 61, 0.9)';
-      g.strokeStyle = '#2a2118';
-      g.lineWidth = 1.5;
-      g.fillRect(-s / 2, -s / 2, s, s);
-      g.strokeRect(-s / 2, -s / 2, s, s);
-      g.restore();
+      const size = 7 + Math.sin(time / 300) * 1.5;
+      drawMapGoal(g, Math.max(8, Math.min(W - 8, px)), Math.max(8, Math.min(H - 8, py)), size);
     }
     // unknown points: a faint survey cross
     g.strokeStyle = 'rgba(42, 33, 24, 0.35)';
@@ -197,7 +150,7 @@ export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapM
         g.strokeStyle = 'rgba(140, 47, 31, 0.9)';
         g.lineWidth = 2;
         g.beginPath();
-        g.arc(0, 0, ctx.settings.state.reducedMotion ? 13 : 13 + Math.sin(time / 200) * 1.5, 0, Math.PI * 2);
+        g.arc(0, 0, 13 + Math.sin(time / 200) * 1.5, 0, Math.PI * 2);
         g.stroke();
       }
       g.fillStyle = '#b58b3d';
@@ -226,22 +179,7 @@ export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapM
     }
     // you
     const [ppx, ppy] = toPx(m.player.x, m.player.z);
-    g.save();
-    g.translate(Math.max(8, Math.min(W - 8, ppx)), Math.max(8, Math.min(H - 8, ppy)));
-    // yaw 0 = north (−z = up on the map), clockwise
-    g.rotate(m.player.yaw);
-    g.fillStyle = '#8c2f1f';
-    g.strokeStyle = '#f3ead6';
-    g.lineWidth = 1.5;
-    g.beginPath();
-    g.moveTo(0, -10);
-    g.lineTo(6, 7);
-    g.lineTo(0, 3);
-    g.lineTo(-6, 7);
-    g.closePath();
-    g.fill();
-    g.stroke();
-    g.restore();
+    drawMapPlayer(g, Math.max(8, Math.min(W - 8, ppx)), Math.max(8, Math.min(H - 8, ppy)), m.player.yaw);
     // a scale bar
     const bar = niceBar(view.mpp * 120);
     const bw = bar / view.mpp;
@@ -269,6 +207,9 @@ export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapM
     (side.querySelector<HTMLButtonElement>('li.sel .kqt-map-go:not(:disabled)') ?? canvas).focus();
   }
 
+  const distanceTo = (point: SurveyPoint) => Math.hypot(point.x - m.player.x, point.z - m.player.z);
+  const canTravel = (point: SurveyPoint) => !m.block && distanceTo(point) >= 25;
+
   function renderSide(): void {
     side.textContent = '';
     side.append(el('p', 'kqt-map-hint', TRAVEL_DE.mapHint));
@@ -278,10 +219,10 @@ export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapM
       side.append(b);
     }
     const list = el('ol', 'kqt-map-list');
-    const byDist = [...m.known].sort((a, b) => Math.hypot(a.x - m.player.x, a.z - m.player.z) - Math.hypot(b.x - m.player.x, b.z - m.player.z));
+    const byDist = [...m.known].sort((a, b) => distanceTo(a) - distanceTo(b));
     byDist.forEach((p, i) => {
       const li = el('li', p.id === selected ? 'sel' : undefined);
-      const d = Math.hypot(p.x - m.player.x, p.z - m.player.z);
+      const d = distanceTo(p);
       const head = el('button', 'kqt-map-pick');
       head.type = 'button';
       head.append(el('b', undefined, `${i < 9 ? `${i + 1} · ` : ''}${p.name}`), el('span', undefined, d < 25 ? TRAVEL_DE.here : TRAVEL_DE.walk(d)));
@@ -295,7 +236,7 @@ export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapM
       const go = el('button', 'kq-btn kqt-map-go', TRAVEL_DE.go);
       go.type = 'button';
       go.dataset.testid = `travel-go-${p.id}`;
-      go.disabled = !!m.block || d < 25;
+      go.disabled = !canTravel(p);
       go.onclick = () => act.travel(p.id);
       li.append(go);
       list.append(li);
@@ -313,6 +254,7 @@ export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapM
           act.layer(l.id);
           m = model();
           renderSide();
+          side.querySelector<HTMLButtonElement>(`[data-testid="travel-layer-${l.id}"]`)?.focus();
         };
         row.append(b);
       }
@@ -330,7 +272,7 @@ export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapM
     const [wx, wz] = toWorld(px, py);
     const k = e.deltaY > 0 ? 1.18 : 1 / 1.18;
     const mpp = Math.max(0.6, Math.min(5, view.mpp * k));
-    view = { mpp, cx: wx - (px - W / 2) * mpp, cz: wz - (py - H / 2) * mpp };
+    view = { ...view, mpp, cx: wx - (px - W / 2) * mpp, cz: wz - (py - H / 2) * mpp };
   });
   canvas.addEventListener('pointerdown', (e) => {
     drag = { x: e.clientX, y: e.clientY, cx: view.cx, cz: view.cz, moved: false };
@@ -369,14 +311,14 @@ export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapM
   const onKey = (e: KeyboardEvent): void => {
     if (!root.isConnected) return;
     const n = Number(e.key);
-    const byDist = [...m.known].sort((a, b) => Math.hypot(a.x - m.player.x, a.z - m.player.z) - Math.hypot(b.x - m.player.x, b.z - m.player.z));
+    const byDist = [...m.known].sort((a, b) => distanceTo(a) - distanceTo(b));
     if (n >= 1 && n <= 9 && byDist[n - 1]) {
       e.preventDefault();
       e.stopPropagation();
       selected = byDist[n - 1]!.id;
       renderSide();
       focusDestination();
-    } else if (e.key === 'Enter' && e.target === canvas && selected && !m.block) {
+    } else if (e.key === 'Enter' && e.target === canvas && selected && m.known.some(point => point.id === selected && canTravel(point))) {
       e.preventDefault();
       e.stopPropagation();
       act.travel(selected);
@@ -432,9 +374,13 @@ html[data-kq-contrast] .kqt-map-block { background: #fff; color: #000; }
 .kqt-travel-curtain .kqt-to { font-size: 28px; letter-spacing: 0.04em; }
 .kqt-travel-curtain .kqt-sub { font-family: var(--serif, Georgia); font-style: italic; font-size: 16px; opacity: 0.8; }
 html[data-kq-reduced-motion] .kqt-travel-curtain .kqt-cross { animation: none; }
+html[data-kq-reduced-motion] .kqt-travel-curtain { transition-duration: 0.2s; }
 @keyframes kqt-spin { to { transform: rotate(360deg); } }
 .kqt-card { position: fixed; left: 50%; top: max(150px, 22vh); transform: translateX(-50%); z-index: 22; width: min(460px, 88vw); padding: 16px 22px 14px; pointer-events: auto;
   background: #efe4c9; color: #2a2118; border: 1px solid #b9a57c; box-shadow: 0 6px 24px rgba(0,0,0,0.35); font-family: var(--serif, Georgia), serif; animation: kq-in 0.25s ease-out; }
+html[data-kq-reduced-motion] .kqt-card { animation: none; }
+.kqt-card-dismiss { position: absolute; inset: 0; border: 0; background: transparent; cursor: pointer; }
+.kqt-card-dismiss:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
 .kqt-card.kqt-aside { display: none; }
 .kqt-card.kqt-banner { top: 64px; width: min(420px, 70vw); padding: 10px 18px; text-align: center; background: rgba(239, 228, 201, 0.94); }
 .kqt-card.kqt-banner h3 { font-size: 19px; }

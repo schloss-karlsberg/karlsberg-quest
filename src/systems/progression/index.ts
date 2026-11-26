@@ -150,6 +150,7 @@ class Progression {
       name: (id) => this.name(id),
       atHome: () => this.atHome,
       quickKey: () => this.key('quickUse'),
+      use: (id) => this.quickUse(id),
       changed: (reason) => this.changed(reason),
     });
     this.wire();
@@ -270,6 +271,7 @@ class Progression {
     on('settings:change', ({ key }) => {
       if (key === 'gentleMode' || key === 'rauhnacht') this.core.refreshStats();
       if (key === 'bindings') this.updateQuick();
+      if (key === 'reducedMotion') this.updateXp(false);
     });
     on('hub:enter', () => {
       this.atHome = true;
@@ -309,10 +311,10 @@ class Progression {
     this.world.sync(this.core.pickups(), animate);
   }
 
-  private changed(reason: string): void {
+  private changed(reason: string, force = false): void {
     this.updateQuick();
     this.pages.refresh();
-    if (this.started) this.ctx.save.autosave(`progression-${reason}`);
+    if (this.started) this.ctx.save.autosave(`progression-${reason}`, force);
   }
 
   private updateXp(animate: boolean): void {
@@ -320,7 +322,7 @@ class Progression {
     const lvl = s.level;
     const base = LEVEL_XP[lvl - 1] ?? 0;
     const next = lvl >= MAX_LEVEL ? 0 : LEVEL_XP[lvl]! - base;
-    this.hud.setXp(lvl, s.xp - base, next, s.xp, animate);
+    this.hud.setXp(lvl, s.xp - base, next, s.xp, animate && !this.ctx.settings.state.reducedMotion);
   }
 
   private updateQuick(): void {
@@ -338,7 +340,9 @@ class Progression {
   quickUse(item?: string): boolean {
     const id = item ?? this.core.quickItem();
     if (this.core.use(id)) {
-      this.changed('use');
+      // Saved resources (HP, Atem, oil, Bannlicht) write at once. Kalkstaub's stun lives only in the
+      // running fight, so its use stays on the throttled autosave like other combat state.
+      this.changed('use', !this.item(id)?.effect?.burst);
       return true;
     }
     this.hud.quickPulse(false);
@@ -361,7 +365,7 @@ class Progression {
     if (!p) return 0;
     const got = this.core.take(id);
     if (got > 0) {
-      this.world.collect(id);
+      if (!this.core.slice().placed?.[id]) this.world.collect(id);
       // the first Messstab comes with two Kräuterbalsam in the bag (Marlene's radio line says
       // so; playtest: "Der Balsam ist in der Tasche" while the HUD showed ×0) — granted before the
       // save, which is forced (round 9: a reload right after the pickup lost the two Balsam, the
@@ -440,7 +444,7 @@ class Progression {
       this.xpDirty = false;
       this.updateXp(true);
     }
-    this.hud.frame(dt, ctx.camera, window.innerWidth, window.innerHeight);
+    this.hud.frame(dt, ctx.camera, window.innerWidth, window.innerHeight, reduced);
     const skillCard = !!document.querySelector('.kqk-card.kqk-in:not(.kqk-out):not(.kqk-held)');
     let hold = ctx.pause.reasons.has('title') || skillCard || ctx.ui.cards.held;
     // on touch a tap on the play surface sends the card off (CardDirector.dismissNotice); on a

@@ -262,6 +262,11 @@ describe('hunt: lantern oil', () => {
     refill(s);
     expect(s.oil).toBe(1);
   });
+  it.each([[0.2, 0.7], [0.8, 1]])('adds half a tank to %s oil, capped at capacity', (oil, expected) => {
+    const s = { ...newLantern(), oil };
+    refill(s, 0.5);
+    expect(s.oil).toBeCloseTo(expected);
+  });
   it('gentle mode burns 50 % longer, Rauhnacht 30 % shorter', () => {
     const s = newLantern();
     s.seconds = 100;

@@ -1,5 +1,6 @@
 import { t } from '../i18n';
 import { h } from './dom';
+import { preserveFocus } from './focus';
 import type { ModalHandle, ModalManager } from './modal';
 
 interface PausePage {
@@ -57,13 +58,12 @@ export function openPausePage(modals: ModalManager, id: string, onClose?: () => 
     },
   });
   handle.el.dataset.testid = `page-${id}`;
-  handle.el.setAttribute('aria-label', title);
   openPages.set(id, {
     handle,
     refresh: () => {
       const scroll = body.parentElement;
       const top = scroll?.scrollTop ?? 0;
-      page.render(body);
+      preserveFocus(body, () => page.render(body));
       if (scroll) scroll.scrollTop = top;
     },
   });

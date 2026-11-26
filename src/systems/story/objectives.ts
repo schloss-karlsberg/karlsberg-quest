@@ -5,8 +5,20 @@
  */
 import { h, svg } from '../../ui/dom';
 import type { Hud } from '../../ui/hud';
+import type { AnimalSave } from '../animals/types';
 import { ensurePortraitDefs } from './dialogue/portraits';
 import type { ObjectiveState } from './engine';
+import type { ObjectiveAction } from './types';
+
+/** The save slice is available even when the animal bodies have yet to be rebuilt on load. */
+export function objectivePoint(a: ObjectiveAction, animals?: AnimalSave): { x?: number; z?: number } {
+  if (a.animal && animals?.v === 1) {
+    const matches = (animal: { id: string; state: string }) => animal.id === a.animal && animal.state !== 'gone';
+    const animal = animals.deer?.find(matches) ?? animals.dogs?.find(matches);
+    if (animal && Number.isFinite(animal.x) && Number.isFinite(animal.z)) return { x: animal.x, z: animal.z };
+  }
+  return { x: a.x, z: a.z };
+}
 
 /** Grid bearing (deg, 0 = north/−z, 90 = east/+x) from a to b. */
 export function bearingDeg(ax: number, az: number, bx: number, bz: number): number {
@@ -76,6 +88,7 @@ export class ObjectiveView {
     if (!o) {
       this.el.classList.remove('kqs-show');
       this.hud.setMarker('objective', null);
+      this.hud.storyTarget = null;
       return;
     }
     this.textEl.textContent = o.text;
@@ -149,6 +162,7 @@ export class ObjectiveView {
     // (and its compass mark) steps back, unless it tells the way through time (Q)
     const dup = !!opts.questLed && !!o && !/\bQ\b/.test(o.text);
     this.el.classList.toggle('kqs-dup', dup);
+    this.hud.storyTarget = opts.visible && !dup ? o : null;
     let target: number | null = null;
     if (opts.questTarget && (dup || !o)) {
       // the story line stepped back for the quest tracker: the needle follows the tracked goal

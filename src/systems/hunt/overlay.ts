@@ -200,7 +200,7 @@ export class HuntOverlay {
     this.caughtEl.style.opacity = black.toFixed(3);
     const title = o.handoff ? 0 : t < 1.3 ? 0 : t < 1.9 ? (t - 1.3) / 0.6 : t < 3.3 ? 1 : Math.max(0, 1 - (t - 3.3) / 0.9);
     this.caughtTitle.style.opacity = title.toFixed(3);
-    this.caughtTitle.style.transform = `translateY(${((1 - Math.min(1, title)) * 6).toFixed(1)}px)`;
+    this.caughtTitle.style.transform = o.reducedMotion ? 'none' : `translateY(${((1 - Math.min(1, title)) * 6).toFixed(1)}px)`;
     this.caughtRule.style.opacity = (title * 0.9).toFixed(3);
     this.caughtSub.style.opacity = (Math.max(0, title - 0.3) / 0.7).toFixed(3);
   }

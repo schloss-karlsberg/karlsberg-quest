@@ -6,6 +6,7 @@
 import type { SettingsStore } from '../../../core/save';
 import { t } from '../../../i18n';
 import { h, svg } from '../../../ui/dom';
+import { wrapTab } from '../../../ui/focus';
 import { settingsForm } from '../../../ui/menus';
 import type { ModalManager } from '../../../ui/modal';
 import { titleHooks } from '../../../ui/title';
@@ -57,13 +58,20 @@ function screen(...kids: HTMLElement[]): HTMLElement {
   return h('div.kqs-flow', { role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'new-game-heading' }, kids);
 }
 
-export function runNewGameFlow(host: HTMLElement, d: FlowDeps): Promise<boolean> {
+export function runNewGameFlow(host: HTMLElement, d: FlowDeps): Promise<false | (() => void)> {
   return new Promise((resolve) => {
     let root: HTMLElement | null = null;
     const show = (el: HTMLElement) => {
       root?.remove();
       root = el;
       host.append(el);
+      el.addEventListener('keydown', (e) => {
+        wrapTab(e, el);
+        if (e.key === 'Escape' && !e.repeat) {
+          e.preventDefault();
+          cancel();
+        }
+      });
       queueMicrotask(() => el.querySelector<HTMLElement>('[data-autofocus]')?.focus({ preventScroll: true }));
     };
     const cancel = () => {
@@ -115,13 +123,14 @@ export function runNewGameFlow(host: HTMLElement, d: FlowDeps): Promise<boolean>
           input.focus();
           return;
         }
-        d.onName(name);
-        show(tourMapScreen());
+        show(tourMapScreen(name));
       };
       ok.addEventListener('click', submit);
       input.addEventListener('keydown', (e) => {
-        e.stopPropagation();
-        if (e.key === 'Enter') submit();
+        if (e.key === 'Enter') {
+          e.stopPropagation();
+          submit();
+        }
       });
       input.addEventListener('input', () => (ok.disabled = !input.value.trim()));
       queueMicrotask(() => input.select());
@@ -135,7 +144,7 @@ export function runNewGameFlow(host: HTMLElement, d: FlowDeps): Promise<boolean>
     };
 
     // 3 — preview the route and start
-    const tourMapScreen = () => {
+    const tourMapScreen = (visitorName: string) => {
       const map = svg(TOUR_MAP);
       const stops = Array.from(map.querySelectorAll('[data-stop]'), (label) => {
         const name = t(`story.tourMap.stop.${label.getAttribute('data-stop')}`);
@@ -147,7 +156,7 @@ export function runNewGameFlow(host: HTMLElement, d: FlowDeps): Promise<boolean>
       start.addEventListener('click', () => {
         root?.remove();
         // Resolve within the start gesture so boot can unlock Web Audio.
-        resolve(true);
+        resolve(() => d.onName(visitorName));
       }, { once: true });
       return screen(h('div.kqs-flow-card.kq-paper.kqs-tour-card', { 'data-testid': 'tour-map' }, [
         h('h2#new-game-heading', t('story.tourMap.title')),

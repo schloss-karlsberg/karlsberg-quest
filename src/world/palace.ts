@@ -66,16 +66,21 @@ varying float vBld;
 varying float vSurf;
 varying vec2 vUv;
 void main() {
-  float n = kqFbm(vWorld.xz * 0.35 + vWorld.y * 0.21 + vBld * 3.1);
+  if (uOpacity < 1.0 && kqHash12(gl_FragCoord.xy + floor(uTime * 30.0)) > uOpacity) discard;
   bool kept = false;
-  for (int i = 0; i < 4; i++) if (abs(vBld - uKeep[i]) < 0.5) kept = true;
+  if (uRuin > 0.0) {
+    for (int i = 0; i < 4; i++) if (abs(vBld - uKeep[i]) < 0.5) kept = true;
+  }
   // kept buildings stand through the ruin and the Steinfraß (uRuin ≤ 1.05); only a shift that
   // grows the world out of the ground (uRuin ≈ 1.14 → 1) cuts them like the rest
-  if (uRuin > 0.0 && (!kept || uRuin > 1.08)) {
+  bool cutRuin = uRuin > 0.0 && (!kept || uRuin > 1.08);
+  float n = 0.0;
+  if (cutRuin || uShadowPass < 0.5) n = kqFbm(vWorld.xz * 0.35 + vWorld.y * 0.21 + vBld * 3.1);
+  if (cutRuin) {
     float stub = vBase + mix(40.0, 0.8 + 3.2 * n, uRuin);
     if (vWorld.y > stub) discard;
   }
-  if (uOpacity < 1.0 && kqHash12(gl_FragCoord.xy + floor(uTime * 30.0)) > uOpacity) discard;
+  if (uShadowPass > 0.5) { gl_FragColor = vec4(1.0); return; }
   // the inside of the shell (seen through an upper-floor window with no room behind it): a dim
   // warm interior instead of the sky showing through a hollow facade (playtest)
   if (!gl_FrontFacing && uRuin < 0.5) {

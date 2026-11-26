@@ -2,6 +2,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 import architecture from '../src/assets/manifests/architecture';
 import { SURFACE_SETS, surfAssetId } from '../src/world/surfaces';
+import { warnIfShared } from '../scripts/dev/heavy-env.mjs';
+import { SCREENS } from './helpers/common';
 
 /**
  * Performance, loading, settings and accessibility (docs/PERFORMANCE.md).
@@ -12,7 +14,6 @@ import { SURFACE_SETS, surfAssetId } from '../src/world/surfaces';
  * Screenshots: test-results/screens/pol-perf-*.png, numbers: test-results/perf/*.json.
  * `PERF_LABEL=before` names the JSON (for before/after comparisons).
  */
-const SCREENS = 'test-results/screens';
 const OUT = 'test-results/perf';
 mkdirSync(SCREENS, { recursive: true });
 mkdirSync(OUT, { recursive: true });
@@ -53,6 +54,7 @@ async function boot(page: Page, query = ''): Promise<void> {
 
 test.describe('performance', () => {
   test.describe.configure({ timeout: 900_000 });
+  test.beforeAll(() => warnIfShared('perf.spec.ts')); // timings need heavy.sh --exclusive
 
   test('bench route: every scene within the draw-call and triangle budget', async ({ page }) => {
     const errors = trackErrors(page);

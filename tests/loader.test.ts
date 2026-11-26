@@ -92,7 +92,10 @@ describe('loading progress', () => {
   };
   function terrainResponse(url: string): Response {
     if (url.endsWith('meta.json')) return Response.json(meta);
-    if (url.endsWith('.deflate')) return new Response(Uint8Array.from(deflateSync(new Uint8Array(2))));
+    if (url.endsWith('.deflate')) {
+      const bytesPerCell = url.endsWith('h2025.deflate') || url.endsWith('h1789.deflate') ? 2 : 1;
+      return new Response(Uint8Array.from(deflateSync(new Uint8Array(bytesPerCell))));
+    }
     return Response.json({ rooms: [], pois: [] });
   }
 

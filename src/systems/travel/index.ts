@@ -43,7 +43,7 @@ import { CHAPTER_TIER, type Poi, cacheLoot, generatePois, poiXp } from './pois';
 import { TRAVEL_DE } from './strings';
 import { Trail } from './trail';
 import { registerEraMaterials } from '../fx/shift/prewarm';
-import { type PoiVisual, type TripodVisual, animatePoi, animateTripod, buildCache, buildLetter, buildShrine, buildTripod, disposeGroup, setCacheOpen } from './visuals';
+import { type PoiVisual, type TripodVisual, animatePoi, animateTripod, buildCache, buildLetter, buildShrine, buildTripod, cacheLidStep, disposeGroup, setCacheOpen } from './visuals';
 
 export interface TravelSlice {
   /** Points walked up to. */
@@ -180,6 +180,7 @@ class Travel {
   private cardT = 0;
   /** The card up is the activation banner (it shares the centre-card slot: ui/cards.ts). */
   private cardBanner = false;
+  private readonly pendingActivations: { name: string; first: boolean }[] = [];
   private time = 0;
   /** 'world:quiet' (the party): tripods, POIs and the trail hidden, no activation, no announcement. */
   private readonly quiet: QuietGate;
@@ -295,7 +296,8 @@ class Travel {
     // the first one says what the map is for, on the banner itself (a toast would sit under it)
     const first = !this.slice.tips.includes('map');
     if (first) this.slice.tips.push('map');
-    this.showCard(TRAVEL_DE.activated(p.name), first ? TRAVEL_DE.firstMap : TRAVEL_DE.activatedSub, null, first ? 6 : 4.5, 'travel-card-activated');
+    if (this.quiet.photoOpen || this.pendingActivations.length) this.pendingActivations.push({ name: p.name, first });
+    else this.showActivation(p.name, first);
     ctx.events.emit('travel:activated', { id });
     ctx.save.autosave('travel');
   }
@@ -535,7 +537,7 @@ class Travel {
       } else if (poi.kind === 'shrine' && d < SHRINE_R && !this.inCombat) {
         this.touchShrine(poi, v);
       }
-      if (poi.kind === 'cache' && done && v.open < 1) setCacheOpen(v, Math.min(1, v.open + dt * 1.6));
+      if (poi.kind === 'cache' && done && v.open < 1) setCacheOpen(v, cacheLidStep(v.open, dt, ctx.settings.state.reducedMotion));
     }
   }
 
@@ -572,18 +574,25 @@ class Travel {
   private openCache(poi: Poi): void {
     if (this.slice.done.includes(poi.id)) return;
     const ctx = this.ctx;
-    this.slice.done.push(poi.id);
-    this.guards.delete(poi.id);
+    // Loot placement and XP handlers can autosave. Hold through the combat sync on travel:poi.
+    const hold = `travel:cache:${poi.id}`;
+    ctx.save.hold(hold, true);
+    try {
+      this.slice.done.push(poi.id);
+      this.guards.delete(poi.id);
+      const items = cacheLoot(poi.id);
+      items.forEach((item, i) => {
+        const a = (i / items.length) * Math.PI * 2 + 0.6;
+        ctx.events.emit('loot:place', { id: `${poi.id}.${i}`, item, x: poi.x + Math.cos(a) * 1.3, z: poi.z + Math.sin(a) * 1.3, era: poi.era as Era });
+      });
+      ctx.events.emit('xp:grant', { amount: poiXp('cache', this.tier()), reason: 'poi', x: poi.x, z: poi.z });
+      ctx.events.emit('travel:poi', { id: poi.id, kind: 'cache' });
+      ctx.save.autosave('poi', true);
+    } finally {
+      ctx.save.hold(hold, false);
+    }
     cacheOpen(ctx.audio);
-    const items = cacheLoot(poi.id);
-    items.forEach((item, i) => {
-      const a = (i / items.length) * Math.PI * 2 + 0.6;
-      ctx.events.emit('loot:place', { id: `${poi.id}.${i}`, item, x: poi.x + Math.cos(a) * 1.3, z: poi.z + Math.sin(a) * 1.3, era: poi.era as Era });
-    });
-    ctx.events.emit('xp:grant', { amount: poiXp('cache', this.tier()), reason: 'poi', x: poi.x, z: poi.z });
-    ctx.events.emit('travel:poi', { id: poi.id, kind: 'cache' });
     ctx.ui.toast(TRAVEL_DE.cacheOpen, 2400);
-    ctx.save.autosave('poi');
   }
 
   private takeLore(poi: Poi, v: PoiVisual): void {
@@ -618,6 +627,10 @@ class Travel {
 
   // ---- the found-card (activation, Fundstück) ---------------------------------------------------
 
+  private showActivation(name: string, first: boolean): void {
+    this.showCard(TRAVEL_DE.activated(name), first ? TRAVEL_DE.firstMap : TRAVEL_DE.activatedSub, null, first ? 6 : 4.5, 'travel-card-activated');
+  }
+
   showCard(title: string, text: string, from: string | null, seconds: number, testid: string): void {
     this.hideCard();
     const c = document.createElement('div');
@@ -641,7 +654,12 @@ class Travel {
       tag.textContent = TRAVEL_DE.fundTag;
       c.append(tag);
     }
-    c.onclick = () => this.hideCard();
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'kqt-card-dismiss';
+    close.setAttribute('aria-label', this.ctx.t('modal.close'));
+    close.onclick = () => this.hideCard();
+    c.append(close);
     this.ctx.ui.add(c);
     this.card = c;
     this.cardT = seconds;
@@ -868,12 +886,17 @@ class Travel {
       this.wakeAt -= dt;
       if (this.wakeAt < 0) this.wakeHint();
     }
+    if (this.quiet.photoOpen) return;
     if (this.card) {
       const aside = this.cardBanner && this.bannerAside();
       this.card.classList.toggle('kqt-aside', aside);
       if (aside) return;
       this.cardT -= dt;
       if (this.cardT <= 0 || (ctx.input.wasPressed('listen') && this.cardT < 11 && cardMayTakeE(ctx.state.state.flags))) this.hideCard();
+    }
+    if (!this.card) {
+      const next = this.pendingActivations.shift();
+      if (next) this.showActivation(next.name, next.first);
     }
   }
 
@@ -883,7 +906,7 @@ class Travel {
     const rm = ctx.settings.state.reducedMotion;
     const t = performance.now() / 1000;
     const cam = ctx.camera.position;
-    for (const tp of this.tripods.values()) animateTripod(tp, dt, t, rf, Math.hypot(cam.x - tp.group.position.x, cam.z - tp.group.position.z));
+    for (const tp of this.tripods.values()) animateTripod(tp, dt, t, rf, Math.hypot(cam.x - tp.group.position.x, cam.z - tp.group.position.z), rm);
     for (const v of this.poiVis.values()) animatePoi(v, dt, t, rm, Math.hypot(cam.x - v.group.position.x, cam.z - v.group.position.z), rf);
     this.trail.frame(dt, (x, z) => ctx.world.heightAt(x, z), rm);
   }
@@ -948,6 +971,8 @@ class Travel {
     const reload = (): void => {
       this.endJourney();
       this.slice = this.loadSlice();
+      this.pendingActivations.length = 0;
+      this.hideCard();
       this.dropAllVisuals();
       this.guards.clear();
       this.trail.clear();

@@ -223,15 +223,17 @@ function endScene(ctx: GameContext): void {
   sound?.release();
 }
 
+export function springSceneYaw(from: number, to: number, time: number, reducedMotion: boolean): number {
+  const delta = Math.atan2(Math.sin(to - from), Math.cos(to - from));
+  return from + delta * (reducedMotion ? 1 : smooth(0, SCENE.turn, time));
+}
+
 function updateScene(dt: number, ctx: GameContext): void {
   const s = scene;
   if (!s) return;
   s.t += dt;
   const pl = ctx.player;
-  // turn to the water (shortest way)
-  let d = s.yaw1 - s.yaw0;
-  d = Math.atan2(Math.sin(d), Math.cos(d));
-  pl.yaw = s.yaw0 + d * smooth(0, SCENE.turn, s.t);
+  pl.yaw = springSceneYaw(s.yaw0, s.yaw1, s.t, ctx.settings.state.reducedMotion);
   if (!s.dipped && s.t >= SCENE.dip) {
     s.dipped = true;
     ctx.events.emit('quelle:dip', { era: s.era });
@@ -242,7 +244,7 @@ function updateScene(dt: number, ctx: GameContext): void {
     const [tu, tw] = touchLocal(s.era);
     // the hand goes in a little towards the player
     const [x, z] = toWorld(tu, tw + 0.08);
-    U.uRipple.value.set(x, z, poolT, 1);
+    U.uRipple.value.set(x, z, poolT, ctx.settings.state.reducedMotion ? 0 : 1);
   }
   if (!s.stilled && s.t >= SCENE.freeze) {
     s.stilled = true;

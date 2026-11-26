@@ -1,12 +1,12 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { SCREENS } from './helpers/common';
 
 /**
  * interiors system: walkable palace rooms. Drives window.kq.interiors; screenshots to
  * test-results/screens/interiors-*.png (Festsaal candle-lit 1789, gallery 1789, Festsaal burning
  * 1793-07, gallery as a ruin 1796, the doorway from outside), plus walking in through a door.
  */
-const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];
@@ -90,6 +90,25 @@ test.describe('interiors', () => {
       k.step(2);
     });
     await shot(page, 'festsaal-fire');
+    for (const graphics of ['medium', 'high', 'low'] as const) {
+      const active = await page.evaluate(async (graphics) => {
+        const k = window.kq!;
+        k.ctx.settings.update((s) => { s.graphics = graphics; }, 'graphics');
+        await k.screenshotReady();
+        // both fire batches must still be drawn after the switch (count real draws of each mesh)
+        const drawn: Record<string, number> = {};
+        const meshes = ['flames', 'smoke'].map((batch) => {
+          const m = k.ctx.scene.getObjectByName(`interior-KB-B01-${batch}`);
+          drawn[batch] = 0;
+          if (m) m.onBeforeRender = () => { drawn[batch]!++; };
+          return m;
+        });
+        await k.screenshotReady();
+        for (const m of meshes) if (m) m.onBeforeRender = () => {};
+        return { graphics: k.ctx.quality.level, room: k.interiors!.room()?.roomId, flames: drawn.flames! > 0, smoke: drawn.smoke! > 0 };
+      }, graphics);
+      expect(active).toEqual({ graphics, room: 'B01.2.og-festsaal', flames: true, smoke: true });
+    }
     // a collapsed room blocks its doors once the player is out
     const blocked = await page.evaluate(() => {
       const k = window.kq!;
