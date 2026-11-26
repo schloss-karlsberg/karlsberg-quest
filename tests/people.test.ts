@@ -7,10 +7,11 @@
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { Box3, Group, type Material, type Mesh, type SkinnedMesh, Vector3 } from 'three';
+import { Box3, Frustum, Group, type Material, Matrix4, type Mesh, type MeshStandardMaterial, PerspectiveCamera, type SkinnedMesh, Vector3 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { describe, expect, expectTypeOf, it, vi } from 'vitest';
+import tourStory from '../content/story/00-tour.story.json';
 import type { LoadedModel } from '../src/assets/loader';
 import { ROSTER } from '../src/systems/npc/roster';
 import { bodySpot, faceYaw, talkCues } from '../src/systems/npc/bind';
@@ -148,7 +149,7 @@ describe('turning and the head', () => {
 
 describe('distance LOD', () => {
   it('full within 25 m, ~10 Hz within 40 m, frozen beyond, hidden past the draw limit', () => {
-    expect(PEOPLE_LOD).toMatchObject({ fullRate: 25, slowRate: 40, slowHz: 10, drawLimit: 60, lod1: 15, lod1Ratio: 0.5 });
+    expect(PEOPLE_LOD).toMatchObject({ fullRate: 25, slowRate: 40, slowHz: 10, drawLimit: 60, drawReturnMargin: 2, lod1: 15, lod1Ratio: 0.5 });
     expect(lodFor(3)).toEqual({ rate: 'full', hidden: false });
     expect(lodFor(25)).toEqual({ rate: 'full', hidden: false });
     expect(lodFor(30)).toEqual({ rate: 'slow', hidden: false });
@@ -425,6 +426,15 @@ describe('registry', () => {
     expect(gone.ticks[0]).toEqual({ rate: 'frozen', hidden: true });
     expect(reg.stats()).toEqual({ count: 4, visible: 3, tris: 3000, drawCalls: 6, lod: { full: 1, slow: 1, frozen: 1, hidden: 1 } });
   });
+
+  it('keeps the 60 m draw limit and avoids repeated toggles at the edge', () => {
+    const { reg } = fakeRegistry();
+    const p = reg.spawn('extra.1', { x: 0, z: 0, y: 0 });
+    for (const [dist, hidden] of [[59.5, false], [60.5, true], [59.5, true], [60.5, true], [58, false], [59.5, false]] as const) {
+      reg.tick(1 / 60, { x: dist, y: 0, z: 0 }, TICK);
+      expect(p.ticks.at(-1)).toEqual({ rate: 'frozen', hidden });
+    }
+  });
 });
 
 // ---- contract conformance ----------------------------------------------------------------------
@@ -632,26 +642,36 @@ describe('stand-in on the rigged Quaternius humans', () => {
     reg.clear();
   });
 
-  it('frustum culling stays on: each part has a bound that holds its skinned vertices while running, waving and sitting', async () => {
+  it('culls all parts together with a world bound that holds the skinned poses', async () => {
     const reg = await realRegistry();
     const p = reg.spawn('guide', { x: 120, z: -40, y: 5, yaw: 1.1 });
     const c = reg.spawn('child.compass', { x: 118, z: -40, y: 5, yaw: -2 });
     await Promise.all([p.ready, c.ready]);
     const v = new Vector3();
+    const camera = new PerspectiveCamera(45, 9 / 16, 0.1, 60);
+    camera.position.set(120, 6, -27);
+    const frustum = new Frustum();
+    const intersect = vi.spyOn(frustum, 'intersectsSphere');
+    const aim = (x: number, z: number) => {
+      camera.lookAt(x, 6, z);
+      camera.updateMatrixWorld();
+      frustum.setFromProjectionMatrix(new Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+    };
     const check = (q: Person) => {
       q.root.updateMatrixWorld(true);
+      aim(q.root.position.x, q.root.position.z);
       let parts = 0;
       q.root.traverse((o) => {
         const m = o as SkinnedMesh;
         if (!m.isSkinnedMesh || !m.visible) return;
         parts++;
         expect(m.frustumCulled).toBe(true);
-        const sphere = m.boundingSphere!;
-        expect(sphere).toBeTruthy();
+        expect(m.intersectsFrustum(frustum)).toBe(true);
+        const sphere = intersect.mock.lastCall![0];
         const n = m.geometry.getAttribute('position').count;
         for (let i = 0; i < n; i += 5) {
           m.getVertexPosition(i, v);
-          expect(sphere.containsPoint(v)).toBe(true);
+          expect(sphere.containsPoint(v.applyMatrix4(m.matrixWorld))).toBe(true);
         }
       });
       // a stand-in is a dozen parts, the authored guide one mesh (of the LOD shown)
@@ -666,8 +686,38 @@ describe('stand-in on the rigged Quaternius humans', () => {
       run(reg, 0.8, { x: 120, y: 6, z: -36 });
       check(q);
       q.play('sit');
-      run(reg, 1.5, { x: 120, y: 6, z: -36 });
+      run(reg, 1.5, { x: 120, y: 6, z: -20 });
       check(q);
+    }
+    aim(120, -10);
+    expect(meshesOf(c.root).filter((m) => m.visible).every((m) => !m.intersectsFrustum(frustum))).toBe(true);
+    reg.clear();
+  });
+
+  it('draws solid visitors at conversational distances from their first visible frame', async () => {
+    const reg = await realRegistry();
+    const p = reg.spawn('double.jost', { x: 0, z: 0 });
+    expect(await p.ready).toBe(true);
+    for (const dist of [5, 10, 20]) {
+      reg.tick(1 / 60, { x: 0, y: 0, z: dist }, TICK);
+      expect(p.root.visible).toBe(true);
+      const meshes = meshesOf(p.root).filter((m) => m.visible);
+      expect(meshes.length).toBeGreaterThan(0);
+      for (const { material } of meshes) {
+        expect(material as MeshStandardMaterial).toMatchObject({ alphaHash: false, opacity: 1, transparent: false, depthWrite: true });
+      }
+    }
+    reg.clear();
+  });
+
+  it('draws one mesh LOD per body across the conversation range', async () => {
+    const reg = await realRegistry();
+    const members = tourStory.beats[0]!.enter.flatMap((action) => 'members' in action ? action.members ?? [] : []);
+    const group = ['guide', ...members].map((id) => reg.spawn(id, { x: 0, z: 0 }));
+    expect(await Promise.all(group.map((p) => p.ready))).toEqual(Array(15).fill(true));
+    for (const [z, tris] of [[10, 118_392], [20, 112_431]] as const) {
+      reg.tick(1 / 60, { x: 0, y: 0, z }, TICK);
+      expect(reg.stats()).toMatchObject({ count: 15, visible: 15, drawCalls: 161, tris, lod: { full: 15 } });
     }
     reg.clear();
   });
