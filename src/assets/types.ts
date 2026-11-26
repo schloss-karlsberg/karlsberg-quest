@@ -84,6 +84,9 @@ export interface LicencesFile {
   voices?: VoiceCredit[];
 }
 
+/** Output licence recorded for speaker-permission voices in LICENSES.json. */
+export const SPEAKER_PERMISSION_NOTICE = 'Used with permission of the speaker. No reuse outside Karlsberg Quest. Not CC0.';
+
 /** One MOSS voice (LICENSES.json `voices`), credited under "Lizenzen & Quellen". */
 export interface VoiceCredit {
   /** speaker key in content and scripts/voice/voices.json */

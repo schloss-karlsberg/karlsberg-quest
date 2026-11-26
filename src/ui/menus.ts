@@ -1,4 +1,4 @@
-import type { LicencesFile } from '../assets/types';
+import { SPEAKER_PERMISSION_NOTICE, type LicencesFile, type VoiceCredit } from '../assets/types';
 import type { SettingsStore } from '../core/save';
 import type { AttributionItem } from '../data/types';
 import { t } from '../i18n';
@@ -38,16 +38,29 @@ export function setAssetLicences(f: LicencesFile | null): void {
   assetLicences = f;
 }
 
-/** The synthetic voices (LICENSES.json `voices`): one summary line plus one entry per voice. */
+export function voiceLicencesSummary(voices: readonly VoiceCredit[]): string {
+  const summaries: string[] = [];
+  const synthetic = voices.filter((voice) => voice.outputLicence === 'CC0-1.0');
+  if (synthetic.length) {
+    const names = synthetic.map((voice) => voice.name);
+    const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} ${t('licences.voices.and')} ${names.at(-1)}` : names[0]!;
+    const tools = [...new Set(synthetic.map((voice) => `${voice.tool.replace(/\s*\(.*\)$/, '')} (${voice.toolLicence})`))].join(', ');
+    summaries.push(t('licences.voices.summary', { names: list, tools }));
+  }
+  for (const { name, outputLicence } of voices) {
+    if (outputLicence === SPEAKER_PERMISSION_NOTICE) summaries.push(t('licences.voices.speakerPermission', { name }));
+  }
+  return summaries.join(' ');
+}
+
+/** The voices (LICENSES.json `voices`): a licence summary plus one entry per voice. */
 export function voiceLicencesBody(f: LicencesFile | null = assetLicences): HTMLElement[] {
   const v = f?.voices ?? [];
   if (!v.length) return [];
-  const names = v.map((x) => x.name);
-  const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} ${t('licences.voices.and')} ${names[names.length - 1]}` : names[0]!;
-  const tools = [...new Set(v.map((x) => `${x.tool.replace(/\s*\(.*\)$/, '')} (${x.toolLicence})`))].join(', ');
+  const summary = voiceLicencesSummary(v);
   return [
     h('h3', t('licences.voices.title')),
-    h('p', { 'data-testid': 'voice-licences-summary' }, t('licences.voices.summary', { names: list, tools })),
+    ...(summary ? [h('p', { 'data-testid': 'voice-licences-summary' }, summary)] : []),
     h(
       'ul.kq-attrib',
       { 'data-testid': 'voice-licences' },
@@ -56,7 +69,7 @@ export function voiceLicencesBody(f: LicencesFile | null = assetLicences): HTMLE
   ];
 }
 
-/** The CC0 art assets, the decoder libraries and the synthetic voices (empty when LICENSES.json is missing). */
+/** The CC0 art assets, the decoder libraries and the voices (empty when LICENSES.json is missing). */
 export function assetLicencesBody(f: LicencesFile | null = assetLicences): HTMLElement[] {
   if (!f || (!f.assets.length && !f.libraries?.length && !f.voices?.length)) return [];
   if (!f.assets.length && !f.libraries?.length) return voiceLicencesBody(f);

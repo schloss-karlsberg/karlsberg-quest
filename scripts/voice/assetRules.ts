@@ -4,16 +4,16 @@
  * Enforced by tests/voice-assets.test.ts and generate.mjs.
  */
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
-import type { VoiceCredit } from '../../src/assets/types.ts';
+import { SPEAKER_PERMISSION_NOTICE, type VoiceCredit } from '../../src/assets/types.ts';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 export type { VoiceCredit };
+export { SPEAKER_PERMISSION_NOTICE };
 
 /** The only provider whose clips may sit in public/voice/. */
 export const COMMITTABLE_PROVIDER = 'moss';
 const SYNTHETIC_LICENCE = 'apache-2.0-model';
 const SPEAKER_PERMISSION = 'speaker-permission';
-export const SPEAKER_PERMISSION_NOTICE = 'Used with permission of the speaker. No reuse outside Karlsberg Quest. Not CC0.';
 /** Voice files total: warn above, fail above (MB = 1e6 bytes). ~60 MB is roughly 1.8 h of speech at
  * Opus 24k + AAC 48k; past 80 MB the repo and the Pages deploy get too heavy for a browser game. */
 export const VOICE_SIZE_WARN_MB = 60;
