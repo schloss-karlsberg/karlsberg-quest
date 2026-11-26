@@ -5,7 +5,7 @@ import { type Action, Input } from '../src/player/input';
 import { Player } from '../src/player/player';
 import { TOUCH_BUTTON_ACTIONS, type TouchIcon, touchIconFor } from '../src/player/touchMap';
 import { newLantern, toggle } from '../src/systems/hunt/lanternLogic';
-import { StoryEngine, createStorySlice, runsOnResume } from '../src/systems/story/engine';
+import { StoryEngine, type StoryEnv, createStorySlice, runsOnResume } from '../src/systems/story/engine';
 import type { Action as StoryAction, StoryFile, ThreatAction } from '../src/systems/story/types';
 import { validateStories } from '../src/systems/story/validate';
 import { DriveMode, FINALE, FinaleMode, ParforceMode, makeMode } from '../src/systems/hunt/modes';
@@ -248,6 +248,26 @@ describe('finale (W8 at the kennel)', () => {
     expect(log.some((e) => e.type === 'finale' && e.outcome === 'calmed')).toBe(true);
   });
 
+  it.each([false, true])('cues the next available finale action (oneKey: %s)', (oneKey) => {
+    const sim = make(oneKey);
+    const ctl = sim.ctl as FinaleMode;
+    const flying = at({ flying: true });
+    run(sim, 16, flying, [], () => ctl.phase === 'wait');
+    expect(ctl.phase).toBe('wait');
+    expect(ctl.reminder(flying)).toBeNull();
+    run(sim, 8, flying);
+    expect(ctl.reminder(flying)).toBe('fly');
+    expect(ctl.reminder(at())).toBe('prone');
+    expect(ctl.reminder(at({ stance: 'crouch' }))).toBe('prone');
+    expect(ctl.reminder(at({ lanternLit: true }))).toBe('prone');
+    const prone = at({ stance: 'prone' });
+    expect(ctl.reminder(prone)).toBe(oneKey ? null : 'lantern');
+    const ready = { ...prone, lanternLit: !oneKey };
+    run(sim, 1, ready);
+    expect(ctl.phase).toBe('calm');
+    expect(ctl.reminder(at())).toBeNull();
+  });
+
   it.each([false, true])('settles the pack using touch controls (oneKey: %s)', (oneKey) => {
     const sim = make(oneKey);
     const ctl = sim.ctl as FinaleMode;
@@ -276,8 +296,13 @@ describe('finale (W8 at the kennel)', () => {
 
       const log = run(sim, 16, sense());
       expect(ctl.phase).toBe('wait');
-      if (!oneKey) tap(touchIconFor('L'));
       tap(touchIconFor('X'));
+      if (!oneKey) {
+        run(sim, 1, sense(), log);
+        expect(ctl.phase).toBe('wait');
+        expect(walker.stance).toBe('prone');
+        tap(touchIconFor('L'));
+      }
       run(sim, FinaleMode.duration(5) + 1, sense(), log);
       expect(ctl.phase).toBe('done');
       expect(log.flatMap((e) => e.type === 'finale' ? [e.outcome] : [])).toEqual(['gathered', 'calmed', 'faded']);
@@ -290,6 +315,12 @@ describe('finale (W8 at the kennel)', () => {
     const chapter = JSON.parse(readFileSync(new URL('../content/story/04-kapitel-4.story.json', import.meta.url), 'utf8')) as StoryFile;
     let story = createStorySlice();
     const actions: StoryAction[] = [];
+    const env: StoryEnv = {
+      ...c, era: 'today', stance: 'prone', lantern: false, flags: {},
+      inventory: { items: [], clues: [], nouns: [] },
+      chronik: {}, scan: 0, map: false, caseFacts: () => null,
+    };
+    const refill = { do: 'meter', id: 'oil', active: true, full: 'none' };
     const engine = new StoryEngine([chapter], () => story, {
       run: (list, { resume }) => { actions.push(...list.filter((action) => !resume || runsOnResume(action))); },
       chapterEntered() {},
@@ -297,19 +328,19 @@ describe('finale (W8 at the kennel)', () => {
       chapterCompleted() {},
     });
     engine.goto('k4', 'k4_12');
-    story.beatTime = 90;
+    actions.length = 0;
+    engine.tick(31, env);
+    expect(actions).toContainEqual(refill);
+    expect(story.fired).toContain('b:licht');
     story = JSON.parse(JSON.stringify(story)) as typeof story;
     actions.length = 0;
     engine.resume(false);
     expect(story.beat).toBe('k4_12');
     expect(actions).toContainEqual(expect.objectContaining({ do: 'threat', kind: 'pack', active: true, mode: 'finale', target: c }));
     actions.length = 0;
-    engine.tick(31, {
-      ...c, era: 'today', stance: 'prone', lantern: false, flags: {},
-      inventory: { items: [], clues: [], nouns: [] },
-      chronik: {}, scan: 0, map: false, caseFacts: () => null,
-    });
-    expect(actions).toContainEqual(expect.objectContaining({ do: 'meter', id: 'oil', active: true }));
+    engine.tick(31, env);
+    expect(actions).toContainEqual(refill);
+    expect(story.fired).toContain('b:licht');
   });
 
   it('running off brings you back into the circle', () => {

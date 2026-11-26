@@ -835,8 +835,10 @@ Round-4 (polish: set dressing) integration rules:
   beside the player, horn from behind / a flank, they give 5 m when you turn back, pushing through
   = soft catch `player:caught {by:'pack', soft:true}`, story curtain "Die Meute hat dich
   heimgebracht", chronik loses nothing); `finale` (W8 at the kennel: 6 m circle, X + L or Hinlegen
-  + Laterne on touch in either order. In one-key or gentle mode, lying down suffices. Hounds lie
-  down, their eyes dim, and they fade with the Pikeur as the mist settles. Beyond 10 m, the player
+  + Laterne on touch in either order. In one-key or gentle mode, lying down suffices. After seven
+  seconds in the wait phase, the HUD cues Landen in flight, Hinlegen on foot when standing or
+  crouching, and Laterne an when prone and still needing light. Hounds lie down, their eyes dim,
+  and they fade with the Pikeur as the mist settles. Beyond 10 m, the player
   fades back into the circle. Emits contract event
   `hunt:finale {outcome: gathered|returned|calmed|faded}`); `parforce` (Ch. 2 long chase from `from`
   to `target`/water: release horn + head start, surges with a rubber-banded pack, breathers
@@ -2221,6 +2223,8 @@ Rules that came out of it:
     - Ausweichen → `dodge` + `up`. It becomes "Steigen" while flying. Ducken → `crouch` + `down`.
       It toggles crouch on foot and becomes "Sinken" while flying.
     - Hinlegen → `prone` on foot. Laterne → `lantern` to toggle the light.
+      `player:restored` refreshes the flight and stance controls after the player is back on the
+      ground, including when replaying an ending from Pause.
     - Bannlicht, Ziel (`lockOn`), Balsam (`quickUse`), abilities 1–3. An ability button stays hidden
       until it is learnt (`skillUnlocked(n)` from boot: `skillsForLevel(progression.level)`, re-checked
       on `level:up`, `stats:changed`, `game:start` and `save:loaded`).

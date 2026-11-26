@@ -306,8 +306,9 @@ export class TouchControls {
     });
     // abilities unlock by level (combat: skillsForLevel); a fresh game or a loaded save may change them
     for (const ev of ['level:up', 'stats:changed', 'game:start', 'save:loaded'] as const) deps.events.on(ev, () => this.syncSkills());
-    // a load sets the stance without a player:stance event: read it back
-    for (const ev of ['game:start', 'save:loaded'] as const) deps.events.on(ev, () => this.syncFly());
+    // Boot restores the player after the save:loaded notification.
+    deps.events.on('player:restored', () => this.syncFly());
+    deps.events.on('game:start', () => this.syncFly());
     this.refresh();
   }
 

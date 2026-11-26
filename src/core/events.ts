@@ -24,6 +24,8 @@ export interface GameEvents {
   'scan:mode': { mode: number };
   'player:stance': { stance: Stance; previous: Stance };
   'player:fly': { flying: boolean };
+  /** Player position, view and stance have been restored on the ground. */
+  'player:restored': {};
   /** Fired once per footstep (fixed-step driven). `surface` = ground class name. */
   'player:step': { x: number; z: number; surface: string; running: boolean };
   /** Player teleported (debug hook or a feature moving the player). */

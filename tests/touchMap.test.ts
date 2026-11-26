@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { EventBus } from '../src/core/events';
 import { DEFAULT_BINDINGS, Input, virtualCode } from '../src/player/input';
 import { Player } from '../src/player/player';
+import { STANCES } from '../src/player/stance';
 import { TOUCH, TOUCH_BUTTON_ACTIONS, crouchButtonMode, diffHeld, isTouchSetting, lookDelta, rotateWanted, stickToMove, touchActive, touchIconFor, touchName, touchPromptIcon } from '../src/player/touchMap';
 import { actionLabel } from '../src/ui/actionLabel';
 import { mobileLevel } from '../src/render/mobileDefaults';
@@ -177,6 +178,27 @@ describe('Input.press (virtual touch actions)', () => {
     hold(false);
     expect(player.position.y).toBeLessThan(altitude);
     expect(player.stance).toBe('stand');
+  });
+  it('notifies touch controls after restoring the grounded player and saved stance', () => {
+    const events = new EventBus();
+    const player = new Player({
+      heightAt: () => 2,
+      collide: (x, z) => ({ x, z, hit: false }),
+      bounds: () => ({ x0: -10, z0: -10, x1: 10, z1: 10 }),
+      surfaceAt: () => 'meadow',
+      coverAt: () => 0,
+      canFly: () => true,
+    }, make(), events);
+    player.setFlying(true);
+    const observed: unknown[] = [];
+    events.on('player:restored', () => observed.push({
+      flying: player.flying,
+      stance: player.stance,
+      y: player.position.y,
+      eye: player.eyeHeight,
+    }));
+    player.readState({ x: 3, y: 30, z: 4, yaw: 0, pitch: 0, flying: true, stance: 'prone' });
+    expect(observed).toEqual([{ flying: false, stance: 'prone', y: 2, eye: STANCES.prone.eye }]);
   });
   it('reads the Shift modifier at the relief key press', () => {
     const inp = make();

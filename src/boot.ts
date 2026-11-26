@@ -508,6 +508,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     ui.toast(t(flying ? 'fly.on' : 'fly.off'));
     syncFlyPrompt();
   });
+  events.on('player:restored', syncFlyPrompt);
   events.on('ui:toast', ({ text, ms }) => ui.toast(t(text), ms));
   // the character's short reactions (third person)
   events.on('player:damaged', () => avatar.react('hit'));

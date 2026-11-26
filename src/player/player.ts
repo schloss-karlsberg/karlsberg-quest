@@ -435,6 +435,7 @@ export class Player {
     this.teleport(s.x, s.z);
     this.eye = STANCES[this.stance].eye;
     this.lookIdle = 0;
+    this.events.emit('player:restored', {});
   }
 
   /** Unit forward vector on the ground plane. */
