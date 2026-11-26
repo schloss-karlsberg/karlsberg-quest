@@ -57,6 +57,19 @@ _Status: user-directed, 2026-11-26_
 
 **Risks.** Keep tests headless and avoid changes to adjacent gameplay systems being worked on separately.
 
+## Review fix round (2026-11-26)
+
+Keep indoor saves and the Festsaal choice playable across shell streaming and era shifts.
+
+- [ ] Preserve the saved floor through a fixed step and an autosave while the shell streams.
+- [ ] Restore from a passage and keep movement onto the connected upstairs floor.
+- [ ] Keep provisional palace collision active while the shell is absent.
+- [ ] Suspend the Festsaal objects and prompt during an era shift and recreate an unresolved choice on return.
+- [ ] Prove teleport cancellation directly below the saved room and probe the loaded gate's collision before changing it.
+- [ ] Update the affected docs, run the four gates and check the smoke spec under the shared lock.
+
+Use the shipped room and footprint data for the interior regressions and the Ehrenhof footprint for the gate probe. Compare the reviewed paths with `origin/main`, then commit the storey, Festsaal and gate coverage changes in reviewable groups.
+
 ## Progress
 
 - Working branch `dev/task-059`, starting at `79c5718` (origin/main).

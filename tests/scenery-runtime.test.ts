@@ -6,7 +6,13 @@ import { EventBus } from '../src/core/events';
 import { createInitialState, GameStateStore } from '../src/core/state';
 import scenery, { type SceneryHooks } from '../src/systems/scenery';
 import { BAUWAGEN_SET, BAUWAGEN_SITE } from '../src/systems/scenery/bauwagen';
+import { GATE_CENTER } from '../src/systems/scenery/sets';
 import { FootprintCollider } from '../src/world/collision';
+import { loadPalaceFootprints } from './interiors-fixture';
+
+const windowFootprint = { id: 'KB-B10', ring: [[-2, 0], [2, 0], [2, 4], [-2, 4]] as [number, number][] };
+const gateFootprint = loadPalaceFootprints().find(f => f.id === 'KB-B39')!;
+const footprints = [windowFootprint, gateFootprint];
 
 function sceneryGame(start: Era = 'today', beforeScenery?: (events: EventBus) => void) {
   const state = new GameStateStore(createInitialState());
@@ -17,7 +23,7 @@ function sceneryGame(start: Era = 'today', beforeScenery?: (events: EventBus) =>
   const scene = new Scene();
   const player = { position: new Vector3(-1000, 0, -1000), yaw: 0 };
   const era = { current: start };
-  const collider = new FootprintCollider([]);
+  const collider = new FootprintCollider(footprints.map(f => f.ring));
   const terrain = { heightAt: () => 0, bounds: { x0: -2000, z0: -2000, x1: 3000, z1: 3000 } };
   // A single pane is enough to distinguish the full and zero shares of light.
   const glass = new PlaneGeometry(1.2, 2).translate(0, 2, 0);
@@ -26,7 +32,7 @@ function sceneryGame(start: Era = 'today', beforeScenery?: (events: EventBus) =>
   const palace = new Group().add(new Mesh(glass));
   const ctx = {
     era, state, events, scene, player, camera: { position: new Vector3() },
-    data: { footprints: { buildings: [{ id: 'KB-B10', ring: [[-2, 0], [2, 0], [2, 4], [-2, 4]] }, { id: 'KB-B39' }] } },
+    data: { footprints: { buildings: footprints } },
     quality: { level: 'low' }, settings: { state: { reducedMotion: true } },
     content: { facts: new Map() }, input: {}, ui: { hud: { prompt: vi.fn() } },
     world: {
@@ -132,17 +138,19 @@ describe('era-specific scenery', () => {
 
   it('restores the coat, gate and windows when a slot is loaded during play', () => {
     const g = sceneryGame('1793-02');
+    const gateBlocked = () => g.collider.resolve(...GATE_CENTER, 0.35).hit;
+    expect(gateBlocked()).toBe(true);
     g.hooks.coat(false);
     g.hooks.gate(true);
+    expect(gateBlocked()).toBe(false);
     g.lights(true, 1);
     const slot = createInitialState(); // older save with no scenery slice
     slot.era = '1793-02';
     g.state.replace(slot);
     g.events.emit('save:loaded', { slot: 'manual' });
+    expect(gateBlocked()).toBe(true);
     expect(g.hooks.coat().visible).toBe(true);
     expect(g.lit()).toBeUndefined();
     expect(g.state.state.systems.scenery).toEqual({ windows: [], gate: 0 });
-    g.hooks.gate(true);
-    expect(g.state.state.systems.scenery?.gate).toBe(1);
   });
 });

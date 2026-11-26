@@ -3,15 +3,18 @@ import { vi } from 'vitest';
 import type { GameContext } from '../src/core/context';
 import { ERA_INFO, type Era } from '../src/core/era';
 import { EventBus } from '../src/core/events';
+import { MemoryStorage, SaveManager } from '../src/core/save';
 import { createInitialState, GameStateStore, type GameState } from '../src/core/state';
 import type { Input } from '../src/player/input';
 import { FootprintCollider } from '../src/world/collision';
 import { Player } from '../src/player/player';
 import { centroid } from '../src/systems/interiors/geom';
+import { buildPlan } from '../src/systems/interiors/layout';
 import interiors, { type InteriorHooks } from '../src/systems/interiors';
 import { loadPalaceData } from './interiors-fixture';
 
 const { rooms, footprints, h1789, h2025 } = loadPalaceData();
+export const cataloguePlan = buildPlan({ rooms, footprints, mode: 'intact', terrain: (x, z) => h1789.heightAt(x, z) });
 
 export function savedRoom(roomId: string): GameState {
   const room = rooms.find(r => r.roomId === roomId)!;
@@ -28,6 +31,7 @@ export function savedRoom(roomId: string): GameState {
 export function interiorGame(initial: GameState = createInitialState(), shellReady = true) {
   const state = new GameStateStore(initial);
   const events = new EventBus();
+  const save = new SaveManager(state, new MemoryStorage(), events);
   const era = { current: initial.era, get info() { return ERA_INFO[this.current]; } };
   const kq: { interiors?: InteriorHooks } = {};
   vi.stubGlobal('window', { kq });
@@ -45,7 +49,7 @@ export function interiorGame(initial: GameState = createInitialState(), shellRea
     },
     collider: new FootprintCollider(footprints.map(f => f.ring)), forest: { invalidate: vi.fn() },
   };
-  const input = { isDown: () => false, wasPressed: vi.fn(() => false) };
+  const input = { isDown: vi.fn<(action: string) => boolean>(() => false), wasPressed: vi.fn(() => false) };
   const player = new Player({
     heightAt: (x, z) => world.heightAt(x, z), bounds: () => h1789.bounds,
     collide: (x, z, r) => world.collider.resolve(x, z, r), canFly: () => false,
@@ -65,7 +69,7 @@ export function interiorGame(initial: GameState = createInitialState(), shellRea
   } as unknown as GameContext;
   interiors.init(ctx);
   return {
-    ctx, state, player, events, ui, log, input,
+    ctx, state, player, events, ui, log, input, save,
     get hooks() { return kq.interiors!; },
     enter(roomId: string) {
       const p = ctx.world.roomAnchor!(roomId)!;
@@ -74,6 +78,11 @@ export function interiorGame(initial: GameState = createInitialState(), shellRea
       interiors.update(1 / 60, ctx);
     },
     step: () => interiors.update(1 / 60, ctx),
+    fixedStep() {
+      player.update(1 / 60);
+      interiors.update(1 / 60, ctx);
+      player.writeState(state.mutable.player);
+    },
     finishShell() { palace.add(mesh); interiors.frame(0, ctx); },
     shift(to: Era) {
       const from = era.current;

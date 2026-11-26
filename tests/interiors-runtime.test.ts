@@ -1,13 +1,18 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createInitialState } from '../src/core/state';
 import interiors from '../src/systems/interiors';
-import { interiorGame, savedRoom } from './interiors-runtime-fixture';
+import { PlanQuery } from '../src/systems/interiors/collide';
+import { cataloguePlan, interiorGame, savedRoom } from './interiors-runtime-fixture';
 
 afterEach(() => { interiors.dispose(); vi.unstubAllGlobals(); });
 
 const ground = 'B01.1.eg-kabinett';
 const hall = 'B01.2.og-festsaal';
+const audience = 'B01.2.og-audienzzimmer';
+const vestibule = 'B01.1.eg-vestibuel';
 const past = () => ({ ...createInitialState(), era: '1793-07' as const });
+const hallDoor = cataloguePlan.doors.find(d => cataloguePlan.rooms[d.a]?.roomId === audience && cataloguePlan.rooms[d.b]?.roomId === hall)!;
+const catalogue = new PlanQuery(cataloguePlan);
 
 describe('occupied palace rooms', () => {
   it('emits each crossing once and clears both story flags outside', () => {
@@ -50,17 +55,20 @@ describe('occupied palace rooms', () => {
     expect(blocked()).toBe(false);
   });
 
-  it('resumes on the occupied storey when the palace finishes loading', () => {
+  it('keeps the occupied storey in a tab-hidden autosave while the palace loads', () => {
     const g = interiorGame(past(), false);
     // Load an upstairs slot while boot can still ground the player only on terrain.
     const slot = savedRoom(hall);
-    g.state.replace(slot);
-    g.events.emit('save:loaded', { slot: 'manual' });
     const savedFloor = slot.player.y;
-    g.player.update(1 / 60); // the old footprint can push the player outside before the shell arrives
-    g.player.writeState(g.state.mutable.player);
+    g.state.replace(slot);
+    g.save.save('manual');
+    expect(g.save.load('manual')).toBe(true);
+    g.fixedStep();
+    expect(g.save.autosave('hidden', true)).toBe(true);
+    expect(g.save.peek()?.player.y).toBeCloseTo(savedFloor);
+    expect(g.save.load()).toBe(true);
     g.finishShell();
-    g.step();
+    g.fixedStep();
     expect(g.player.position.y).toBeCloseTo(savedFloor);
     expect(g.hooks.room()?.roomId).toBe(hall);
     expect(g.log).toEqual(['enter KB-B01/' + hall]);
@@ -87,23 +95,66 @@ describe('occupied palace rooms', () => {
     expect(g.hooks.room()?.roomId).toBe(hall);
   });
 
-  it('preserves a step taken within the saved room while its shell is loading', () => {
-    const g = interiorGame(savedRoom(hall), false);
-    g.player.position.x += 0.5;
-    const x = g.player.position.x;
+  it('restores an upstairs doorway outside both room polygons', () => {
+    const { cx, cz, nx, nz, depth, floor } = hallDoor;
+    const x = cx + nx * depth / 2;
+    const z = cz + nz * depth / 2;
+    expect(catalogue.roomAt(x, z, floor)).toBe(-1);
+    expect(catalogue.floorAt(x, z, floor, 0)).toBeCloseTo(floor);
+    const slot = savedRoom(hall);
+    Object.assign(slot.player, { x, y: floor, z });
+    const g = interiorGame(slot);
+    expect(g.player.position.y).toBeCloseTo(floor);
+    expect(g.hooks.room()).toBeNull();
+  });
+
+  it('keeps steps from the Audienzzimmer into the Festsaal while its shell loads', () => {
+    const { cx, cz, nx, nz, floor } = hallDoor;
+    const slot = savedRoom(audience);
+    Object.assign(slot.player, { x: cx - nx * 0.05, y: floor, z: cz - nz * 0.05, yaw: Math.atan2(-nx, -nz) });
+    const g = interiorGame(slot, false);
+    g.input.isDown.mockImplementation(action => action === 'forward');
+    for (let i = 0; i < 6; i++) g.fixedStep();
+    const { x, z } = g.player.position;
+    expect(catalogue.roomAt(x, z, floor)).toBe(hallDoor.b);
     g.finishShell();
     expect(g.player.position.x).toBeCloseTo(x);
+    expect(g.player.position.z).toBeCloseTo(z);
+    expect(g.player.position.y).toBeCloseTo(floor);
     expect(g.hooks.room()?.roomId).toBe(hall);
   });
 
-  it('keeps a later teleport when the shell finishes loading', () => {
-    const g = interiorGame(savedRoom(hall), false);
-    g.player.teleport(800, -800);
+  it('blocks walking through the exterior wall while the shell is absent', () => {
+    const room = cataloguePlan.rooms[hallDoor.b]!;
+    const { ax, az, bx, bz, nx, nz } = room.edges[room.ext[0]!.edge]!;
+    const x = (ax + bx) / 2;
+    const z = (az + bz) / 2;
+    const slot = savedRoom(hall);
+    Object.assign(slot.player, { x: x - nx * 0.5, z: z - nz * 0.5, yaw: Math.atan2(-nx, -nz) });
+    const g = interiorGame(slot, false);
+    expect(g.ctx.world.collider.hits(x, z, 0.35)).toBe(true);
+    g.input.isDown.mockImplementation(action => action === 'forward');
+    for (let i = 0; i < 120; i++) g.fixedStep();
+    const p = g.player.position;
+    expect((p.x - x) * nx + (p.z - z) * nz).toBeCloseTo(-0.35);
+    expect(p.y).toBeCloseTo(room.floor);
+    expect(g.ctx.world.collider.hits(x, z, 0.35)).toBe(true);
+  });
+
+  it('keeps a teleport directly below the saved Festsaal when the shell finishes loading', () => {
+    const slot = savedRoom(hall);
+    const g = interiorGame(slot, false);
+    const { x, z } = slot.player;
+    const downstairs = savedRoom(vestibule).player.y;
+    g.player.position.y = downstairs; // select the destination storey, as the room teleport hook does
+    g.player.teleport(x, z);
     g.finishShell();
-    expect(g.player.position.x).toBe(800);
-    expect(g.player.position.z).toBe(-800);
-    expect(g.hooks.room()).toBeNull();
-    expect(g.log).toEqual([]);
+    g.fixedStep();
+    expect(g.player.position.x).toBeCloseTo(x);
+    expect(g.player.position.z).toBeCloseTo(z);
+    expect(g.player.position.y).toBeCloseTo(downstairs);
+    expect(g.hooks.room()?.roomId).toBe(vestibule);
+    expect(g.log).toEqual(['enter KB-B01/' + vestibule]);
   });
 
   it.todo('decide whether staying in the same room across two intact eras should replay its entry cue');
@@ -140,12 +191,42 @@ describe('Festsaal choice', () => {
     expect(g.ui.cards.hold).toHaveBeenLastCalledWith('festsaal', false);
   });
 
-  it('cancels an interrupted choice queued before the shell was ready', () => {
+  it('removes the objects and prompt on departure and restores the pending choice on return', () => {
+    const g = interiorGame(past());
+    g.events.emit('story:cue', { id: 'festsaal:objects' });
+    const spots = g.hooks.festsaal().spots;
+    const coin = spots.find(p => p.key === 'dukat')!;
+    g.player.position.set(coin.x, coin.y - 1.1, coin.z + 0.8);
+    g.player.yaw = 0;
+    g.step();
+    expect(g.state.state.flags['e.owner']).toBe('festsaal');
+    g.shift('today');
+    expect(g.hooks.festsaal().spots).toEqual([]);
+    expect(g.state.state.flags['e.owner']).toBeUndefined();
+    expect(g.ui.cards.hold).toHaveBeenLastCalledWith('festsaal', false);
+    g.shift('1793-07');
+    g.step();
+    expect(g.hooks.festsaal().spots).toEqual(spots);
+    expect(g.state.state.flags['e.owner']).toBe('festsaal');
+    g.input.wasPressed.mockReturnValue(true);
+    g.step();
+    expect(g.state.state.flags['festsaal.took']).toBe('dukat');
+    g.shift('today');
+    g.shift('1793-07');
+    g.step();
+    expect(g.hooks.festsaal().active).toBe(false);
+    expect(g.state.state.flags['festsaal.took']).toBe('dukat');
+  });
+
+  it('keeps a choice queued across shell completion in the wrong era', () => {
     const g = interiorGame(past(), false);
     g.events.emit('story:cue', { id: 'festsaal:objects' });
     g.shift('1789');
     g.finishShell();
     g.step();
     expect(g.hooks.festsaal().active).toBe(false);
+    g.shift('1793-07');
+    g.step();
+    expect(g.hooks.festsaal().spots).toHaveLength(4);
   });
 });
