@@ -55,6 +55,7 @@ addStrings('de', {
   'hunt.rest': '[Die Hunde haben die Witterung verloren – Atem holen]',
   'hunt.finale.prompt': 'Hinlegen · [L] Laterne an',
   'hunt.finale.prompt.one': 'Hinlegen',
+  'hunt.finale.prompt.touch': 'Hinlegen · Laterne an',
   'hunt.finale.lie': '[Ein Hund legt sich hin]',
   'hunt.finale.eyes': '[Die Augen gehen aus, eins nach dem anderen]',
   'hunt.finale.silence': '[Stille]',

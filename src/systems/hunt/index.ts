@@ -301,7 +301,7 @@ class Hunt {
   /** Finale: bring the player back at full black (centre). */
   private returnTo: XZ | null = null;
   private returnT = 0;
-  private finalePromptShown = false;
+  private finalePrompt: string | null = null;
   private caughtSoft = false;
   /** Story cue 'hunt:hold': freeze the pack for `seconds` (waits ≤ 2 s while a hound is close). */
   private holdReq: { seconds: number; waited: number } | null = null;
@@ -717,8 +717,8 @@ class Hunt {
   }
 
   private clearFinalePrompt(): void {
-    if (!this.finalePromptShown) return;
-    this.finalePromptShown = false;
+    if (!this.finalePrompt) return;
+    this.finalePrompt = null;
     this.ctx.ui.hud.prompt(null, undefined, 'hunt');
   }
 
@@ -971,11 +971,13 @@ class Hunt {
     const ctl = sim.ctl;
     if (ctl instanceof FinaleMode) {
       // no time pressure; after a while a quiet reminder of the keys (accessibility)
-      const want = ctl.phase === 'wait' && ctl.t > 7;
-      if (want && !this.finalePromptShown) {
-        this.finalePromptShown = true;
-        ctx.ui.hud.prompt('X', ctx.t(this.oneKey() ? 'hunt.finale.prompt.one' : 'hunt.finale.prompt'), 'hunt');
-      } else if (!want && this.finalePromptShown) this.clearFinalePrompt();
+      if (ctl.phase === 'wait' && ctl.t > 7) {
+        const key = this.oneKey() ? 'hunt.finale.prompt.one' : ctx.input.touchMode ? 'hunt.finale.prompt.touch' : 'hunt.finale.prompt';
+        if (key !== this.finalePrompt) {
+          this.finalePrompt = key;
+          ctx.ui.hud.prompt('X', ctx.t(key), 'hunt');
+        }
+      } else this.clearFinalePrompt();
       // the eyes go out one by one (caption once, when the first ones have dimmed)
       if (ctl.phase === 'calm' && sim.hounds.filter((h) => h.dim > 0.6).length === 2) this.caption('eyes', ctx.t('hunt.finale.eyes'), 30, 3600);
     }

@@ -1,6 +1,12 @@
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
-import type { StoryFile, ThreatAction } from '../src/systems/story/types';
+import { describe, expect, it, vi } from 'vitest';
+import { EventBus } from '../src/core/events';
+import { type Action, Input } from '../src/player/input';
+import { Player } from '../src/player/player';
+import { TOUCH_BUTTON_ACTIONS, type TouchIcon, touchIconFor } from '../src/player/touchMap';
+import { newLantern, toggle } from '../src/systems/hunt/lanternLogic';
+import { StoryEngine, createStorySlice, runsOnResume } from '../src/systems/story/engine';
+import type { Action as StoryAction, StoryFile, ThreatAction } from '../src/systems/story/types';
 import { validateStories } from '../src/systems/story/validate';
 import { DriveMode, FINALE, FinaleMode, ParforceMode, makeMode } from '../src/systems/hunt/modes';
 import type { PlayerSense } from '../src/systems/hunt/perception';
@@ -13,14 +19,14 @@ import { TrackField, ageWord, compassWord } from '../src/systems/hunt/tracks';
  */
 const DT = 1 / 60;
 
-function flatWorld(water: (x: number, z: number) => boolean): SimWorld {
+function flatWorld(water: (x: number, z: number) => boolean) {
   return {
     heightAt: () => 300,
     surfaceAt: (x, z) => (water(x, z) ? 'water' : 'meadow'),
     coverAt: () => 0,
     bounds: () => ({ x0: -3000, z0: -3000, x1: 3000, z1: 3000 }),
     trailBreakAt: (x, z) => (water(x, z) ? 'water' : null),
-  };
+  } satisfies SimWorld;
 }
 
 function player(o: Partial<PlayerSense> = {}): PlayerSense {
@@ -240,6 +246,70 @@ describe('finale (W8 at the kennel)', () => {
     const log = run(sim, 16, at());
     run(sim, 1, at({ stance: 'prone' }), log);
     expect(log.some((e) => e.type === 'finale' && e.outcome === 'calmed')).toBe(true);
+  });
+
+  it.each([false, true])('settles the pack using touch controls (oneKey: %s)', (oneKey) => {
+    const sim = make(oneKey);
+    const ctl = sim.ctl as FinaleMode;
+    vi.stubGlobal('window', new EventTarget());
+    vi.stubGlobal('document', new EventTarget());
+    try {
+      const input = new Input(new EventTarget() as unknown as HTMLElement);
+      const walker = new Player({
+        ...world,
+        collide: (x, z) => ({ x, z, hit: false }),
+        canFly: () => false,
+      }, input, new EventBus());
+      walker.teleport(c.x, c.z);
+      const lantern = newLantern();
+      const sense = () => at({ stance: walker.stance, lanternLit: lantern.lit });
+      const actions: Partial<Record<TouchIcon, readonly Action[]>> = TOUCH_BUTTON_ACTIONS;
+      const tap = (icon: TouchIcon) => {
+        for (const action of actions[icon] ?? []) {
+          input.press(action, true);
+          input.press(action, false);
+        }
+        walker.update(DT);
+        if (input.wasPressed('lantern')) toggle(lantern);
+        input.endStep();
+      };
+
+      const log = run(sim, 16, sense());
+      expect(ctl.phase).toBe('wait');
+      if (!oneKey) tap(touchIconFor('L'));
+      tap(touchIconFor('X'));
+      run(sim, FinaleMode.duration(5) + 1, sense(), log);
+      expect(ctl.phase).toBe('done');
+      expect(log.flatMap((e) => e.type === 'finale' ? [e.outcome] : [])).toEqual(['gathered', 'calmed', 'faded']);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('restarts a saved Sich stellen encounter and offers light if the lantern is empty', () => {
+    const chapter = JSON.parse(readFileSync(new URL('../content/story/04-kapitel-4.story.json', import.meta.url), 'utf8')) as StoryFile;
+    let story = createStorySlice();
+    const actions: StoryAction[] = [];
+    const engine = new StoryEngine([chapter], () => story, {
+      run: (list, { resume }) => { actions.push(...list.filter((action) => !resume || runsOnResume(action))); },
+      chapterEntered() {},
+      beatEntered() {},
+      chapterCompleted() {},
+    });
+    engine.goto('k4', 'k4_12');
+    story.beatTime = 90;
+    story = JSON.parse(JSON.stringify(story)) as typeof story;
+    actions.length = 0;
+    engine.resume(false);
+    expect(story.beat).toBe('k4_12');
+    expect(actions).toContainEqual(expect.objectContaining({ do: 'threat', kind: 'pack', active: true, mode: 'finale', target: c }));
+    actions.length = 0;
+    engine.tick(31, {
+      ...c, era: 'today', stance: 'prone', lantern: false, flags: {},
+      inventory: { items: [], clues: [], nouns: [] },
+      chronik: {}, scan: 0, map: false, caseFacts: () => null,
+    });
+    expect(actions).toContainEqual(expect.objectContaining({ do: 'meter', id: 'oil', active: true }));
   });
 
   it('running off brings you back into the circle', () => {

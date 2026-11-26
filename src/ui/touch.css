@@ -175,6 +175,18 @@ html[data-kq-touch] .kq-root > .kq-loader--game {
   width: 52px;
   height: 52px;
 }
+.kq-t-btn.prone {
+  right: 68px;
+  bottom: 132px;
+  width: 50px;
+  height: 50px;
+}
+.kq-t-btn.lantern {
+  right: 154px;
+  bottom: 64px;
+  width: 50px;
+  height: 50px;
+}
 /* the contextual action: a pill that carries the prompt's text */
 .kq-t-btn.interact {
   /* above the Epoche button (right 160, bottom 120..172) with 10 px air: they overlapped (M-06) */
