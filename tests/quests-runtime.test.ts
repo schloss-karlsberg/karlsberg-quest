@@ -113,6 +113,9 @@ describe('jaguar quest runtime', () => {
     expect(dialogue).toEqual([]);
     expect(pushReward).not.toHaveBeenCalled();
 
+    // „Weiter“ reloads the slot (title.ts) before the game starts
+    save.load();
+    expect(pushReward).not.toHaveBeenCalled();
     start(true);
     expect(dialogue).toEqual(['laub', 'laub']);
     expect(pushReward).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ title: 'Der Jaguar', xp: 200, codex: 0 }));

@@ -252,8 +252,11 @@ class QuestRuntime {
       // commands that must land in the loaded slice, not in the one being replaced)
       ctx.state.subscribe((_s, reason) => {
         if (reason !== 'new' && reason !== 'replace' && reason !== 'load') return;
-        this.restoredPayouts.length = 0;
-        this.reward.clear();
+        // „Weiter“ reloads the slot that boot already recovered (and autosaved): keep its payouts.
+        if (reason !== 'load' || !this.ctx.pause.reasons.has('title')) {
+          this.restoredPayouts.length = 0;
+          this.reward.clear();
+        }
         this.restore();
         if (reason !== 'load') this.presentRestoredPayouts();
       }),
@@ -294,7 +297,12 @@ class QuestRuntime {
       }),
     );
     this.book.onPayout = (p) => {
-      if (this.restoring) this.restoredPayouts.push(p);
+      if (this.restoring) {
+        // a title reload can recover the same payout again: present it once
+        const i = this.restoredPayouts.findIndex((q) => q.id === p.id);
+        if (i >= 0) this.restoredPayouts.splice(i, 1);
+        this.restoredPayouts.push(p);
+      }
       else this.presentPayout(p);
     };
     this.restore();
