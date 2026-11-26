@@ -1011,10 +1011,12 @@ return. The combat payout belongs to the original fight.
 
 **Continue and chapter replay:** The valley entrance, Steinbrecher, well and kennel beats restore
 missing quest starts without resetting accepted quests. The drive resumes the shift into today and
-marks the kennel even if the player is too far from the well for the pack to appear. Reaching Jost's
-beat proves the pack has already calmed; talking to Jost and turning in the quest are still required
-for the horn. A save during dawn resumes the arrival at the spring and records both final clues
-before the chapter can end. Completed quests and clue grants remain idempotent.
+marks the kennel even if the player is too far from the well for the pack to appear. A remembered
+1840 echo credits the well visit, including in saves already at the drive or kennel. The Pacht
+cutoff pays a ready quest and issues a failure only once. Reaching Jost's beat proves the pack has
+already calmed. The player still talks to Jost and turns in the quest for the horn. At dawn, Continue
+finishes an interrupted arrival or keeps the saved position and heading if the player already
+arrived. Both final clues are recorded before the chapter can end.
 
 ### 11.5 Endings
 
@@ -1148,6 +1150,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | The controls reference can become stale after keyboard remapping (TASK-027, 2026-11-26) | Pause → Steuerung shows the current keys, including alternates, unbound actions and feature-added survey tools. It uses the same keyboard-layout labels as the settings editor. |
 | A progression gate can rely on a pickup already taken, a depleted enemy group, or a late reaction (TASK-052, 2026-11-26) | The validator tracks stack-limited pickups and remaining enemies, measures reactions against beat deadlines, and carries forward quest state and rewards through the runtime transition rules. Laub's chapter-three basket cue checks the saved pickup objective before speaking. |
 | An objective can open after its only pickup or event (TASK-052, 2026-11-26) | Content validation checks offers, objective order, item sources and one-shot events against the story. The quest authoring guide describes backfilled objectives. |
+| Early well echo and repeated dawn arrival (TASK-044, 2026-11-26) | The 1840 echo also credits the well visit, including in older drive and kennel saves. The drive cutoff pays a ready Pacht quest and records failure once. Dawn records the spring teleport so Continue keeps the player's saved position and heading after arrival. |
 | Separate collection and progression entries crowd Pause (TASK-007, 2026-11-26) | Sammlungen includes the Funde section. I and Pause open Ausrüstung & Talente, with both sections on one scrollable page. The Pause entry counts unspent talent points. |
 | The spring’s general E menu competes with the water interaction (TASK-007, 2026-11-26) | The water uses E or the touch action when the story calls for it. Pause handles saving, chapter replay and collections. Entering the present-day spring ring still heals, refills oil, resets the hunt and enables respec. Q-hold return and the wake spot stay at the spring. |
 | Following the tour group is dull (TASK-002, 2026-11-25) | 24 chestnuts (`item.kastanie`, kind `collectible`) lie in small clusters along the sections the group walks. Most are 1.5–4 m off the path, a few up to 10 m. None lie near a stop or before the deer. E, walking over one or the touch interact button picks one up, and the feed counts. Gerold, Herr Soll and Gerold again remark on the 1st, 12th and 24th. There is no XP, so collecting never delays the group: Gerold's 25 m wait and the find-the-group help are unchanged. `tests/tour-kastanien.test.ts`, `e2e/kastanien.spec.ts`. |

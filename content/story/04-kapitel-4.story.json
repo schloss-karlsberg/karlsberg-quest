@@ -180,11 +180,24 @@
       "when": {
         "all": [
           { "quest": { "id": "q.k4.standpunkt", "state": "active" } },
-          { "have": { "clue": "clue.k4.laub_1840" } },
-          { "not": { "quest": { "id": "q.k4.standpunkt", "objective": "echo", "gte": 1 } } }
+          {
+            "any": [
+              { "have": { "clue": "clue.k4.laub_1840" } },
+              { "quest": { "id": "q.k4.standpunkt", "objective": "echo", "gte": 1 } }
+            ]
+          },
+          {
+            "any": [
+              { "not": { "quest": { "id": "q.k4.standpunkt", "objective": "brunnen", "gte": 1 } } },
+              { "not": { "quest": { "id": "q.k4.standpunkt", "objective": "echo", "gte": 1 } } }
+            ]
+          }
         ]
       },
-      "do": [{ "do": "quest", "op": "progress", "id": "q.k4.standpunkt", "objective": "echo" }]
+      "do": [
+        { "do": "quest", "op": "progress", "id": "q.k4.standpunkt", "objective": "brunnen" },
+        { "do": "quest", "op": "progress", "id": "q.k4.standpunkt", "objective": "echo" }
+      ]
     },
     {
       "id": "settle-stein1",
@@ -552,7 +565,12 @@
           ]
         }
       ],
-      "complete": { "quest": { "id": "q.k4.standpunkt", "objective": "echo", "gte": 1 } }
+      "complete": {
+        "all": [
+          { "quest": { "id": "q.k4.standpunkt", "objective": "brunnen", "gte": 1 } },
+          { "quest": { "id": "q.k4.standpunkt", "objective": "echo", "gte": 1 } }
+        ]
+      }
     },
     {
       "id": "k4_9",
@@ -753,6 +771,7 @@
       "id": "k4_14",
       "title_de": "Morgengrauen",
       "enter": [
+        { "do": "flag", "set": { "k4.dawn.arrived": false }, "onResume": false },
         { "do": "flag", "set": { "combat.disabled": true } },
         { "do": "quest", "op": "fail", "id": "q.k4.zeichen" },
         { "do": "quest", "op": "fail", "id": "q.k4.graeben" },
@@ -761,7 +780,7 @@
         { "do": "look", "time": "dawn", "delay": 1 },
         { "do": "cue", "id": "end-prints", "data": { "n": 5, "r": 1.7 } },
         { "do": "card", "title": "Morgengrauen", "sub": "An der Quelle · heute", "seconds": 3.5, "delay": 4.5 },
-        { "do": "teleport", "x": 1059.3, "z": -833.1, "yaw": 50, "delay": 0.6, "onResume": true },
+        { "do": "teleport", "x": 1059.3, "z": -833.1, "yaw": 50, "delay": 0.6, "onResume": true, "onceFlag": "k4.dawn.arrived" },
         { "do": "npc", "op": "despawn", "npc": "*" },
         { "do": "objective", "text": null },
         { "do": "say", "line": "marlene.end.morgen", "delay": 3 },

@@ -199,14 +199,7 @@ class QuestRuntime {
         else if (op === 'start') this.book.accept(id);
         else if (op === 'progress' && objective) this.book.progress(id, objective, n ?? 1, true);
         else if (op === 'complete') this.book.complete(id, true);
-        else if (op === 'fail') {
-          // the story moves on: an offer nobody took is simply withdrawn, a finished quest pays
-          // out, only an accepted, unfinished one is missed (playtest: offers failed with an ×)
-          const st = this.book.state(id);
-          if (st === 'offered' || st === 'hidden') this.book.reset(id);
-          else if (st === 'ready') this.book.complete(id, true);
-          else this.book.fail(id);
-        }
+        else if (op === 'fail') this.book.cutoff(id);
         else if (op === 'reset') this.book.reset(id);
       }),
       ev.on('quest:accept', ({ id }) => this.book.accept(id)),

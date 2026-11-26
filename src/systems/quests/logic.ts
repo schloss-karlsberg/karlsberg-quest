@@ -560,7 +560,8 @@ export class QuestBook {
 
   fail(id: string, reason = 'story'): boolean {
     const q = this.defs.get(id);
-    if (!q || this.state(id) === 'done') return false;
+    const state = this.state(id);
+    if (!q || state === 'done' || state === 'failed') return false;
     this.setState(id, 'failed');
     this.prog(id).reason = reason;
     this.cleanup(q);
@@ -592,6 +593,14 @@ export class QuestBook {
         else if (st === 'active') this.fail(q.id, 'chapter');
       }
     }
+  }
+
+  /** Close a quest at a story cutoff, paying out if its objectives are finished. */
+  cutoff(id: string): void {
+    const state = this.state(id);
+    if (state === 'offered' || state === 'hidden') this.reset(id);
+    else if (state === 'ready') this.complete(id, true);
+    else this.fail(id);
   }
 
   /** Back to hidden: counts cleared, spawns and pickups withdrawn. */

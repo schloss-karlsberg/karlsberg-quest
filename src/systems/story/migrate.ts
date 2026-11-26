@@ -3,7 +3,7 @@ import { createStorySlice, DEFAULT_VISITOR_NAME, type StorySlice } from './engin
 import type { GameState } from '../../core/state';
 import { createQuestSlice } from '../quests/logic';
 import { HOME } from './hub/home';
-import type { EndingId, LookTime } from './types';
+import type { EndingId, FlagValue, LookTime } from './types';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -13,7 +13,7 @@ const LOOK_TIMES = allOf<LookTime>()(['day', 'dawn', 'dusk', 'night', 'tour']);
 const ENDINGS = allOf<EndingId>()(['museum', 'burn', 'keep']);
 
 /** Fill missing legacy fields and reject malformed values used when restoring the story. */
-export function readStorySlice(saved: Record<string, unknown>): StorySlice {
+export function readStorySlice(saved: Record<string, unknown>, flags: Record<string, FlagValue>, clues: readonly string[]): StorySlice {
   for (const key of ['fired', 'unlocked', 'completed', 'doneBeats', 'said']) {
     const value = saved[key];
     if (value !== undefined && (!Array.isArray(value) || !value.every((id) => typeof id === 'string'))) {
@@ -48,7 +48,7 @@ export function readStorySlice(saved: Record<string, unknown>): StorySlice {
   }
 
   const story = { ...createStorySlice(), ...saved };
-  migrateStorySlice(story);
+  migrateStorySlice(story, flags, clues);
   return story;
 }
 
@@ -100,11 +100,17 @@ export function migrateStoryQuests(story: StorySlice, state: GameState): void {
   migrateChapter3Quests(story, state);
 }
 
-/** Update persisted labels and the return objective from before the spring became home. */
-function migrateStorySlice(story: StorySlice): void {
+/** Bring persisted story state up to date before Continue. */
+function migrateStorySlice(story: StorySlice, flags: Record<string, FlagValue>, clues: readonly string[]): void {
   const { name } = story;
   if (typeof name !== 'string' || !name.trim() || name === 'Vermesser*in' || name === 'story.name.suggest') {
     story.name = DEFAULT_VISITOR_NAME;
+  }
+
+  // The spring dialogue and photo grant both follow the dawn teleport in older saves.
+  if (story.chapter === 'k4' && story.beat === 'k4_14' && flags['k4.dawn.arrived'] === undefined
+      && (story.said?.includes('marlene.end.morgen') || clues.includes('clue.k4.foto'))) {
+    flags['k4.dawn.arrived'] = true;
   }
 
   const objective = story.objective;
