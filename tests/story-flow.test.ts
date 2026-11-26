@@ -366,6 +366,30 @@ describe('chapter content using the flow features', () => {
     expect(choiceReady()).toBe(true);
   });
 
+  it('k2: arriving at the departure in 1793 starts the oil meter, which lights the lantern', () => {
+    // e2e/chapter-k2.spec.ts put the lantern out before its first step into 1793-02: the oil
+    // meter (k2-oel, rising edge on the era) then lit it again and the gate went to 'leuchten'
+    const { engine, runs } = engineWith(k2);
+    engine.goto('k2', 'k2_0');
+    engine.tick(1, env());
+    engine.goto('k2', 'k2_8');
+    expect(runs.some((r) => r.src === 'k2/c:k2-oel')).toBe(false);
+    engine.tick(1, env({ era: '1793-02' }));
+    expect(runs.filter((r) => r.src === 'k2/c:k2-oel')).toHaveLength(1);
+    // story/index.ts startMeter: an `oil` meter requests the lantern lit
+    const meter = k2.on!.find((r) => r.id === 'k2-oel')!.do[0] as Extract<Action, { do: 'meter' }>;
+    expect([meter.do, meter.id]).toEqual(['meter', 'oil']);
+  });
+
+  it('k2: the gate choice follows the lantern once the departure has passed', () => {
+    const choice = k2.beats.find((b) => b.id === 'k2_8')!.on!.flatMap((r) => r.do).find((a) => a.do === 'choice') as Extract<Action, { do: 'choice' }>;
+    const pick = (e: StoryEnv) => choice.options.find((o, i) => o.when && evaluate(o.when, e, {}, `choice.k2.tor.${i}`, 0))?.key ?? null;
+    const passed = { 'k2.wagen': true };
+    expect(pick(env({ era: '1793-02', lantern: false }))).toBeNull();
+    expect(pick(env({ era: 'today', flags: passed, lantern: true }))).toBe('leuchten');
+    expect(pick(env({ era: 'today', flags: passed, lantern: false }))).toBe('dunkel');
+  });
+
   it('k1: the guard calls out runners in the 1789 Ehrenhof, at most every 30 s, with escalating lines', () => {
     const r = k1.on!.find((x) => x.id === 'wache-rennen')!;
     expect(r.repeat).toBe(true);

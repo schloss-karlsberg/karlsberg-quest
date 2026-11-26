@@ -29,10 +29,13 @@ test('chapter 2: leaving during the departure unlocks the lantern choice without
     k.story!.goto('k2', 'k2_8');
     k.setEra('1793-02');
     k.teleport(1222, -1118, 270, 0);
-    k.lantern!.toggle(false);
     k.step(4);
     k.story!.flush();
+    // arriving in 1793 starts the chapter's oil meter, which lights the lantern (k2-oel): put it
+    // out only now, so the departure is left standing in the dark
+    k.lantern!.toggle(false);
   });
+  expect(await page.evaluate(() => window.kq!.state().flags['lanternLit'])).toBe(false);
   expect(await page.evaluate(() => window.kq!.chronik!.echo().id)).toBe(departure);
   expect(await page.evaluate(() => window.kq!.story!.choice())).toBe('k2.tor');
   expect(await payloads(page, 'story:choice')).toEqual([]);
