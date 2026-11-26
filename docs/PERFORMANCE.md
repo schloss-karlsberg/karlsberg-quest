@@ -645,12 +645,20 @@ request. The 2 m heightfield still supplies geometry and collision on all three 
 
 - **Auflösung der 3D-Ansicht** (50–100 %) scales the 3D resolution under the preset's pixel-ratio cap; the UI
   stays sharp.
+- Moving between displays reapplies the tier and resolution scale at the new pixel density.
+  Resizing updates the camera and post targets together. An empty viewport keeps its last valid
+  projection until it has a size again.
+- After WebGL context restoration, even a held view requests a frame. The first frame rebuilds
+  the current sky lighting and refreshes active shadow and water maps. GPU timing starts with fresh queries.
+- Bloom on Mittel and Hoch adds each blurred level back onto the finer image. FX use the low
+  particle budget for a low session override or first-run device tier. Changing the tier during
+  the Steinfraß resizes its dust and terrain clouds and adjusts the ruin grains at the current meter.
 - **First run** guesses a preset from the GPU name (`WEBGL_debug_renderer_info`): software
   rasterisers, phones and tablets → Niedrig; Intel / AMD integrated → Mittel; else Hoch.
 - **Grafik automatisch anpassen** (on by default): when the average frame time stays above 25 ms for six
   seconds in a row while playing, the preset goes one step down (Hoch → Mittel → Niedrig → 75 %
   resolution), with a toast saying so. Stalls ≥ 250 ms (shader compiles, loading rooms, tab
-  switches), era shifts and the first seconds are ignored. Off under WebDriver, `?manual` and
+  switches), era shifts and the first seconds are ignored. A pause breaks the slow-play streak. Off under WebDriver, `?manual` and
   in bullet time. Under a 30 fps cap the threshold is 1.25 × 33 ms (`slowMsFor`), so the cap's
   own frame time does not count as slow.
 

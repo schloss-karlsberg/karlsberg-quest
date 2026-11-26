@@ -654,6 +654,10 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 - `tests/terrain-load.test.ts` uses `serveTerrain()` to serve two compressed grid cells from
   memory. Each layer has distinct values so the test detects swapped eras, incorrect units and
   ground or canopy rasters whose dimensions disagree with the height grid.
+- The render tests run without a GPU. `tests/render-post.test.ts` records the target and clear
+  mode of each draw against real post-processing targets. `tests/render-viewport.test.ts` and
+  `tests/render-context.test.ts` dispatch resize, density and WebGL lifecycle events, including
+  while the view is held. The FX tests inspect the particle geometry submitted to the scene.
 - `tests/travel-fixture.ts` runs the registered travel system on flat ground with a real game state
   store and event bus. Use `step()` for a simulation tick and Vitest's fake timers for a timed journey.
 - Pause and journal page tests use `tests/ui-fixture.ts` to run the real renderers and handlers on a

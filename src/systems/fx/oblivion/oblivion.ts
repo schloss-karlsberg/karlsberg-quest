@@ -179,6 +179,7 @@ export class OblivionController {
   private readonly shells: Mesh[] = [];
   private grains: Points | null = null;
   private dust: EdgeDust | null = null;
+  private readonly offQuality: () => void;
   private relief: Points | null = null;
   private readonly reliefCenter = new Vector3(1e9, 0, 1e9);
   private readonly vignette: Mesh;
@@ -211,6 +212,9 @@ export class OblivionController {
     }
     this.vignette = makeScreenPass(VIGNETTE, { ...atmosphere, uAmount: { value: 0 }, uAsh: { value: ASH.clone() } }, 940);
     ctx.scene.add(this.vignette);
+    this.offQuality = quality.onChange(() => {
+      if (this.active) this.applyQuality();
+    });
   }
 
   get active(): boolean {
@@ -237,10 +241,7 @@ export class OblivionController {
     this.lastProgress = -1;
     this.caughtCooldown = 0;
     this.buildGrains();
-    if (!this.dust) {
-      this.dust = new EdgeDust(this.ctx, this.quality.high);
-      this.ctx.scene.add(this.dust.points);
-    }
+    this.applyQuality();
     this.ui.setGauge('oblivion', t);
     this.ui.caption('fx.cap.oblivion', 2, 3500);
     this.ctx.audio.onUnlock(() => {
@@ -249,11 +250,23 @@ export class OblivionController {
     });
   }
 
+  private applyQuality(): void {
+    this.dust?.dispose();
+    this.dust = new EdgeDust(this.ctx, this.quality.high);
+    this.ctx.scene.add(this.dust.points);
+    if (this.grains) {
+      const g = this.grains.geometry;
+      const count = g.getAttribute('position').count;
+      g.setDrawRange(0, this.quality.high ? count : Math.floor(count * 0.45));
+    }
+    // Rebuild the terrain cloud at the next frame's camera position with the new ring density.
+    this.reliefCenter.set(1e9, 0, 1e9);
+  }
+
   private buildGrains(): void {
     const s = palaceSamples(this.ctx.world.palace.object);
     if (!s || this.grains) return;
     const g = palaceCloudGeometry(s, (rel) => rel < 5.5);
-    if (!this.quality.high) g.setDrawRange(0, Math.floor(g.getAttribute('position').count * 0.45));
     this.grains = new Points(
       g,
       new ShaderMaterial({
@@ -426,6 +439,7 @@ export class OblivionController {
   }
 
   dispose(): void {
+    this.offQuality();
     this.stop();
     for (const s of this.shells) {
       this.ctx.scene.remove(s);
