@@ -1,13 +1,13 @@
 import { mkdirSync, readFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 import { openPause } from './helpers/pause';
+import { SCREENS } from './helpers/common';
 
 /**
  * Smoke + visual tests. Screenshots land in test-results/screens/*.png — look at them after a
  * change to the world look. Deterministic: `?manual` stops the real-time loop, the scene only
  * advances with `kq.step(n)`; `?nosave&fresh` keeps localStorage out of it.
  */
-const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 
 function holdRequest() {

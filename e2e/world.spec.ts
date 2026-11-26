@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 import { openPause } from './helpers/pause';
+import { SCREENS } from './helpers/common';
 
 /**
  * World track (playtest round 2, "fewer empty walks, more wow"): the survey points (activate,
@@ -9,7 +10,6 @@ import { openPause } from './helpers/pause';
  * (Apfelallee, menagerie, Festsaal, the Zwinger today, the rolling carts, the Westblick).
  * Screenshots: test-results/screens/fun-world-*.png.
  */
-const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];

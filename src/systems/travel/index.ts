@@ -180,6 +180,7 @@ class Travel {
   private cardT = 0;
   /** The card up is the activation banner (it shares the centre-card slot: ui/cards.ts). */
   private cardBanner = false;
+  private readonly pendingActivations: { name: string; first: boolean }[] = [];
   private time = 0;
   /** 'world:quiet' (the party): tripods, POIs and the trail hidden, no activation, no announcement. */
   private readonly quiet: QuietGate;
@@ -295,7 +296,8 @@ class Travel {
     // the first one says what the map is for, on the banner itself (a toast would sit under it)
     const first = !this.slice.tips.includes('map');
     if (first) this.slice.tips.push('map');
-    this.showCard(TRAVEL_DE.activated(p.name), first ? TRAVEL_DE.firstMap : TRAVEL_DE.activatedSub, null, first ? 6 : 4.5, 'travel-card-activated');
+    if (this.quiet.photoOpen || this.pendingActivations.length) this.pendingActivations.push({ name: p.name, first });
+    else this.showActivation(p.name, first);
     ctx.events.emit('travel:activated', { id });
     ctx.save.autosave('travel');
   }
@@ -625,6 +627,10 @@ class Travel {
 
   // ---- the found-card (activation, Fundstück) ---------------------------------------------------
 
+  private showActivation(name: string, first: boolean): void {
+    this.showCard(TRAVEL_DE.activated(name), first ? TRAVEL_DE.firstMap : TRAVEL_DE.activatedSub, null, first ? 6 : 4.5, 'travel-card-activated');
+  }
+
   showCard(title: string, text: string, from: string | null, seconds: number, testid: string): void {
     this.hideCard();
     const c = document.createElement('div');
@@ -875,12 +881,17 @@ class Travel {
       this.wakeAt -= dt;
       if (this.wakeAt < 0) this.wakeHint();
     }
+    if (this.quiet.photoOpen) return;
     if (this.card) {
       const aside = this.cardBanner && this.bannerAside();
       this.card.classList.toggle('kqt-aside', aside);
       if (aside) return;
       this.cardT -= dt;
       if (this.cardT <= 0 || (ctx.input.wasPressed('listen') && this.cardT < 11 && cardMayTakeE(ctx.state.state.flags))) this.hideCard();
+    }
+    if (!this.card) {
+      const next = this.pendingActivations.shift();
+      if (next) this.showActivation(next.name, next.first);
     }
   }
 
@@ -955,6 +966,8 @@ class Travel {
     const reload = (): void => {
       this.endJourney();
       this.slice = this.loadSlice();
+      this.pendingActivations.length = 0;
+      this.hideCard();
       this.dropAllVisuals();
       this.guards.clear();
       this.trail.clear();

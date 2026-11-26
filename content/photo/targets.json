@@ -19,7 +19,7 @@
       "label_de": "Ricke (Platzhalter)",
       "animal": "ricke",
       "r": 0.8,
-      "frame": { "minFrac": 0.06, "maxDist": 14, "needAll": ["reh.kitz"], "fallback": { "afterS": 90, "maxDist": 22, "stars": 2 } },
+      "frame": { "minFrac": 0.055, "maxDist": 27, "needAll": ["reh.kitz"], "fallback": { "afterS": 90, "maxDist": 32, "minFrac": 0.045, "stars": 2 } },
       "placeholder": true,
       "note": "PLACEHOLDER: anchored to the animal 'ricke'. Until the animals system attaches it, only the ?debug test deer (kq.photo.deer) does."
     },
@@ -30,7 +30,7 @@
       "label_de": "Kitz (Platzhalter)",
       "animal": "kitz",
       "r": 0.65,
-      "frame": { "minFrac": 0.05, "maxDist": 14, "needAll": ["reh.ricke"], "fallback": { "afterS": 90, "maxDist": 22, "stars": 2 } },
+      "frame": { "minFrac": 0.044, "maxDist": 27, "needAll": ["reh.ricke"], "fallback": { "afterS": 90, "maxDist": 32, "minFrac": 0.036, "stars": 2 } },
       "placeholder": true,
       "note": "PLACEHOLDER: see reh.ricke."
     }

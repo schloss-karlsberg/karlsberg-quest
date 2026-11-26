@@ -3,6 +3,8 @@
 // Drives headless Chromium on the REAL GPU (ANGLE Metal) through the `window.kq` debug API and saves
 // one JPEG (1280×720) per storyboard shot into docs/storyboard/img/. It builds nothing: build the game,
 // serve it (vite preview on a free port), pass the URL. See docs/storyboard/README.md.
+// Real GPU: run it in the EXCLUSIVE lane of scripts/dev/heavy.sh (a normal slot is refused). Without
+// a URL it uses http://localhost:<KQ_STORYBOARD_PORT, else 5370 + heavy.sh slot>/.
 //
 // Every shot stages its scene directly: era, time of day (`kq.story.look`), a teleport with a third-
 // person framing (player in shot, facing the subject), ghosts (`kq.npc`), enemies (`kq.combat`,
@@ -14,6 +16,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { requireExclusive, slotPort } from './heavy-env.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const argv = process.argv.slice(2);
@@ -21,7 +24,10 @@ const opt = (name, def) => {
   const i = argv.indexOf(`--${name}`);
   return i >= 0 ? argv[i + 1] : def;
 };
-const base = argv.find((a) => /^https?:/.test(a)) ?? 'http://localhost:5370/';
+if (!argv.includes('--list')) {
+  requireExclusive('storyboard', 'scripts/dev/heavy.sh --exclusive --max-hold 15 -- node scripts/dev/storyboard.mjs <url>');
+}
+const base = argv.find((a) => /^https?:/.test(a)) ?? `http://localhost:${slotPort(5370, 'KQ_STORYBOARD_PORT')}/`;
 const outDir = resolve(opt('out', resolve(ROOT, 'docs/storyboard/img')));
 const quality = Number(opt('quality', '72'));
 const only = opt('only', '')

@@ -12,6 +12,7 @@
  *                  "complete": { "enter": { "x": 524, "z": -770, "r": 7 } } } ] }
  */
 import type { Era } from '../../core/era';
+import type { Action as InputAction } from '../../player/input';
 import type { NpcWatch, ThreatConfig, ThreatKind } from '../contracts';
 import type { AnimalAction as AnimalRequestFields } from '../animals/types';
 import type { CinematicPlay } from '../cinematic/types';
@@ -249,6 +250,8 @@ export interface SayAction extends ActionBase {
   ms?: number;
   /** Start the rest of this action list once this line has finished or been skipped. Needs `id` or `line`. */
   wait?: boolean;
+  /** Put the phone away and keep it down through this line. */
+  phoneDown?: boolean;
   /** Label: fiction (default true for fictional speakers) / echo of a memory. */
   echo?: boolean;
   /** Repeat even if already said. */
@@ -272,6 +275,8 @@ export interface ObjectiveAction extends ActionBase {
   do: 'objective';
   /** null / omitted clears the objective. */
   text?: string | null;
+  /** Use this animal's saved position when the action runs, with x/z as a fallback. */
+  animal?: string;
   x?: number;
   z?: number;
   id?: string;
@@ -367,6 +372,8 @@ export interface LookAction extends ActionBase {
 export interface PromptAction extends ActionBase {
   do: 'prompt';
   key?: string | null;
+  /** Resolve the current binding or touch button label for this action. */
+  action?: InputAction;
   text?: string | null;
   /**
    * The text in touch mode (Touch-Steuerung; read when shown and again when the mode switches):
