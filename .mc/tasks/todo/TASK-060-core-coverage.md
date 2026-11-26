@@ -33,7 +33,7 @@ Identify untested player-visible contracts in core, debug URL flags, German stri
 - [x] Map each module to its player contract and existing tests.
 - [x] Add at least 25 meaningful deterministic assertions across the area. Run the focused set in about three seconds or less.
 - [x] Reproduce each defect before changing behaviour. Keep the six fixes minimal and record the catalog retention question as an `it.todo`.
-- [ ] Commit each fix separately. The sandbox denied creation of the Git index lock.
+- [ ] Commit each initial sweep fix separately. The sweep was committed as one group in `dae7d38`. Each review fix has its own commit.
 - [x] Document behaviour changes and update the PRD changelog.
 - [ ] Pass all four gates as written. Typecheck, unit tests and build passed. All four commands were run. The validator CLI was sandbox-blocked.
 - [x] Run the locked smoke spec on port 5447 if supported, or identify the human-run command.
@@ -50,7 +50,23 @@ _Based on the implementation brief of 2026-11-26._
 
 ## Progress
 
-Local work is on `dev/task-060` at `79c57184e15f1bd583943ac56fe43432ef28c922`. Save recovery, save ordering and the gameplay areas assigned to parallel sessions are outside this sweep.
+The initial sweep is in `dae7d38` on `dev/task-060`, based on `79c57184e15f1bd583943ac56fe43432ef28c922`. Save recovery, save ordering and the gameplay areas assigned to parallel sessions are outside this sweep.
+
+## Review fixes (2026-11-26)
+
+Keep look input responsive when shared links supply very large headings, and make the i18n suite repeatable with coverage of the feature controls shown in game.
+
+- [x] Wrap finite URL yaw in degrees before converting to radians and add a regression case for a very large yaw.
+- [x] Load a fresh i18n module for each stateful test and verify the suite with `--repeats 1`.
+- [x] Exercise the photo, notes and skills registrations, assert their control IDs are present, and check both strings for every control.
+- [x] Update the shared-link documentation and PRD changelog, run the four gate commands and check whether the sandbox allows the locked smoke spec.
+- [x] Commit the fixes separately and record the outcome of every finding.
+
+| Finding | Outcome |
+| --- | --- |
+| 1. Very large shared URL yaw | Fixed in `7220c70`. `origin/main` could overflow during conversion, and the initial sweep accepted a huge finite heading. The parser now wraps degrees first. The `1e308` and `-450` regressions both failed before the fix. |
+| 2. i18n test state leaks across repeats | Fixed in `2915e7b`. The repeat run reproduced both failures. Each test now dynamically imports i18n after a module reset, and the repeat run passes. |
+| 3. Missing feature coverage in the controls test | Fixed in `5355f12`. The test runs the actual photo, notes and skills initializers, then checks their five IDs and every control's label and description. Temporarily removing `ui.keys.photo.key` or the notes control registration made the test fail. |
 
 ## Coverage inventory
 
@@ -97,7 +113,7 @@ Each regression below failed before the corresponding behaviour change and passe
 
 Settings defaults, remap migration, snapshot replacement, pause/resume, key help and hunt singular/plural templates passed against their existing implementations. Seven new test files have 83 assertion sites before counting parameterized cases and loops.
 
-## Verification
+## Initial sweep verification
 
 ```text
 Focused Vitest   Test Files  7 passed (7)
@@ -115,6 +131,23 @@ pnpm build       ✓ 470 modules transformed.
 
 Both unit runs had 0 failed. Smoke entered the shared lock queue. An independent bind check on `127.0.0.1:5447` returned `listen EPERM`, so the queued job was withdrawn before browser startup. No e2e specs changed. No voiced lines need new text.
 
+## Review verification
+
+```text
+Focused Vitest   Test Files  2 passed (2)
+with --repeats 1 Tests  22 passed | 1 todo (23)
+pnpm typecheck   $ tsc --noEmit (exit 0)
+pnpm test        Test Files  131 passed (131)
+                 Tests  1642 passed | 2 todo (1644)
+pnpm validate    listen EPERM on the tsx IPC socket (exit 1)
+node --import tsx scripts/validate-content.ts
+                 ✓ content valid (1 warning(s)) (exit 0)
+pnpm build       ✓ 470 modules transformed.
+                 ✓ built in 316ms
+```
+
+Both unit runs had 0 failed. The sandbox denied binding the smoke preview port with `listen EPERM`. No e2e specs changed. No voiced lines need new text.
+
 ## Follow-ups
 
 - Run `pnpm validate` outside the sandbox and run the smoke spec with the shared lock.
@@ -123,25 +156,4 @@ Both unit runs had 0 failed. Smoke entered the shared lock queue. An independent
 
 ```sh
 KQ_E2E_PORT=5447 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line
-```
-
-## Intended local commits
-
-Git could not create the worktree's `index.lock` (Operation not permitted). The worktree contains the following commit groups. From its root, a writable Git index permits these commands.
-
-```sh
-commit_task_060() {
-  local summary="$1"
-  shift
-  git add -- "$@" && git commit -m "$summary" -m 'Refs: TASK-060' -m 'Co-Authored-By: Codex <noreply@openai.com>'
-}
-
-commit_task_060 'fix: isolate failures in all-event observers' src/core/events.ts tests/event-delivery.test.ts
-commit_task_060 'fix: keep failed dependency registrations out of the registry' src/core/systems.ts tests/system-registration.test.ts
-commit_task_060 'fix: ignore invalid starting positions in shared URLs' src/boot.ts src/debug/spawn.ts tests/debug-url-flags.test.ts
-commit_task_060 'fix(ui): resolve only registered strings and supplied placeholders' src/i18n/index.ts tests/i18n.test.ts
-commit_task_060 'fix(env): reject incomplete terrain height samples' src/data/decode.ts tests/terrain-height-bytes.test.ts
-commit_task_060 'fix(env): validate ground and canopy grid sizes' src/data/loader.ts tests/loader.test.ts tests/terrain-load.test.ts
-commit_task_060 'test: cover state replacement and settings migrations' tests/state-settings.test.ts
-commit_task_060 'docs: record the core coverage sweep' docs/ARCHITECTURE.md docs/ACTION-RPG.md docs/PRD.md .mc/tasks/todo/TASK-060-core-coverage.md
 ```
