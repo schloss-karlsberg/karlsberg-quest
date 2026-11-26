@@ -370,7 +370,10 @@ export class Player {
   }
 
   private updateFly(dt: number, wx: number, wz: number, fz: number): void {
-    if (this.frozen) return;
+    if (this.frozen) {
+      this.flyVel.set(0, 0, 0);
+      return;
+    }
     const fast = this.input.isDown('sprint');
     const sp = fast ? FLY_FAST : FLY_SPEED;
     // forward/back follow the view pitch, strafing stays level
