@@ -92,7 +92,7 @@ describe('VoiceClips', () => {
     ])) } });
     const c = new VoiceClips(fakeAudio(), './', s.fetchFn, false);
     c.preload(backlog.slice(0, 3));
-    await flush();
+    await settle();
     c.preload(backlog.slice(3));
     expect(c.stats()).toMatchObject({ loading: 3, queued: 24 });
 
@@ -101,11 +101,11 @@ describe('VoiceClips', () => {
     c.preload([later]);
     expect(c.stats().queued).toBe(24);
     for (const release of s.release.splice(0)) release();
-    await flush();
+    await settle();
     expect(s.urls.slice(4)).toEqual(['./voice/old-26.mp3', './voice/old-25.mp3', './voice/old-4.mp3']);
 
     s.release[1]!();
-    await flush();
+    await settle();
     expect(c.take('old-25', text)?.id).toBe('old-25');
   });
 
@@ -118,7 +118,7 @@ describe('VoiceClips', () => {
     expect(s.urls).toEqual(['./voice/manifest.json']);
 
     s.releaseManifest();
-    await flush();
+    await settle();
     expect(s.urls.slice(1)).toEqual(['e', 'a', 'b'].map((id) => `./voice/${id}.${textHash(LINES[id]!)}.m4a`));
     expect(c.stats()).toMatchObject({ loading: 3, queued: 2 });
   });
