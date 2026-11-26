@@ -1,4 +1,5 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -19,16 +20,42 @@ describe('content validation inputs', () => {
       writeFileSync(join(content, 'b.pack.json', 'b.pack.json'), '{');
       writeFileSync(join(content, 'unrelated.json'), '{');
 
+      const first = 'a.pack.json';
+      const nested = join('b.pack.json', 'a.pack.json');
+      const malformed = join('b.pack.json', 'b.pack.json');
+      const last = 'c.pack.json';
       expect(findPacks(content).map((file) => relative(content, file))).toEqual([
-        'a.pack.json', 'b.pack.json/a.pack.json', 'b.pack.json/b.pack.json', 'c.pack.json',
+        first, nested, malformed, last,
       ]);
       const { packs, parseErrors } = loadPacks(root);
       expect(packs.map(({ file, pack }) => [file, pack.pack])).toEqual([
-        ['content/a.pack.json', 'first'], ['content/b.pack.json/a.pack.json', 'nested'], ['content/c.pack.json', 'last'],
+        [join('content', first), 'first'], [join('content', nested), 'nested'], [join('content', last), 'last'],
       ]);
       expect(validateContent(packs).ok).toBe(true);
-      expect(parseErrors).toHaveLength(1);
-      expect(parseErrors[0]).toMatch(/^ERROR content\/b\.pack\.json\/b\.pack\.json: invalid JSON/);
+      expect(parseErrors).toEqual([expect.stringContaining(`ERROR ${join('content', malformed)}: invalid JSON`)]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it.skipIf(process.platform === 'win32')('only discovers regular packs and links to regular files', () => {
+    const root = mkdtempSync(join(tmpdir(), 'kq-validate-'));
+    try {
+      const content = join(root, 'content');
+      mkdirSync(content);
+      mkdirSync(join(content, 'archive'));
+      writeFileSync(join(content, 'source.json'), '{"pack":"linked"}');
+      execFileSync('mkfifo', [join(content, 'pipe.pack.json')]);
+      symlinkSync('archive', join(content, 'archive.pack.json'));
+      symlinkSync('missing.json', join(content, 'missing.pack.json'));
+      symlinkSync('pipe.pack.json', join(content, 'linked-pipe.pack.json'));
+      symlinkSync('source.json', join(content, 'linked.pack.json'));
+
+      expect(findPacks(content)).toEqual([join(content, 'linked.pack.json')]);
+      expect(loadPacks(root)).toEqual({
+        packs: [{ file: join('content', 'linked.pack.json'), pack: { pack: 'linked' } }],
+        parseErrors: [],
+      });
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

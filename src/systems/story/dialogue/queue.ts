@@ -11,9 +11,9 @@
  *   line's turn comes;
  * - a line with `expired` (its `until` condition: the objective it explains is done, the beat it
  *   prepares has passed) is dropped once that holds;
- * - a 'now' line (a tutorial that blocks an action: "Leertaste – zur Seite!") jumps the queue, and
- *   the waiting lines of other groups that are low priority are dropped (playtest round 2: tips
- *   arrived 13 s after the moment);
+ * - a 'now' line (a tutorial that blocks an action: "Leertaste – zur Seite!") can play immediately
+ *   without a waiting slot. If it must wait, it jumps ahead of non-urgent lines. Waiting low
+ *   priority lines are dropped (playtest round 2: tips arrived 13 s after the moment);
  * - playtest round 3 (lines 10 s late, lectures in fights): a beat's leftovers get STALE_GRACE (3 s);
  *   a normal line that has not started within NORMAL_TTL is dropped (its moment is gone); `lore`
  *   lines (history, long remarks) are HELD while the host says a fight is on (`held`), the lines
@@ -74,7 +74,8 @@ export class LineQueue<T extends QueuedLine> {
     this.clock += dt;
   }
 
-  push(item: T): void {
+  /** Queue a line, or return an urgent line that the presenter can play immediately. */
+  push(item: T, playImmediately = false): T | undefined {
     item.queuedAt = this.clock;
     if (item.priority === 'now') {
       // ahead of everything but other 'now' lines; waiting low lines are stale already
@@ -86,6 +87,11 @@ export class LineQueue<T extends QueuedLine> {
       }
       let at = 0;
       while (at < this.items.length && this.items[at]!.priority === 'now') at++;
+      if (playImmediately && at === 0) {
+        if (this.fresh(item)) return item;
+        this.dropped++;
+        return undefined;
+      }
       this.items.splice(at, 0, item);
     } else if (item.priority !== 'low' && !item.lore && item.beat) {
       // a beat's own line goes ahead of waiting lore (a quest's history must not make the beat's
@@ -101,6 +107,7 @@ export class LineQueue<T extends QueuedLine> {
       this.items.splice(Math.max(0, i), 1);
       this.dropped++;
     }
+    return undefined;
   }
 
   /** Put a line that had started back at the front (it was cut off by a fight: it plays again after). */

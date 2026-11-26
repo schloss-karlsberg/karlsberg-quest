@@ -145,6 +145,7 @@ describe('objectives', () => {
       objectives: [
         { id: 'required', type: 'manual', text_de: 'Aufgabe' },
         { id: 'bonus', type: 'manual', text_de: 'Zusatz', count: 2, optional: true, bonus_xp: 30 },
+        { id: 'unfinished', type: 'manual', text_de: 'Weitere Aufgabe', count: 2, optional: true, bonus_xp: 20 },
       ],
     });
     const { b, of } = book([q]);
@@ -157,9 +158,12 @@ describe('objectives', () => {
     expect(b.progress(q.id, 'bonus', 5)).toBe(true);
     expect(b.count(q.id, 'bonus')).toBe(2);
     expect(b.progress(q.id, 'bonus')).toBe(false);
+    expect(b.progress(q.id, 'unfinished')).toBe(true);
+    expect(b.count(q.id, 'unfinished')).toBe(1);
     expect(b.complete(q.id)?.xp).toBe(100);
     expect(b.complete(q.id, true)).toBeNull();
-    expect(b.progress(q.id, 'bonus')).toBe(false);
+    expect(b.progress(q.id, 'unfinished')).toBe(false);
+    expect(b.count(q.id, 'unfinished')).toBe(1);
     expect(of('xp:grant').map((p) => p.amount)).toEqual([30, 100]);
     expect(of('quest:ready')).toEqual([{ id: q.id }]);
   });
@@ -171,7 +175,7 @@ describe('objectives', () => {
     });
     const { b } = book([q]);
     b.accept(q.id);
-    b.tick(1.5, here);
+    b.tick(1, here);
     const restoredEnv = env();
     const restored = new QuestBook(b.defs, JSON.parse(JSON.stringify(b.slice)), restoredEnv);
     restored.mirror();

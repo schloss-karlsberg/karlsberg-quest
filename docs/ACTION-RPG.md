@@ -1051,6 +1051,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| A full dialogue queue can swallow the dodge tutorial (TASK-029 review, 2026-11-26) | Urgent tutorials can interrupt a regular line even when all six waiting slots hold a sequence's next lines. The remaining lines keep their places. |
 | Interrupted memories advance quests and story beats (TASK-029, 2026-11-26) | Capture and era changes can interrupt memory playback. The end event releases the scene and signals the interruption so the quest and story engines wait for a heard memory. |
 | Palace interiors and the Festsaal fire miss 60 fps (TASK-021, 2026-11-26) | The sun-depth pass skips palace surface shading after applying cutouts. Room lights keep their existing budget and Festsaal sparks use smaller quads. The reference benchmark checks Hoch p95 at fixed and advancing fire clocks. Hardware timing, matched stills and a physical-phone check are pending (PERFORMANCE §3.8). |
 | Palace interiors and the Festsaal fire miss 60 fps (TASK-021, 2026-11-26) | The sun-depth pass skips palace surface shading after applying cutouts. Room lights keep their existing budget and Festsaal sparks use smaller quads. Hardware timing and look checks are pending (PERFORMANCE §3.8). |

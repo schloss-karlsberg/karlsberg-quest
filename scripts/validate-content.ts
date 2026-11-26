@@ -2,7 +2,7 @@
  * pnpm validate — checks every content/**\/*.pack.json (sources, confidence labels, references,
  * case solvability). Exit code 1 on any error.
  */
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ContentPack } from '../src/content/types.ts';
@@ -17,7 +17,16 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export function findPacks(dir: string): string[] {
   if (!existsSync(dir)) return [];
   return readdirSync(dir, { recursive: true, withFileTypes: true })
-    .filter((entry) => !entry.isDirectory() && entry.name.endsWith('.pack.json'))
+    .filter((entry) => {
+      if (!entry.name.endsWith('.pack.json')) return false;
+      if (entry.isFile()) return true;
+      if (!entry.isSymbolicLink()) return false;
+      try {
+        return statSync(join(entry.parentPath, entry.name)).isFile();
+      } catch {
+        return false;
+      }
+    })
     .map((entry) => join(entry.parentPath, entry.name))
     .sort();
 }

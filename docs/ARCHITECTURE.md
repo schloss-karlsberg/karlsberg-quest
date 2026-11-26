@@ -1100,7 +1100,9 @@ Round-4 (polish: set dressing) integration rules:
   `echo`, `choice`) is dropped, state changes run at once. A line that will not be spoken (said
   once already) costs no reading time in a run. The dialogue queue (`dialogue/queue.ts`, pure)
   caps waiting lines at 6 (evicting unplayed barks / skill remarks first, including an incoming
-  bark), drops barks after 14 s, gives lines of an
+  bark). A playable `now` line can interrupt ordinary dialogue directly, without taking a waiting
+  slot. Further urgent lines can queue while an urgent line is showing. The queue drops barks
+  after 14 s, gives lines of an
   ended beat or a left place `STALE_GRACE` = 3 s, beat lines `NORMAL_TTL` = 20 s and lore
   (`dialogue:say {lore}`, sourced lines) `LORE_TTL` = 50 s, never cuts a playing sequence; while
   `hud.acting('combat')` lore and lines over 120 chars are held (`take(held)`), barks pass; while

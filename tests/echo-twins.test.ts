@@ -88,7 +88,7 @@ describe('echo lifecycle', () => {
     ctx.post.uniforms.uDesaturate!.value = 0.1;
     const d = new EchoDirector(
       ctx,
-      () => [line('test.echo.line', 'mannlich', 'Ein Satz.', id)],
+      () => [line('test.echo.line', 'hanne', 'Ein Satz.', id)],
       fakeEl() as HTMLElement,
       (completed, transcript) => heard.push({ id: completed.id, transcript }),
     );
@@ -105,6 +105,6 @@ describe('echo lifecycle', () => {
     expect(scene.getObjectByName('chronik-echo')).toBeUndefined();
     d.dispose();
     expect(ends).toEqual([mode === 'abort' ? { id, aborted: true } : { id }]);
-    expect(heard).toEqual(mode === 'abort' ? [] : [{ id, transcript: [{ speaker: 'mannlich', text: 'Ein Satz.' }] }]);
+    expect(heard).toEqual(mode === 'abort' ? [] : [{ id, transcript: [{ speaker: 'hanne', text: 'Ein Satz.' }] }]);
   });
 });
