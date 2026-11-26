@@ -98,6 +98,17 @@ export function journalRunning<Q extends QuestDef>(all: readonly Q[], progress: 
     .sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'main' ? -1 : 1) || (st(a) === 'offered' ? 1 : 0) - (st(b) === 'offered' ? 1 : 0) || (progress(b.id)?.t ?? 0) - (progress(a.id)?.t ?? 0));
 }
 
+/** The bus events a running objective subscribes to. Reach, escort and survive are polled. */
+const objectiveEvent: Partial<Record<QuestObjective['type'], string>> = {
+  kill: 'enemy:killed', collect: 'item:pickup', use: 'item:use', talk: 'npc:talk',
+  room: 'room:enter', examine: 'clue:found', echo: 'echo:end', calm: 'menagerie:calmed', photo: 'photo:good',
+};
+export function objectiveEvents(o: QuestObjective): string[] {
+  const name = o.type === 'event' ? o.event : objectiveEvent[o.type];
+  if (o.type === 'collect' && o.drop) return ['item:pickup', 'enemy:killed'];
+  return name ? [name] : [];
+}
+
 export function need(o: QuestObjective): number {
   if (o.type === 'survive') return Math.max(1, Math.round(o.seconds ?? o.count ?? 1));
   return Math.max(1, Math.round(o.count ?? 1));

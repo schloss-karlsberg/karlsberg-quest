@@ -30,7 +30,7 @@ import { Feed, RewardNotice, showBanner, Tracker, type RewardView, type TrackerQ
 import { Waymark } from '../../ui/waymark';
 import { hideWhileQuiet } from '../../core/quiet';
 import { renderCodex, renderQuests, renderSets, type PageData } from './pages';
-import { type QuestDefIn, type QuestPayout, QuestBook, createQuestSlice, giverId, historyAtTurnin, need, normaliseSlice, turninOf } from './logic';
+import { type QuestDefIn, type QuestPayout, QuestBook, createQuestSlice, giverId, historyAtTurnin, need, objectiveEvents, normaliseSlice, turninOf } from './logic';
 
 declare module '../../core/state' {
   interface SystemStates {
@@ -349,12 +349,7 @@ class QuestRuntime {
   private computeInterest(): Set<string> {
     const s = new Set<string>();
     for (const q of this.book.running())
-      for (const o of this.book.openObjectives(q)) {
-        const ev: Record<string, string> = { kill: 'enemy:killed', collect: 'item:pickup', use: 'item:use', talk: 'npc:talk', room: 'room:enter', examine: 'clue:found', echo: 'echo:end', calm: 'menagerie:calmed', photo: 'photo:good' };
-        if (ev[o.type]) s.add(ev[o.type]!);
-        if (o.type === 'event' && o.event) s.add(o.event);
-        if (o.type === 'collect' && o.drop) s.add('enemy:killed');
-      }
+      for (const o of this.book.openObjectives(q)) for (const name of objectiveEvents(o)) s.add(name);
     return s;
   }
 

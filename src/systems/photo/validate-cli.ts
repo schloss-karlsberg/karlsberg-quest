@@ -27,12 +27,12 @@ export function loadPhotoTargets(root: string, packs: LoadedPack[], bounds?: Bou
 }
 
 /** Validate and print (ok = no errors). */
-export function checkPhotoTargets(root: string, packs: LoadedPack[], bounds?: Bounds, verbose = false): { ok: boolean; ids: Set<string> } {
+export function checkPhotoTargets(root: string, packs: LoadedPack[], bounds?: Bounds, verbose = false): { ok: boolean; ids: Set<string>; warnings: number } {
   const r = loadPhotoTargets(root, packs, bounds);
   if (r.parseError) console.log(r.parseError);
   const line = (i: PhotoIssue) => `${i.level === 'error' ? 'ERROR' : 'warn '} ${i.file}${i.id ? ` [${i.id}]` : ''}: ${i.message}`;
   for (const e of r.errors) console.log(line(e));
   if (verbose) for (const w of r.warnings) console.log(line(w));
   console.log(`${r.ids.size} photo target(s) · ${r.warnings.length} warning(s)${verbose || !r.warnings.length ? '' : ' (STORY_VERBOSE=1 to list)'}`);
-  return { ok: r.ok && !r.parseError, ids: r.ids };
+  return { ok: r.ok && !r.parseError, ids: r.ids, warnings: r.warnings.length };
 }

@@ -26,6 +26,29 @@ and their generators define the shipped beats and dialogue. Placeholders carry `
 }
 ```
 
+## Static progression checks
+
+Run `pnpm validate` after editing beats, quests or packs. Each progression finding gives the
+file and the chapter/beat, reaction, or quest/objective id.
+
+- A chapter starts at `start`. The check follows `next`, fallthrough and forward checkpoints.
+  An exit action can satisfy a later beat. A beat cannot use its own exit to complete.
+- Flags must have a reachable writer with the required value. Writers include story actions,
+  choice options, quest payouts, item deeds and clue rewards. Runtime-owned flags such as
+  `court.admitted` have named exceptions in `scripts/content-validation/chapter.ts`.
+- A choice can leave a later prerequisite unset on just one branch. The diagnostic identifies
+  a failing choice. A flag supplied only by an optional reaction in an earlier beat also merits
+  a playthrough. Unreachable alternatives in an otherwise usable gate produce warnings.
+- Every occurrence of a `say` id must resolve to the same text, including pack references,
+  era overrides and ordered variants. Conflicts identify both definitions. Keep the recorded
+  text intact when correcting a trigger.
+- World movement, combat and the timing of independent reactions are approximated. The search
+  warns when it reaches its limit of 64 paths in one chapter. Debug chapters also warn about
+  beats intended for direct entry with `goto`.
+
+The small authoring fixtures and the campaign regression run in
+`pnpm exec vitest run tests/content-progression.test.ts`.
+
 ## Chapter file
 
 | Key | Meaning |
