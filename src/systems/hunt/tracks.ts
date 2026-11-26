@@ -190,15 +190,16 @@ export class TrackField {
 
   /**
    * Freshest player print within r of x/z (younger than maxAge). Used to pick up a trail: a hound
-   * crossing it, or the pack at the spot where it lost you.
+   * crossing it, or the pack at the spot where it lost you. The pack can exclude lost segments.
    */
-  playerPrintNear(x: number, z: number, r: number, now: number, maxAge = this.life): Print | null {
+  playerPrintNear(x: number, z: number, r: number, now: number, maxAge = this.life, acceptsSegment?: (seg: number) => boolean): Print | null {
     let best: Print | null = null;
     const r2 = r * r;
     for (let i = this.prints.length - 1; i >= 0; i--) {
       const p = this.prints[i]!;
-      if (now - p.t > maxAge) break; // older from here on
+      if (now - p.t > maxAge) break; // any earlier player prints are older
       if (p.kind !== 'boot' || p.agent !== -1) continue;
+      if (acceptsSegment && !acceptsSegment(p.seg)) continue;
       if ((p.x - x) ** 2 + (p.z - z) ** 2 > r2) continue;
       if (!best || p.seq > best.seq) best = p;
     }

@@ -89,27 +89,89 @@ describe('combat encounter lifecycle', () => {
     expect(pending).toEqual({ hazards: [], rings: [], projectiles: [] });
   });
 
-  it('rebuilds saved groups with the earned kills and reached boss phase', () => {
-    const world = { heightAt: () => 0 };
-    const sim = new CombatSim(world, {});
+  it.each(['owner', 'other'] as const)('fire rings stay with the triggering pack when %s despawns first', (removed) => {
+    const sim = new CombatSim({ heightAt: () => 0 }, {});
+    const fireInput = { ...input, era: '1793-07' };
+    for (const [group, x] of [['owner', -8], ['other', 8]] as const) {
+      const pack = sim.spawnAt('glutling', x, 0, { group, era: fireInput.era, count: 3 })!;
+      pack.aggro = true;
+      pack.escorts = [];
+      pack.wave = [];
+    }
+    sim.sync(fireInput.era, fireInput.time, fireInput.x, fireInput.z);
+    // Keep each pack in range on its side so the rings are the only attacks during the test.
+    for (const enemy of sim.live()) {
+      enemy.state = 'stagger';
+      enemy.stagger = 10;
+    }
+    for (let n = 0; n < 720 && !sim.hazards.length; n++) sim.step(DT, fireInput);
+    expect(sim.hazards).toHaveLength(2);
+    const ring = sim.hazards[1]!;
+    expect(ring).toMatchObject({ kind: 'fire', group: 'owner' });
+    expect(ring.x).toBeLessThan(-4);
+
+    const remaining = removed === 'owner' ? 'other' : 'owner';
+    sim.despawn(removed);
+    expect(sim.live().map((enemy) => enemy.group)).toEqual([remaining, remaining, remaining]);
+    const survives = removed === 'other';
+    expect(sim.hazards.includes(ring)).toBe(survives);
+    expect(sim.rings.some((warning) => warning.id === ring.ring)).toBe(survives);
+
+    const hp = sim.p.hp;
+    const events: SimEvent[] = [];
+    for (let n = 0; n < 120; n++) events.push(...sim.step(DT, { ...fireInput, x: ring.x, z: ring.z }));
+    const hits = events.filter((event) => event.type === 'hazardHit');
+    if (survives) {
+      expect(hits).toContainEqual(expect.objectContaining({ kind: 'fire', x: ring.x, z: ring.z, player: true }));
+      expect(sim.p.hp).toBeLessThan(hp);
+    } else {
+      expect(hits).toHaveLength(0);
+      expect(sim.p.hp).toBe(hp);
+    }
+  });
+
+  it('reloads earned kills and a reached boss phase while clearing an airborne shot', () => {
+    const sim = new CombatSim({ heightAt: () => 0 }, {});
     sim.spawnAt('nebelling', 0, -8, { group: 'quest-pack', era: input.era, count: 2 });
-    const boss = sim.spawnAt('schuldbuch', 0, -24, { group: 'boss', era: input.era })!;
+    const boss = sim.spawnAt('schuldbuch', 0, -2.5, { group: 'boss', era: input.era })!;
     sim.sync(input.era, input.time, 0, 0);
     const member = sim.live().find((enemy) => enemy.group === 'quest-pack')!;
     expect(sim.killNow(member.id)).toBe(1);
-    boss.bossPhase = 2;
-    const saved = JSON.parse(JSON.stringify(sim.groups)) as Record<string, EnemyGroupState>;
-    const resumed = new CombatSim(world, saved);
 
-    resumed.sync('today', input.time, 0, 0);
-    expect(resumed.live()).toHaveLength(0);
-    resumed.sync(input.era, input.time, 0, 0);
-    expect(resumed.live().filter((enemy) => enemy.group === 'quest-pack')).toHaveLength(1);
-    expect(resumed.groups['quest-pack']?.killed).toBe(1);
-    const rebuiltBoss = resumed.live().find((enemy) => enemy.group === boss.group)!;
+    const book = sim.live().find((enemy) => enemy.group === boss.group)!;
+    const phaseThreshold = book.def.phases![0]!;
+    expect(book.phase).toBe(1);
+    // Skip the intro and start just above the phase threshold with the seal open.
+    book.state = 'stagger';
+    book.stagger = 1;
+    book.hp = Math.ceil(book.maxHp * phaseThreshold) + 1;
+    book.sealOpen = 3;
+    const events = sim.step(DT, { ...input, attackPressed: true });
+    for (let n = 0; n < 27; n++) events.push(...sim.step(DT, input));
+    expect(events).toContainEqual(expect.objectContaining({ type: 'phase', e: book, phase: 2 }));
+    expect(boss.bossPhase).toBe(2);
+
+    book.z = -8;
+    book.state = 'windup';
+    book.attack = book.def.attacks.find((attack) => attack.kind === 'ranged')!;
+    book.windup = book.attack.telegraph;
+    book.t = book.windup;
+    sim.step(DT, input);
+    expect(sim.projectiles).toContainEqual(expect.objectContaining({ owner: book.id }));
+    const saved = JSON.parse(JSON.stringify(sim.groups)) as Record<string, EnemyGroupState>;
+
+    // Mirror the combat system's group reload and reuse the active simulation.
+    sim.groups = saved;
+    sim.dematerialise();
+    sim.sync('today', input.time, 0, 0);
+    expect(sim.live()).toHaveLength(0);
+    sim.sync(input.era, input.time, 0, 0);
+    expect(sim.live().filter((enemy) => enemy.group === 'quest-pack')).toHaveLength(1);
+    expect(sim.groups['quest-pack']?.killed).toBe(1);
+    const rebuiltBoss = sim.live().find((enemy) => enemy.group === boss.group)!;
     expect(rebuiltBoss).toMatchObject({ phase: 2, attack: null });
-    expect(rebuiltBoss.hp).toBe(Math.round(rebuiltBoss.maxHp * 0.66));
-    expect(resumed.projectiles).toHaveLength(0);
+    expect(rebuiltBoss.hp).toBe(Math.round(rebuiltBoss.maxHp * phaseThreshold));
+    expect(sim.projectiles).toHaveLength(0);
   });
 
   // An in-flight lob currently outlives a defeated caster even though its landing ring is removed.

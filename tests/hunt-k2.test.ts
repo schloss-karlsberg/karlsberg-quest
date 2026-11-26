@@ -62,6 +62,26 @@ describe('the Warner’s trail (TrackField.addTrail)', () => {
     expect(tracks.prints).toHaveLength(0);
   });
 
+  it('a patrol ignores the Warner’s prints after a player print expires', () => {
+    const tracks = new TrackField({ life: 30 });
+    const far = player({ x: -30, z: 150 });
+    const sim = new PackSim(walledWorld(), null, opts({ hounds: 1, from: { x: -30, z: 0 } }), far, tracks);
+    const authored = tracks.addTrail([{ x: -30, z: 0 }, { x: -30, z: -4 }], 0, 1, 1, 120);
+    tracks.addPlayer(far.x, far.z, 0, tracks.now, 1, 1, null);
+    tracks.tick(tracks.life + 5);
+
+    const events = sim.update(DT, far);
+    expect(tracks.prints).toHaveLength(authored);
+    expect(sim.state).toBe('calm');
+    expect(sim.tracking).toBe(false);
+    expect(events).not.toContainEqual(expect.objectContaining({ type: 'tracking', on: true }));
+
+    const { x, z } = sim.leader;
+    tracks.addPlayer(x, z, 0, tracks.now, 1, 1, null);
+    expect(sim.update(0.25, far)).toContainEqual({ type: 'tracking', on: true, x, z });
+    expect(sim.tracking).toBe(true);
+  });
+
   it('keeps the last prints up to the cap and starts a fresh segment after clearing', () => {
     const tracks = new TrackField({ max: 2 });
     const first = tracks.addPlayer(0, 0, 0, 0, 1, 1, null)!;

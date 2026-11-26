@@ -978,8 +978,8 @@ Round-4 (polish: set dressing) integration rules:
 - **Snow tracks** (`tracks.ts`, `trackVisuals.ts`; 1793-02 or a snowy look, `snow` overrides): boot
   prints on every `player:step`, paw / hoof prints of the pack, instanced decals that fade over
   240 s. A story trail can extend the lifetime of its own prints. Ordinary prints expire on
-  schedule even when a story trail passes through the same area. Your trail breaks on water,
-  cobbles / building floors, today's roads and steep rock; the
+  schedule even when a story trail passes through the same area. Hounds track player prints only.
+  Your trail breaks on water, cobbles / building floors, today's roads and steep rock; the
   pack follows it print by print (`hunt:tracking {on, why?}`, horn found / lost) but never across a
   break. Crouching / standing over the pack's prints reads them (Spurenleser: kind, number,
   rider, age, direction; tier 2 highlights their routes) → caption + `hunt:read`.

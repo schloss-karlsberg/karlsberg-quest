@@ -2627,7 +2627,11 @@ export class CombatSim {
     const off = 0.6 + hash01(this.tick * 2.3) * 0.9;
     spots.push({ x: inp.x + Math.cos(a) * off + inp.moveX * 1.2, z: inp.z + Math.sin(a) * off + inp.moveZ * 1.2 });
     if (def.n > 1) {
-      const near = this.enemies.filter((e) => e.aggro && !e.boss && e.state !== 'dissolve' && Math.hypot(e.x - inp.x, e.z - inp.z) > def.r * 1.6 && Math.hypot(e.x - inp.x, e.z - inp.z) < 12);
+      const near = this.enemies.filter((e) => {
+        if (!e.aggro || e.boss || e.state === 'dissolve' || this.rootOf(e) !== group) return false;
+        const distance = Math.hypot(e.x - inp.x, e.z - inp.z);
+        return distance > def.r * 1.6 && distance < 12;
+      });
       const t = near[Math.floor(hash01(this.tick * 5.3) * near.length)];
       if (t) spots.push({ x: t.x, z: t.z });
     }

@@ -614,7 +614,7 @@ export class PackSim {
     if (this.state === 'searching') {
       const c = this.lastKnown ?? this.lastNoise;
       if (!c) return;
-      const pr = this.freshPrintNear(c.x, c.z, 7, now, T.life, live);
+      const pr = T.playerPrintNear(c.x, c.z, 7, now, T.life, live);
       if (pr) this.beginTrail(pr.seg, pr.seq, pr.x, pr.z);
       return;
     }
@@ -622,7 +622,7 @@ export class PackSim {
     // keep their noses up, so a beat walked back over your prints does not betray you
     if (this.state === 'calm' && this.onBeats) return;
     for (const a of this.hounds) {
-      const pr = this.freshPrintNear(a.x, a.z, 1.4, now, this.tune.pickupAge, live);
+      const pr = T.playerPrintNear(a.x, a.z, 1.4, now, this.tune.pickupAge, live);
       if (!pr) continue;
       // the hound puts its nose down: the pack switches to the trail
       this.setState('searching', true);
@@ -630,18 +630,6 @@ export class PackSim {
       this.beginTrail(pr.seg, pr.seq, pr.x, pr.z);
       return;
     }
-  }
-
-  private freshPrintNear(x: number, z: number, r: number, now: number, maxAge: number, ok: (seg: number) => boolean) {
-    const T = this.tracks!;
-    let best: { seg: number; seq: number; x: number; z: number } | null = null;
-    for (let i = T.prints.length - 1; i >= 0; i--) {
-      const p = T.prints[i]!;
-      if (now - p.t > maxAge) break;
-      if (p.kind !== 'boot' || p.agent !== -1 || !ok(p.seg) || (p.x - x) ** 2 + (p.z - z) ** 2 > r * r) continue;
-      if (!best || p.seq > best.seq) best = p;
-    }
-    return best;
   }
 
   /** Lead hound follows the trail, the rest run in file behind it, the Pikeur rides after. */

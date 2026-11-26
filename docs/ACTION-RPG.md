@@ -397,7 +397,8 @@ A group of **three or more** in the past (not today, not a boss) is a pack:
 - **Era hazards** (`hazardOf` / `HAZARD`): in a pack fight, every 6.5 s: **1793-07 Glut** — two 2.3 m
   rings fill for 1.4 s with embers falling into them, then burn (10 to you, 30 % of their HP to
   enemies, elites half); **1796 Steinschlag** — one 2.1 m ring for 1.5 s, a dressed block falls onto
-  it (14, 45 %). Rings land near you and near the pack; enemies are fair game (lure them in).
+  it (14, 45 %). The second fire ring targets an enemy from the triggering pack. Enemies from
+  other packs can also take damage if they enter a ring.
   Removing the pack that triggered a hazard cancels its warning rings, any falling stone and the
   pending damage. Other encounters keep their attacks.
 
@@ -1078,7 +1079,8 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
-| Falling stones outlive the pack that triggered them (TASK-028, 2026-11-26) | Despawning or dematerialising the responsible pack cancels the era hazard and its warning and stone. Regression tests cover the impact window and preserve unrelated encounters' attacks. |
+| Era hazards outlive their pack or target a different pack (TASK-028, 2026-11-26) | The second fire ring targets a member of the triggering pack. Despawning or dematerialising the responsible pack cancels its hazards. Regression tests cover the impact window for falling stones and both removal orders for fire rings. |
+| Hounds follow the Warner’s prints after player prints expire (TASK-028, 2026-11-26) | Patrol and search use the same lookup for player prints, skipping story trails. |
 | Attacks linger after an encounter disappears (TASK-028, 2026-11-26) | Removing an encounter clears its airborne attacks with its warnings. The regression tests also cover reloading earned kills and reached boss phases, restoring Bannlicht charges and capping healing. |
 | The Wegweiser can draw through a wall or miss a reachable detour (TASK-026, 2026-11-26) | The solver checks grid edges during search and can try more than one approach to a free off-grid goal. It uses player clearance (less a little for a player pressed against a wall) and the wading limit to leave the start, keeps the quick straight route when clear, and stops at a reachable approach when it cannot finish. An enclosed start with no reachable leg hides the trail. |
 | Legacy garden saves can have every required objective credited after Continue without a turn-in topic (TASK-037, 2026-11-26) | After restoring counts, Continue marks the quest ready when its required objectives are complete. Hanne then offers the normal turn-in and pays once. Laub's exit lines queue first. The quests start on entry and queue their offers before the autosave. |

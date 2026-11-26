@@ -56,7 +56,7 @@ _Status: approved 2026-11-26_
 - [x] Fix confirmed failures and document design questions.
 - [x] Run the four gate commands and attempt the locked smoke spec. Record the results.
 - [x] Re-run all gates and attempt smoke after the review fixes, then record the outcome.
-- [ ] Commit the remaining loot and skill test updates with the task record.
+- [x] Commit the remaining loot and skill test updates with the task record.
 
 **Test plan** — Run focused Vitest files, then `pnpm typecheck && pnpm test && pnpm validate && pnpm build`. Run `KQ_E2E_PORT=5416 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line`.
 
@@ -140,13 +140,17 @@ The coverage column records existing tests and the gaps found by searching `test
 - 2026-11-26 — Reproduced the pre-existing falling-stone bug with scoped despawn, scoped dematerialisation and despawn-all. In each case the stone still landed and took 14 HP. `97fb31d` ties each hazard to its triggering pack and verifies that removing another encounter preserves the warning and that removing the responsible pack cancels it while a second pack is fighting.
 - 2026-11-26 — Strengthened the bolt, Balsam and silent-load tests. Temporary mutations confirmed the tests reject clearing every bolt, a 7% Balsam chance, a Balsam count above one and an unlock event on load. The four focused files reported `Tests  20 passed | 1 todo (21)` in 205 ms.
 - 2026-11-26 — Review round gates. `pnpm typecheck`, `pnpm test` and `pnpm build` passed. The unit gate reported `Tests  1590 passed | 1 todo (1591)` with zero failures. `pnpm validate` was blocked by `listen EPERM` on the `tsx` IPC socket. The locked smoke command was blocked by `listen EPERM` on `127.0.0.1:5416` before any browser tests started. No browser specs changed.
-- 2026-11-26 — The hazard fix was committed locally with the required trailer. The sandbox denied `git add` for the remaining loot and skill fixtures and task record at the worktree's `index.lock`. Those changes are in the worktree.
+- 2026-11-26 — The hazard fix was committed locally with the required trailer. After the sandbox denied `git add` at the worktree's `index.lock`, the remaining loot and skill fixtures and task record landed in `9cf9088`.
+- 2026-11-26 — PR #57 review fixes. Reproduced the patrol picking up the Warner's trail after an ordinary print expired and a July fire ring targeting a different active pack. The hunt uses the player-print lookup for both patrol and search. The second fire ring targets its owning pack, and tests check the warning and damage when either pack despawns first. The reload test now advances the boss phase with a staff hit and reloads with a live projectile.
+- 2026-11-26 — Review-fix checks passed. Typecheck, build and content validation (`node --import tsx scripts/validate-content.ts`) completed. The two-worker Vitest run reported 121 files and 1,593 tests passed, with one existing todo. The locked smoke run stopped before browser tests started because the sandbox denied the bind to `127.0.0.1:5416`. The review fixes remain unstaged and uncommitted.
 
 ### Checks to rerun outside the sandbox
 
 ```sh
-pnpm validate
-KQ_E2E_PORT=5416 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line
+pnpm build
+for spec in smoke hunt-ext chapter-k2 combat combat-variety skills progression touch; do
+  KQ_E2E_PORT=5416 scripts/dev/heavy.sh --max-hold 15 -- pnpm exec playwright test "e2e/$spec.spec.ts" --workers=1 --reporter=line
+done
 ```
 
 ## Follow-ups
