@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { LevelCards, dismissedClock } from '../src/systems/progression/levelup-card';
 import { CARD_GAP, CardDirector, SOFT_MAX } from '../src/ui/cards';
 import type { ModalHandle } from '../src/ui/modal';
 
@@ -231,5 +232,31 @@ describe('CardDirector soft holds (playtest round 5)', () => {
     d.soft('dialogue', true);
     d.tick(0.1);
     expect(d.held).toBe(true);
+  });
+
+  it('lets a tap send off a level card claimed with a dismiss (touch), but not while it is held', () => {
+    const { d, hud } = rig();
+    let dismissed = 0;
+    expect(d.claim('level', () => dismissed++)).toBe(true);
+    hud.inAction = true;
+    expect(d.dismissNotice()).toBe(false);
+    hud.inAction = false;
+    expect(d.dismissNotice()).toBe(true);
+    expect(dismissed).toBe(1);
+    // without a dismiss (desktop) the tap / Escape falls through
+    d.release('level');
+    d.tick(CARD_GAP);
+    expect(d.claim('level')).toBe(true);
+    expect(d.dismissNotice()).toBe(false);
+  });
+});
+
+describe('level card dismissal', () => {
+  it('jumps the clock into the fade-out and never back', () => {
+    const end = LevelCards.DURATION - LevelCards.FADE;
+    expect(dismissedClock(0.2, LevelCards.DURATION)).toBe(end);
+    expect(dismissedClock(end + 0.3, LevelCards.DURATION)).toBe(end + 0.3);
+    // a card with a merged skill row runs longer; the fade still starts FADE before its end
+    expect(dismissedClock(1, LevelCards.DURATION + 1.6)).toBeCloseTo(end + 1.6);
   });
 });
