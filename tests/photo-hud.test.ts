@@ -125,6 +125,22 @@ it('lowers the phone for required dialogue and blocks reopening until it finishe
   expect(photo.open()).toBe(true);
 });
 
+it('reports the camera hand-back after a cinematic as scene, then the guide line as dialog', () => {
+  // The tour deer cinematic queues the guide's phone-down lines while it still holds the camera.
+  // Its 0.4 s hand-back keeps the override slot until a drawn frame frees it (e2e/tour-slice).
+  const { photo, events } = phoneHarness();
+  events.emit('camera:override', { active: true });
+  events.emit('story:phone-block', { active: true });
+  expect(photo.state().blocked).toBe('scene');
+  expect(photo.open()).toBe(false);
+  events.emit('camera:override', { active: false });
+  expect(photo.state().blocked).toBe('dialog');
+  expect(photo.open()).toBe(false);
+  events.emit('story:phone-block', { active: false });
+  expect(photo.state().blocked).toBeNull();
+  expect(photo.open()).toBe(true);
+});
+
 it('freezes a visible caption and keeps incoming captions queued while the phone is up', () => {
   phoneHarness();
   const shown = vi.fn();

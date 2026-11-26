@@ -167,6 +167,14 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   await shot(page, '06-reh-sicht');
   await page.evaluate(() => window.kq!.step(181));
   expect(await page.evaluate(() => window.kq!.cinematic!.playing())).toBeNull();
+  // The cinematic ends inside step(181). Its camera hand-back still holds the override slot (photo
+  // blocked: 'scene') for HANDBACK_S of wall-clock time and only finishes on a drawn frame. Draw
+  // frames without simulating, so the guide's lines do not advance while the camera settles.
+  await page.waitForFunction(() => {
+    const k = window.kq!;
+    k.ctx.loop.requestRender();
+    return k.photo!.state().blocked !== 'scene';
+  });
   const instructions = await page.evaluate(() => {
     const k = window.kq!;
     const blocked = k.photo!.state().blocked;
