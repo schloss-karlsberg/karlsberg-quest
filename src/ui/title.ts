@@ -1,11 +1,14 @@
+import type { SaveManager } from '../core/save';
 import { t } from '../i18n';
 import { h } from './dom';
 import type { BootLoader } from './loader';
 import { newsUnseen, versionLabel } from './news';
 
+type TitleStart = 'new' | 'continue' | 'extra';
+
 export interface TitleCallbacks {
-  /** `fresh` = start a new game instead of continuing. */
-  onStart(fresh: boolean): void;
+  save: Pick<SaveManager, 'load' | 'enabled'>;
+  onStart(mode: TitleStart): void;
   onLicences(): void;
   /** „Neuigkeiten“ (release notes); call `title.refreshNews()` once they were seen. */
   onNews?(): void;
@@ -48,8 +51,8 @@ export class TitleScreen {
   private busy = false;
 
   constructor(private readonly cb: TitleCallbacks, private readonly loader?: BootLoader) {
-    this.startBtn = h('button.kq-btn.primary.kq-hidden', { disabled: true, 'data-testid': 'title-continue', onclick: () => this.start(false) }, t('title.continue'));
-    this.newBtn = h('button.kq-btn', { disabled: true, 'data-testid': 'title-new', onclick: () => void this.newGame() }, t('title.newGame'));
+    this.startBtn = h('button.kq-btn.primary.kq-hidden', { disabled: true, 'data-testid': 'title-continue', onclick: () => this.start('continue') }, t('title.continue'));
+    this.newBtn = h('button.kq-btn', { disabled: true, 'data-testid': 'title-new', onclick: () => this.newGame() }, t('title.newGame'));
     this.settingsBtn = h('button.kq-btn', { 'data-testid': 'title-settings', onclick: () => titleHooks.openSettings?.() }, t('pause.settings'));
     this.extrasEl = h('div.kq-title-extras');
     this.newsBadge = h('span.kq-news-badge', { 'aria-label': t('news.unseen'), title: t('news.unseen') });
@@ -105,7 +108,7 @@ export class TitleScreen {
               return false;
             });
             this.busy = false;
-            if (go) this.start(false);
+            if (go) this.start('extra');
           },
         }, a.label),
       ),
@@ -117,7 +120,7 @@ export class TitleScreen {
     if (this.busy || this.newBtn.disabled) return;
     this.busy = true;
     try {
-      if (this.hasSave && !(await this.cb.confirm(t('title.confirmNew')))) return;
+      if (this.hasSave && this.cb.save.enabled && !(await this.cb.confirm(t('title.confirmNew')))) return;
       if (titleHooks.beforeNewGame) {
         let go = true;
         this.page.inert = true;
@@ -133,17 +136,18 @@ export class TitleScreen {
           return;
         }
       }
-      this.start(true);
+      this.start('new');
     } finally {
       this.busy = false;
     }
   }
 
-  private start(fresh: boolean): void {
+  private start(mode: TitleStart): void {
     if (this.startBtn.disabled) return;
+    if (mode === 'continue' && (this.busy || !this.hasSave || !this.cb.save.load())) return;
     this.startBtn.disabled = true;
     this.newBtn.disabled = true;
-    this.cb.onStart(fresh);
+    this.cb.onStart(mode);
   }
 
   show(): void {

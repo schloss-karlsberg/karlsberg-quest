@@ -281,7 +281,7 @@ class StoryRuntime {
   private quietCard = false;
   /** Seconds the caught curtain has been down (game time); hold = caughtHold / 1000. */
   private caughtT = 0;
-  /** game:start has run (a later save:loaded is a load during play). */
+  /** game:start has run at least once. */
   private started = false;
   /** Where and by what the player was last caught (a fight's wake goes to the nearest surveyed point). */
   private caughtAt: { x: number; z: number; by: ThreatKind; boss: boolean } | null = null;
@@ -420,7 +420,7 @@ class StoryRuntime {
       this.resync();
       // a load during play (the pause menu's „Ende noch einmal wählen“) resumes the beat like a
       // boot does — e1's onResume opens the choice at the table (playtest round 4: it never came)
-      if (this.started && this.slice.active) {
+      if (this.started && !ctx.pause.reasons.has('title') && this.slice.active) {
         this.presenter.clear();
         this.engine.resume(false);
       }

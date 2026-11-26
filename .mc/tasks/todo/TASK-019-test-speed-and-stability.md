@@ -40,6 +40,13 @@ and protect existing saves during playtests.
 - [ ] All four named gate commands pass.
 - [x] Run campaign and smoke separately under the shared lock on port 5405 if
       available, or record the blocked specs and commands.
+- [x] Sixty parked `step(0)` calls advance presentation by one second and draw 60
+      times in either mode, with zero fixed updates.
+- [x] Continue reloads the read-only autosave after a temporary tour. New Game
+      opens the content warning directly in read-only mode and keeps the writable
+      overwrite confirmation.
+- [x] A screenshot-disabled K3 run leaves the station without waiting for a skill
+      card to fade.
 
 ## Plan
 
@@ -66,13 +73,37 @@ Use focused Vitest checks for each changed path, repeated single-worker load run
 and the standard typecheck, test, validate and build gates. Run each affected
 Playwright spec and smoke with one worker and the machine-wide lock.
 
+### Review fixes
+
+_Requested 2026-11-26 on `dev/task-019` at `74141bd`._
+
+Keep fast-step presentation timing independent of deferred paints, make the title
+actions reflect save availability, and skip cosmetic waiting in the campaign.
+
+- [x] Compare each finding with `origin/main`. Make deferred paints draw the
+  prepared scene and assert equal presentation elapsed time for both step modes.
+- [x] Reload the autosave on „Weiter“ and confirm overwrites only for writable
+  saves. Cover both behaviours in unit tests and exercise the K1 round trip in smoke.
+- [x] Keep K3's skill-card wait inside the screenshot path and assert disabled
+  screenshots skip it.
+- [x] Update the testing and game docs, run the four gates, and record the locked
+  Playwright results and any follow-ups.
+
 ## Progress
 
 - 2026-11-26 — Started on `dev/task-019` at `07d3c97d`.
 - Boot disables writes on the save manager for `?nosave`, but `startGame(true)`
   called an unguarded `delete()`. Deletion now respects the same switch as writes.
-- The title smoke case starts with the exact bytes of the v0.8.0 autosave, accepts
-  the new-game confirmation and checks the slot again after entering the tour.
+- The title smoke case starts with the exact bytes of the v0.8.0 autosave,
+  opens the content warning directly and checks the slot after entering the tour.
+  It then returns via Pause and checks that Continue restores K1 at `k1_0`, the
+  legacy slot's migration destination.
+- Review baseline: the Continue assumption, confirmation and station wait also
+  existed on `origin/main`. All three are small and within this task's scope.
+- The fast-step regression reproduced two seconds of presentation before the
+  fix. The focused loop and pilot run passed all 52 tests after it.
+- The title and K3 helper unit regressions passed. The K3 check caught a station
+  poll before the wait was removed. The focused run covered 59 tests in total.
 
 ## Campaign timing
 
@@ -123,38 +154,49 @@ still cost time.
   included the file, suite and case. The route fixture lies beyond the search
   window so the final test checks the observable local route and its cost.
 
-## Verification and follow-ups
+## Review verification
 
-- Typecheck, the unit suite (118 files, 1,573 tests, zero failed) and production
-  build passed. `pnpm validate` was attempted and the tsx launcher received
-  `listen EPERM` on its IPC socket. Running the same validator directly with
-  `node --import tsx scripts/validate-content.ts` gave `✓ content valid (1 warning(s))`.
-- Final gate output included `Test Files  118 passed (118)`,
-  `Tests  1573 passed (1573)` and `✓ built in 301ms`. `mc validate` and
-  `git diff --check` also passed.
-- The sandbox denied a TCP listener on `127.0.0.1:5405`. Playwright discovered
-  both campaign tests and all seven smoke tests. Browser execution and campaign
-  timing remain unverified. The following commands measure both modes of this
-  build. To measure the pre-change code as well, use the campaign invocation on
-  a build of `07d3c97d`. Compare the Playwright durations, excluding queue time.
+- All four findings were fixed. The review tests cover parked paint timing,
+  loading before Continue starts, overwrite confirmation for writable slots,
+  and leaving the K3 station with chapter screenshots disabled.
+- `pnpm typecheck` passed. `pnpm test` reported `Test Files  120 passed (120)`
+  and `Tests  1584 passed (1584)`, with zero failures. `pnpm build` reported
+  `✓ built in 361ms`.
+- `pnpm validate` could not start because the sandbox denied the tsx IPC listener
+  (`listen EPERM`). `node --import tsx scripts/validate-content.ts` reported
+  `✓ content valid (1 warning(s))`.
+- The locked smoke run could not start the preview server because the sandbox
+  denied the listener on `127.0.0.1:5405`. Playwright discovered all 11 cases
+  across smoke, campaign, and chapter K3 with `--list`.
+- The original implementation is committed on this branch (`51973bd`, `28da407`,
+  `b5c8e0f`, `74141bd`). Staging the review changes failed at the worktree's
+  `index.lock` with `Operation not permitted`.
+
+## Follow-ups
+
+- Run the named content gate and the three affected browser specs in an
+  environment that allows the required listeners. Compare the ordinary and fast
+  campaign runs using the Playwright durations. A build of `07d3c97d` can also
+  provide a pre-task baseline.
 
 ```sh
 pnpm validate && pnpm build
+KQ_E2E_PORT=5405 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line
+KQ_E2E_PORT=5405 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/chapter-k3.spec.ts --workers=1 --reporter=line
 CAMPAIGN_FASTSTEP=0 KQ_E2E_PORT=5405 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/campaign.spec.ts --workers=1 --reporter=line
 KQ_E2E_PORT=5405 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/campaign.spec.ts --workers=1 --reporter=line
-KQ_E2E_PORT=5405 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line
 ```
 
-- Git denied the worktree's `index.lock` at the first staging attempt. The changes
-  remain in the worktree. Intended local commits:
+- Commit the review changes where the current worktree's index is writable.
 
 ```sh
-git add src/core/save.ts tests/core.test.ts e2e/smoke.spec.ts
-git commit -m 'fix: preserve stored saves during nosave playtests' -m 'Refs: TASK-019' -m 'Co-Authored-By: Codex <noreply@openai.com>'
-git add src/{boot.ts,core/bullet.ts,core/loop.ts,debug/hooks.ts,systems/story/index.ts} tests/pilot.test.ts e2e/{campaign.spec.ts,helpers/k3.ts,helpers/k4.ts}
-git commit -m 'perf(story): batch campaign draws and use subtitle timing' -m 'Refs: TASK-019' -m 'Co-Authored-By: Codex <noreply@openai.com>'
-git add tests/{travel,walk-group,terrain-detail,voice-clips}.test.ts vite.config.ts
-git commit -m 'test: replace wall-clock budgets and name failing cases' -m 'Refs: TASK-019' -m 'Co-Authored-By: Codex <noreply@openai.com>'
-git add CONTRIBUTING.md docs/{PRD,ACTION-RPG}.md .mc/tasks/todo/TASK-019-test-speed-and-stability.md
-git commit -m 'docs: record campaign timing and verification' -m 'Refs: TASK-019' -m 'Co-Authored-By: Codex <noreply@openai.com>'
+git add -p src/boot.ts # Stage the render and prepareFrame changes.
+git add src/core/loop.ts tests/pilot.test.ts
+git commit -m 'fix(render): paint prepared fast-step frames' -m 'Co-Authored-By: Codex <noreply@openai.com>'
+git add src/boot.ts src/ui/title.ts src/systems/story/index.ts e2e/smoke.spec.ts tests/title.test.ts
+git commit -m 'fix(ui): restore the autosave from the title' -m 'Co-Authored-By: Codex <noreply@openai.com>'
+git add e2e/helpers/k3.ts tests/campaign-helpers.test.ts
+git commit -m 'test: skip the K3 skill-card wait without screenshots' -m 'Co-Authored-By: Codex <noreply@openai.com>'
+git add CONTRIBUTING.md docs/{PRD,ACTION-RPG,ARCHITECTURE}.md .mc/tasks/todo/TASK-019-test-speed-and-stability.md
+git commit -m 'docs: record TASK-019 review fixes and verification' -m 'Co-Authored-By: Codex <noreply@openai.com>'
 ```

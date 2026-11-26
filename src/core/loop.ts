@@ -8,9 +8,12 @@
  * render pacing (`pace`, `FramePacer`, `renderRate`) only decides which frames are drawn.
  * When paused, fixed updates stop; rendering follows `pace` (menus render slowly or not at all).
  */
+export type FramePass = 'full' | 'prepare' | 'paint';
+
 export interface LoopCallbacks {
   update(dt: number): void;
-  render(frameDt: number, alpha: number, drawScene: boolean): void;
+  /** Prepare presentation, paint an already prepared scene, or do both in a full frame. */
+  render(frameDt: number, alpha: number, pass: FramePass): void;
 }
 
 /**
@@ -163,6 +166,7 @@ export class FixedStepLoop {
   private last = -1;
   private lastRender = -1;
   private requests = 0;
+  private paintPending = false;
   private raf = 0;
   private running = false;
   /** The rAF loop is parked: nothing to simulate, nothing to draw until `wake()` / `requestRender()`. */
@@ -224,7 +228,7 @@ export class FixedStepLoop {
 
   /** Parked state allowed: no simulation runs on its own and the pacing draws nothing. */
   private idle(): boolean {
-    return (this.paused_ || this.manual_) && this.requests === 0 && !(this.pace() > 0);
+    return (this.paused_ || this.manual_) && this.requests === 0 && !this.paintPending && !(this.pace() > 0);
   }
 
   /** Advance one animation frame at wall-clock time `now` (seconds). Public for tests. */
@@ -243,17 +247,16 @@ export class FixedStepLoop {
       if (n === this.maxStepsPerFrame) this.acc = 0;
     }
     const fps = this.pace();
-    let draw = this.pacer.tick(now, fps);
-    if (!draw && this.requests > 0) {
-      draw = true;
-      this.pacer.drawn();
-    }
-    if (!draw) {
+    const paced = this.pacer.tick(now, fps);
+    const fullFrame = paced || this.requests > 0;
+    if (!fullFrame && !this.paintPending) {
       this.skipped++;
       if (!(fps > 0)) this.held = true;
       return;
     }
+    if (!paced) this.pacer.drawn();
     if (this.requests > 0) this.requests--;
+    this.paintPending = false;
     const first = this.lastRender < 0;
     const gap = first ? 0 : now - this.lastRender;
     this.lastRender = now;
@@ -262,15 +265,18 @@ export class FixedStepLoop {
     this.held = false;
     const renderDt = first || this.resumed ? this.dt : Math.min(0.25, Math.max(0, gap));
     this.drawn++;
-    this.cb.render(renderDt, this.paused_ || this.manual_ ? 1 : this.acc / this.dt, true);
+    this.cb.render(renderDt, this.paused_ || this.manual_ ? 1 : this.acc / this.dt, fullFrame ? 'full' : 'paint');
     this.resumed = false;
   }
 
   /** Run n fixed updates and one presentation frame. Tests can omit the final GPU draw. */
   step(n = 1, drawScene = true): void {
     this.advance(n);
-    this.cb.render(this.dt, 1, drawScene);
-    if (!drawScene) this.requestRender();
+    this.cb.render(this.dt, 1, drawScene ? 'full' : 'prepare');
+    if (!drawScene) {
+      this.paintPending = true;
+      this.wake();
+    }
   }
 
   /** Run exactly `n` fixed updates without rendering (the bullet-time pilot renders only the frames it captures). */
@@ -283,6 +289,6 @@ export class FixedStepLoop {
 
   /** Render once now; `frameDt` (s) is the time the visuals advance by (capped like a real frame). */
   renderOnce(frameDt = this.dt): void {
-    this.cb.render(Math.min(0.25, Math.max(0, frameDt)), 1, true);
+    this.cb.render(Math.min(0.25, Math.max(0, frameDt)), 1, 'full');
   }
 }

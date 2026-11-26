@@ -206,8 +206,10 @@ and 30 fps every 4th (every frame / every 2nd at 60 Hz).
 hooks that change the view ask (`teleport`, `setEra`, `setScanMode`, `setMapMix`, `spawnAsset`,
 `perfHud`, the bench camera), so do modal / pause / settings changes, resize, the tab becoming
 visible and, in bullet time, a real mouse move / key / wheel. `kq.step(n)`, `loop.renderOnce` and
-the pilot's `act` / `observe` render synchronously as before. With nothing to simulate (paused /
-manual) and nothing to draw the rAF loop parks (no callbacks at the display rate) until a
+the pilot's `act` / `observe` normally render synchronously. With `?manual&faststep`, the step
+and press hooks prepare presentation synchronously and queue a paint. A frame woken solely for
+that paint draws the prepared scene without running the camera, HUD or frame systems again.
+With nothing to simulate (paused / manual) and nothing to draw the rAF loop parks until a
 request or a `paused` / `manual` change wakes it; the first frame after a held phase advances the
 visuals by one fixed step and restarts the perf clock (`loop.resumed`). Under WebDriver bullet
 time keeps drawing every frame and still menus draw at 15 fps, exactly as before, unless `?idle`
@@ -345,7 +347,7 @@ Rules
 | `perf` | `PerfMonitor`: `summary()` (frame/CPU/GPU ms percentiles, calls, triangles), `recentFrameMs`, `onFrame`; `renderer.info.autoReset` is off, counts cover the whole frame |
 | `quality` | `QualityManager`: `level` (= `override` ?? `settings.graphics` ?? `fallback`), `preset`, `apply()`, `listeners` (called with the preset after each apply), `hold(seconds)` (pause the auto-downgrade around loads / shifts), `capFps` (the render cap; the slow threshold follows it). `override` comes from `?q=` or a software renderer and is cleared when the player picks a level |
 | `assets` | `AssetLoader` (docs/ART-DIRECTION.md §8): `instance(id)` (model clone, PBR patched to the world light), `model(id)`, `texture(id)`, `loadArea(area, onProgress)`, `prefetchEra(era)` (boot calls it on `era:change`), `peek(id)`, `list(area?, era?)`, `licences()` |
-| `save` | `save(slot)`, `autosave(reason, force?)`, `load(slot)`, `has`, `peek(slot)` (read a slot without loading it), `delete`; keys `kq.save.v1.<slot>`. `save:loaded` re-runs every system's `restore()` (boot.ts), so a load from the title (e.g. "Ende noch einmal wählen") rebuilds the running game |
+| `save` | `save(slot)`, `autosave(reason, force?)`, `load(slot)`, `has`, `peek(slot)` (read a slot without loading it), `delete`; keys `kq.save.v1.<slot>`. `save:loaded` restores the world and system state. The title's „Weiter“ loads the autosave before `game:start` resumes its story beat. „Ende noch einmal wählen“ loads the ending slot. `?nosave` disables writes and deletion. |
 | `events` | `on/once/off/emit/onAny` |
 | `audio` | `bus('sfx'|'music'|'voice'|'ambience')` (spoken lines and whispers on `voice`, drones/score on `music`), `createSource3D(bus, opts)` (HRTF `PannerNode`, null until unlocked), `noise()`, `onUnlock(fn)`, `ctx` (AudioContext or null) |
 | `ui` | `hud`, `modals`, `cards` (shared card and notice slot, below), `toast(text)`, `layer(id)`, `add(el)` |

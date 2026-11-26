@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { openPause } from './helpers/pause';
 
 /**
  * Smoke + visual tests. Screenshots land in test-results/screens/*.png — look at them after a
@@ -67,7 +68,7 @@ async function shoot(page: Page, name: string, v: View): Promise<void> {
   await page.screenshot({ path: `${SCREENS}/${name}.png` });
 }
 
-test('title screen loads and the tour map starts the game with audio', async ({ page }) => {
+test('the tour starts with audio and Continue restores the read-only autosave', async ({ page }) => {
   const errors = trackErrors(page);
   const stored = readFileSync(new URL('../tests/fixtures/saves/v0.8.0.json', import.meta.url), 'utf8');
   await page.addInitScript((raw) => localStorage.setItem('kq.save.v1.auto', raw), stored);
@@ -94,7 +95,8 @@ test('title screen loads and the tour map starts the game with audio', async ({ 
 
   // new game: content warning → name → tour map (story feature's title flow)
   await start.click();
-  await page.getByRole('button', { name: 'Ja', exact: true }).click();
+  await expect(page.getByTestId('content-warning')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Ja', exact: true })).toHaveCount(0);
   await page.getByTestId('warning-accept').click();
   await page.getByTestId('name-confirm').click();
   const map = page.getByRole('dialog', { name: 'Die Route der Führung' });
@@ -110,6 +112,25 @@ test('title screen loads and the tour map starts the game with audio', async ({ 
   expect(await page.evaluate(() => localStorage.getItem('kq.save.v1.auto'))).toBe(stored);
   expect(await page.evaluate(() => window.kq!.story!.state().chapter)).toBe('tour');
   expect(await page.evaluate(() => window.kq!.ctx.pause.paused)).toBe(false);
+
+  await openPause(page);
+  await page.getByTestId('pause-menu').getByRole('button', { name: 'Zum Titelbild' }).click();
+  const resume = page.getByTestId('title-continue');
+  await expect(resume).toBeVisible();
+  const k1Entries = await page.evaluateHandle(() => {
+    const { events, pause } = window.kq!.ctx;
+    const entries: Array<{ beat: string; onTitle: boolean }> = [];
+    events.on('story:beat', ({ chapter, beat }) => {
+      if (chapter === 'k1') entries.push({ beat, onTitle: pause.reasons.has('title') });
+    });
+    return entries;
+  });
+  await resume.click();
+  await expect(page.getByTestId('title')).toBeHidden({ timeout: 30_000 });
+  // The v0.8.0 slot migrates from the retired prologue to K1 at the spring.
+  expect(await page.evaluate(() => window.kq!.story!.state())).toMatchObject({ chapter: 'k1', beat: 'k1_0' });
+  expect(await k1Entries.jsonValue()).toEqual([{ beat: 'k1_0', onTitle: false }]);
+  expect(await page.evaluate(() => localStorage.getItem('kq.save.v1.auto'))).toBe(stored);
   expect(errors).toEqual([]);
 });
 

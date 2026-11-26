@@ -462,14 +462,6 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
     await page.evaluate(() => (window as Any).k3h.settle(160));
     expect((await inv(page)).clues).toContain('clue.k3.marlene');
     expect(await quest(page, 'q.k3.nachmittag')).toBe('active');
-    await page.waitForFunction(() => {
-      const k = window.kq!;
-      if (k.ctx.params.has('faststep')) {
-        // Let the card fade before leaving the spring, without advancing the quest.
-        for (let i = 0; i < 60 && k.skills!.card(); i++) k.step(0);
-      }
-      return k.skills!.card() === null;
-    }, null, { timeout: 120_000 });
     await shot(page, '01-station');
 
     // ---- 3.1 Q at the Ehrenhof → 28 July 1793 -------------------------------------------------------

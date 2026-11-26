@@ -22,6 +22,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-26 | **Read-only playtests and campaign pacing (TASK-019 review).** „Weiter“ loads the autosave, including after returning to the title from a `?nosave` session. Read-only new games open the content warning directly. A deferred paint reuses the prepared presentation, and the campaign skips the K3 station's cosmetic wait when chapter screenshots are off. |
 | unreleased | 2026-11-26 | **Campaign testing and save protection (TASK-019).** Manual campaign tests can use subtitle timing and draw once after a batch of steps. The travel and group-walk tests bound work independently of machine speed. Starting „Neues Spiel“ with `?nosave` preserves the stored game. |
 | unreleased | 2026-11-26 | **Minimap review fixes (TASK-015).** The Registratur marker leads through the doorway, and historical paths follow the in-game terrain over the survey. On landscape phones, notices clear long action labels. The minimap steps aside for staged scenes and the touch survey menu. |
 | unreleased | 2026-11-26 | **Minimap (TASK-015).** A north-up corner map shows nearby paths, the current objective, the player's heading and the guide and group during the tour. It switches with the era, fits beside the landscape touch controls and can be switched off under Spiel → „Minikarte“. |

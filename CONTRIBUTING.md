@@ -39,8 +39,8 @@ These are intentionally **on in production** too, so you can reproduce a bug on 
 | `?x=…&z=…` | Start at a local position |
 | `?party=museum\|burn\|keep` | Start at the end-of-game party on the plateau at dusk, credits rolling |
 | `?manual` | Bullet time: the game advances only when stepped |
-| `?manual&faststep` | Campaign test mode. Dialogue uses the existing subtitle timing on fixed steps. Calls to `kq.step(n)` and `kq.press(code, n)` still update frame-driven prompts and cameras. The next browser frame draws the latest view. Use `await kq.screenshotReady()` before a capture. |
-| `?nosave` | Makes save slots read-only, including when starting „Neues Spiel“. Add `&fresh` to skip loading the autosave on boot. |
+| `?manual&faststep` | Campaign test mode. Dialogue uses subtitle timing on fixed steps. `kq.step(n)` and `kq.press(code, n)` update frame-driven prompts and cameras. A browser frame requested just to show that view draws it without advancing presentation again. Use `await kq.screenshotReady()` before a capture. |
+| `?nosave` | Makes save slots read-only. „Neues Spiel“ opens the content warning directly, and „Weiter“ reloads the autosave from the title. Add `&fresh` to skip loading the autosave on boot. |
 | `window.kq` | Debug API in the browser console: teleport, set the era, step, press keys, combat hooks |
 | `kq.pilot` | Scripted play on top of `window.kq`: act, observe, choose, `bulletTime(true)`, `showStrip(true)` |
 | F8 (in game) | Write a playtest note with the current position and state; export it from the pause menu |
@@ -60,6 +60,7 @@ pnpm build        # production build
 
 The Playwright suites in `e2e/` drive a real browser. The release campaign uses
 `?manual&faststep` on every load, including the mid-chapter save and continue.
+Chapter 3 waits for skill cards to fade when it captures screenshots.
 Use ordinary `?manual` when testing recorded audio or inspecting individual draws.
 
 ```sh
