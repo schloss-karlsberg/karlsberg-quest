@@ -25,7 +25,7 @@ import { acceptSound, objectiveSound, pageSound, readySound, tickSound, turninSo
 import { Beacons, type BeaconSpec } from './beacons';
 import { type HintContext, type WayDeps, type WayPoint, StallWatch, distanceText, hintFor, objectiveTarget, storyHint, targetVisible } from './wayfinding';
 import { enemyDef } from '../../rpg/enemies';
-import { loadBundledQuests, questsInPlay, sideQuestClosed } from './data';
+import { giverPlacedIn, loadBundledQuests, questsInPlay, sideQuestClosed } from './data';
 import { loadBundledStories } from '../story/stories';
 import { Feed, RewardNotice, showBanner, Tracker, type RewardView, type TrackerQuest } from './hud';
 import { Waymark } from '../../ui/waymark';
@@ -180,8 +180,7 @@ class QuestRuntime {
         return sideQuestClosed(stories.get(story?.chapter ?? ''), story?.beat ?? null, id);
       },
       canOfferAtNpc: (npc, chapter) => {
-        const placement = ctx.state.state.systems.npc?.placed?.[npc];
-        return !!placement && (!placement.chapter || placement.chapter === chapter);
+        return giverPlacedIn(ctx.state.state.systems.npc?.placed?.[npc], chapter);
       },
     });
     this.book.onChange = (why) => self.changed(why);

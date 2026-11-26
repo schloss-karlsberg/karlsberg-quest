@@ -10,6 +10,14 @@ export function sideQuestClosed(story: StoryFile | undefined, beat: string | nul
   return story.beats.slice(0, index + 1).some((entry, ordinal) => closes(entry.enter) || (ordinal < index && closes(entry.exit)));
 }
 
+/**
+ * The giver stands in this story chapter. A placement's `chapter` names its dialogue lines, which can
+ * be a sub-key of the story chapter (`k3g`, `k3h` in K3).
+ */
+export function giverPlacedIn(placement: { chapter?: string } | undefined, chapter: string): boolean {
+  return !!placement && (!placement.chapter || placement.chapter.startsWith(chapter));
+}
+
 /** All quest files bundled by Vite (content/quests/*.quests.json), sorted by file name. */
 export function loadBundledQuests(): { file: string; data: QuestFile }[] {
   const mods = import.meta.glob<QuestFile>('/content/quests/*.quests.json', { eager: true, import: 'default' });

@@ -13,7 +13,7 @@ import { itemDef } from '../src/rpg/items';
 import type { EnemyGroupState, FlagValue, QuestDef, QuestFile } from '../src/rpg/types';
 import { remaining, upsertGroup } from '../src/systems/combat/rules';
 import type { MenagerieSlice } from '../src/systems/menagerie';
-import { questsInPlay, sideQuestClosed } from '../src/systems/quests/data';
+import { giverPlacedIn, questsInPlay, sideQuestClosed } from '../src/systems/quests/data';
 import { QuestBook, type QuestDefIn, type QuestEnv, availableHolds, createQuestSlice, normaliseSlice, seededRng, spawnGroup, turninOf } from '../src/systems/quests/logic';
 import type { StoryFile } from '../src/systems/story/types';
 import k1Quests from '../content/quests/01-kapitel-1.quests.json';
@@ -296,6 +296,14 @@ describe('Chapter 1 save recovery', () => {
 });
 
 describe('optional progress across chapter windows and saves', () => {
+  it('accepts a giver placed with a sub-chapter of the running chapter (Hanne in the garden, k3g)', () => {
+    expect(giverPlacedIn({ chapter: 'k3g' }, 'k3')).toBe(true);
+    expect(giverPlacedIn({ chapter: 'k3' }, 'k3')).toBe(true);
+    expect(giverPlacedIn({}, 'k3')).toBe(true);
+    expect(giverPlacedIn({ chapter: 'k2' }, 'k3')).toBe(false);
+    expect(giverPlacedIn(undefined, 'k3')).toBe(false);
+  });
+
   it('credits the already-homed Karlslust cassowary after accepting the gardener’s quest', () => {
     const state = createInitialState();
     state.systems.menagerie = { animals: [], calmed: ['kasuar'] };
