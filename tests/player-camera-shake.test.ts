@@ -40,6 +40,7 @@ function combatFixture() {
     audio: { ctx: null, unlocked: false, noise: () => null },
     quality: { level: 'low', listeners: [] },
     pause: { reasons: new Set() },
+    save: { hold() {} },
     renderer: { domElement: canvas },
     ui: { layer, hud: { staged: false, el: { querySelector: () => null } }, cards: { source() {} }, modals: { count: 0 } },
   } as unknown as GameContext;
