@@ -317,6 +317,7 @@ function finish(r, raw, credits, o = {}) {
     provider: r.voice.provider,
     voiceId: r.voice.voiceId,
     takeSeed: r.voice.moss?.takeSeed,
+    lineMaxTokens: r.voice.moss?.lineMaxTokens,
     model: r.voice.model,
     licence: r.voice.licence,
     date: new Date().toISOString(),
@@ -397,8 +398,8 @@ process.exit(exitCode);
 
 function serviceLines(rows) {
   return rows.map((r) => {
-    const { serviceVoice, seed, takeSeed } = r.voice.moss;
-    return { r, id: r.line.id, speaker: r.line.speaker, text: r.tts, serviceVoice, seed, takeSeed };
+    const { serviceVoice, seed, takeSeed, lineMaxTokens } = r.voice.moss;
+    return { r, id: r.line.id, speaker: r.line.speaker, text: r.tts, serviceVoice, seed, takeSeed, lineMaxTokens };
   });
 }
 

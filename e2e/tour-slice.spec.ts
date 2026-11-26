@@ -19,6 +19,8 @@ test.describe.configure({ timeout: 600_000 });
 type K = NonNullable<typeof window.kq>;
 const beat = (page: Page) => page.evaluate(() => window.kq!.story!.state().beat as string);
 const time = (page: Page) => page.evaluate(() => window.kq!.ctx.loop.time);
+const shown = (page: Page, pattern: string) =>
+  page.evaluate((prefix) => window.kq!.story!.shown().filter((id) => id.startsWith(prefix)), pattern);
 
 async function shot(page: Page, name: string): Promise<void> {
   await page.evaluate(() => window.kq!.screenshotReady());
@@ -115,21 +117,31 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
     k.step(30);
   });
   await follow(page, 't2', 30);
+  expect(await shown(page, 'imhoff.t.01')).toEqual(['imhoff.t.01', 'imhoff.t.01b']);
   await page.evaluate(() => {
     const k = window.kq!;
+    for (let i = 0; i < 30 && !k.ctx.state.state.flags['tour.station1.ready']; i++) k.step(60);
     const g = k.walk!.list().find((n) => n.npc === 'imhoff')!;
     k.teleport(g.x + 1.6, g.z + 1.2, (Math.atan2(g.x - (g.x + 1.6), -(g.z - (g.z + 1.2))) * 180) / Math.PI, -4);
     k.step(10);
     k.press('KeyE', 2);
   });
   await expect.poll(() => page.evaluate(() => window.kq!.npc!.state().open), { timeout: 15_000 }).toBe(true);
+  expect(await beat(page)).toBe('t2');
   await shot(page, '02-gerold-station1');
-  await page.evaluate(() => {
+  const greeting = await page.evaluate(() => {
     const n = window.kq!.npc!;
-    for (let i = 0; i < 40 && n.state().busy; i++) n.drain();
+    const ids = [];
+    for (let i = 0; i < 6 && n.state().busy; i++) {
+      ids.push(n.state().line?.id);
+      n.finish();
+      n.advance();
+    }
     n.close();
     window.kq!.step(30);
+    return ids;
   });
+  expect(greeting).toEqual(['imhoff.t.station1', 'imhoff.t.station1a', 'imhoff.t.station1b']);
   await follow(page, 't3', 70);
   await follow(page, 't4', 120);
   // the fade: Gerold's line, black, the group warped to the Felsenpfad entry, the player behind it
@@ -142,6 +154,7 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   await viewGroup(page);
   await shot(page, '04-felsenpfad-station2');
   await follow(page, 't8', 200);
+  expect(await shown(page, 'imhoff.t.station2')).toEqual(['imhoff.t.station2', 'imhoff.t.station2a', 'imhoff.t.station2b', 'imhoff.t.station2c']);
   await page.evaluate(() => window.kq!.step(150));
   await shot(page, '05-wind-hunde');
   await follow(page, 't9', 60);
@@ -228,6 +241,18 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   await viewGroup(page);
   expect(await staffVisible()).toBe(true);
   await shot(page, '09-weiher-station3');
+  await page.evaluate(() => {
+    const k = window.kq!;
+    for (let i = 0; i < 20 && k.story!.state().dialogue?.id !== 'imhoff.t.station3'; i++) k.step(60);
+  });
+  for (const id of ['imhoff.t.station3', 'imhoff.t.station3a', 'imhoff.t.station3b', 'imhoff.t.station3c']) {
+    expect(await beat(page)).toBe('t13');
+    expect(await page.evaluate(() => window.kq!.story!.state().dialogue?.id)).toBe(id);
+    await page.evaluate(() => window.kq!.story!.finishTyping());
+    await page.keyboard.press('Enter');
+    await page.evaluate(() => window.kq!.step(1));
+  }
+  expect(await beat(page)).toBe('t14');
   // round 2 (owner: lost the group): on the way up to the Quelle the player falls 45 m behind and
   // stays: Gerold waits (leash), shows on the compass, calls once; a minute on, „Zur Gruppe“ (hold Q)
   await follow(page, 't14', 120);
@@ -273,6 +298,8 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   await viewGroup(page, 8);
   await shot(page, '10-quelle-station4');
   await follow(page, 't16', 90);
+  expect(await shown(page, 'imhoff.t.station4')).toEqual(['imhoff.t.station4', 'imhoff.t.station4a', 'imhoff.t.station4b', 'imhoff.t.station4c']);
+  expect(await shown(page, 'imhoff.t.pause')).toEqual(['imhoff.t.pause']);
   // the break: alone at the trough
   await page.evaluate(() => {
     const k = window.kq!;

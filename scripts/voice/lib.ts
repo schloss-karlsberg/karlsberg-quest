@@ -375,6 +375,8 @@ export interface SpeakerVoice {
   instruction?: string;
   /** moss: extra mlx-audio generate() params (e.g. max_tokens) */
   params?: Record<string, unknown>;
+  /** Size each MOSS line's token budget from its spoken text, up to params.max_tokens. */
+  scaleMaxTokensToText?: boolean;
   postprocess?: PostprocessConfig;
   voiceId?: string | null;
   /** hf-space voice design: a German description of the voice */
@@ -420,6 +422,7 @@ export interface MossVoice {
   refSha8: string | null;
   seed: number;
   takeSeed?: number;
+  lineMaxTokens?: number;
   language: string;
   instruction?: string;
   params: Record<string, unknown>;
@@ -533,6 +536,8 @@ export interface ManifestEntry {
   serviceKey?: string;
   /** MOSS synthesis seed when the line overrides the credited speaker seed in voiceId. */
   takeSeed?: number;
+  /** Text-scaled MOSS token budget used for this recording. */
+  lineMaxTokens?: number;
   /** moss-service clips only: sha256 hex of the raw WAV the service rendered (checked before post-processing) */
   sha256Raw?: string;
 }
@@ -587,7 +592,7 @@ export function lineStatus(
   if (!entry) return 'new';
   if (entry.textHash !== hash) return 'stale-text';
   if (entry.voiceId !== voice.voiceId || (voice.provider && (entry.provider ?? 'elevenlabs') !== voice.provider)) return 'stale-voice';
-  if (entry.takeSeed !== voice.moss?.takeSeed) return 'stale-voice';
+  if (entry.takeSeed !== voice.moss?.takeSeed || entry.lineMaxTokens !== voice.moss?.lineMaxTokens) return 'stale-voice';
   if (entry.model !== voice.model) return 'stale-model';
   if (voice.engine && !sameEngine(entry.engine, voice.engine)) return 'stale-engine';
   if (speechHash !== undefined && entry.speechHash !== speechHash) return 'stale-speech';
@@ -718,8 +723,15 @@ export function buildPlan(
     }
     const hash = textHash(line.text);
     const speechHash = textHash(tts);
-    const status = o.force ? 'stale-text' : lineStatus(o.manifest.lines[line.id], hash, voice, o.fileExists, speechHash);
     const n = [...tts].length;
+    if (voice.moss && o.voices.speakers[line.speaker]?.scaleMaxTokensToText) {
+      const ceiling = voice.moss.params.max_tokens;
+      if (typeof ceiling !== 'number' || !Number.isSafeInteger(ceiling) || ceiling <= 0)
+        throw new Error(`${line.speaker}: scaleMaxTokensToText requires a positive integer params.max_tokens`);
+      // MOSS v1.5 uses 12.5 frames/s and a 32-step codebook delay. Allow a slow 8 chars/s plus a second for pauses.
+      voice.moss.lineMaxTokens = Math.min(ceiling, 32 + Math.ceil(12.5 * (1 + n / 8)));
+    }
+    const status = o.force ? 'stale-text' : lineStatus(o.manifest.lines[line.id], hash, voice, o.fileExists, speechHash);
     const credits = creditsFor(n, voice.model, voice.provider);
     const row: PlanRow = { line, tier, voice, hash, tts, speechHash, speechSource: sp.source, chars: n, credits, status, take: false, cumulative: spend };
     rows.push(row);

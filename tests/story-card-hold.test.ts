@@ -106,7 +106,8 @@ describe('the opening beat clocks restart when the chapter card lets go', () => 
     era: 'today',
     x: 529,
     z: -795,
-    flags: {},
+    // the greeting has played: t1 also waits for its say chain, which sets this flag in the game
+    flags: { 'tour.welcome': true },
     inventory: { clues: [], nouns: [], items: [] },
     chronik: {},
     scan: 0,

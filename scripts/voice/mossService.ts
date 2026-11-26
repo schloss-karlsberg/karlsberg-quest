@@ -46,6 +46,7 @@ export interface ServiceJob {
   voice: string;
   text: string;
   seed?: number;
+  params?: { max_tokens: number };
   output: { path: string; format: 'wav' };
 }
 /** One `submit()` answer per job. `cached`: the runner will answer it from the service cache. */
@@ -146,18 +147,23 @@ export async function readRegistry(client: ServiceClient, exec: ExecFn = default
 export const textSha256 = (text: string): string => createHash('sha256').update(Buffer.from(text, 'utf8')).digest('hex');
 export const sha256File = (path: string): string => createHash('sha256').update(readFileSync(path)).digest('hex');
 
-const rawName = (id: string, takeSeed?: number): string => takeSeed === undefined ? `${id}.wav` : `${id}~${takeSeed}.wav`;
-export const rawPath = (rawDir: string, id: string, takeSeed?: number): string => join(resolve(rawDir), rawName(id, takeSeed));
+function rawName(id: string, takeSeed?: number, lineMaxTokens?: number): string {
+  const take = takeSeed === undefined ? id : `${id}~${takeSeed}`;
+  return lineMaxTokens === undefined ? `${take}.wav` : `${take}~max${lineMaxTokens}.wav`;
+}
+export const rawPath = (rawDir: string, id: string, takeSeed?: number, lineMaxTokens?: number): string =>
+  join(resolve(rawDir), rawName(id, takeSeed, lineMaxTokens));
 
 /**
  * One job per line. `text` is the prepared speech text the pipeline hashes into `speechHash`
  * (speech.json override or auto-prep). Only a line with a configured take overrides the registry seed.
  */
-export function serviceJob(l: Pick<ServiceLine, 'id' | 'speaker' | 'serviceVoice' | 'text' | 'takeSeed'>, rawDir: string): ServiceJob {
+export function serviceJob(l: Pick<ServiceLine, 'id' | 'speaker' | 'serviceVoice' | 'text' | 'takeSeed' | 'lineMaxTokens'>, rawDir: string): ServiceJob {
   return {
     project: SERVICE_PROJECT, id: l.id, voice: l.serviceVoice ?? l.speaker, text: l.text,
     ...(l.takeSeed === undefined ? {} : { seed: l.takeSeed }),
-    output: { path: rawPath(rawDir, l.id, l.takeSeed), format: 'wav' },
+    ...(l.lineMaxTokens === undefined ? {} : { params: { max_tokens: l.lineMaxTokens } }),
+    output: { path: rawPath(rawDir, l.id, l.takeSeed, l.lineMaxTokens), format: 'wav' },
   };
 }
 
@@ -264,6 +270,7 @@ export interface ServiceLine {
   text: string;
   seed: number;
   takeSeed?: number;
+  lineMaxTokens?: number;
 }
 
 export type Assessment =
@@ -275,9 +282,13 @@ export type Assessment =
 const FINAL = ['ok', 'cached', 'failed', 'refused'];
 
 function matchesTake(l: ServiceLine, rec: ResultRecord): boolean {
+  // Old done records remain visible during a resubmit. Results omit params but carry the requested WAV name.
+  const name = typeof rec.output === 'string' ? basename(rec.output) : undefined;
+  const expected = rawName(l.id, l.takeSeed, l.lineMaxTokens);
+  if ((l.lineMaxTokens !== undefined || name?.includes('~max')) && name !== expected) return false;
   if (rec.seed !== undefined) return rec.seed === (l.takeSeed ?? l.seed);
   // Cached records omit the seed but retain the output path of the submitted job.
-  if (rec.status === 'cached') return typeof rec.output === 'string' && basename(rec.output) === rawName(l.id, l.takeSeed);
+  if (rec.status === 'cached') return name === expected;
   return l.takeSeed === undefined && !l.serviceVoice;
 }
 
@@ -309,7 +320,7 @@ export function assessResult(
   const voice = l.serviceVoice ?? l.speaker;
   if ((l.serviceVoice || rec.voice !== undefined) && rec.voice !== voice) return { kind: 'failed', reason: `voice ${rec.voice} != ${voice}` };
   if (!matchesTake(l, rec))
-    return { kind: 'failed', reason: `result does not match the requested seed ${l.takeSeed ?? l.seed}` };
+    return { kind: 'failed', reason: `result does not match the requested take (seed ${l.takeSeed ?? l.seed}, max_tokens ${l.lineMaxTokens ?? 'voice default'})` };
   if (typeof rec.key !== 'string' || !/^[0-9a-f]{64}$/.test(rec.key)) return { kind: 'failed', reason: `no valid key (${show(rec.key)})` };
   if (typeof rec.sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(rec.sha256)) return { kind: 'failed', reason: `no valid sha256 (${show(rec.sha256)})` };
   if (typeof rec.output !== 'string' || !(o.exists ?? existsSync)(rec.output)) return { kind: 'failed', reason: `WAV missing: ${show(rec.output)}` };

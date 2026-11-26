@@ -56,18 +56,19 @@
     },
     "imhoff": {
       "provider": "moss",
-      "reference": "imhoff-ref.wav",
-      "seed": 3101,
+      "reference": "imhoff-doc-ref.wav",
+      "seed": 6301,
       "language": "German",
-      "instruction": "An older man in his late sixties, a volunteer tour guide, with a calm, warm, slightly dry male voice. Friendly, clear and unhurried, precise, natural and not theatrical. He speaks at a natural, steady conversational pace.",
+      "$designInstruction": "A mature German man with a low, steady, softly resonant bass voice. He speaks close to the listener with the quiet attention of a documentary field narrator. Measured phrasing, precise place names, clean consonants and gentle sentence endings. Keep the pitch alive through long sentences and leave a short natural pause between thoughts.",
+      "scaleMaxTokensToText": true,
       "params": {
         "max_tokens": 1000
       },
       "postprocess": {
         "maxPauseSec": 0.45
       },
-      "name": "MOSS tour casting imhoff",
-      "note": "tour cast 2026-11-22: synthetic MOSS voice designed from this instruction (no reference, no real person); the reference is the design candidate picked by the tour casting rank (design seeds 3101-3103), owner may override. seed = line seed. Until imhoff-ref.wav exists the speaker is skipped (missing reference).",
+      "name": "MOSS casting imhoff-documentary-s6301",
+      "note": "Owner pick 2026-11-25: D, deep documentary (kq010-guide-d-design-s6301). Synthetic reference with no real person. The same seed is used for design and line generation.",
       "model": null
     },
     "solld": {

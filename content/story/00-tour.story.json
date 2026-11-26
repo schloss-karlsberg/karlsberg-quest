@@ -7,7 +7,7 @@
   "start": "t1",
   "next": "k1",
   "leave": [
-    { "do": "flag", "set": { "combat.disabled": null, "laub.silent": null, "tour.slice": null, "tour.ende": null, "quelle.call": null, "quelle.guide": null } },
+    { "do": "flag", "set": { "combat.disabled": null, "laub.silent": null, "tour.slice": null, "tour.ende": null, "tour.welcome": null, "tour.station1.ready": null, "quelle.call": null, "quelle.guide": null } },
     { "do": "npc", "op": "despawn", "group": "fuehrung" },
     { "do": "npc", "op": "despawn", "npc": "imhoff" },
     { "do": "npc", "op": "despawn", "npc": "marlene" },
@@ -34,7 +34,7 @@
       "title_de": "Treffpunkt",
       "enter": [
         { "do": "look", "time": "tour" },
-        { "do": "flag", "set": { "laub.silent": true, "combat.disabled": true, "tour.slice": true } },
+        { "do": "flag", "set": { "laub.silent": true, "combat.disabled": true, "tour.slice": true, "tour.welcome": null } },
         { "do": "npc", "op": "walk", "npc": "imhoff", "route": "p-fuehrung", "to": "parkplatz", "speed": 1.9 },
         {
           "do": "npc",
@@ -60,28 +60,48 @@
           ]
         },
         { "do": "npc", "op": "gather", "group": "fuehrung", "around": "imhoff" },
-        { "do": "npc", "op": "spawn", "npc": "imhoff", "x": 524, "z": -770, "era": "today" },
         { "do": "animal", "op": "spawn", "kind": "hund", "look": "diane", "id": "diane", "follow": "npc:double.jost", "era": "today" },
         { "do": "animal", "op": "spawn", "kind": "hund", "look": "bijou", "id": "bijou", "follow": "npc:double.jost", "era": "today" },
         { "do": "prompt", "key": "W A S D", "text": "Gehen · ins Bild klicken, dann Maus: Schauen", "touch": "Wischen: Schauen" },
         { "do": "objective", "id": "tour", "text": "Zur Gruppe am Wanderparkplatz", "x": 524, "z": -770, "delay": 0.3 },
-        { "do": "say", "id": "imhoff.t.01", "speaker": "imhoff", "text": "So. Treffpunkt Karlsberger Hof, Parkplatz, halb drei: Dann seid ihr richtig. Ich bin Gerold Imhoff, und ich bin heute euer Mann für das Schloss, das nicht mehr da ist.", "delay": 1.5 },
-        { "do": "say", "id": "solld.t.01", "speaker": "solld", "text": "… dreizehn, vierzehn, fünfzehn. Stimmt." },
-        { "do": "say", "id": "mats.t.01", "speaker": "mats", "text": "Meiner zeigt nicht nach Norden." }
+        { "do": "say", "id": "imhoff.t.01", "speaker": "imhoff", "text": "So. Treffpunkt am Karlsberger Hof. Schön, dass ihr da seid.", "wait": true, "onResume": true, "delay": 1.5 },
+        { "do": "say", "id": "imhoff.t.01b", "speaker": "imhoff", "text": "Ich bin Gerold Imhoff. Kommt mal näher, dann hört ihr mich besser.", "wait": true, "onResume": true },
+        { "do": "say", "id": "solld.t.01", "speaker": "solld", "text": "… dreizehn, vierzehn, fünfzehn. Stimmt.", "wait": true, "onResume": true },
+        { "do": "say", "id": "mats.t.01", "speaker": "mats", "text": "Meiner zeigt nicht nach Norden.", "wait": true, "onResume": true },
+        { "do": "flag", "set": { "tour.welcome": true } }
       ],
-      "complete": { "any": [{ "enter": { "x": 524, "z": -770, "r": 7, "era": "today" } }, { "timer": 25 }] }
+      "complete": {
+        "all": [
+          { "flag": "tour.welcome" },
+          { "any": [{ "enter": { "x": 524, "z": -770, "r": 7, "era": "today" } }, { "timer": 25 }] }
+        ]
+      }
     },
     {
       "id": "t2",
       "title_de": "Station 1: am Wanderparkplatz",
       "enter": [
-        { "do": "say", "id": "imhoff.t.02", "speaker": "imhoff", "text": "Guckt mal hoch, da oben auf dem Berg. Nichts zu sehen, oder? Nur Wald. Genau da stand es." },
+        { "do": "flag", "set": { "tour.station1.ready": null } },
+        { "do": "say", "id": "imhoff.t.02", "speaker": "imhoff", "text": "Guckt mal hoch. Da oben stand das Schloss.", "wait": true, "onResume": true },
         { "do": "prompt", "key": "Maus", "text": "Schauen · zum Berg hinauf (Osten)", "touch": "Wischen: Berg im Osten" },
-        { "do": "say", "id": "jostd.t.01", "speaker": "jostd", "text": "Keine Angst, die tun nix. Diane passt auf, Bijou glaubt, er wär ein Hirsch." },
+        { "do": "say", "id": "jostd.t.01", "speaker": "jostd", "text": "Keine Angst, die tun nix. Diane passt auf, Bijou glaubt, er wär ein Hirsch.", "wait": true, "onResume": true },
+        { "do": "npc", "op": "spawn", "npc": "imhoff", "x": 524, "z": -770, "era": "today" },
         { "do": "prompt", "key": "E", "text": "bei Gerold: zuhören", "touch": "Gerold zuhören" },
-        { "do": "objective", "id": "tour", "text": "Gerold Imhoff zuhören (E)", "x": 524, "z": -770 }
+        { "do": "objective", "id": "tour", "text": "Gerold Imhoff zuhören (E)", "x": 524, "z": -770 },
+        { "do": "flag", "set": { "tour.station1.ready": true } }
       ],
-      "complete": { "any": [{ "talked": { "npc": "imhoff" } }, { "timer": 60 }] },
+      "complete": {
+        "all": [
+          { "flag": "tour.station1.ready" },
+          { "any": [
+            { "event": "npc:conversation", "match": { "npc": "imhoff", "open": false } },
+            { "all": [
+              { "not": { "event": "npc:conversation", "match": { "npc": "imhoff", "open": true } } },
+              { "any": [{ "talked": { "npc": "imhoff" } }, { "timer": 60 }] }
+            ] }
+          ] }
+        ]
+      },
       "exit": [{ "do": "prompt", "key": null, "text": null }]
     },
     {
@@ -133,10 +153,13 @@
       "id": "t6",
       "title_de": "Station 2: Felsenpfad",
       "enter": [
+        { "do": "flag", "set": { "tour.felsen": null } },
         { "do": "npc", "op": "gather", "group": "fuehrung", "around": "imhoff" },
-        { "do": "say", "id": "imhoff.t.station2", "speaker": "imhoff", "text": "So. Ab hier sind wir auf dem Felsenpfad, und der gehört schon zum WaldPark Schloss Karlsberg. Die Felsen sind Buntsandstein, gut 250 Millionen Jahre alt. Bitte nicht auf die Felsköpfe klettern, das ist nicht erlaubt." },
-        { "do": "say", "id": "imhoff.t.station2b", "speaker": "imhoff", "text": "Ob der Herzog hier Steine brechen ließ? Ehrlich: Das weiß man nicht. Belegt ist nur, dass ihm die Trümmer der Hohenburg als Steinbruch dienten." },
-        { "do": "say", "id": "player.t.fuehrer", "speaker": "player", "text": "Hm. Das wusste ich nicht." },
+        { "do": "say", "id": "imhoff.t.station2", "speaker": "imhoff", "text": "So. Seht ihr den Buntsandstein neben dem Weg? Das hier ist der Felsenpfad.", "wait": true, "onResume": true },
+        { "do": "say", "id": "imhoff.t.station2a", "speaker": "imhoff", "text": "Bleibt bitte auf dem Weg.", "wait": true, "onResume": true },
+        { "do": "say", "id": "imhoff.t.station2b", "speaker": "imhoff", "text": "Hat man hier Steine fürs Schloss gebrochen? Ehrlich, das weiß man nicht.", "wait": true, "onResume": true },
+        { "do": "say", "id": "imhoff.t.station2c", "speaker": "imhoff", "text": "Für den Schlossbau hat man Steine aus den Trümmern der Hohenburg geholt.", "wait": true, "onResume": true },
+        { "do": "say", "id": "player.t.fuehrer", "speaker": "player", "text": "Hm. Das wusste ich nicht.", "wait": true, "onResume": true },
         { "do": "flag", "set": { "tour.felsen": true } }
       ],
       "complete": { "flag": "tour.felsen" }
@@ -294,11 +317,15 @@
       "id": "t13",
       "title_de": "Station 3: am Karlsbergweiher",
       "enter": [
+        { "do": "flag", "set": { "tour.weiher": null } },
         { "do": "npc", "op": "gather", "group": "fuehrung", "around": "imhoff" },
         { "do": "npc", "op": "spawn", "npc": "marlene", "x": 895.5, "z": -843.5, "era": "today" },
         { "do": "item", "item": "item.stab.esche" },
         { "do": "say", "id": "marlene.t.messstab", "speaker": "marlene", "text": "Hier, nimm den Messstab ruhig mit. Beim Fest gibst du ihn mir zurück." },
-        { "do": "say", "id": "imhoff.t.station3", "speaker": "imhoff", "text": "So. Der Karlsbergweiher. Auch er ist ein Überbleibsel vom Schloss, ein Rest der Wasserbecken im Schlosspark. Wann man ihn angelegt hat und ob er Zierteich oder Fischweiher war: Ehrlich, das weiß man nicht. Den geraden Damm und die kleine Insel sieht man sogar im Laserscan." },
+        { "do": "say", "id": "imhoff.t.station3", "speaker": "imhoff", "text": "So. Der Karlsbergweiher hier ist von der Schlossanlage geblieben.", "wait": true, "onResume": true },
+        { "do": "say", "id": "imhoff.t.station3a", "speaker": "imhoff", "text": "Seht ihr die kleine Insel? Der Damm liegt am Westende.", "wait": true, "onResume": true },
+        { "do": "say", "id": "imhoff.t.station3b", "speaker": "imhoff", "text": "Wann genau man den Weiher angelegt hat? Das ist offen.", "wait": true, "onResume": true },
+        { "do": "say", "id": "imhoff.t.station3c", "speaker": "imhoff", "text": "War er zum Anschauen da oder hat man hier Fische gehalten? Das weiß man nicht.", "wait": true, "onResume": true },
         { "do": "flag", "set": { "tour.weiher": true } }
       ],
       "complete": { "flag": "tour.weiher" }
@@ -322,16 +349,22 @@
       "id": "t15",
       "title_de": "Station 4: an der Karlsbergquelle",
       "enter": [
+        { "do": "flag", "set": { "tour.aufbruch": null } },
         { "do": "npc", "op": "gather", "group": "fuehrung", "around": "imhoff" },
-        { "do": "say", "id": "imhoff.t.station4", "speaker": "imhoff", "text": "So. Hier oben entspringt die Karlsbergquelle. Aus ihr wird der Karlsbergbach, der hinunter zum Weiher läuft. In der Nähe gibt's ein Wassertretbecken, im November was für Mutige. Ob die Quelle früher das Schloss versorgt hat und wann man sie gefasst hat: weiß man nicht." },
-        { "do": "say", "id": "imhoff.t.pause", "speaker": "imhoff", "text": "Ruh dich kurz aus, wir sind oben am Plateau." },
+        { "do": "say", "id": "imhoff.t.station4", "speaker": "imhoff", "text": "So. Hier beginnt der Karlsbergbach. Von der Quelle läuft er hinunter zum Karlsbergweiher.", "wait": true, "onResume": true },
+        { "do": "say", "id": "imhoff.t.station4a", "speaker": "imhoff", "text": "Hört ihr das Wasser am Trog?", "wait": true, "onResume": true },
+        { "do": "say", "id": "imhoff.t.station4b", "speaker": "imhoff", "text": "Wann man die Quelle gefasst hat? Das ist offen.", "wait": true, "onResume": true },
+        { "do": "say", "id": "imhoff.t.station4c", "speaker": "imhoff", "text": "Hat genau diese Quelle früher das Schloss versorgt? Ehrlich, das weiß man nicht.", "wait": true, "onResume": true },
+        { "do": "say", "id": "imhoff.t.pause", "speaker": "imhoff", "text": "Ruh dich hier kurz aus. Wir gehen schon mal zum Plateau.", "wait": true, "onResume": true },
+        { "do": "flag", "set": { "tour.aufbruch": true } }
+      ],
+      "complete": { "flag": "tour.aufbruch" },
+      "exit": [
         { "do": "npc", "op": "despawn", "npc": "imhoff" },
         { "do": "npc", "op": "follow", "group": "fuehrung", "leader": "imhoff" },
         { "do": "npc", "op": "walk", "npc": "imhoff", "route": "p-aufstieg", "to": "plateau", "speed": 1.9 },
-        { "do": "objective", "id": "tour", "text": "Am Trog verschnaufen", "x": 1059.3, "z": -833.1 },
-        { "do": "flag", "set": { "tour.aufbruch": true } }
-      ],
-      "complete": { "flag": "tour.aufbruch" }
+        { "do": "objective", "id": "tour", "text": "Am Trog verschnaufen", "x": 1059.3, "z": -833.1 }
+      ]
     },
     {
       "id": "t16",

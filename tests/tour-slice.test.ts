@@ -7,7 +7,9 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import type { DialogueLine } from '../src/content/types';
 import type { CinematicFile } from '../src/systems/cinematic/types';
+import { answer } from '../src/systems/npc/logic';
 import { type StoryEnv, type StorySlice, StoryEngine, createStorySlice, runsOnResume } from '../src/systems/story/engine';
 import { type Action, type StoryFile, isWalkAction } from '../src/systems/story/types';
 import { validateStories } from '../src/systems/story/validate';
@@ -18,6 +20,7 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const tour = JSON.parse(readFileSync(`${ROOT}content/story/00-tour.story.json`, 'utf8')) as StoryFile;
 const k1 = JSON.parse(readFileSync(`${ROOT}content/story/01-kapitel-1.story.json`, 'utf8')) as StoryFile;
 const route = JSON.parse(readFileSync(`${ROOT}content/routes/p-fuehrung.json`, 'utf8')) as Route;
+const pack = JSON.parse(readFileSync(`${ROOT}content/packs/tour.pack.json`, 'utf8')) as { dialogue: DialogueLine[] };
 
 function harness() {
   let slice: StorySlice = createStorySlice();
@@ -104,8 +107,11 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     Object.assign(h.pos, { x: 524, z: -771 });
     h.tick();
     expect(h.beat()).toBe('t2');
+    h.ev('npc:conversation', { npc: 'imhoff', open: true });
     h.flags['talked.tour.imhoff'] = true;
     h.tick();
+    expect(h.beat()).toBe('t2');
+    h.ev('npc:conversation', { npc: 'imhoff', open: false });
     expect(h.beat()).toBe('t3');
     h.ev('npc:arrived', { npc: 'imhoff', at: 'abzweig', route: 'p-fuehrung', skipped: false });
     expect(h.beat()).toBe('t4');
@@ -181,6 +187,28 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     expect(h.completed()).toContain('tour');
     expect(h.chapter()).toBe('k1');
     expect(h.beat()).toBe('k1_0');
+  });
+
+  it('plays all three parking-lot greetings in order and can leave without an interaction or after a saved talk', () => {
+    const context = { era: 'today', flags: {}, chapter: 'tour', beat: 't2' } as const;
+    const ids = ['imhoff.t.station1', 'imhoff.t.station1a', 'imhoff.t.station1b'];
+    expect(answer(pack.dialogue, 'imhoff', 'tour', 'greet', context, new Set()).map((line) => line.id)).toEqual(ids);
+    expect(answer(pack.dialogue, 'imhoff', 'tour', 'greet', context, new Set(ids))).toEqual([]);
+
+    const skipped = harness();
+    skipped.engine.goto('tour', 't2');
+    skipped.tick(59);
+    expect(skipped.beat()).toBe('t2');
+    skipped.tick(1);
+    expect(skipped.beat()).toBe('t3');
+
+    const resumed = harness();
+    resumed.engine.goto('tour', 't2');
+    resumed.ev('npc:conversation', { npc: 'imhoff', open: true });
+    resumed.flags['talked.tour.imhoff'] = true;
+    resumed.engine.resume();
+    resumed.tick();
+    expect(resumed.beat()).toBe('t3');
   });
 
   it('the deer never block the tour: a plain good photo praises, a flight close by says „Zu schnell.“ and moves on', () => {

@@ -262,6 +262,8 @@ export interface SayAction extends ActionBase {
   line?: string;
   /** Display time override (ms). */
   ms?: number;
+  /** Start the rest of this action list once this line has finished or been skipped. Needs `id` or `line`. */
+  wait?: boolean;
   /** Label: fiction (default true for fictional speakers) / echo of a memory. */
   echo?: boolean;
   /** Repeat even if already said. */

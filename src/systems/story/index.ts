@@ -200,6 +200,7 @@ interface Scheduled {
   at: number;
   gen: number;
   fn: () => void;
+  ready?: () => boolean;
   /** Beat the action belongs to (null = chapter-wide); retired when another beat begins. */
   beat: string | null;
   /** Changes state (objective, threat, flags …): run at once when its beat ends instead of dropped. */
@@ -698,14 +699,25 @@ class StoryRuntime {
       this.gateBeat = null;
       if (this.slice.chapter && scope.beat) this.gatedAt = { chapter: this.slice.chapter, beat: scope.beat };
     }
-    for (const a of actions) {
+    for (const [i, a] of actions.entries()) {
       if (resume && !runsOnResume(a)) continue;
       at += a.delay ?? 0;
       // measure a line BEFORE it runs: an immediate say marks itself said, and would then take no time
       const text = a.do === 'say' ? (this.sayText(a) ?? '') : '';
-      if (gate && waitsForChapterCard(a, at)) this.gated.push({ at, gen: this.gen, fn: () => this.withScope(scope, () => this.exec(a)), beat: scope.beat, keep: !PRESENTATION.has(a.do) });
-      else if (at <= 0) this.withScope(scope, () => this.exec(a));
-      else this.schedule(at, () => this.exec(a), scope, !PRESENTATION.has(a.do));
+      const waitFor = a.do === 'say' && a.wait ? (a.id ?? a.line) : undefined;
+      const rest = waitFor && i + 1 < actions.length ? actions.slice(i + 1) : null;
+      const exec = () => {
+        this.exec(a);
+        if (!waitFor || !rest) return;
+        const ready = () => !this.presenter.hasLine(waitFor, scope.beat);
+        const continueRun = () => this.run(rest, resume, scope);
+        if (ready()) continueRun();
+        else this.schedule(0, continueRun, scope, false, ready);
+      };
+      if (gate && waitsForChapterCard(a, at)) this.gated.push({ at, gen: this.gen, fn: () => this.withScope(scope, exec), beat: scope.beat, keep: !PRESENTATION.has(a.do) });
+      else if (at <= 0) this.withScope(scope, exec);
+      else this.schedule(at, exec, scope, !PRESENTATION.has(a.do));
+      if (rest) return;
       if (text && a.do === 'say') at += text.length / 42 + holdSeconds(text, a.ms) + 0.4;
     }
   }
@@ -733,8 +745,8 @@ class StoryRuntime {
     }
   }
 
-  private schedule(delay: number, fn: () => void, scope: RunScope | null = null, keep = true): void {
-    this.queue.push({ at: this.time + delay, gen: this.gen, fn: () => this.withScope(scope, fn), beat: scope?.beat ?? null, keep });
+  private schedule(delay: number, fn: () => void, scope: RunScope | null = null, keep = true, ready?: () => boolean): void {
+    this.queue.push({ at: this.time + delay, gen: this.gen, fn: () => this.withScope(scope, fn), beat: scope?.beat ?? null, keep, ready });
   }
 
   /**
@@ -1619,10 +1631,10 @@ class StoryRuntime {
     }
     if ((this.gated.length || this.gatedAt) && !this.overlays.holdsLines) this.releaseGate();
     if (this.queue.length) {
-      const due = this.queue.filter((q) => q.at <= this.time);
-      if (due.length) {
-        this.queue = this.queue.filter((q) => q.at > this.time);
-        for (const d of due.sort((a, b) => a.at - b.at)) if (d.gen === this.gen) d.fn();
+      const due = new Set(this.queue.filter((q) => q.at <= this.time && (q.ready?.() ?? true)));
+      if (due.size) {
+        this.queue = this.queue.filter((q) => !due.has(q));
+        for (const d of [...due].sort((a, b) => a.at - b.at)) if (d.gen === this.gen) d.fn();
       }
     }
     // fx did not answer the shift request → switch directly

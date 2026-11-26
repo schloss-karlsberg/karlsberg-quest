@@ -1,28 +1,28 @@
 # Guided tour narration and sources
 
-TASK-010, slice 1. The German lines below follow the live tour and are the script for review before recording. Each row is one subtitle and one skippable voice clip. **FAKT** marks a sourced statement, **OFFEN** a question Gerold leaves open aloud, and **FIKTION** dialogue or staging written for the game. Gerold Imhoff is the fictional guide’s placeholder name.
+TASK-010. The German lines below are the reviewed script integrated into the tour in slice 2. Each row is a skippable subtitle and a line in the recording batch. **FAKT** marks a sourced statement, **OFFEN** a question Gerold leaves open aloud, and **FIKTION** dialogue or staging written for the game. Gerold Imhoff is the fictional guide’s placeholder name.
 
 ## Route and cues
 
-The coordinates are game coordinates in metres (x / z). Beat IDs come from the [live tour story](../../../content/story/00-tour.story.json), and the stops from [p-fuehrung](../../../content/routes/p-fuehrung.json). The two parking-lot conversation lines and the waiting barks are in the [tour pack](../../../content/packs/tour.pack.json). The scripted route, group, animal actions and transition to the past are **FIKTION**.
+The coordinates are game coordinates in metres (x / z). Beat IDs come from the [live tour story](../../../content/story/00-tour.story.json), and the stops from [p-fuehrung](../../../content/routes/p-fuehrung.json). The three parking-lot conversation lines and the waiting barks are in the [tour pack](../../../content/packs/tour.pack.json). The scripted route, group, animal actions and transition to the past are **FIKTION**.
 
 | Beat | Route stop or cue | Guide and listening space |
 | --- | --- | --- |
-| `t1` | `parkplatz` 524 / −770 | Approach the group. Gerold’s `imhoff.t.01` is delayed 1.5 s. Soll and Mats have short lines. Entering the 7 m radius or waiting 25 s advances to `t2`. |
-| `t2` | `parkplatz`, station 1 | `imhoff.t.02` turns attention to the ridge. Jost has a dog line. Speaking to Gerold opens the once-only `npc:talk` greeting `imhoff.t.station1` and `imhoff.t.station1b`. The talk completes the beat. There is a 60 s fallback. |
+| `t1` | `parkplatz` 524 / −770 | Approach the group. Gerold’s `imhoff.t.01` is delayed 1.5 s and followed by `imhoff.t.01b`. Soll and Mats have short lines. After these lines, being within 7 m or waiting 25 s advances to `t2`. |
+| `t2` | `parkplatz`, station 1 | `imhoff.t.02` turns attention to the ridge. After Jost’s dog line, speaking to Gerold opens the once-only `npc:talk` greeting in three steps. Closing the conversation completes the beat. There is a 60 s fallback for players who do not start the conversation. |
 | `t3` | Walk to `abzweig` 515.2 / −729.9 | Keep `imhoff.t.los` as a brief departure cue, with the waiting bark for stragglers. Arrival advances the beat. |
 | `t4` | `abzweig` → fade and warp to `einstieg` 623.4 / −485.9 | `imhoff.t.abkuerzen` is a short cue before the cut. The guide is sent toward `felsen`. |
 | `t5` | Walk from `einstieg` to `felsen` | Leave the walking and sprint prompt clear. Arrival opens station 2. |
-| `t6` | `felsen` 682.9 / −596.1, station 2 | Gather for `imhoff.t.station2` and `imhoff.t.station2b`, then the player’s response. The live flag completes on entry. Integration needs to hold departure through the last station line or skip. |
+| `t6` | `felsen` 682.9 / −596.1, station 2 | Gather for all four station lines and the player’s response. The group moves on after the response finishes or is skipped. |
 | `t7` | Walk to `wind` 676.1 / −635.7 | Leave the slope quiet apart from the waiting bark if triggered. Arrival opens the dog scene. |
 | `t8` | `wind`, dogs and wind | Leave wind, barking, the cinematic and Jost’s call room to be heard. Gerold’s `imhoff.t.wind` is an exit line after the dog scene, a **FIKTION** guess about what startled them. |
 | `t9` | Walk to `reh` 727.4 / −751.5 | The deer spawn as the guide walks. Leave their approach clear apart from the waiting bark if triggered. |
 | `t10` | `reh`, photo cue | Open with `imhoff.t.reh1` and `imhoff.t.reh2` quietly. Leave the stalk and photo quiet. Gerold reacts with `imhoff.t.reh.alert`, `imhoff.t.reh3`, or `imhoff.t.reh.schnell` on the corresponding outcome. |
 | `t11` | Fade and warp to `damm` 837 / −839.5 | `imhoff.t.weiter` is a delayed departure cue. The guide is sent toward `weiher`. Leave the cut clear of new history. |
 | `t12` | `damm` → `weiher` | The **FIKTION** meeting uses `marlene.t.cameo` and Gerold’s `imhoff.t.marlene`. Leave that exchange clear. Arrival opens station 3. |
-| `t13` | `weiher` 897.2 / −845.3, station 3 | Gather for `imhoff.t.station3`. The live flag completes on entry. Integration needs to hold departure through the last station line or skip. |
+| `t13` | `weiher` 897.2 / −845.3, station 3 | Gather for all four station lines. The group stays through the last line or until it is skipped. |
 | `t14` | Walk to `quelle` 1062 / −836.7 | Leave the uphill walk clear apart from the waiting bark if triggered. Arrival opens station 4. |
-| `t15` | `quelle`, station 4 | Gather for `imhoff.t.station4`, then `imhoff.t.pause`. The live actions despawn Gerold, send the group on via `p-aufstieg` and set the completion flag on entry. Integration needs to play or skip the farewell before the departure and pause timer. |
+| `t15` | `quelle`, station 4 | Gather for all four station lines and `imhoff.t.pause`. After the farewell finishes or is skipped, the group continues via `p-aufstieg` and the pause timer starts. |
 | `t16` | Trough 1059.3 / −833.1 | Gerold falls silent. Give the trough its pause. At 9 s the player notices the glint. After 10 s, entering the 1.6 m radius (or already standing there) advances to the compass. |
 | `t17` | Trough, handoff to Laub | The group and dogs despawn. The compass clink is captioned, then Laub speaks. The player touches the water to trigger the shift. Keep Gerold silent. |
 | `t18` | Spring in 1789, then handover | The player and Laub react before the fade and chapter handover. Keep Gerold silent. |
@@ -78,7 +78,7 @@ At the trough, the story has room for quiet before the compass clink. Give Laub 
 
 A temporary German text-to-speech read-through at 145 words per minute gave about 10 s for the welcome, 21 s for the parking-lot lines, 18 s at the Felsenpfad, 18 s at the pond and 22 s at the spring. These totals cover Gerold's words only. The longest subtitle is 89 characters. Allow time for the other speakers and the group to settle, then use the selected recordings to verify the cue timing on keyboard and touch.
 
-On arrival, play the station lines in order while the group is gathered. Wait for the last line to finish or be skipped before the next cue, especially the walk at `t6` and `t13` and the timed pause after `t15`. At the parking lot, keep the greeting tied to the existing talk interaction and retain its timeout path.
+The owner selected D, deep documentary, from synthetic design `kq010-guide-d-design-s6301`. The line batch uses German and seed 6301. In the tour, the group waits for the last line to finish or be skipped before the next cue. The parking-lot greeting uses the conversation panel and retains its timeout path.
 
 [street]: https://www.homburg.de/media/s0toikxj/strassenverzeichnis.pdf
 [city-palace]: https://www.homburg.de/leben-in-homburg/touristisches/sehenswertes/schloss-karlsberg/
