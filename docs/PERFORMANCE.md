@@ -33,9 +33,14 @@ the e2e test fails when a scene is over.
   culling; modules can register more switches in `baselineHooks`), then run the bench again.
 - **E2E**: `PERF_LABEL=after npx playwright test e2e/perf.spec.ts` writes
   `test-results/perf/bench-<label>.json` and `load-<label>.json`; `PERF_BASELINE=1` runs the
-  baseline, `PERF_FRAMES=n` changes the frames per scene. Headless Chromium uses SwiftShader (CPU
-  rasteriser): frame times there are 50–100× a real GPU and say little; calls, triangles, CPU
-  time and bytes are exact.
+  baseline, `PERF_FRAMES=n` changes the frames per scene. Headless Chromium uses SwiftShader
+  (a CPU rasteriser). Draw calls, triangles and bytes are suitable for e2e assertions. Frame
+  and CPU milliseconds depend on the machine and its load.
+- **Tour group workload (TASK-050):** `e2e/walk.spec.ts` samples eight stepped frames at the
+  trailhead for each quality tier, with an empty view and again with all 16 bodies loaded.
+  `test-results/walk/perf.json` records both peaks and their difference. The added work must be
+  positive and fit within 190 draw calls and 130,000 triangles per pass. This covers the packed
+  body parts in the main pass and allows a second pass for shadows on Mittel and Hoch.
 - **Real GPU, headless**: Chromium with `--enable-gpu --ignore-gpu-blocklist --use-angle=metal`
   (add `--disable-gpu-vsync --disable-frame-rate-limit` for uncapped timing) and call `kq.bench()`.
 - **Present-day ground cover on Niedrig (TASK-008):** `e2e/gpu/tour-groundcover.gpu.ts` records six
