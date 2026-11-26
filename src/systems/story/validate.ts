@@ -349,6 +349,7 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
         break;
       case 'objective':
         if (a.text !== undefined && a.text !== null && !isStr(a.text)) err(file, where, 'objective text must be a string or null');
+        if (a.animal !== undefined && !isStr(a.animal)) err(file, where, 'objective animal must be an id');
         if ((a.x === undefined) !== (a.z === undefined) || (a.x !== undefined && (!isNum(a.x) || !isNum(a.z)))) err(file, where, 'objective needs both numeric x and z (or neither)');
         break;
       case 'threat':

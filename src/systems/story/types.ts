@@ -273,6 +273,8 @@ export interface ObjectiveAction extends ActionBase {
   do: 'objective';
   /** null / omitted clears the objective. */
   text?: string | null;
+  /** Use this animal's saved position when the action runs, with x/z as a fallback. */
+  animal?: string;
   x?: number;
   z?: number;
   id?: string;

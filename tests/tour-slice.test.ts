@@ -8,9 +8,12 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { DialogueLine } from '../src/content/types';
+import { createDeer } from '../src/systems/animals/deer';
+import { restoreAnimals, serializeAnimals } from '../src/systems/animals/save';
 import type { CinematicFile } from '../src/systems/cinematic/types';
 import { answer } from '../src/systems/npc/logic';
 import { type StoryEnv, type StorySlice, StoryEngine, createStorySlice, runsOnResume } from '../src/systems/story/engine';
+import { objectivePoint } from '../src/systems/story/objectives';
 import { type Action, type StoryFile, isWalkAction } from '../src/systems/story/types';
 import { validateStories } from '../src/systems/story/validate';
 import { loadStoryFiles, loadWalkRefs } from '../src/systems/story/validate-cli';
@@ -22,7 +25,7 @@ const k1 = JSON.parse(readFileSync(`${ROOT}content/story/01-kapitel-1.story.json
 const route = JSON.parse(readFileSync(`${ROOT}content/routes/p-fuehrung.json`, 'utf8')) as Route;
 const pack = JSON.parse(readFileSync(`${ROOT}content/packs/tour.pack.json`, 'utf8')) as { dialogue: DialogueLine[] };
 
-function harness() {
+function harness(onAction?: (a: Action) => void | false) {
   let slice: StorySlice = createStorySlice();
   const flags: Record<string, boolean | number | string> = {};
   const pos = { x: 529, z: -777 };
@@ -31,6 +34,7 @@ function harness() {
   let era = 'today';
   const apply = (actions: Action[]) => {
     for (const a of actions) {
+      if (onAction?.(a) === false) continue;
       if (a.do === 'flag') for (const [k, v] of Object.entries(a.set)) v === null ? delete flags[k] : (flags[k] = v);
       else if (a.do === 'say') said.push(a.id ?? a.line ?? '?');
       else if (a.do === 'teleport') Object.assign(pos, { x: a.x, z: a.z });
@@ -275,6 +279,44 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     go(c);
     c.tick(181);
     expect(c.beat()).not.toBe('t10');
+  });
+
+  it.each([['graze', 'imhoff.t.reh3'], ['alert', 'imhoff.t.reh.alert']])(
+    'lowers a phone left open before the %s photo reaction',
+    (state, reaction) => {
+      let phoneOpen = true;
+      const h = harness((a) => {
+        // Simulate the completion flag waiting for the presenter to finish the reaction.
+        if (a.do === 'flag' && a.set['tour.reh.done']) return false;
+        if (a.do === 'cue' && a.id === 'photo:lower') phoneOpen = false;
+        if (a.do === 'say' && (a.id === 'player.photo.gut' || a.id === reaction)) {
+          expect(phoneOpen).toBe(false);
+          expect(a.wait).toBe(true);
+          // The player can reach for the camera again before the guide speaks.
+          if (a.id === 'player.photo.gut') phoneOpen = true;
+        }
+      });
+      h.engine.goto('tour', 't10');
+      h.tick(175);
+      h.ev('photo:good', { id: 'reh.ricke', stars: 2, state });
+      h.tick(20);
+      expect(h.said).toContain(reaction);
+      expect(phoneOpen).toBe(false);
+      expect(h.beat()).toBe('t10');
+    },
+  );
+
+  it('resolves the continued t10 objective at the pre-branch saved doe position', () => {
+    const h = harness();
+    h.engine.goto('tour', 't10');
+    h.sent.length = 0;
+    h.engine.resume();
+    const action = h.sent.find(({ a }) => a.do === 'objective')?.a;
+    if (action?.do !== 'objective') throw new Error('t10 must restore its objective on Continue');
+    const save = serializeAnimals([createDeer({ op: 'spawn', id: 'ricke', kind: 'reh', x: 704, z: -779 })], []);
+    const [restored] = restoreAnimals(save).deer;
+    expect(objectivePoint(action, save)).toEqual({ x: restored!.x, z: restored!.z });
+    expect(objectivePoint(action)).toEqual({ x: 698, z: -773 });
   });
 
   it('t10 opens on the deer: the reh shot from the group stop, then the sneak prompt (TASK-001)', () => {

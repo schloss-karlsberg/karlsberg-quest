@@ -30,7 +30,7 @@ import { endingScenes } from './endings/scenes';
 import { EndingStage } from './endings/stage';
 import { EndingScreen } from './endings/ui';
 import { HOME, atHome, bringHome } from './hub/home';
-import { ObjectiveView } from './objectives';
+import { ObjectiveView, bearingDeg, objectivePoint } from './objectives';
 import { StoryOverlays, cardClockDt } from './overlays';
 import { playStorySound, playStorySoundAction } from './sfx';
 import { loadBundledStories, missingTourChestnuts, storiesInPlay } from './stories';
@@ -75,6 +75,8 @@ declare module '../../core/events' {
     'story:credits': Record<string, never>;
     /** A choice was answered (option = the option's key, or its index). */
     'story:choice': { id: string; option: string };
+    /** An inline choice started or stopped accepting answers. */
+    'story:inline-choice': { open: boolean };
     /** A story meter ran full (meter action `full`). */
     'story:meter-full': { id: string };
   }
@@ -368,7 +370,7 @@ class StoryRuntime {
     ctx.events.on('story:cue', ({ id, data }) => {
       if (id.startsWith('bussole:')) this.objectives.cue(id, data ?? {}, ctx.settings.state.reducedMotion);
     });
-    this.overlays = new StoryOverlays(this.layer, ctx.ui.modals, ctx.ui.hud);
+    this.overlays = new StoryOverlays(this.layer, ctx.ui.modals, (open) => ctx.events.emit('story:inline-choice', { open }), ctx.ui.hud);
 
     addPausePage({
       id: 'chapters',
@@ -531,6 +533,8 @@ class StoryRuntime {
   /** Re-apply persistent presentation after a load. */
   private resync(): void {
     this.cancelScheduled();
+    this.overlays.closeChoice();
+    this.choiceAction = null;
     // a load never resumes in the middle of a fade (fade actions are one-shot)
     this.overlays.fade(0, 0);
     const s = this.slice;
@@ -801,10 +805,11 @@ class StoryRuntime {
         // the post-game line promises the pause menu's „Ende noch einmal wählen“: only when the
         // ending's save exists (with saving off it never does — playtest round 5)
         const text = a.text && a.text.includes('Esc →') && !ctx.save.has(ENDING_SLOT) ? a.text.replace(/\s*·\s*Esc →.*$/, '') : a.text;
+        const { x, z } = objectivePoint(a, ctx.state.state.systems.animals);
         if (!text) s.objective = null;
-        else s.objective = { text, ...(a.x !== undefined && a.z !== undefined ? { x: a.x, z: a.z } : {}), ...(a.id ? { id: a.id } : {}) };
+        else s.objective = { text, ...(x !== undefined && z !== undefined ? { x, z } : {}), ...(a.id ? { id: a.id } : {}) };
         this.objectives.set(s.objective);
-        ctx.events.emit('objective:set', { text: text ?? null, x: a.x, z: a.z, id: a.id });
+        ctx.events.emit('objective:set', { text: text ?? null, x, z, id: a.id });
         return;
       }
       case 'threat': {
@@ -1816,6 +1821,7 @@ class StoryRuntime {
 
   dispose(): void {
     window.removeEventListener('keydown', this.onKey);
+    this.overlays.closeChoice();
     this.presenter.clear();
     this.unbindGuideVoice();
     this.stage.dispose();

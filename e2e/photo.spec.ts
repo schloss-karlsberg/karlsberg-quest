@@ -143,6 +143,27 @@ test.describe('photo mode', () => {
     expect(r.open).toBe(false);
     expect(r.again).toBe(true);
   });
+
+  test('the viewfinder hides an active measuring tool and a visible quest giver glyph', async ({ page }) => {
+    await boot(page);
+    await standAtBoard(page);
+    await page.evaluate(({ x, z }) => {
+      const k = window.kq!;
+      k.skills!.grant('kartograf', 3, true);
+      k.tools!.measure.start();
+      k.npc!.spawn({ npc: 'marlene', x: x + 2, z: z - 7, era: 'today' });
+      k.ctx.events.emit('npc:marker', { npc: 'marlene', mark: 'offer' });
+    }, STAND);
+    const overlays = ['measure-reticle', 'measure-sheet', 'npc-glyph-marlene'].map((id) => page.getByTestId(id));
+    for (const overlay of overlays) await expect(overlay).toBeVisible();
+
+    expect(await page.evaluate(() => window.kq!.photo!.open())).toBe(true);
+    for (const overlay of overlays) await expect(overlay).toBeHidden();
+
+    await page.evaluate(() => window.kq!.photo!.close());
+    for (const overlay of overlays) await expect(overlay).toBeVisible();
+    expect(await page.evaluate(() => window.kq!.tools!.measure.state().mode)).toBe('a');
+  });
 });
 
 const strip = <T extends { defaultBrowserType?: unknown }>(d: T) => {

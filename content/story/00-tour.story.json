@@ -236,7 +236,7 @@
         { "do": "sound", "sound": "deer-rustle", "x": 704, "z": -779, "caption": "[Leises Rascheln im Laub]" },
         { "do": "cinematic", "id": "tour.reh", "ref": "reh", "skippable": true },
         { "do": "prompt", "action": "crouch", "text": "Schleichen: geduckt und langsam heran · hebt die Ricke den Kopf: geduckt stillhalten", "touch": "Langsam heranpirschen" },
-        { "do": "objective", "id": "tour", "text": "Ricke und Kitz fotografieren: geduckt anschleichen", "x": 698, "z": -773 },
+        { "do": "objective", "id": "tour", "text": "Ricke und Kitz fotografieren: geduckt anschleichen", "animal": "ricke", "x": 698, "z": -773 },
         { "do": "say", "id": "imhoff.t.reh1", "speaker": "imhoff", "text": "Pssst. Da unten. Nicht bewegen." },
         { "do": "say", "id": "imhoff.t.reh2", "speaker": "imhoff", "text": "Wer ein gutes Foto will: ganz langsam. Geduckt. Und stillhalten, wenn sie guckt." }
       ],
@@ -250,9 +250,11 @@
           "id": "foto-alert",
           "when": { "event": "photo:good", "match": { "id": "reh.ricke", "state": "alert" } },
           "do": [
+            { "do": "cue", "id": "photo:lower" },
             { "do": "prompt", "key": null, "text": null },
-            { "do": "say", "id": "player.photo.gut", "speaker": "player", "text": "Das ist es." },
-            { "do": "say", "id": "imhoff.t.reh.alert", "speaker": "imhoff", "text": "Sie hat dich angesehen. Gutes Bild." },
+            { "do": "say", "id": "player.photo.gut", "speaker": "player", "text": "Das ist es.", "wait": true },
+            { "do": "cue", "id": "photo:lower" },
+            { "do": "say", "id": "imhoff.t.reh.alert", "speaker": "imhoff", "text": "Sie hat dich angesehen. Gutes Bild.", "wait": true },
             { "do": "flag", "set": { "tour.reh.done": true } }
           ]
         },
@@ -260,9 +262,11 @@
           "id": "foto",
           "when": { "all": [{ "event": "photo:good", "match": { "id": "reh.ricke" } }, { "not": { "event": "photo:good", "match": { "id": "reh.ricke", "state": "alert" } } }] },
           "do": [
+            { "do": "cue", "id": "photo:lower" },
             { "do": "prompt", "key": null, "text": null },
-            { "do": "say", "id": "player.photo.gut", "speaker": "player", "text": "Das ist es." },
-            { "do": "say", "id": "imhoff.t.reh3", "speaker": "imhoff", "text": "Das ist besser als jedes Schloss. Fast." },
+            { "do": "say", "id": "player.photo.gut", "speaker": "player", "text": "Das ist es.", "wait": true },
+            { "do": "cue", "id": "photo:lower" },
+            { "do": "say", "id": "imhoff.t.reh3", "speaker": "imhoff", "text": "Das ist besser als jedes Schloss. Fast.", "wait": true },
             { "do": "flag", "set": { "tour.reh.done": true } }
           ]
         },
@@ -279,8 +283,10 @@
       "complete": {
         "any": [
           { "flag": "tour.reh.done" },
-          { "all": [{ "flag": "tour.reh.weg" }, { "timer": 45 }] },
-          { "timer": 180 }
+          { "all": [
+            { "any": [{ "all": [{ "flag": "tour.reh.weg" }, { "timer": 45 }] }, { "timer": 180 }] },
+            { "not": { "event": "photo:good", "match": { "id": "reh.ricke" } } }
+          ] }
         ]
       },
       "exit": [{ "do": "prompt", "key": null, "text": null }]
