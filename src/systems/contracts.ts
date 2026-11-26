@@ -109,6 +109,7 @@ declare module '../core/events' {
     'chronik:open': { caseId?: string };
 
     // ---- fx (owner: fx) -------------------------------------------------------------------
+    /** A shift has started, before the effect takes over player movement. */
     'shift:begin': { from: Era; to: Era };
     /** Era has just been switched under cover of the effect. */
     'shift:midpoint': { from: Era; to: Era };

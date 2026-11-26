@@ -194,6 +194,7 @@ class CourtRuntime {
   private staffAgo = Infinity;
   private attackHeld = 0;
   // ejection (game time; deterministic with kq.step)
+  private shifting = false;
   private eject: { t: number; zone: CourtZone; tell: TellId | null; by: string; moved: boolean; froze: boolean } | null = null;
   // inspection
   private hold = 0;
@@ -242,11 +243,18 @@ class CourtRuntime {
       else if (id === 'court:take') this.took = true;
       else if (id === 'court:reset') this.resetAll();
     });
+    ev.on('shift:begin', () => {
+      this.shifting = true;
+      this.finishEject();
+    });
+    ev.on('shift:done', () => (this.shifting = false));
     ev.on('era:change', () => {
+      this.finishEject();
       this.resetAll();
       this.emitCostume();
     });
     ev.on('save:loaded', () => {
+      this.finishEject();
       this.resetAll();
       this.lastCoat = null;
       this.lastCostume = null;
@@ -420,6 +428,7 @@ class CourtRuntime {
     this.took = false;
     this.staffAgo += dt;
 
+    if (this.shifting) return;
     if (this.eject) {
       this.stepEject(dt);
       return;
@@ -518,10 +527,12 @@ class CourtRuntime {
         this.hintCard(e.tell);
       }
     }
-    if (e.t >= EJECT_FADE + 0.5) {
-      if (e.froze) ctx.player.frozen = false;
-      this.eject = null;
-    }
+    if (e.t >= EJECT_FADE + 0.5) this.finishEject();
+  }
+
+  private finishEject(): void {
+    if (this.eject?.froze) this.ctx.player.frozen = false;
+    this.eject = null;
   }
 
   /** The first ejection explains itself: what gave you away and how to avoid it. */
@@ -765,6 +776,7 @@ class CourtRuntime {
   }
 
   dispose(): void {
+    this.finishEject();
     this.cones.object.removeFromParent();
     this.cones.dispose();
     this.ringMesh.removeFromParent();
