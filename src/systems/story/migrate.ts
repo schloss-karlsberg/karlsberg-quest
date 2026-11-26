@@ -1,5 +1,7 @@
 import { allOf, isOneOf } from '../../core/saved';
 import { createStorySlice, DEFAULT_VISITOR_NAME, type StorySlice } from './engine';
+import type { GameState } from '../../core/state';
+import { createQuestSlice } from '../quests/logic';
 import { HOME } from './hub/home';
 import type { EndingId, LookTime } from './types';
 
@@ -48,6 +50,54 @@ export function readStorySlice(saved: Record<string, unknown>): StorySlice {
   const story = { ...createStorySlice(), ...saved };
   migrateStorySlice(story);
   return story;
+}
+
+const K3_QUEST_MILESTONES = new Map<string, { id: string; objectives: string[] }>([
+  ['k3_4', { id: 'q.k3.festsaal', objectives: ['saal'] }],
+  ['k3_5', { id: 'q.k3.festsaal', objectives: ['saal', 'wahl'] }],
+  ['k3_6', { id: 'q.k3.festsaal', objectives: ['saal', 'wahl', 'hinaus'] }],
+  ['k3_8', { id: 'q.k3.hunde', objectives: ['zwinger'] }],
+]);
+
+/**
+ * Required objectives (id → count) of the quests repaired above. They are data here, not a content
+ * import: `src/core/save` loads this module, and e2e specs import it in Node, which refuses JSON
+ * modules without an import attribute. tests/chapter-k3-autosave.test.ts checks them against
+ * content/quests/03-kapitel-3.quests.json.
+ */
+export const K3_REQUIRED_OBJECTIVES: Readonly<Record<string, Readonly<Record<string, number>>>> = {
+  'q.k3.festsaal': { saal: 1, wahl: 1, hinaus: 1, pforte: 1 },
+  'q.k3.hunde': { streuner: 3, zwinger: 1, tueren: 1 },
+};
+
+/** Restore quest progress implied by downstream beats whose entry assumes the quest is running. */
+function migrateChapter3Quests(story: StorySlice, state: GameState): void {
+  if (!story.active || story.chapter !== 'k3' || !story.beat) return;
+  const milestone = K3_QUEST_MILESTONES.get(story.beat);
+  if (!milestone) return;
+
+  const slice = (state.systems.quests ??= createQuestSlice());
+  const quests = (slice.quests ??= {});
+  const progress = (quests[milestone.id] ??= { state: 'hidden', counts: {}, t: 0 });
+  if (progress.state === 'hidden') {
+    progress.state = 'active';
+    progress.t = state.meta.playSeconds;
+  }
+  if (progress.state !== 'active') return;
+  const counts = (progress.counts ??= {});
+  for (const objective of milestone.objectives) {
+    counts[objective] = Math.max(counts[objective] ?? 0, 1);
+  }
+  const required = Object.entries(K3_REQUIRED_OBJECTIVES[milestone.id] ?? {});
+  if (required.length && required.every(([objective, n]) => (counts[objective] ?? 0) >= n)) {
+    progress.state = 'ready';
+    progress.t = state.meta.playSeconds;
+  }
+}
+
+/** Repair quest progress implied by the saved story position (needs the whole state). */
+export function migrateStoryQuests(story: StorySlice, state: GameState): void {
+  migrateChapter3Quests(story, state);
 }
 
 /** Update persisted labels and the return objective from before the spring became home. */

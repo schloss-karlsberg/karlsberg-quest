@@ -254,8 +254,18 @@ describe('retired prologue saves', () => {
     state.skills.relief = 1;
     if (chapter === 'k3') {
       state.systems.story.completed = ['prolog', 'k1', 'k2'];
-      state.systems.quests = { ...createQuestSlice(), quests: { 'q.p.trichter': { state: 'done', counts: { finden: 1, melden: 1 }, t: 40 } } };
+      state.systems.quests = {
+        ...createQuestSlice(),
+        tracked: ['q.k3.festsaal'],
+        quests: {
+          'q.p.trichter': { state: 'done', counts: { finden: 1, melden: 1 }, t: 40 },
+          'q.k3.festsaal': { state: 'active', counts: { saal: 1, wahl: 1 }, t: 75 },
+        },
+      };
       state.flags['quest.q.p.trichter'] = 'done';
+      state.flags['quest.q.k3.festsaal'] = 'active';
+      state.flags['quest.q.k3.festsaal.saal'] = 1;
+      state.flags['quest.q.k3.festsaal.wahl'] = 1;
     }
     expect(deserializeState(JSON.stringify(state))).toEqual(state);
   });
