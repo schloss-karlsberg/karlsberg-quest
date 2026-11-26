@@ -1391,7 +1391,9 @@ the guide, opt-in with `?people=authored`), and callers do not change.
   - The solid look uses opaque per-person clones of the model's material slots lit by
     `kqStandard`. The ghost look uses its own shader and depth pre-pass.
   - Skinned parts and their ghost depth twins use a shared body sphere anchored to the person's
-    root, independently of pose and mesh level.
+    root for frustum culling, independently of pose and mesh level. The body sphere is also
+    transformed to each skinned mesh's local space at construction for render-list sorting.
+    Ghost depth twins inherit the local sphere when cloned.
   - `dispose()` frees the materials, the clone's skeletons, the mixer's actions and the fallback
     capsule. Geometry belongs to the asset cache.
   - A failed load shows a capsule.
@@ -1595,7 +1597,8 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   15 m/s counts as zero speed. An unresolved leader leaves the dog idling in place. Walk
   relocations land the dogs in their new slots immediately using the leader poses supplied in
   `group:relocated`. Dogs plant on sharp reversals and turn at up to 5 rad/s, with an
-  immediate facing change in reduced motion.
+  immediate facing change in reduced motion. The animal save stores an optional `turning` flag
+  so a planted dog stays still after loading until it lines up. Older saves default to `false`.
 - Events: the core's `animal:alert {id}`, `animal:fled {id, by, dist}`, `animal:settled {id}`,
   `animal:returned {id}` go onto the bus 1:1; `bark` / `shake` cues play as one-shots on the body (no
   dog bark SFX yet).

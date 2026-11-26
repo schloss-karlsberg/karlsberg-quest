@@ -49,13 +49,38 @@ _Status: approved 2026-11-26_
 - [x] 2. Fix crowd opacity and visibility with render-budget regression coverage.
 - [x] 3. Cover the lagging-player wait bark in a system test.
 - [x] 4. Update docs, run the four gate commands and try the locked e2e check.
-- [ ] 5. Commit the changes.
+- [x] 5. Commit the changes.
 
 **Test plan:** Run focused Vitest tests, then `pnpm typecheck && pnpm test && pnpm validate && pnpm build`. Run the tour, animals and smoke Playwright specs individually under the heavy lock on port 5408. When a browser is available, inspect the walkers from the trail at conversational distance and around LOD changes.
 
 **Risks:** Walk and animal system update order can affect relocation timing. More permissive render bounds can draw extra triangles near the edge of the camera view.
 
 **Open questions:** None.
+
+## Review fix round
+
+Resolve the crowd rendering, bark delivery, dog save and portrait test findings on
+`dev/task-022`, including the TASK-016 changes that ship with it.
+
+### Acceptance criteria
+
+- [x] Every skinned part, including ghost depth twins, has a local sphere before its first render.
+- [x] A quiet leash wait delivers an `imhoff.bark.wait.*` dialogue line in the unit test. The tour
+  spec asserts delivery, with browser verification tracked below.
+- [x] A mid-turn save preserves planted dog movement and older saves default to normal steering.
+- [x] The tour browser test emulates touch and asserts portrait rotation and landscape dialogue.
+- [ ] All four standard gates pass with zero unit failures, and the tour, animals and smoke specs pass.
+- [ ] Inspect the crowd at 5–20 m on a phone and the Bussole departure through the era shift.
+- [x] Preserve the voiced dialogue and record the review changes in the docs.
+- [ ] Commit the remaining review changes.
+
+### Plan
+
+- [x] Initialize local render spheres alongside the shared frustum bounds and test both mesh paths.
+- [x] Drive the walk and bark systems together in the unit regression and observe delivered dialogue in the tour spec.
+- [x] Persist the planted turn state and check resumed and legacy saves.
+- [x] Match the tour's portrait test setup to the runtime touch requirements and cover the rotate rule in Vitest.
+- [x] Update the docs, attempt the gates and locked verification, and record blocked checks.
 
 ## Progress
 
@@ -75,13 +100,29 @@ _Status: approved 2026-11-26_
   reported `✓ content valid (1 warning(s))`. The warning is in the example pack.
 - 2026-11-26. Locked tour e2e stopped before browser launch because the sandbox refused
   Vite's bind on `127.0.0.1:5408`. The remaining browser checks use the same listener.
-- 2026-11-26. Verified the diff against `dev/task-016` and ran `mc validate`. Git could not
-  create the worktree's `index.lock`. The changes are unstaged.
+- 2026-11-26. Verified the diff against `dev/task-016` and ran `mc validate`. The original
+  changes are in `afc7568` and `cf32d07`.
+- 2026-11-26 review. Body construction seeds each skinned mesh's local sort bound. Ghost twins
+  copy the bound, and all parts still share the root-space frustum check.
+- 2026-11-26 review. A save made with 89° left in a dog reversal matches the uninterrupted run.
+- 2026-11-26 review. The wait test drives the walk and bark systems together. The tour spec
+  steps a quiet 30 m wait and checks delivered dialogue before triggering the find call at 45 m.
+  The portrait test now uses mobile touch emulation and advances the raised card with a tap.
+  The spec also checks that Gerold advances uphill during the Bussole beat.
+- 2026-11-26 review. `pnpm typecheck` and `pnpm build` passed. `pnpm test` reported
+  `Test Files  119 passed (119)` and `Tests  1596 passed (1596)`, with zero failures. All 50 tour
+  `say` actions still match `origin/main` by ID, speaker, text and order.
+- 2026-11-26 review. `pnpm validate` stopped at the tsx IPC listener with `EPERM`. The locked
+  tour spec stopped before browser launch at the Vite listener on `127.0.0.1:5408`. The animals
+  and smoke specs use that same listener and were skipped. The phone and era-shift visual checks
+  remain open. `mc validate` passed.
+- 2026-11-26 review. The render and dog save fixes are committed as `b5ec804` and `667b1ed`.
+  Git refused to create `index.lock` when staging the test and documentation batch.
 
 ## Follow-ups
 
-- Run the validator and these specs on a host that permits local sockets. Inspect the car park
-  at 5–20 m on a phone and check the group's departure at the Bussole.
+- Run the validator and these specs on a host that permits local sockets. Inspect the crowd
+  at 5–20 m on a phone and watch the group and dogs leave the Bussole through the era shift.
 
 ```sh
 pnpm validate
@@ -90,11 +131,9 @@ KQ_E2E_PORT=5408 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2
 KQ_E2E_PORT=5408 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line
 ```
 
-- Commit the two batches once Git can lock the index.
+- Commit the remaining batch when Git can lock the worktree index.
 
 ```sh
-git add -- content/story/00-tour.story.json e2e/tour-slice.spec.ts src/systems/animals/dogs.ts src/systems/animals/index.ts src/systems/animals/runtime.ts src/systems/walk/runtime.ts src/systems/walk/types.ts tests/animals-dogs-follow.test.ts tests/tour-slice.test.ts tests/walk-system.test.ts
-git commit -m 'fix(story): keep the tour group together through transitions' -m 'Refs: TASK-022' -m 'Co-Authored-By: Codex <noreply@openai.com>'
-git add -- .mc/tasks/todo/TASK-022-tour-dogs-and-group-rendering.md docs/ACTION-RPG.md docs/ARCHITECTURE.md docs/NEXT-SESSION.md docs/PERFORMANCE.md docs/PRD.md docs/design/tour/systems.md src/systems/people/registry.ts src/systems/people/standin.ts src/systems/people/types.ts tests/people.test.ts
-git commit -m 'fix(render): keep tour visitors solid and visible' -m 'Refs: TASK-022' -m 'Co-Authored-By: Codex <noreply@openai.com>'
+git add -- e2e/tour-slice.spec.ts tests/walk-system.test.ts tests/touchMap.test.ts docs/ACTION-RPG.md docs/ARCHITECTURE.md docs/PRD.md docs/design/tour/systems.md .mc/tasks/todo/TASK-022-tour-dogs-and-group-rendering.md
+git commit -m 'test(story): verify delivered wait barks and phone rotation' -m 'Refs: TASK-022, TASK-016' -m 'Co-Authored-By: Codex <noreply@openai.com>'
 ```

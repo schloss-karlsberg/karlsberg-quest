@@ -90,14 +90,17 @@ visitor occupies a run waypoint, a dog can round it from the edge of the collisi
 **Rendering (TASK-022).** The solid stand-ins previously used a 350 ms alpha-hash fade when
 their models loaded, visible as a screen-door pattern even at 10 m. They draw opaque from the
 first frame. Skinned parts use a shared root-space frustum bound across poses and mesh levels.
+Their mesh-local sort bounds are set when the body is built, including both mesh levels and
+ghost depth twins.
 Animation runs at full rate through 25 m from the camera, at about 10 Hz through 40 m, and holds
 its pose farther out. The crowd hides beyond 60 m and draws again within 58 m. The authored
 guide switches meshes outside the 14.5–15.5 m hysteresis band. Each stand-in uses its one mesh
 level throughout. See [the performance note](../../PERFORMANCE.md#38-tour-crowd-task-022).
 
-**Tests.** `tests/walk-system.test.ts` covers the leash and verifies that the real tour pack
-matches its wait-bark event. `e2e/tour-slice.spec.ts` checks for that event in its existing
-lagging-player sequence and checks that the group remains present at the Bussole until the shift.
+**Tests.** `tests/walk-system.test.ts` runs the leash and bark systems together with the tour pack
+and checks the delivered `dialogue:say` line. `e2e/tour-slice.spec.ts` checks delivery in a quiet
+interval between the leash and find-group call distances. It also checks that the group remains
+present at the Bussole until the shift.
 
 **Stop staging (TASK-016).** Stopped members turn toward Gerold. He faces the player during
 conversation and nearby story dialogue while he is stopped. Reduced motion sets the heading
@@ -107,8 +110,9 @@ he starts the line again. Once he has set out, the saved route progress carries 
 subtitles type silently. At Felsenpfad, fourteen authored slots follow the trail and reserve space
 from scattered boulders. The camera checks the final lens path for terrain and solid scenery after
 framing, pulls in immediately, and eases out again when the path clears. Felsenpfad dialogue and
-radio captions sit in the upper band on desktop and landscape phones. Portrait phones show the
-rotate prompt during gameplay. The player and dogs share the visitors' collision circles. The
+radio captions sit in the upper band on desktop and landscape phones. The tour browser spec
+emulates touch to check the portrait rotate prompt and that a landscape tap advances dialogue.
+The player and dogs share the visitors' collision circles. The
 circles' ground heights are refreshed when the visitors move.
 
 ---
@@ -121,7 +125,8 @@ circles' ground heights are refreshed when the visitors move.
 
 The walk system's `group:relocated` event puts both dogs in their slots beside Jost during
 both fades and catch-up snaps. A dog plants its feet when reversing, then moves forward as it
-lines up. Reduced motion turns the body immediately while planted.
+lines up. A save made in the turn resumes with the feet planted. Reduced motion turns the body
+immediately while planted.
 
 **Reusable code.** `src/systems/menagerie/*` (cassowary, dromedary, jaguar: story-spawned `menagerie:spawn`, era-bound, knockdown, never "caught", persisted) — the deer are a new species there with a **non-hostile, shy** mode. Perception: `src/systems/hunt/perception.ts` (`lineOfSight`), noise / visibility from `STANCES` (`src/player/stance.ts`). The hunt's `hunt:tableau` cues (lie / eyes / rest) for the dogs' poses. Models: CC0 base + Blender pipeline (memory rule: authored, critic score ≥ 8 before the owner sees them).
 

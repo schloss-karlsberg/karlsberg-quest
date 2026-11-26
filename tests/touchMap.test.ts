@@ -301,9 +301,12 @@ describe('rotateWanted (M-02)', () => {
     expect(rotateWanted({ ...q, width: 820, height: 1180 })).toBe(false);
     expect(rotateWanted({ ...q, width: 600, height: 960 })).toBe(false);
   });
-  it('resumes gameplay after the tour phone viewport rotates to landscape', () => {
-    expect(rotateWanted({ ...q, width: 390, height: 844 })).toBe(true);
-    expect(rotateWanted({ ...q, width: 844, height: 390 })).toBe(false);
+  it('asks the tour phone to rotate in Auto before the first touch, and unblocks it in landscape', () => {
+    const portrait = { ...q, width: 390, height: 844 };
+    const touch = touchActive('auto', true, false);
+    expect(rotateWanted({ ...portrait, touch })).toBe(true);
+    expect(rotateWanted({ ...portrait, touch, width: 844, height: 390 })).toBe(false);
+    expect(rotateWanted({ ...portrait, touch: touchActive('auto', false, false) })).toBe(false);
   });
 });
 

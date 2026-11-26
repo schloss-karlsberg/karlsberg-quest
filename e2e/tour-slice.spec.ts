@@ -15,6 +15,7 @@ import { expectHandover } from './helpers/tour';
 const OUT = 'test-results/tour';
 mkdirSync(OUT, { recursive: true });
 test.describe.configure({ timeout: 600_000 });
+test.use({ isMobile: true, hasTouch: true });
 
 type K = NonNullable<typeof window.kq>;
 const beat = (page: Page) => page.evaluate(() => window.kq!.story!.state().beat as string);
@@ -79,7 +80,7 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   const errors = trackErrors(page);
   await page.goto('./?notitle&nosave&fresh&manual');
   try {
-    await waitForHooks(page, ['story', 'walk', 'npc', 'photo', 'animals', 'progression', 'cinematic'], 120_000);
+    await waitForHooks(page, ['story', 'walk', 'npc', 'photo', 'animals', 'progression', 'cinematic', 'barks'], 120_000);
     await page.waitForFunction(() => {
       window.kq!.step(1);
       return window.kq!.animals?.ready === true;
@@ -188,27 +189,34 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   const card = page.getByTestId('dialogue');
   await expect(card).toHaveClass(/kqs-dlg-raised/);
   const desktop = page.viewportSize()!;
-  const touch = await page.evaluate(() => {
-    const settings = window.kq!.ctx.settings;
-    const old = settings.state.touchControls;
-    settings.update((s) => (s.touchControls = 'on'), 'touchControls');
-    return old ?? 'auto';
-  });
+  await expect(page.locator('html')).toHaveAttribute('data-kq-touch', '');
   const rotate = page.getByTestId('rotate');
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(rotate).toBeVisible();
+  await expect(rotate).toHaveAttribute('aria-hidden', 'false');
   const landscape = { width: 844, height: 390 };
   await page.setViewportSize(landscape);
   await expect(rotate).toBeHidden();
+  await expect(rotate).toHaveAttribute('aria-hidden', 'true');
   await expect(card).toBeVisible();
   await expect(card).toHaveCSS('opacity', '1');
   await expect.poll(async () => {
     const box = await card.boundingBox();
     return !!box && box.x >= 0 && box.y >= 0 && box.x + box.width <= landscape.width && box.y + box.height < landscape.height / 2;
   }).toBe(true);
-  await card.locator('.kqs-dlg-body').click({ trial: true });
+  const line = await page.evaluate(() => {
+    const story = window.kq!.story!;
+    story.finishTyping();
+    return story.state().dialogue!.id;
+  });
+  await card.locator('.kqs-dlg-body').tap();
+  await expect.poll(() => page.evaluate(() => window.kq!.story!.state().dialogue?.id)).not.toBe(line);
   await page.setViewportSize(desktop);
-  await page.evaluate((mode) => window.kq!.ctx.settings.update((s) => (s.touchControls = mode), 'touchControls'), touch);
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.ctx.settings.update((s) => (s.touchControls = 'off'), 'touchControls');
+    k.step(1);
+  });
   await expect.poll(async () => {
     const box = await card.boundingBox();
     return !!box && box.y + box.height < desktop.height / 2;
@@ -357,17 +365,36 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
     await page.evaluate(() => window.kq!.step(1));
   }
   expect(await beat(page)).toBe('t14');
-  // round 2 (owner: lost the group): on the way up to the Quelle the player falls 45 m behind and
-  // stays: Gerold waits (leash), shows on the compass, calls once; a minute on, „Zur Gruppe“ (hold Q)
+  // On the way to the Quelle, first cross the leash, then go far enough to trigger the find call.
+  // After a minute apart, the player can hold Q for „Zur Gruppe“.
   await follow(page, 't14', 120);
   await page.evaluate(() => window.kq!.step(240));
   const tStray0 = await time(page);
-  await page.evaluate(() => {
+  const wait = await page.evaluate(() => {
     const k = window.kq!;
     const g = k.walk!.list().find((n) => n.npc === 'imhoff')!;
-    const fx = -Math.sin(g.yaw);
-    const fz = -Math.cos(g.yaw);
-    k.teleport(g.x - fx * 45, g.z - fz * 45, (-g.yaw * 180) / Math.PI + 150, -4);
+    const wasWaiting = k.walk!.walker('imhoff')!.waiting;
+    // Clear the 45 s bark gap and the station dialogue's quiet window on the bark clock.
+    k.barks!.advance(46);
+    const quiet = k.barks!.state().quiet;
+    const delivered: { speaker: string; id?: string }[] = [];
+    const off = k.ctx.events.on('dialogue:say', ({ speaker, id }) => delivered.push({ speaker, id }));
+    // Past the 25 m leash, but short of the 40 m find-group call.
+    k.teleport(g.x + Math.sin(g.yaw) * 30, g.z + Math.cos(g.yaw) * 30, (-g.yaw * 180) / Math.PI + 150, -4);
+    k.step(60);
+    off();
+    return { wasWaiting, quiet, waiting: k.walk!.walker('imhoff')!.waiting, called: k.walk!.find().called, delivered };
+  });
+  expect(wait).toMatchObject({ wasWaiting: false, quiet: null, waiting: true, called: false });
+  expect(wait.delivered).toContainEqual({ speaker: 'imhoff', id: expect.stringMatching(/^imhoff\.bark\.wait\./) });
+  await page.evaluate(() => {
+    const k = window.kq!;
+    const g = k.walk!.walker('imhoff')!;
+    const p = k.ctx.player.position;
+    const dx = p.x - g.x;
+    const dz = p.z - g.z;
+    const scale = 45 / Math.hypot(dx, dz);
+    k.teleport(g.x + dx * scale, g.z + dz * scale, (-k.ctx.player.yaw * 180) / Math.PI, -4);
     k.step(60);
   });
   for (let i = 0; i < 20 && !(await page.evaluate(() => window.kq!.walk!.find().called)); i++) await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
@@ -379,11 +406,6 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   await shot(page, '09b-gruppe-verloren');
   for (let i = 0; i < 80 && !(await page.evaluate(() => window.kq!.walk!.find().prompt)); i++) await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
   expect(await page.evaluate(() => window.kq!.walk!.find().prompt)).toBe(true);
-  const waitBarks = await page.evaluate((since) => {
-    const { tourRec } = window as unknown as { tourRec: { n: string; p: { id?: string; npc?: string }; t: number }[] };
-    return tourRec.filter((r) => r.t >= since && r.n === 'walk:bark' && r.p.npc === 'imhoff' && r.p.id === 'imhoff.bark.wait').length;
-  }, tStray0);
-  expect(waitBarks).toBeGreaterThan(0);
   await page.waitForTimeout(800);
   await shot(page, '09c-zur-gruppe');
   await page.evaluate(() => {
@@ -418,7 +440,14 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   for (let i = 0; i < 40 && (await beat(page)) !== 't17'; i++) await page.evaluate(() => window.kq!.step(60));
   expect(await beat(page)).toBe('t17');
   await expect(page.locator('.kq-subtitles').getByText('[Messing klirrt auf Stein]')).toBeVisible();
-  await page.evaluate(() => window.kq!.step(240));
+  const uphill = await page.evaluate(() => {
+    const k = window.kq!;
+    const start = k.walk!.walker('imhoff')!.s;
+    k.step(240);
+    return { start, ...k.walk!.walker('imhoff')! };
+  });
+  expect(uphill).toMatchObject({ route: 'p-aufstieg', to: 'plateau' });
+  expect(uphill.s).toBeGreaterThan(uphill.start);
   await shot(page, '11-bussole-laub');
   expect(await page.evaluate(() => window.kq!.state().flags['story.compass'])).toBe(true);
   expect(await page.evaluate(() => window.kq!.walk!.stats().bodies)).toBe(15);

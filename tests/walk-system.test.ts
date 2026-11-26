@@ -1,10 +1,14 @@
-/** WP-16 tour walk: the walk system's runtime (src/systems/walk/runtime.ts) with fake bodies and a fake bus. */
+/** WP-16 tour walk: the walk runtime with fake bodies. */
 import { describe, expect, it, vi } from 'vitest';
 import tourPack from '../content/packs/tour.pack.json';
 import route from '../content/routes/p-fuehrung.json';
-import { isBarkLine, matchTrigger } from '../src/content/triggers';
-import type { DialogueLine } from '../src/content/types';
-import { chooseBark, newMemory } from '../src/systems/barks/rules';
+import { ContentDB } from '../src/content/db';
+import type { ContentPack } from '../src/content/types';
+import type { GameContext } from '../src/core/context';
+import { EventBus, type EventName, type GameEvents } from '../src/core/events';
+import { GameStateStore, createInitialState } from '../src/core/state';
+import barks from '../src/systems/barks';
+import { createStorySlice } from '../src/systems/story/engine';
 import { PEOPLE_MISSING, walkBodies, type PeopleApiLike } from '../src/systems/walk/bodies';
 import { WalkRuntime, memberLooks, specFor, type Body, type BodyFactory, type BodySpawn, type WalkBus } from '../src/systems/walk/runtime';
 import type { Route, WalkRequest, WalkSlice } from '../src/systems/walk/types';
@@ -14,18 +18,14 @@ const DT = 1 / 60;
 const MEMBERS_14 = ['double.herzog', 'double.mannlich', 'double.hanne', 'double.peter', 'double.jost', 'double.soll', 'double.liese', 'extra.mats', 'extra.mutter', 'extra.paar_a', 'extra.paar_b', 'extra.wanderin_a', 'extra.wanderin_b', 'extra.student'];
 const MEMBERS = ['double.herzog', 'double.mannlich', 'double.hanne', 'extra.mats', 'extra.mutter', 'extra.student'];
 
-class FakeBus implements WalkBus {
-  readonly handlers = new Map<string, ((p: never) => void)[]>();
-  readonly log: { n: string; p: any }[] = [];
-  on(name: string, fn: (p: never) => void): void {
-    this.handlers.set(name, [...(this.handlers.get(name) ?? []), fn]);
+class RecordingBus extends EventBus {
+  readonly log: { name: EventName; payload: unknown }[] = [];
+  constructor() {
+    super();
+    this.onAny((name, payload) => this.log.push({ name, payload }));
   }
-  emit(name: string, payload: unknown): void {
-    this.log.push({ n: name, p: payload });
-    for (const fn of this.handlers.get(name) ?? []) fn(payload as never);
-  }
-  of(name: string): any[] {
-    return this.log.filter((e) => e.n === name).map((e) => e.p);
+  of<K extends EventName>(name: K): GameEvents[K][] {
+    return this.log.filter((e) => e.name === name).map((e) => e.payload as GameEvents[K]);
   }
 }
 
@@ -39,13 +39,13 @@ interface FakeBody extends Body {
 }
 
 function setup(slice: WalkSlice = { walkers: [], groups: [] }, factory?: BodyFactory) {
-  const bus = new FakeBus();
+  const bus = new RecordingBus();
   const player = { x: 524, z: -765 };
   const world = { era: 'today', reducedMotion: false };
   const heightAt = vi.fn((_x: number, _z: number) => 300);
   const bodies: FakeBody[] = [];
   const rt = new WalkRuntime({
-    bus,
+    bus: bus as unknown as WalkBus,
     routes: new Map([[ROUTE.id, ROUTE]]),
     slice: () => slice,
     log: () => {},
@@ -88,7 +88,7 @@ function setup(slice: WalkSlice = { walkers: [], groups: [] }, factory?: BodyFac
       return b;
     }),
   });
-  const step = (seconds: number, follow?: (w: { x: number; z: number }) => void) => {
+  const step = (seconds: number, follow?: (w: { x: number; z: number }) => void, afterTick?: () => void) => {
     const n = Math.round(seconds / DT);
     for (let i = 0; i < n; i++) {
       if (follow) {
@@ -97,6 +97,7 @@ function setup(slice: WalkSlice = { walkers: [], groups: [] }, factory?: BodyFac
       }
       rt.update(DT);
       rt.sync();
+      afterTick?.();
     }
     rt.sync();
   };
@@ -288,11 +289,8 @@ describe('walk system', () => {
     const waiting = s.bus.of('group:waiting');
     expect(waiting).toHaveLength(1);
     expect(waiting[0]).toMatchObject({ group: 'fuehrung', leader: 'imhoff' });
-    expect(waiting[0].dist).toBeGreaterThanOrEqual(25);
+    expect(waiting[0]!.dist).toBeGreaterThanOrEqual(25);
     expect(s.bus.of('walk:bark')).toEqual([{ npc: 'imhoff', id: 'imhoff.bark.wait' }]);
-    const matching = (tourPack.dialogue as DialogueLine[]).filter((line) => isBarkLine(line.id) &&
-      matchTrigger(line, 'walk:bark', s.bus.of('walk:bark')[0], { era: 'today', chapter: 'tour', beat: 't14', flags: {} }));
-    expect(chooseBark(matching, newMemory(), s.rt.now, () => 0)).toMatchObject({ speaker: 'imhoff', id: 'imhoff.bark.wait.01' });
     expect(s.rt.groupList()[0]!.waiting).toBe(true);
     // a conversation is open: the 20 s re-bark stays silent
     s.bus.emit('npc:conversation', { npc: 'hanne', open: true });
@@ -304,6 +302,38 @@ describe('walk system', () => {
     s.player.z = L.z;
     s.step(0.2);
     expect(s.bus.of('group:resumed')).toEqual([{ group: 'fuehrung', leader: 'imhoff' }]);
+  });
+
+  it('delivers a tour wait line through the bark system after the player falls behind', () => {
+    const s = setup();
+    const state = new GameStateStore(createInitialState());
+    state.mutable.systems.story = { ...createStorySlice(), active: true, chapter: 'tour', beat: 't14' };
+    const ctx = {
+      state,
+      events: s.bus,
+      content: new ContentDB([{ file: 'content/packs/tour.pack.json', pack: tourPack as ContentPack }]),
+      params: new URLSearchParams(),
+      era: { current: 'today' },
+      player: { position: s.player, yaw: 0, pitch: 0 },
+      ui: { modals: { count: 0 } },
+      systems: { get: () => ({ id: 'story' }) },
+    } as unknown as GameContext;
+    vi.stubGlobal('window', { addEventListener: () => {}, removeEventListener: () => {} });
+    try {
+      barks.init(ctx);
+      demo(s, 'einstieg');
+      const tickBarks = () => barks.update(DT);
+      s.step(1, undefined, tickBarks);
+      expect(s.bus.of('dialogue:say')).toEqual([]);
+      s.step(35, undefined, tickBarks);
+      expect(s.rt.groupList()[0]!.waiting).toBe(true);
+      expect(s.bus.of('dialogue:say')).toEqual([
+        expect.objectContaining({ speaker: 'imhoff', id: expect.stringMatching(/^imhoff\.bark\.wait\./) }),
+      ]);
+    } finally {
+      barks.dispose();
+      vi.unstubAllGlobals();
+    }
   });
 
   it('pauses while the player talks to the guide', () => {
