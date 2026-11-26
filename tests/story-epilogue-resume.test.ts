@@ -172,7 +172,7 @@ describe('continuing a saved epilogue', () => {
     const onBeat = vi.fn();
     events.on('story:beat', onBeat);
     events.emit('game:start', { resumed: true });
-    expect(onBeat.mock.calls).toEqual([[{ chapter: 'enden', beat: 'e1' }]]);
+    expect(onBeat.mock.calls).toEqual([[{ chapter: 'enden', beat: 'e1', resume: true }]]);
     expect(state.state.systems.story?.ending).toBeNull();
     expect(save.peek('auto')?.systems.story?.ending).toBe('burn');
     expect(open).not.toHaveBeenCalled();
