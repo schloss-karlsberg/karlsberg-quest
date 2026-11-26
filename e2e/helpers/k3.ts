@@ -27,11 +27,13 @@ let SHOTS = true;
 
 /** Put away the payout notice and let a level card run out, so the scene shows. */
 export async function clearCards(page: Page): Promise<void> {
-  await page.evaluate(() => {
+  const dismissReward = () => page.evaluate(() => {
     const { cards } = window.kq!.ctx.ui;
     if (cards.showing === 'reward') cards.dismissNotice();
   });
+  await dismissReward();
   await stepToCard(page, '.kqp-card:not(.kqp-held)', 'absent');
+  await dismissReward(); // a payout that waited behind the level card took the slot meanwhile
 }
 
 export async function shot(page: Page, name: string): Promise<void> {
