@@ -202,7 +202,7 @@ body:has(.kq-dock-boss > :not(.kq-court-off):not([style*='display: none'])) .kqk
 .kqk-stamp {
   position: absolute;
   right: 12px;
-  bottom: 10px;
+  bottom: 16px;
   font-family: var(--sc);
   font-size: 17px;
   letter-spacing: 0.08em;

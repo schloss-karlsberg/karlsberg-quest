@@ -543,18 +543,20 @@ map and to the left of the unlocked skills. `e2e/minimap.spec.ts` checks the liv
 
 ### 8.5 Phone credits and standalone skill unlocks (2026-11-26)
 
-**Credits (MR 13).** Both credit modes hide the gameplay touch layer on phones and keep the strip
-and Skip button within the safe width. The crawl clears the lower letterbox. The reduced-motion
-list sits above the home indicator and scrolls natively. Controls return when the credits end. The
-portrait phone keeps the rotate overlay in front, and tablets retain the side gutter for controls.
+**Credits (MR 13).** Both credit modes hide the visible gameplay controls on phones and keep the
+strip and Skip button within the safe width. The crawl clears the lower letterbox. A drag on the
+play surface outside the strip and Skip button hands the camera back while the crawl continues.
+The reduced-motion list sits above the home indicator and scrolls natively. Controls return when
+the credits end. The portrait phone keeps the rotate overlay in front, and tablets retain the side
+gutter for controls.
 
 **Standalone skill unlock.** The landscape phone card starts 6 px below the maximum dialogue
 body and ends at least 12 px above the home indicator. Its right edge reserves the full Aktion
 pill, skill buttons and survey menu. A grouped card keeps the primary description and one
-additional description, with the remaining skills listed by name and tier. The card yields
-visually while the floating stick is active. A play-surface tap uses the same card director path
-as the level card and starts the 0.6 s fade, skipping a stamp that has yet to play. Desktop keeps
-its existing layout and input.
+additional description, with the remaining skills listed by name and tier. A held movement stick
+defers the notice or hides it and pauses its reading time if it is already up. A play-surface tap
+uses the same card director path as the level card and starts the 0.6 s fade, skipping a stamp that
+has yet to play. Each eligible Laub remark still queues once.
 
 **MR 9 and Pause.** The tour opening already supplies the short touch hint „Wischen: Schauen“.
 The HUD pill now wraps longer text between the vitals and Balsam/Ausweichen, with its position
@@ -563,7 +565,8 @@ level card already uses the compact layout from §8.4. No new overlay uses the t
 reserved for TASK-015. For the `13-pause*` S2 pairs, the pause paper is opaque and its modal
 layer sits above the dialogue. The measurer tests the intersection itself against the paper,
 including intersections with its buttons. A line may remain visible beside the paper under the
-dim backdrop. The tour opens Pause with a line up, checks hit testing and checks the reported pairs.
+dim backdrop. On the 667×375 fixture the tour requires a visible dialogue body and an intersection
+whose hit belongs to the Pause paper, then checks the reported pairs.
 
 **Device review pending.** The worktree sandbox denied the local `tsx` socket and the Playwright
 preview listener on port 5407. Run the following from the worktree on a machine that can bind
@@ -573,7 +576,8 @@ the preview port. Each spec or screenshot set takes its own lock.
 pnpm build
 KQ_E2E_PORT=5407 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/party.spec.ts --workers=1 --reporter=line
 KQ_E2E_PORT=5407 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line
-for device in small-landscape large-landscape tablet-landscape tablet-portrait; do
+KQ_MOBILE_PORT=5407 scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device small-landscape
+for device in large-landscape tablet-landscape tablet-portrait; do
   KQ_MOBILE_PORT=5407 scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device "$device" --states touch-buttons,dialogue,pause,combat,level-card,skill-unlock,credits
 done
 for device in small-portrait large-portrait; do
@@ -584,10 +588,12 @@ done
 - Start with 667×375. In `11-touch-buttons-long-hint.png` and `11-touch-buttons-callout.png`,
   check the prompt can be read between the vitals and the arc and that the caption clears Aktion.
 - Inspect `26-skill-unlock.png` for the complete description and stamp, below the dialogue band
-  and clear of the top row and the long Aktion pill. Drag the stick, release it and then tap the
-  play surface. The card should reappear on release and fade after the tap.
+  and clear of the top row and the long Aktion pill. The tour checks the text fragments and settled
+  stamp against the card's clipping rectangle, holds the stick for more than the card's full
+  duration, then verifies that a tap starts the fade on a fresh card.
 - In the `13-pause*` shots, look for dialogue showing through the dim backdrop beside the paper
   only. Pause buttons should take taps at the same point even if dialogue runs behind them.
 - In `27-credits*`, check the crawl is cropped to the safe strip, Skip sits above it and the
-  static list scrolls through to the end. Check the controls return after Skip, and that portrait
-  phones show the rotate prompt. Read each unit's `findings.json` alongside the shots.
+  static list scrolls through to the end. Drag outside the crawl to take back the camera while the
+  credits continue. Check the controls return after Skip, and that portrait phones show the rotate
+  prompt. Read each unit's `findings.json` alongside the shots.

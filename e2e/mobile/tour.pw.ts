@@ -4,6 +4,7 @@ import { QUEST_PLAY } from '../helpers/prolog';
 import { openPause } from '../helpers/pause';
 import { type MobileUnit, findUnit } from './devices';
 import { type UiMeasure, measureUi, sampleFrames, scrollModalToBottom } from './measure';
+import { clippedSkillCardContent, pauseDialogueHit } from './probes';
 
 /**
  * The mobile UI tour (docs/MOBILE-UI-PASS.md): one device/orientation unit per run, real GPU
@@ -411,7 +412,9 @@ const STATES: State[] = [
       await c.tidy();
       await c.page.evaluate(() => {
         const k = window.kq!;
-        k.story!.say('laub', 'Unter dem Hang rauscht Wasser. Geh hinunter zur Quelle.');
+        k.ctx.events.emit('dialogue:say', {
+          speaker: 'laub', text: 'Unter dem Hang rauscht Wasser. Geh hinunter zur Quelle.', priority: 'now', ms: 8000,
+        });
         k.story!.finishTyping();
       });
       await expect(c.page.locator('.kqs-dlg.kqs-show')).toBeVisible();
@@ -450,21 +453,10 @@ const STATES: State[] = [
         await c.page.keyboard.press('Escape');
       }
       await expect(c.page.getByTestId('resume')).toBeVisible();
-      const dialogueCovered = await c.page.getByTestId('resume').evaluate((button) => {
-        const paper = button.closest('.kq-modal')!;
-        const dialogue = document.querySelector('.kqs-dlg.kqs-show .kqs-dlg-body');
-        if (!dialogue) return null;
-        const a = paper.getBoundingClientRect();
-        const b = dialogue.getBoundingClientRect();
-        const left = Math.max(a.left, b.left);
-        const right = Math.min(a.right, b.right);
-        const top = Math.max(a.top, b.top);
-        const bottom = Math.min(a.bottom, b.bottom);
-        if (left >= right || top >= bottom) return null;
-        return paper.contains(document.elementFromPoint((left + right) / 2, (top + bottom) / 2));
-      });
-      expect(dialogueCovered).not.toBe(false);
-      await c.shot('', dialogueCovered ? 'the pause paper owns the intersecting dialogue area' : undefined);
+      const dialogueHit = await c.page.getByTestId('resume').evaluate(pauseDialogueHit);
+      if (unit.id === 'small-landscape') expect(dialogueHit).toBe('paper');
+      else expect(dialogueHit).not.toBe('obstructed');
+      await c.shot('', dialogueHit === 'paper' ? 'the pause paper owns the intersecting dialogue area' : undefined);
       await c.scrollShot('');
       if (await c.page.getByTestId('pause-controls').isVisible()) {
         await c.tap('pause-controls');
@@ -860,27 +852,67 @@ const STATES: State[] = [
       await expect(card).toHaveClass(/kqk-in/);
       await expect(card).not.toHaveClass(/kqk-held/);
       await expect(c.page.getByTestId('level-card')).toHaveCount(0);
-      expect(await card.evaluate((el) => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+      const stamp = card.locator('.kqk-stamp');
+      await stamp.evaluate(async (el) => {
+        await Promise.all(el.getAnimations().map((animation) => animation.finished));
+      });
+      await expect(stamp).toHaveCSS('opacity', '1');
+      expect(await card.evaluate(clippedSkillCardContent)).toEqual([]);
       await c.shot('', 'standalone unlock with a long Aktion prompt');
+      await expect(card).toHaveCSS('opacity', '1');
       const { ui } = c.f.shots.at(-1)!;
       expect(ui.issues.filter((i) => i.what.includes('[skill-card]') && (
         i.kind === 'safe-area' || i.kind === 'overlap' && /\[touch-|\[dialogue\]/.test(i.what)
       ))).toEqual([]);
       if (unit.height <= 500) {
         const stick = new Finger(c.cdp, 25);
-        await stick.start(unit.width * 0.22, unit.height * 0.55);
+        const x = unit.width * 0.22;
+        const y = unit.height * 0.55;
+        await stick.start(x, y);
         try {
-          await stick.move(unit.width * 0.29, unit.height * 0.55, 3);
+          await stick.move(unit.width * 0.29, y, 3);
           await expect(card).toBeHidden();
+          await expect(card).toHaveClass(/kqk-held/);
+          await stick.move(x, y, 3); // keep the stick held without walking out of the fixture
+          await c.page.waitForTimeout(6500);
+          expect(await card.count()).toBe(1);
         } finally {
           await stick.end();
         }
-        await expect(card).toBeVisible();
+        await expect(card).toHaveCSS('opacity', '1');
       }
-      await expect(card).not.toHaveClass(/kqk-held|kqk-out/);
-      await new Finger(c.cdp, 26).tap(unit.width * 0.53, unit.height * 0.55);
-      await expect(card).toHaveCount(0, { timeout: 2000 });
-      await c.page.evaluate(() => window.kq!.ctx.ui.hud.prompt(null, undefined, 'tour'));
+      // Stop automatic frames, stage a fresh card and step only a few frames after the tap.
+      // Its normal 5.6 s fade threshold cannot account for kqk-out here.
+      const manual = await c.page.evaluate(() => {
+        const { loop } = window.kq!.ctx;
+        const wasManual = loop.manual;
+        loop.manual = true;
+        loop.stop();
+        return wasManual;
+      });
+      try {
+        await c.page.evaluate(() => {
+          const k = window.kq!;
+          k.skills!.reset();
+          k.skills!.grant('baumeister', 1);
+          for (let i = 0; i < 600 && !k.skills!.card(); i++) k.ctx.loop.advance();
+          k.step(2); // claim the notice slot
+        });
+        await expect(card).toHaveClass(/kqk-in/, { timeout: 4000 });
+        await expect(card).not.toHaveClass(/kqk-held|kqk-out/);
+        await new Finger(c.cdp, 26).tap(unit.width * 0.53, unit.height * 0.55);
+        await c.page.evaluate(() => window.kq!.step(2));
+        await expect(card).toHaveClass(/kqk-out/, { timeout: 1000 });
+        await c.page.evaluate(() => window.kq!.step(40));
+        await expect(card).toHaveCount(0);
+      } finally {
+        await c.page.evaluate((manual) => {
+          const { loop, ui } = window.kq!.ctx;
+          loop.manual = manual;
+          loop.start();
+          ui.hud.prompt(null, undefined, 'tour');
+        }, manual);
+      }
       await c.shot('dismissed', 'one tap on the play surface ends the notice');
     },
   },
@@ -918,8 +950,8 @@ const STATES: State[] = [
           const touch = c.page.getByTestId('touch');
           await expect(band).toBeVisible();
           await expect(skip).toBeVisible();
-          if (unit.height <= 500) await expect(touch).toBeHidden();
-          else await expect(touch).toBeVisible();
+          await expect(touch).toBeVisible();
+          if (unit.height <= 500) await expect(touch.locator('button:visible')).toHaveCount(0);
           await c.shot(staticList ? 'static' : 'crawl');
           const { ui } = c.f.shots.at(-1)!;
           expect(ui.issues.filter((i) => /party-(credits|bar)/.test(i.what) && (
@@ -936,7 +968,7 @@ const STATES: State[] = [
           }
           await c.tap('party-credits-skip');
           await expect(band).toHaveCount(0);
-          await expect(touch).toBeVisible();
+          await expect(c.page.getByTestId('touch-pause')).toBeVisible();
         }
       } finally {
         await c.page.evaluate((reduced) => {

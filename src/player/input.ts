@@ -407,6 +407,7 @@ export class Input {
     for (const codes of [this.down, this.pressedCodes, this.shiftedCodes]) {
       for (const code of codes) if (code.startsWith('@')) codes.delete(code);
     }
+    this.touchStickActive = false;
   }
 
   /**
@@ -414,6 +415,8 @@ export class Input {
    * `addLook`, and the pause menu from its button.
    */
   touchMode = false;
+  /** A finger owns the floating movement stick, including while it is in the dead zone. */
+  touchStickActive = false;
 
   /** Inject mouse-look movement (pixels) as if it came from `movementX/Y` under pointer lock (bullet-time pilot). */
   addLook(dx: number, dy: number): void {

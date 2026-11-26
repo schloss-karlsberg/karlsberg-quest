@@ -863,7 +863,8 @@ html[data-kq-touch] .kqp-q-key {
     gap: 4px 8px;
     width: min(100%, 400px);
     max-height: calc(100dvh - var(--kq-phone-notice-top) - var(--kq-safe-b) - 12px);
-    padding: 7px 12px 7px 8px;
+    /* Leave room for the settled stamp's rotation below its grid row. */
+    padding: 7px 12px 14px 8px;
     background-size: auto, auto 18px, auto;
     transform: none;
     animation: none;

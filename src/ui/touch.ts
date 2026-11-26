@@ -499,6 +499,7 @@ export class TouchControls {
     const leftZone = e.clientX < window.innerWidth * 0.42;
     if (leftZone && this.stickId === null) {
       this.stickId = e.pointerId;
+      this.deps.input.touchStickActive = true;
       // keep the base on screen (safe areas and edges)
       const r = TOUCH.stickRadius;
       this.stickOrigin = { x: Math.max(r + 12, e.clientX), y: Math.min(window.innerHeight - r - 12, Math.max(r + 70, e.clientY)) };
@@ -528,6 +529,7 @@ export class TouchControls {
   private surfaceUp(e: PointerEvent): void {
     if (e.pointerId === this.stickId) {
       this.stickId = null;
+      this.deps.input.touchStickActive = false;
       this.stick.classList.add('kq-hidden');
       this.setHeld([]);
     }

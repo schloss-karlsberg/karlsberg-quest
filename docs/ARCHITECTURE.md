@@ -403,6 +403,8 @@ ResizeObserver writes the column's bottom edge to `--kq-tl-bottom`; the skill ca
 The fx gauges sit above the Bussole; the dialogue card leaves 190 px on each side; subtitles move
 up above the dialogue card while it shows. Title cards and skill cards count game time (they wait while paused); an unlock card already on
 screen steps aside (`kqk-held`, its clock stops) while a story title card or the curtain shows.
+On short touch screens, the floating movement stick also defers new standalone skill cards and
+pauses any card already up until the finger releases the stick.
 `e2e/pol-flow.spec.ts` checks the boxes for overlap at 1280×720, 1920×1080 and 1024×768.
 
 **Card discipline** (`src/ui/cards.ts`, `ctx.ui.cards`). The clue card (a modal field-book page,
@@ -1115,8 +1117,9 @@ Round-4 (polish: set dressing) integration rules:
   Every increase (except load/new game and quiet grants) shows the unlock card (brass medal,
   tier pips, "Freigeschaltet" stamp, `data-testid=skill-card`), plays the stamp chime, emits
   `skill:unlocked {skill, level}` and lets Laub comment (`dialogue:say`, `skills.laub.<id>.<n>`)
-  once `flags['story.laub']` is set (or without a running story). Cards wait while a modal or a
-  story card is open. A settled standalone unlock appears once the card director grants the slot.
+  once `flags['story.laub']` is set (or without a running story). An early touch dismissal skips the
+  chime and still queues each eligible remark. Cards wait while a modal or a story card is open.
+  A settled standalone unlock appears once the card director grants the slot.
 - **Free survey**: without a running story (sandbox, `?notitle` tests) every tool is open;
   `?skills=strict` forces gating, `?skills=all` opens everything. Locked keys leave a toast.
 - Survey checks the active scan and map against the incoming game's skills on its first tick.
@@ -2047,7 +2050,8 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
   (`{lines}`, the story team's, bundled through an eager `import.meta.glob`, may be missing), else
   the 3-line placeholder. The strip crawls along the bottom edge (over the letterbox, game clock,
   `data-testid="party-credits"`). Reduced motion uses a manually scrollable list. On phones, the
-  credits hide the gameplay touch layer and use the safe width until the credits end. The camera way is
+  credits hide the visible touch controls and use the safe width until the credits end. The touch
+  surface still takes movement and look drags outside the strip and Skip button. The camera way is
   a `cinematic:play` **keys** spec (`party-credits`, `lockInput: false`, `skippable: false`, reduced
   'stills'): the cinematic's `orbit` circles at a constant rate and cannot stop on a person, so the
   keys run on the same circle (r 14 m, nominally a turn per 40 s, a key every ≤ 0.45 rad) and hold
@@ -2057,7 +2061,7 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
   from 2.6 s, never below 2.0 s (9 spotlights: about 2.2 s). The credits last max(20 s, the camera
   way + 0.6 s, 4 s per line). **Input** (bible 06 §8.2 step 4: walk about, E talks): movement or look
   during the orbit (anything that moves the player > 5 cm or turns the view > 0.02 rad: keys,
-  mouse, touch stick) hands the camera back (`cinematic:stop {id}`, the takeover's 0.4 s ease), no
+  mouse, touch stick or look drag) hands the camera back (`cinematic:stop {id}`, the takeover's 0.4 s ease), no
   `credits:done`; the strip runs on to its end → `credits:done {skipped: false}`. Explicit skip =
   Enter (after 1 s) or the strip's button „Abspann überspringen" (touch, mouse) → `credits:done
   {skipped: true}`. Esc stays pause, E talks. Hint over the strip: „Enter: Abspann überspringen ·

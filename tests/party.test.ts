@@ -322,8 +322,11 @@ describe('party runtime', () => {
       expect(c.bus.of('credits:done')).toHaveLength(0);
       // more movement: nothing more to hand back
       c.world.player.x += 3;
+      const rendered = c.strip.renders;
       c.step(1);
       expect(c.bus.of('cinematic:stop')).toHaveLength(1);
+      expect(c.strip.renders).toBeGreaterThan(rendered);
+      expect(c.strip.hidden).toBe(0);
       c.step(c.rt.credits!.plan.seconds);
       expect(c.bus.of('credits:done')).toEqual([{ skipped: false }]);
       expect(c.bus.of('party:spotlight')).toHaveLength(9);
