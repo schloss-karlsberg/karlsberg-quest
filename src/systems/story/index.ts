@@ -214,6 +214,8 @@ const ERA_BOUND_IDS = new Set(['laub.p.zurueck', 'laub.p.hinlegen']);
 
 /** Longer lines than this (characters) are lore in a fight: held until it is over. */
 const COMBAT_LINE_MAX = 120;
+/** These quest gates must play again before Peter leaves the Ehrenhof. */
+const PETER_REPLAY_QUESTS = ['q.k3.nachmittag', 'q.k3.buch', 'q.k3.strohmann'];
 
 class StoryRuntime {
   readonly engine: StoryEngine;
@@ -299,7 +301,7 @@ class StoryRuntime {
     this.files = storiesInPlay(loadBundledStories(), ctx.params);
     this.engine = new StoryEngine(this.files, () => this.slice, {
       run: (actions, o) => this.run(actions, o.resume, { beat: o.beat ?? null, where: o.where ?? null }, o.source),
-      chapterEntered: (f, o) => this.chapterEntered(f, o.resume),
+      chapterEntered: (f, o) => this.chapterEntered(f, o),
       beatEntered: (ch, b, o) => {
         // the last beat's delayed lines are stale now; its delayed state changes happen at once
         this.retireScheduled(b.id);
@@ -319,6 +321,7 @@ class StoryRuntime {
       },
       chapterCompleted: (f) => {
         if (f.unlocks?.length || f.next) ctx.ui.toast(t('story.chapter.done') + ': ' + f.title_de, 3500);
+        if (f.chapter === 'enden') this.pendingAutosave = true;
       },
     });
 
@@ -551,7 +554,12 @@ class StoryRuntime {
     // a load never resumes in the middle of a fade (fade actions are one-shot)
     this.overlays.fade(0, 0);
     const s = this.slice;
-    this.objectives.set(s.objective);
+    const freeRoam = s.finished && !s.active && s.chapter === 'enden' && (!s.objective || s.objective.id === 'end.frei')
+      ? this.engine.chapters.get('enden')?.beats.flatMap((beat) => beat.exit ?? [])
+        .find((action) => action.do === 'objective' && action.id === 'end.frei')
+      : undefined;
+    if (freeRoam) this.exec(freeRoam);
+    else this.objectives.set(s.objective);
     this.applyLook();
     this.mirrorAllReadings();
     // post-game (bible 06-enden §7.2): the party stays at dusk; people are not saved, so set it again
@@ -599,21 +607,21 @@ class StoryRuntime {
     this.goto(dev?.chapter ?? first.chapter);
   }
 
-  goto(chapter: string, beat?: string): void {
+  goto(chapter: string, beat?: string, replay?: readonly string[]): void {
     this.cancelScheduled();
     this.presenter.clear();
     // jumping between beats of the running chapter: no title card
     this.quietCard = !!beat && this.slice.active && this.slice.chapter === chapter;
     try {
-      this.engine.goto(chapter, beat);
+      this.engine.goto(chapter, beat, { replay });
     } finally {
       this.quietCard = false;
     }
   }
 
-  private chapterEntered(f: StoryFile, resume: boolean): void {
+  private chapterEntered(f: StoryFile, { resume, replay }: { resume: boolean; replay?: readonly string[] }): void {
     const ctx = this.ctx;
-    ctx.events.emit('story:chapter', { id: f.chapter, ...(resume ? { resume: true as const } : {}) });
+    ctx.events.emit('story:chapter', { id: f.chapter, ...(resume ? { resume: true as const } : {}), ...(replay ? { replay } : {}) });
     if (resume) {
       restoreTourDeerPhoto(this.slice, ctx.state.mutable.flags);
       if (ctx.era.current === 'today') {
@@ -815,7 +823,7 @@ class StoryRuntime {
       case 'objective': {
         // the post-game line promises the pause menu's „Ende noch einmal wählen“: only when the
         // ending's save exists (with saving off it never does — playtest round 5)
-        const text = a.text && a.text.includes('Esc →') && !ctx.save.has(ENDING_SLOT) ? a.text.replace(/\s*·\s*Esc →.*$/, '') : a.text;
+        const text = a.id === 'end.frei' && !ctx.save.has(ENDING_SLOT) ? a.text?.split(' · ')[0] : a.text;
         const { x, z } = objectivePoint(a, ctx.state.state.systems.animals);
         if (!text) s.objective = null;
         else s.objective = { text, ...(x !== undefined && z !== undefined ? { x, z } : {}), ...(a.id ? { id: a.id } : {}) };
@@ -962,7 +970,9 @@ class StoryRuntime {
         const cmd: { op: typeof a.op; id: string; objective?: string; n?: number } = { op: a.op, id: a.id };
         if (a.objective) cmd.objective = a.objective;
         if (a.n !== undefined) cmd.n = a.n;
-        ctx.events.emit('quest:command', cmd);
+        if (a.afterShift && (this.shifting || this.shiftPending)) {
+          this.schedule(0, () => ctx.events.emit('quest:command', cmd), null, true, () => !this.shifting && !this.shiftPending);
+        } else ctx.events.emit('quest:command', cmd);
         return;
       }
       case 'enemy': {
@@ -1421,7 +1431,7 @@ class StoryRuntime {
           onclick: async () => {
             if (!current && !(await modals.confirm(t('story.chapter.confirm', { title: chapter.title_de })))) return;
             modals.closeAll();
-            if (!current) this.goto(id);
+            if (!current) this.goto(id, undefined, id === 'k3' ? PETER_REPLAY_QUESTS : undefined);
           },
         }, [
           h('span.kqs-ch-title', unlocked ? chapter.title_de : t('story.chapter.locked')),

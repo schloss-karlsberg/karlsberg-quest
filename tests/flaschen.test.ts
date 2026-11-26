@@ -13,9 +13,16 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { Scene, Vector3 } from 'three';
+import type { GameContext } from '../src/core/context';
 import { ERA_INFO, type Era } from '../src/core/era';
+import { EventBus } from '../src/core/events';
+import { MemoryStorage, SaveManager } from '../src/core/save';
+import { createInitialState, GameStateStore } from '../src/core/state';
+import { cosmetics, FLASCHENGRUEN } from '../src/player/cosmetics';
 import { ENEMIES } from '../src/rpg/enemies';
+import flaschen, { type FlaschenHooks, type FlaschenSlice } from '../src/systems/flaschen';
 import { FLASCHEN, countByEra } from '../src/systems/flaschen/spots';
 import { SetBuilder } from '../src/systems/scenery/builder';
 import { SETS } from '../src/systems/scenery/sets';
@@ -67,6 +74,60 @@ const PLACES: Place[] = (() => {
 
 const sameEra = (era: Era, other?: string) => !other || other === era;
 const ERAS: Era[] = ['today', '1789', '1793-02', '1793-07', '1796'];
+
+describe('Fläschchen save round trips', () => {
+  function setup(slice?: FlaschenSlice) {
+    const state = new GameStateStore(createInitialState());
+    if (slice) state.mutable.systems.flaschen = slice;
+    const events = new EventBus();
+    const save = new SaveManager(state, new MemoryStorage(), events, () => 0);
+    const window = { kq: {} as { flaschen: FlaschenHooks } };
+    vi.stubGlobal('window', window);
+    vi.stubGlobal('document', { createElement: () => ({ dataset: {} }), head: { append: () => {}, querySelector: () => null } });
+    const ctx = {
+      state, events, save, scene: new Scene(),
+      era: { current: 'today' }, player: { position: new Vector3(0, 0, 0) },
+      world: { collider: { setSolids: () => {} } }, audio: { bus: () => null },
+      ui: { toast: () => {}, hud: { subtitle: () => {} } },
+    } as unknown as GameContext;
+    save.autosave('previous-checkpoint', true);
+    flaschen.init(ctx);
+    flaschen.update(0);
+    return { state, events, save, bottles: window.kq.flaschen };
+  }
+
+  afterEach(() => {
+    flaschen.dispose();
+    cosmetics.lanternGlass = null;
+    vi.unstubAllGlobals();
+  });
+
+  it('keeps a shaken-down bottle and a pickup made inside the autosave cooldown', () => {
+    const { bottles, save } = setup();
+    const hanging = FLASCHEN.find((spot) => spot.hang)!.id;
+    bottles.drop(hanging);
+    expect(save.load()).toBe(true);
+    expect(bottles.state().dropped).toEqual([hanging]);
+    expect(bottles.pick(hanging)).toBe(true);
+    expect(save.load()).toBe(true);
+    expect(bottles.state().found).toEqual([hanging]);
+    expect(bottles.pick(hanging)).toBe(false);
+  });
+
+  it('restores a fully collected old save that is missing the final reward', () => {
+    const { state, events, save, bottles } = setup({ found: FLASCHEN.map((spot) => spot.id), dropped: [], said: ['past', 'marlene', 'laub', 'all'] });
+    const unlocked = vi.fn();
+    events.on('codex:unlocked', unlocked);
+    expect(save.load()).toBe(true);
+    expect(bottles.state().said.filter((key) => key === 'all')).toHaveLength(1);
+    expect(state.state.codex.facts).toContain('cx.47');
+    expect(cosmetics.lanternGlass).toBe(FLASCHENGRUEN);
+    expect(unlocked).toHaveBeenCalledTimes(1);
+    save.autosave('repair', true);
+    expect(save.load()).toBe(true);
+    expect(unlocked).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe('Fläschchen: the 24 spots', () => {
   it('24 unique spots: today 6, 1789 6, February 1793 4, July 1793 3, 1796 5', () => {

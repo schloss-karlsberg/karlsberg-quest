@@ -283,8 +283,7 @@
         {
           "do": "objective",
           "id": "end.frei",
-          "text": "Frei unterwegs: Sammlungen und Codex unter Pause · Esc → „Ende noch einmal wählen“",
-          "delay": 2
+          "text": "Frei unterwegs: Pause → Sammlungen und Codex · „Ende noch einmal wählen“"
         }
       ]
     }

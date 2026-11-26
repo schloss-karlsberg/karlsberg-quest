@@ -99,8 +99,11 @@ declare module '../core/events' {
        */
       lore?: boolean;
     };
-    /** `resume`: the chapter / beat is entered again after a load or a capture, not reached anew. */
-    'story:chapter': { id: string; resume?: true };
+    /**
+     * `resume`: the chapter / beat is entered again after a load or a capture, not reached anew.
+     * `replay`: completed main quests that get a fresh attempt (chapter select).
+     */
+    'story:chapter': { id: string; resume?: true; replay?: readonly string[] };
     'story:beat': { chapter: string; beat: string; resume?: true };
     'story:ending': { id: 'museum' | 'burn' | 'keep' };
     'hub:enter': Record<string, never>;
