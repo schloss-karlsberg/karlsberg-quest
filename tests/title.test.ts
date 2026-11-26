@@ -154,13 +154,29 @@ describe('title actions', () => {
     ['malformed JSON', '{ "version":\n'],
     ['a newer version', futureSave],
     ['an occupied slot with an empty value', ''],
+    ['a null story slice', '{"version":1,"systems":{"story":null}}'],
+    ['an array slice', '{"version":1,"systems":{"travel":[]}}'],
+    ['a scalar slice', '{"version":1,"systems":{"combat":1}}'],
+    ['a malformed systems record', '{"version":1,"systems":[]}'],
   ])('protects an unreadable autosave containing %s until replacement is confirmed', async (_kind, raw) => {
-    const { confirm, onStart, save, storage } = setup(true, raw);
+    const { confirm, events, onStart, save, state, storage } = setup(true, raw);
     const warning = vi.fn(async () => true);
     titleHooks.beforeNewGame = warning;
     onStart.mockImplementation(() => save.autosave('start', true));
 
+    const initial = state.state;
+    const loaded = vi.fn();
+    events.on('save:loaded', loaded);
     expect(save.availability()).toBe('unreadable');
+    expect(save.peek()).toBeNull();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      expect(save.load()).toBe(false);
+    } finally {
+      warn.mockRestore();
+    }
+    expect(state.state).toBe(initial);
+    expect(loaded).not.toHaveBeenCalled();
     expect(elements.get('title-continue')!.disabled).toBe(true);
     expect(elements.get('title-continue')!.classes.has('kq-hidden')).toBe(true);
     const status = elements.get('title-save-status')!;
@@ -200,5 +216,78 @@ describe('title actions', () => {
     await clicks.get('title-new')!();
     expect(warning).toHaveBeenCalledOnce();
     expect(onStart).toHaveBeenCalledWith('new');
+  });
+
+  it('keeps an autosave written during an initially empty new-game flow when replacement is declined', async () => {
+    const { confirm, onStart, save, storage } = setup(true, null);
+    const prepare = vi.fn();
+    titleHooks.beforeNewGame = async () => {
+      expect(confirm).not.toHaveBeenCalled();
+      storage.setItem(SAVE_KEY('auto'), stored);
+      return prepare;
+    };
+    onStart.mockImplementation(() => save.autosave('start', true));
+
+    await clicks.get('title-new')!();
+
+    expect(confirm).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('überschrieben'));
+    expect(prepare).not.toHaveBeenCalled();
+    expect(onStart).not.toHaveBeenCalled();
+    expect(storage.getItem(SAVE_KEY('auto'))).toBe(stored);
+    expect(elements.get('title-continue')!.disabled).toBe(false);
+  });
+
+  it('reconfirms changed bytes, including a write while the late prompt is open', async () => {
+    const { confirm, onStart, save, storage } = setup(true);
+    const changed = stored + '\n';
+    const latest = changed + ' ';
+    const prepare = vi.fn();
+    titleHooks.beforeNewGame = async () => {
+      expect(confirm).toHaveBeenCalledTimes(1);
+      storage.setItem(SAVE_KEY('auto'), changed);
+      return prepare;
+    };
+    confirm.mockResolvedValueOnce(true).mockImplementationOnce(async () => {
+      expect(storage.getItem(SAVE_KEY('auto'))).toBe(changed);
+      storage.setItem(SAVE_KEY('auto'), latest);
+      return true;
+    }).mockImplementationOnce(async () => {
+      expect(storage.getItem(SAVE_KEY('auto'))).toBe(latest);
+      expect(prepare).not.toHaveBeenCalled();
+      return true;
+    });
+    onStart.mockImplementation(() => {
+      expect(prepare).toHaveBeenCalledOnce();
+      save.autosave('start', true);
+    });
+
+    await clicks.get('title-new')!();
+
+    expect(confirm).toHaveBeenCalledTimes(3);
+    expect(onStart).toHaveBeenCalledExactlyOnceWith('new');
+    expect(storage.getItem(SAVE_KEY('auto'))).not.toBe(latest);
+  });
+
+  it('preserves the exact autosave bytes when the confirmed new-game flow rejects', async () => {
+    const { confirm, onStart, save, storage } = setup(true, futureSave);
+    const failure = new Error('new-game flow failed');
+    titleHooks.beforeNewGame = vi.fn().mockRejectedValue(failure);
+    confirm.mockResolvedValue(true);
+    onStart.mockImplementation(() => save.autosave('start', true));
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      await clicks.get('title-new')!();
+      expect(error).toHaveBeenCalledWith('[title] new-game flow failed', failure);
+    } finally {
+      error.mockRestore();
+    }
+
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(onStart).not.toHaveBeenCalled();
+    expect(storage.getItem(SAVE_KEY('auto'))).toBe(futureSave);
+    expect(elements.get('title-new')!.disabled).toBe(false);
+    titleHooks.beforeNewGame = async () => true;
+    await clicks.get('title-new')!();
+    expect(onStart).toHaveBeenCalledExactlyOnceWith('new');
   });
 });

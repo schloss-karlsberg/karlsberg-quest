@@ -176,7 +176,12 @@ export class SaveManager {
   ) {}
 
   has(slot = 'auto'): boolean {
-    return this.storage.getItem(SAVE_KEY(slot)) !== null;
+    return this.readRaw(slot) !== null;
+  }
+
+  /** Read a slot's exact stored bytes, including unreadable saves. */
+  readRaw(slot = 'auto'): string | null {
+    return this.storage.getItem(SAVE_KEY(slot));
   }
 
   /** Check a slot without changing the game state or stored bytes. */
@@ -248,7 +253,7 @@ export class SaveManager {
   }
 
   private read(slot: string): SlotRead {
-    const raw = this.storage.getItem(SAVE_KEY(slot));
+    const raw = this.readRaw(slot);
     if (raw === null) return { status: 'empty' };
     try {
       return { status: 'readable', state: deserializeState(raw) };

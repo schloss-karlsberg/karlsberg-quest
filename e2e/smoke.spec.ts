@@ -157,6 +157,31 @@ test('the title protects an unreadable autosave when New Game is cancelled', asy
   expect(await readAutosave()).toBe(stored);
 });
 
+test('the title asks before replacing an autosave that appears during name entry', async ({ page }) => {
+  const stored = readFileSync(new URL('../tests/fixtures/saves/v0.8.0.json', import.meta.url), 'utf8');
+  await page.goto('./');
+  const title = page.getByTestId('title');
+  const start = title.getByTestId('title-new');
+  const resume = title.getByTestId('title-continue');
+  await expect(start).toBeEnabled({ timeout: 90_000 });
+  await expect(resume).toBeHidden();
+
+  await start.click();
+  await page.getByTestId('warning-accept').click();
+  await page.getByTestId('player-name').fill('Neuer Name');
+  await page.evaluate((raw) => localStorage.setItem('kq.save.v1.auto', raw), stored);
+  await page.getByTestId('name-confirm').click();
+  await page.getByTestId('start-tour').click();
+
+  await expect(page.getByText(/Der bisherige Spielstand wird überschrieben/)).toBeVisible();
+  await page.getByRole('button', { name: 'Nein', exact: true }).click();
+  await expect(resume).toBeFocused();
+  expect(await page.evaluate(() => localStorage.getItem('kq.save.v1.auto'))).toBe(stored);
+  await resume.click();
+  await expect(title).toBeHidden();
+  expect(await page.evaluate(() => window.kq!.story!.state())).toMatchObject({ chapter: 'k1', beat: 'k1_0', name: 'Mara' });
+});
+
 for (const view of [
   { name: 'desktop', viewport: { width: 1280, height: 720 }, mobile: false },
   { name: 'phone', viewport: { width: 667, height: 375 }, mobile: true },

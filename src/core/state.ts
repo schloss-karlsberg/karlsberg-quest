@@ -7,8 +7,8 @@ import { livePointIds } from '../systems/travel/points';
 /**
  * Central, serialisable game state. Everything here must survive JSON round-trips.
  *
- * Feature systems keep their own slice under `systems[<systemId>]` and declare its type by
- * declaration merging (in their own folder):
+ * Feature systems keep their own object slice under `systems[<systemId>]` and declare its type
+ * by declaration merging (in their own folder):
  *
  *   declare module '../../core/state' {
  *     interface SystemStates { hunt: { alert: number } }
@@ -152,6 +152,12 @@ export function deserializeState(json: string): GameState {
   if (!isObj(raw)) throw new Error('save: not an object');
   const version = typeof raw.version === 'number' ? raw.version : 0;
   if (version > STATE_VERSION) throw new Error(`save: version ${version} is newer than this game (${STATE_VERSION})`);
+  if (raw.systems !== undefined) {
+    if (!isObj(raw.systems)) throw new Error('save: systems is not an object');
+    for (const [id, slice] of Object.entries(raw.systems)) {
+      if (!isObj(slice)) throw new Error(`save: system slice ${id} is not an object`);
+    }
+  }
   // v0 -> v1: nothing structural yet; mergeDefaults fills new fields.
   const s = mergeDefaults(createInitialState(), raw);
   s.version = STATE_VERSION;

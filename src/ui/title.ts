@@ -7,7 +7,7 @@ import { newsUnseen, versionLabel } from './news';
 type TitleStart = 'new' | 'continue' | 'extra';
 
 export interface TitleCallbacks {
-  save: Pick<SaveManager, 'availability' | 'has' | 'load' | 'enabled'>;
+  save: Pick<SaveManager, 'availability' | 'readRaw' | 'load' | 'enabled'>;
   onStart(mode: TitleStart): void;
   onLicences(): void;
   /** „Neuigkeiten“ (release notes); call `title.refreshNews()` once they were seen. */
@@ -21,8 +21,8 @@ export interface TitleCallbacks {
  * title starts a new game directly.
  */
 export interface TitleHooks {
-  /** Runs before a new game starts; render into `host` (the title root). Resolve false to cancel. */
-  beforeNewGame?(host: HTMLElement): Promise<boolean>;
+  /** Render into `host`. Resolve false to cancel, or return a callback to apply choices at start. */
+  beforeNewGame?(host: HTMLElement): Promise<boolean | (() => void)>;
   openSettings?(): void;
   /**
    * Extra main-menu entries, asked for each time the title becomes ready (e.g. the story's "Ende
@@ -126,9 +126,13 @@ export class TitleScreen {
     if (this.busy || this.newBtn.disabled) return;
     this.busy = true;
     try {
-      if (this.cb.save.enabled && this.cb.save.has() && !(await this.cb.confirm(t('title.confirmNew')))) return;
+      let approved = this.cb.save.enabled ? this.cb.save.readRaw() : null;
+      if (approved !== null && !(await this.cb.confirm(t('title.confirmNew')))) {
+        this.setReady();
+        return;
+      }
+      let go: boolean | (() => void) = false;
       if (titleHooks.beforeNewGame) {
-        let go = true;
         this.page.inert = true;
         try {
           go = await titleHooks.beforeNewGame(this.el);
@@ -142,6 +146,17 @@ export class TitleScreen {
           return;
         }
       }
+      // A different tab can write during the flow or while the confirmation is open.
+      while (this.cb.save.enabled) {
+        const current = this.cb.save.readRaw();
+        if (current === null || current === approved) break;
+        if (!(await this.cb.confirm(t('title.confirmNew')))) {
+          this.setReady();
+          return;
+        }
+        approved = current;
+      }
+      if (typeof go === 'function') go();
       this.start('new');
     } finally {
       this.busy = false;
