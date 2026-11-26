@@ -175,6 +175,10 @@ _Status: approved 2026-11-26_
 - 2026-11-26: rebased onto `main` `4add03a` (80 commits; only the PRD / ACTION-RPG §14 top rows conflicted, both kept, TASK-006 on top).
   - `main` now hides the gameplay HUD behind the viewfinder (`showViewfinder`), and with it the toasts. So a full gallery or a failed write is now also a note on the shot's card (`photo-card-note`), which stays visible; the toast follows once the phone is down.
   - Checked in the dev build (browser pane, real GPU): 100 shots via `kq.photo.shoot()` in about 5 s, then the 101st is not stored (count stays 100); the card reads „Galerie voll (100 Fotos). Lösche Fotos, um neue zu behalten.“; the gallery shows „100 von 100 Fotos“ and the cap note. The test photos were deleted afterwards.
+- 2026-11-26: gates on the rebased branch (`main` `4add03a`):
+  - `pnpm typecheck`, `pnpm validate`, `pnpm build` green.
+  - `pnpm test`: 1,989 passed, 5 files fail. `save-fuzz` is new from `main` and fails on untouched `main` the same way (`C:\C:\…` fixtures path); the other 4 are the known Windows-only ones.
+  - `e2e/photo.spec.ts`: 7 / 8 green (both gallery tests, 1789, and `main`'s new viewfinder tests); „N at the car park“ is the known pre-existing failure.
 
 ## Notes
 - Update `docs/ACTION-RPG.md` §14 and the `docs/PRD.md` changelog (CONTRIBUTING.md).
