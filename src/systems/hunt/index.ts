@@ -24,7 +24,9 @@ import './strings';
 import type { GameContext } from '../../core/context';
 import { defineSystem } from '../../core/systems';
 import { hasString } from '../../i18n';
+import type { Action } from '../../player/input';
 import type { Stance } from '../../player/stance';
+import { actionLabel } from '../../ui/actionLabel';
 import { pointInRing } from '../../world/collision';
 import type { ThreatConfig } from '../contracts';
 import { HuntAudio } from './audio';
@@ -301,7 +303,7 @@ class Hunt {
   /** Finale: bring the player back at full black (centre). */
   private returnTo: XZ | null = null;
   private returnT = 0;
-  private finalePromptShown = false;
+  private finalePrompt: { action: Action; key: string } | null = null;
   private caughtSoft = false;
   /** Story cue 'hunt:hold': freeze the pack for `seconds` (waits ≤ 2 s while a hound is close). */
   private holdReq: { seconds: number; waited: number } | null = null;
@@ -736,8 +738,8 @@ class Hunt {
   }
 
   private clearFinalePrompt(): void {
-    if (!this.finalePromptShown) return;
-    this.finalePromptShown = false;
+    if (!this.finalePrompt) return;
+    this.finalePrompt = null;
     this.ctx.ui.hud.prompt(null, undefined, 'hunt');
   }
 
@@ -890,11 +892,12 @@ class Hunt {
     this.ctx.ui.cards.soft('hunt', !!sim && this.tableau?.kind !== 'rest');
     if (sim && !held) this.updateHold(dt, sim);
     if (sim && !held) {
-      const evs = sim.update(dt, this.playerSense());
+      const player = this.playerSense();
+      const evs = sim.update(dt, player);
       for (const e of evs) this.onSimEvent(e, sim);
       this.sounds(dt, sim);
       this.emitAlert(sim);
-      this.updateModes(dt, sim);
+      this.updateModes(dt, sim, player);
     }
     this.updateGate(sim);
     this.readTracks(dt);
@@ -985,16 +988,19 @@ class Hunt {
   }
 
   /** Finale prompt, bringing the player back into the circle, the end of a par force hunt. */
-  private updateModes(dt: number, sim: PackSim): void {
+  private updateModes(dt: number, sim: PackSim, player: PlayerSense): void {
     const ctx = this.ctx;
     const ctl = sim.ctl;
     if (ctl instanceof FinaleMode) {
       // no time pressure; after a while a quiet reminder of the keys (accessibility)
-      const want = ctl.phase === 'wait' && ctl.t > 7;
-      if (want && !this.finalePromptShown) {
-        this.finalePromptShown = true;
-        ctx.ui.hud.prompt('X', ctx.t(this.oneKey() ? 'hunt.finale.prompt.one' : 'hunt.finale.prompt'), 'hunt');
-      } else if (!want && this.finalePromptShown) this.clearFinalePrompt();
+      const action = ctl.reminder(player);
+      if (action) {
+        const key = actionLabel(ctx.input, action);
+        if (action !== this.finalePrompt?.action || key !== this.finalePrompt.key) {
+          this.finalePrompt = { action, key };
+          ctx.ui.hud.prompt(key || null, ctx.t(`hunt.finale.prompt.${action}`), 'hunt');
+        }
+      } else this.clearFinalePrompt();
       // the eyes go out one by one (caption once, when the first ones have dimmed)
       if (ctl.phase === 'calm' && sim.hounds.filter((h) => h.dim > 0.6).length === 2) this.caption('eyes', ctx.t('hunt.finale.eyes'), 30, 3600);
     }

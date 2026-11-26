@@ -251,6 +251,14 @@ export class FinaleMode implements ModeController {
     return lastDim + F.fadeDelay + n * F.fadeGap + F.fadeDur + F.endPause;
   }
 
+  reminder(p: Pick<PlayerSense, 'flying' | 'stance' | 'lanternLit'>): 'fly' | 'prone' | 'lantern' | null {
+    if (this.phase !== 'wait' || this.t <= 7) return null;
+    if (p.flying) return 'fly';
+    if (p.stance !== 'prone') return 'prone';
+    if (!p.lanternLit && !this.sim.opt.oneKey) return 'lantern';
+    return null;
+  }
+
   slot(i: number, n: number): XZ {
     const ang = this.base + (i / n) * Math.PI * 2;
     return { x: this.center.x + Math.cos(ang) * FINALE.circle, z: this.center.z + Math.sin(ang) * FINALE.circle };
