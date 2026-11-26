@@ -181,7 +181,11 @@ async function sample(page: Page, tier: string, group: boolean, ms = 5000, minFr
 
 const TIERS = (process.env.KQ_WALK_TIERS ?? 'high,medium,low').split(',');
 
-test('walk (d): perf — 16 bodies vs. none at the high, medium and low tiers; screenshots', async ({ page }) => {
+const perfCheck = process.env.CI ? {
+  annotation: { type: 'skip', description: 'The minimum frame count in the timed sample needs a quiet local machine.' },
+} : {};
+
+test('walk (d): perf — 16 bodies vs. none at the high, medium and low tiers; screenshots', perfCheck, async ({ page }) => {
   test.setTimeout(840_000);
   warnIfShared('walk (d) perf'); // its frame times need heavy.sh --exclusive
   const rows: Sample[] = [];
