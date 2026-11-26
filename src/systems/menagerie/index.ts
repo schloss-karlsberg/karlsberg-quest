@@ -40,6 +40,13 @@ export interface MenagerieSlice {
   animals: SavedAnimal[];
   /** Animals calmed by the player (combat track: never fought — calmed and led home). */
   calmed?: string[];
+  /** Progress toward calming, keyed by the simulated animal's id. */
+  misses?: Record<string, number>;
+  flares?: Record<string, number>;
+}
+
+function calmingCount(counts: Record<string, number> | undefined, id: string): number {
+  return counts && Object.hasOwn(counts, id) ? counts[id] ?? 0 : 0;
 }
 
 declare module '../../core/state' {
@@ -162,8 +169,9 @@ class MenagerieSystem {
         const dz = a.z - z;
         const d = Math.hypot(dx, dz);
         if (d > range + 4 || (d > 1.5 && (dx * fx + dz * fz) / d < cosHalf * 0.8)) continue;
-        const n = (this.flares.get(a.id) ?? 0) + 1;
-        this.flares.set(a.id, n);
+        const sl = this.slice();
+        const n = calmingCount(sl.flares, a.id) + 1;
+        sl.flares = { ...sl.flares, [a.id]: n };
         a.state = 'retreat' as Animal['state'];
         this.audio.hiss(this.pos3(a.x, a.z, 0.6), true);
         if (n >= 3) this.calm(a.id, 'jaguar');
@@ -281,18 +289,16 @@ class MenagerieSystem {
     }
   }
 
-  /** Spawn ids (groupId) per counted cassowary misses / jaguar flares. */
-  private readonly misses = new Map<string, number>();
-  private readonly flares = new Map<string, number>();
   private leadPrompt = false;
 
   /** A tired cassowary (3 charges past you) lets itself be led home: E within 3 m. */
   private updateLeadHome(): void {
     const ctx = this.ctx;
     const pl = ctx.player.position;
+    const misses = this.slice().misses;
     let near: Animal | null = null;
     for (const a of this.sim.animals) {
-      if (a.kind !== 'cassowary' || (this.misses.get(a.id) ?? 0) < 3) continue;
+      if (a.kind !== 'cassowary' || calmingCount(misses, a.id) < 3) continue;
       if (Math.hypot(a.x - pl.x, a.z - pl.z) < 3.5) near = a;
     }
     if (near && !ctx.player.frozen) {
@@ -313,8 +319,8 @@ class MenagerieSystem {
     const sl = this.slice();
     const id = groupId(animalId);
     sl.calmed = [...new Set([...(sl.calmed ?? []), id])];
-    this.misses.delete(animalId);
-    this.flares.delete(animalId);
+    delete sl.misses?.[animalId];
+    delete sl.flares?.[animalId];
     if (animal === 'jaguar') this.caption('jag-calm', this.ctx.t('menagerie.jaguar.calmed'), 2, 3600);
     this.ctx.events.emit('menagerie:calmed', { id, animal });
     if (this.leadPrompt) {
@@ -343,8 +349,9 @@ class MenagerieSystem {
         this.caption('cas-charge', t('menagerie.cassowary.charge'), 4, 2400);
         break;
       case 'miss': {
-        const n = (this.misses.get(e.id) ?? 0) + 1;
-        this.misses.set(e.id, n);
+        const sl = this.slice();
+        const n = calmingCount(sl.misses, e.id) + 1;
+        sl.misses = { ...sl.misses, [e.id]: n };
         if (n >= 3) this.caption('cas-tired', t('menagerie.cassowary.tired'), 4, 3200);
         else this.caption('cas-miss', t('menagerie.cassowary.miss'), 4, 2000);
         break;

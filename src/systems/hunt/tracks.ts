@@ -18,6 +18,9 @@ export type PrintKind = 'boot' | 'paw' | 'hoof';
 /** Why a trail ended at a spot (null = soft snow, a print is laid). */
 export type TrailBreak = 'water' | 'stone' | 'road' | 'rock' | null;
 
+const TRAIL_STRIDE = 1.4;
+const MAX_TRAIL_SAMPLES = 1800;
+
 export interface Print {
   x: number;
   z: number;
@@ -76,6 +79,7 @@ export class TrackField {
   /** Where the current segment began / the last one ended (break spot). */
   lastBreak: { x: number; z: number; t: number; why: Exclude<TrailBreak, null> } | null = null;
   private broken = false;
+  private nextPrune = 0;
   /** Bumped on every change (visuals upload only when it moved). */
   version = 0;
   /** The field's own clock (s). Advanced by the pack simulation while one runs, else by the system. */
@@ -111,10 +115,12 @@ export class TrackField {
 
   /**
    * Someone else's boot prints (Ch. 2: the Warner's trail): a line through `path`, one print per
-   * `step` m, alternating feet. Not part of the player's trail (agent −2): the pack never tracks
+   * `step` m, alternating feet, with at most 1800 samples spread across each segment.
+   * Not part of the player's trail (agent −2): the pack never tracks
    * them. `hold` s are added to their life (t in the future keeps them fresh that much longer).
    */
-  addTrail(path: readonly { x: number; z: number }[], t: number, step = 1.4, depth = 1, hold = 0, ok: (x: number, z: number) => boolean = () => true): number {
+  addTrail(path: readonly { x: number; z: number }[], t: number, step = TRAIL_STRIDE, depth = 1, hold = 0, ok: (x: number, z: number) => boolean = () => true): number {
+    const stride = Number.isFinite(step) && step > 0 ? step : TRAIL_STRIDE;
     let side = 1;
     let n = 0;
     for (let i = 1; i < path.length; i++) {
@@ -125,7 +131,8 @@ export class TrackField {
       const h = Math.atan2(-(b.x - a.x), -(b.z - a.z));
       const rx = Math.cos(h);
       const rz = -Math.sin(h);
-      const k = Math.max(1, Math.floor(d / step));
+      // Leave room for the first segment's starting point.
+      const k = Math.min(MAX_TRAIL_SAMPLES - 1, Math.max(1, Math.floor(d / stride)));
       for (let j = i === 1 ? 0 : 1; j <= k; j++) {
         const f = j / k;
         // a runner's stride wanders a little; deterministic (no RNG in the field)
@@ -150,15 +157,20 @@ export class TrackField {
   /** Advance the clock (and drop old prints now and then). */
   tick(dt: number): void {
     this.now += dt;
-    if (this.prints.length && this.now - this.prints[0]!.t > this.life + 5) this.prune(this.now);
+    if (this.prints.length && this.now >= this.nextPrune) {
+      this.prune(this.now);
+      this.nextPrune = this.now + 5;
+    }
   }
 
   /** Drop prints older than `life`. */
   prune(now: number = this.now): void {
-    let i = 0;
-    while (i < this.prints.length && now - this.prints[i]!.t > this.life) i++;
-    if (i > 0) {
-      this.prints.splice(0, i);
+    let kept = 0;
+    for (const print of this.prints) {
+      if (now - print.t <= this.life) this.prints[kept++] = print;
+    }
+    if (kept < this.prints.length) {
+      this.prints.length = kept;
       this.version++;
     }
   }
@@ -230,7 +242,7 @@ export class TrackField {
     let n = 0;
     const r2 = r * r;
     for (const p of this.prints) {
-      if (p.kind === 'boot' || (p.x - x) ** 2 + (p.z - z) ** 2 > r2) continue;
+      if (p.kind === 'boot' || now - p.t > this.life || (p.x - x) ** 2 + (p.z - z) ** 2 > r2) continue;
       agents.add(p.agent);
       if (p.kind === 'hoof') pik = true;
       sx += -Math.sin(p.h);
