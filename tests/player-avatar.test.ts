@@ -12,31 +12,31 @@ afterEach(() => {
 });
 
 async function avatarFixture() {
-  const { player, input, step } = playerFixture();
+  const { player, input, events, step } = playerFixture();
   const model = new Group();
   const body = new Mesh(new BoxGeometry(0.5, 1.7, 0.3), new MeshStandardMaterial());
   body.position.y = 0.85;
-  const marker = new Bone();
-  marker.name = 'Marker';
-  model.add(body, marker);
+  const chest = new Bone();
+  chest.name = 'Chest';
+  model.add(body, chest);
   const clips = ['Idle', 'Idle_Sword', 'Walk', 'Run', 'Run_Back', 'Run_Left', 'Run_Right', 'Roll', 'Death', 'Sword_Slash', 'HitReceive', 'Wave'];
   const animations = clips.map((name, i) => new AnimationClip(name, 1, [
-    new NumberKeyframeTrack('Marker.position[y]', [0, 1], [i, i + 1]),
+    new NumberKeyframeTrack('Chest.position[y]', [0, 1], [i, i + 1]),
   ]));
-  const avatar = new Avatar(new Scene(), player, async () => ({ scene: model, animations }), null);
+  const avatar = new Avatar(new Scene(), player, async () => ({ scene: model, animations }), events, null);
   avatar.setLanternTint(FLASCHENGRUEN);
   await avatar.useModel(async () => ({ scene: model, animations }), null);
   const camera = new PerspectiveCamera();
   let time = 0;
-  function frame(frames = 1, hidden = false) {
+  function frame(frames = 1, hidden = false, dt = PLAYER_DT) {
     for (let i = 0; i < frames; i++) {
       player.applyCamera(camera, 1, PLAYER_DT);
-      time += PLAYER_DT;
-      avatar.frame({ dt: PLAYER_DT, time, camera, hidden, reducedMotion: false, reducedFlash: false });
+      time += dt;
+      avatar.frame({ dt, time, camera, hidden, reducedMotion: false, reducedFlash: false });
     }
   }
-  const poseMarker = avatar.root.getObjectByName('Marker')!;
-  return { avatar, input, player, poseMarker, step, frame };
+  const poseChest = avatar.root.getObjectByName('Chest')!;
+  return { avatar, input, player, poseChest, step, frame };
 }
 
 describe('avatar animation', () => {
@@ -100,6 +100,33 @@ describe('avatar animation', () => {
     }
   });
 
+  it('faces the arrival direction during a zero-time travel frame and resumes at rest', async () => {
+    const { avatar, player, input, step, frame } = await avatarFixture();
+    try {
+      input.press('forward', true);
+      input.press('sprint', true);
+      for (let i = 0; i < 40; i++) {
+        step();
+        frame();
+      }
+      expect(avatar.debug.clip).toBe('Run');
+      expect(avatar.facing).toBeCloseTo(0);
+      input.press('forward', false);
+      input.press('sprint', false);
+
+      player.teleport(30, 30, Math.PI / 2);
+      frame(1, false, 0);
+      expect.soft(avatar.root.children[0]!.rotation.y).toBeCloseTo(1.5 * Math.PI);
+      frame();
+      expect.soft(avatar.facing).toBeCloseTo(Math.PI / 2);
+      frame(15);
+      expect.soft(avatar.facing).toBeCloseTo(Math.PI / 2);
+      expect(avatar.debug.clip).toBe('Idle');
+    } finally {
+      avatar.dispose();
+    }
+  });
+
   it('takes the armed idle and backward strafe while facing a locked target', async () => {
     const { avatar, player, input, step, frame } = await avatarFixture();
     try {
@@ -121,7 +148,7 @@ describe('avatar animation', () => {
   });
 
   it('plays death ahead of roll and swing and returns to the live animation on revival', async () => {
-    const { avatar, poseMarker, frame } = await avatarFixture();
+    const { avatar, poseChest, frame } = await avatarFixture();
     try {
       actionPose.swing = { kind: 'light', combo: 0, t: 0.2, dur: 0.4, yaw: 0 };
       frame();
@@ -130,11 +157,11 @@ describe('avatar animation', () => {
       frame();
       expect(avatar.debug.full).toBe('Roll');
       expect(avatar.debug.upper).toBe('');
-      expect(poseMarker.position.y).toBeCloseTo(7.06, 2);
+      expect(poseChest.position.y).toBeCloseTo(7.06, 2);
       actionPose.dead = true;
       frame(80);
       expect(avatar.debug.full).toBe('Death');
-      expect(poseMarker.position.y).toBeCloseTo(8.999, 3);
+      expect(poseChest.position.y).toBeCloseTo(8.999, 3);
 
       Object.assign(actionPose, restPose);
       frame();
@@ -142,25 +169,32 @@ describe('avatar animation', () => {
       expect(avatar.debug.clip).toBe('Idle');
       actionPose.dead = true;
       frame();
-      expect(poseMarker.position.y).toBeCloseTo(8 + PLAYER_DT / 1.04, 3);
+      expect(poseChest.position.y).toBeCloseTo(8 + PLAYER_DT / 1.04, 3);
     } finally {
       avatar.dispose();
     }
   });
 
   it('holds a hit reaction during hit-stop and hides the body during first person or a camera override', async () => {
-    const { avatar, player, poseMarker, frame } = await avatarFixture();
+    const { avatar, player, poseChest, frame } = await avatarFixture();
     try {
+      frame();
+      const idlePose = poseChest.position.y;
       avatar.react('hit');
       frame(8);
+      expect(poseChest.position.y - idlePose).toBeGreaterThan(1);
       expect(avatar.debug.upper).toBe('HitRecieve');
       actionPose.frozen = true;
       frame();
-      const heldPose = poseMarker.position.y;
-      frame(60);
-      expect(poseMarker.position.y).toBeCloseTo(heldPose);
-      expect(avatar.debug.upper).toBe('HitRecieve');
+      const heldPose = poseChest.position.y;
+      for (let i = 0; i < 3; i++) {
+        frame();
+        expect(poseChest.position.y).toBeCloseTo(heldPose);
+        expect(avatar.debug.upper).toBe('HitRecieve');
+      }
       actionPose.frozen = false;
+      frame(2);
+      expect(poseChest.position.y).toBeGreaterThan(heldPose);
       frame(30);
       expect(avatar.debug.upper).toBe('');
 

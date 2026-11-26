@@ -35,10 +35,12 @@ defects in the player, camera and animation lifecycle.
 - [x] Record behaviours, existing tests and important gaps for each player module.
 - [x] Add at least 25 deterministic Vitest assertions across the requested areas, under about three seconds.
 - [x] Reproduce each bug before changing behaviour. Record design questions as test todos.
-- [ ] Commit each fix separately. Git denied the worktree index lock.
+- [ ] Commit each fix separately. The flight, combat and camera review fixes are committed. Git
+  denied the worktree index lock while staging the avatar fix.
 - [x] Keep changes in scope and update the affected documentation and PRD changelog.
 - [x] Run typecheck, Vitest and the production build with zero unit failures.
-- [ ] Pass `pnpm validate` as written. The validator itself passed through Node's loader.
+- [ ] Pass `pnpm validate` as written. The launcher hit an IPC permission error. The validator
+  itself passed through Node's loader.
 - [x] Run locked smoke on port 5444 or document the sandbox blocker and exact command.
 
 ## Plan
@@ -64,9 +66,28 @@ reproduced bugs, and the relevant sections of `docs/ARCHITECTURE.md`, `docs/ACTI
 **Risks** — Travel, tour camera, reduced-motion changes and save ordering have other owners.
 Exercise their existing contracts where relevant and keep fixes confined to player-owned state.
 
+### Review round (2026-11-26)
+
+The goal is to close the five review findings on `dev/task-057` with a regression for each.
+
+- [x] Release held flight controls during a freeze and verify zero lateral drift after resuming,
+  with the remaining automatic climb still available.
+- [x] Reproduce the Pause and pointer-lock sequence without mouseup and cancel the attack charge
+  before combat can interpret the cleared button as a release.
+- [x] Reproduce the combat shoulder transition against a finite-width wall and sweep from the
+  pivot to the first obstruction, clamping both the current and requested offsets.
+- [x] Reproduce arrival under a zero-time travel frame and reset avatar facing and sampled motion
+  on player placement.
+- [x] Sample an upper-body bone that the hit actually moves and verify consecutive frozen poses.
+- [x] Attempt all four gates, check locked smoke availability, and update the behavior docs and task.
+
 ## Progress
 
 - Branch `dev/task-057` starts at `79c5718` from `origin/main`.
+- The review round starts at `c0df366`. The new regressions reproduced flight drift, an unwanted
+  heavy swing and stamina debit, a boom collapse to 0.55 m, and the stale arrival heading. The
+  zero-time arrival bug also exists on `origin/main` and is covered by the placement-event fix.
+  The hit-stop test now checks the actual chest motion before, during and after the freeze.
 
 ### Coverage map before changes
 
@@ -116,11 +137,26 @@ Exercise their existing contracts where relevant and keep fixes confined to play
 - The locked smoke command queued. A direct loopback bind probe returned
   `listen EPERM: operation not permitted 127.0.0.1:5444`, so the queued run was cancelled.
 
+### Review verification (2026-11-26)
+
+- The six focused files reported `Tests  67 passed (67)` in 623 ms. Replacing `Chest` with
+  `Marker` in a temporary copy failed the new assertion that the hit moves the sampled bone.
+- `pnpm typecheck` passed. `pnpm test` reported `Test Files  130 passed (130)` and
+  `Tests  1641 passed | 2 todo (1643)`, with zero failures.
+- `pnpm validate` failed because the launcher could not listen on its IPC socket (`EPERM`).
+  `node --import tsx scripts/validate-content.ts` reported `✓ content valid (1 warning(s))`.
+- `pnpm build` reported `✓ 469 modules transformed.` and `✓ built in 332ms`.
+- The sandbox again denied a loopback bind on port 5444. The smoke spec is the only required
+  browser check for this review round.
+- The original sweep is committed as `c0df366`. Review commits are `3361b92` (flight), `f7aad5b`
+  (combat input), and `e3175f9` (camera). The avatar, its regression tests and these docs are in
+  the worktree after Git denied `index.lock` (`Operation not permitted`).
+
 ### Follow-ups
 
 - Decide whether touch look should coast after release and how reduced motion should affect that.
   The current drag behavior stays in use and `tests/player-touch.test.ts` records the design todo.
-- Run the smoke spec where loopback binding is available.
+- Run `pnpm validate` and the smoke spec where local sockets are available.
 
 ```sh
 KQ_E2E_PORT=5444 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line
@@ -128,34 +164,22 @@ KQ_E2E_PORT=5444 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2
 
 ### Intended commits
 
-Git could not create the worktree's `index.lock` and left HEAD at
-`79c57184e15f1bd583943ac56fe43432ef28c922`. Run these commands from this worktree with a writable
-index. At the patch prompt, stage only the teleport hunk.
+Run these commands from this worktree with a writable index. At the patch prompt, split or edit
+the first hunk to stage the event bus argument, frame timing and zero-time arrival test. Leave
+the chest fixture and hit-stop assertions for the next commit.
 
 ```sh
 task_commit() {
   git commit -m "$1" -m 'Refs: TASK-057' -m 'Co-Authored-By: Codex <noreply@openai.com>'
 }
 
-git add tests/player-fixture.ts tests/player-camera-shake.test.ts tests/player-touch.test.ts
-task_commit 'test(camera): cover touch drag and reduced-motion shake'
+git add src/boot.ts src/player/avatar.ts
+git add -p tests/player-avatar.test.ts
+task_commit 'fix: snap avatar facing on player placement'
 
-git add src/player/input.ts tests/player-input.test.ts
-task_commit 'fix(camera): discard stale input after focus loss'
-
-git add src/player/camera.ts tests/camera.test.ts
-task_commit 'fix(camera): clamp the shoulder immediately against walls'
-
-git add tests/player.test.ts
-git add -p src/player/player.ts
-task_commit 'fix: reset footstep and bob phase on placement'
-
-git add src/player/player.ts tests/player-flight.test.ts
-task_commit 'fix: hold spirit flight during movement freezes'
-
-git add src/player/avatar.ts tests/player-avatar.test.ts
-task_commit 'fix: reset avatar movement when snapping its facing'
+git add tests/player-avatar.test.ts
+task_commit 'test: verify the upper-body hit pose during hit-stop'
 
 git add .mc/tasks/todo/TASK-057-player-camera-avatar-tests.md docs/ARCHITECTURE.md docs/ACTION-RPG.md docs/PRD.md
-task_commit 'docs(camera): record the player transition sweep'
+task_commit 'docs(camera): record the TASK-057 review fixes'
 ```

@@ -50,6 +50,7 @@ import {
   Vector3,
 } from 'three';
 import type { LoadedModel } from '../assets/loader';
+import type { EventBus } from '../core/events';
 import { kqStandard } from '../render/standard';
 import { type LogicalBone, type RigKind, isUpperTrack, resolveClipName } from '../systems/characters/bones';
 import { Rig, rigInfo } from '../systems/characters/rig';
@@ -180,6 +181,7 @@ export class Avatar {
   private flame: Mesh | null = null;
   private flameMat: MeshBasicMaterial | null = null;
   private readonly trail: Trail;
+  private readonly offTeleport: () => void;
   private readonly materials: Material[] = [];
   /** Rig of the model in (bones.ts), and its stride per loop (m). */
   private kind: RigKind | null = null;
@@ -231,12 +233,23 @@ export class Avatar {
     scene: Scene,
     private readonly player: Player,
     private load: () => Promise<LoadedModel>,
+    events: EventBus,
     private height: number | null = AVATAR_HEIGHT,
   ) {
     this.root.name = 'player-avatar';
     this.root.visible = false;
     this.trail = new Trail();
     scene.add(this.root, this.trail.mesh);
+    this.offTeleport = events.on('player:teleport', () => {
+      this.facing = player.yaw;
+      this.resetMotion();
+    });
+  }
+
+  private resetMotion(): void {
+    this.vel.x = this.vel.z = 0;
+    this.speed = 0;
+    this.last.copy(this.player.renderPos);
   }
 
   /** A short reaction (events from boot): 'hit' | 'interact' | 'wave'. */
@@ -706,9 +719,7 @@ export class Avatar {
     if (!show) {
       lanternPose.anchor = null;
       this.trail.clear();
-      this.vel.x = this.vel.z = 0;
-      this.speed = 0;
-      this.last.copy(pl.renderPos);
+      this.resetMotion();
       return;
     }
     // ---- ground motion
@@ -718,17 +729,16 @@ export class Avatar {
     if (dt > 0) {
       const vx = (p.x - this.last.x) / dt;
       const vz = (p.z - this.last.z) / dt;
-      const jump = Math.hypot(vx, vz) > 40;
-      // a teleport: face where the view looks
-      if (jump) {
+      // Also guard against a discontinuous render sample without a placement event.
+      if (Math.hypot(vx, vz) > 40) {
         this.facing = pl.yaw;
-        this.vel.x = this.vel.z = 0;
+        this.resetMotion();
       } else {
         const k = Math.min(1, dt * 10);
         this.vel.x += (vx - this.vel.x) * k;
         this.vel.z += (vz - this.vel.z) * k;
+        this.speed = Math.hypot(this.vel.x, this.vel.z);
       }
-      this.speed = Math.hypot(this.vel.x, this.vel.z);
     }
     this.last.copy(p);
     rig.root.position.copy(p);
@@ -955,6 +965,7 @@ export class Avatar {
   }
 
   dispose(): void {
+    this.offTeleport();
     lanternPose.anchor = null;
     this.rig?.dispose();
     this.root.removeFromParent();
