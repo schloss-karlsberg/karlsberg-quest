@@ -158,8 +158,7 @@ export const de: Record<string, string> = {
   'licences.code': 'Programmcode: Karlsberg Quest, MIT-Lizenz (Karlsberg-Quest-Mitwirkende).',
 
   'controls.title': 'Steuerung',
-  'ui.keys.turn': 'Umsehen ohne Maus: drehen (auch Komma / Punkt) und Blick heben / senken',
-  'ui.keys.turn.key': '[←][→] [Bild↑][Bild↓]',
+  'ui.keys.turn': 'Umsehen ohne Maus: nach links / rechts drehen, Blick heben / senken',
 
   'hud.compass.n': 'N',
   'hud.compass.e': 'O',

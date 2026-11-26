@@ -329,8 +329,9 @@ Rules
   `ATMOS_GLSL` (`kqLight`, `kqFog`, noise) so they match lighting, fog, lantern and fire glow.
 - Gameplay input: `ctx.input.wasPressed('listen')`, `isDown('sprint')` (actions in
   `DEFAULT_BINDINGS`: forward/back/left/right, sprint, crouch, prone, fly, up/down, interact,
-  listen E, lantern L, map M, measure 3, shift Q, scan 2, scan0 ^, pause Esc/P, keyboard
+  listen E, lantern L, map M, measure 3, shift Q, scan 2, scan0 Backquote, keyboard
   look lookLeft/lookRight/lookUp/lookDown on Comma/Period/PageUp/PageDown and Numpad 4/6/8/2).
+  The Pause menu handles Escape in `boot.ts`. The photo system also reads the `pause` action (Esc/P).
   Bindings are physical `KeyboardEvent.code`s (layout-independent; AZERTY "forward" is on Z).
   Players remap the actions in `REBINDABLE` (settings → Steuerung → Tastenbelegung);
   `settings.bindings` stores overrides. `effectiveBindings(overrides)` merges them, `bindKey` takes a
@@ -1953,8 +1954,9 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
   (contract C3): 0 nothing in the frame, 1 in the frame but not good, 2 good, 3 good and closer than
   0.6 × `maxDist`. German verdicts („Perfekt!“, „Gutes Foto“, „Nicht mittig“, „Verdeckt“, „Zu weit
   weg“, „Zu klein im Bild“, „Unscharf“, „Aufgeschreckt“, „Nicht alle im Bild“ …).
-- **Past eras:** „Kein Netz“ in the frame and as a toast, the picture comes out white, nothing is
-  judged or booked: `photo:shot { targets: [], good: [], stars: 0, noSignal: true }`.
+- **Past eras:** the phone still opens and the viewfinder shows „Kein Netz“. The shutter produces
+  a white picture and a toast. The shot is recorded as
+  `photo:shot { targets: [], good: [], stars: 0, noSignal: true }` and stays out of the album.
 - **Events:** `photo:open`, `photo:close`, `photo:shot { targets, good, stars, noSignal }`, and one
   `photo:good { id, stars }` per good target (scalar: the story waits with
   `{ "event": "photo:good", "match": { "id": … } }`; quests count it with the objective
