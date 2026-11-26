@@ -458,6 +458,8 @@ Accessibility contract for feature systems:
 `player:step {x,z,surface,running}`, `player:teleport {x,z}`, `save:written {slot,reason}`,
 `save:loaded {slot}`, `settings:change {key}`, `ui:toast {text,ms?}`.
 Features add their own via declaration merging (see §4). Naming `<domain>:<what>`.
+Named listeners run in registration order, followed by all-event observers. The bus logs a
+listener's exception and continues delivery so that other systems can process the same event.
 
 ## 7. Game state (`src/core/state.ts`)
 
@@ -605,6 +607,9 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 
 ## 11. Testing
 
+- `tests/terrain-load.test.ts` uses `serveTerrain()` to serve two compressed grid cells from
+  memory. Each layer has distinct values so the test detects swapped eras, incorrect units and
+  ground or canopy rasters whose dimensions disagree with the height grid.
 - `tests/travel-fixture.ts` runs the registered travel system on flat ground with a real game state
   store and event bus. Use `step()` for a simulation tick and Vitest's fake timers for a timed journey.
 - Pause and journal page tests use `tests/ui-fixture.ts` to run the real renderers and handlers on a
@@ -657,6 +662,9 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   WebDriver), `warm` (shader warm-up also under WebDriver), `idle` (the full idle-render policy
   also under WebDriver: bullet time draws on request only, still menus hold their frame; §3).
   `screenshotReady()` asks the loop for its frames, so it works in held views too.
+  A shared starting position requires finite, nonblank `x` and `z` values. Missing or invalid
+  coordinates preserve the current pose. An invalid optional `yaw` preserves the current heading.
+  Finite `yaw` values wrap modulo 360 degrees before conversion to radians so look input stays responsive.
 - Bullet-time pilot (`kq.pilot`, `src/debug/pilot.ts`; docs/NEXT-SESSION.md §3.1): an agent plays
   in slices while the game stands still (`?manual`, or `kq.pilot.bulletTime(true)` at runtime; the
   HUD then shows a "⏸ Bullet-Time" chip in place of the pointer-lock chip).
