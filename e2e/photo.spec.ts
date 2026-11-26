@@ -29,6 +29,14 @@ async function standAtBoard(page: Page): Promise<void> {
   }, STAND);
 }
 
+async function expectGameplayHud(page: Page, visible: boolean): Promise<void> {
+  const hud = page.locator('.kq-hud');
+  if (visible) await expect(hud).toBeVisible();
+  else await expect(hud).toBeHidden();
+  const beacons = await page.evaluate(() => window.kq!.ctx.scene.getObjectByName('quest-beacons')?.visible);
+  expect(beacons).toBe(visible);
+}
+
 test.describe('photo mode', () => {
   test.describe.configure({ timeout: 240_000 });
 
@@ -36,10 +44,12 @@ test.describe('photo mode', () => {
     const errors = trackErrors(page);
     await boot(page);
     await standAtBoard(page);
+    await expectGameplayHud(page, true);
     expect(await page.evaluate(() => window.kq!.photo!.targets().find((t) => t.id === 'photo.parkplatz')?.inWorld)).toBe(true);
     await page.keyboard.press('KeyN');
     await expect.poll(() => page.evaluate(() => window.kq!.photo!.state().open)).toBe(true);
     await expect(page.getByTestId('photo')).toBeVisible();
+    await expectGameplayHud(page, false);
     await expect(page.getByTestId('photo-nonet')).toBeHidden();
     // hold still for the steadiness window, then look through the phone
     await page.waitForTimeout(600);
@@ -73,6 +83,7 @@ test.describe('photo mode', () => {
     await page.keyboard.press('KeyN');
     await expect.poll(() => page.evaluate(() => window.kq!.photo!.state().open)).toBe(false);
     await expect(page.getByTestId('photo')).toBeHidden();
+    await expectGameplayHud(page, true);
     await openPause(page);
     await page.getByTestId('pause-album').click();
     await expect(page.getByTestId('album-entry-photo.parkplatz')).toBeVisible();
@@ -164,6 +175,10 @@ test.describe('photo mode on a phone (iPhone 13 landscape)', () => {
     const cam = await center(page, 'touch-photo');
     await tap(cdp, cam.x, cam.y);
     await expect.poll(() => page.evaluate(() => window.kq!.photo!.state().open)).toBe(true);
+    await expectGameplayHud(page, false);
+    await expect(page.getByTestId('touch-pause')).toBeHidden();
+    await expect(page.getByTestId('touch-crouch')).toBeHidden();
+    await expect(page.getByTestId('photo-zoom-2')).toBeVisible();
     await expect(page.getByTestId('touch-attack')).toHaveAttribute('aria-label', 'Auslöser: Foto machen');
     await page.waitForTimeout(700);
     await page.screenshot({ path: `${SCREENS}/photo-touch-frame.png` });
@@ -179,6 +194,8 @@ test.describe('photo mode on a phone (iPhone 13 landscape)', () => {
     // the camera button again: the phone goes down, the attack button is the staff again
     await tap(cdp, cam.x, cam.y);
     await expect.poll(() => page.evaluate(() => window.kq!.photo!.state().open)).toBe(false);
+    await expectGameplayHud(page, true);
+    await expect(page.getByTestId('touch-pause')).toBeVisible();
     await expect(page.getByTestId('touch-attack')).toHaveAttribute('aria-label', 'Hieb (halten: Wuchthieb)');
     expect(errors).toEqual([]);
   });

@@ -175,6 +175,16 @@ const MUTED: Action[] = ['attack', 'interact', 'bannlicht', 'lockOn', 'dodge', '
 const THUMB_W = 480;
 /** The targets the `?debug` test deer binds. */
 const DEER_IDS = ['reh.ricke', 'reh.kitz'] as const;
+
+/** Switch the phone controls and the gameplay HUD together. */
+export function showViewfinder(
+  on: boolean,
+  root: Pick<HTMLElement, 'toggleAttribute'>,
+  ...controls: Pick<HTMLElement, 'classList'>[]
+): void {
+  root.toggleAttribute('data-kq-photo', on);
+  for (const el of controls) el.classList.toggle('kq-hidden', !on);
+}
 const THUMB_Q = 0.72;
 const STAR = '★';
 
@@ -375,9 +385,7 @@ class Photo {
     pl.rig.setPhoto(true);
     this.setZoom(1);
     for (const a of MUTED) this.ctx.input.muted.add(a);
-    this.el.classList.remove('kq-hidden');
-    this.zoomBar.classList.remove('kq-hidden');
-    document.documentElement.toggleAttribute('data-kq-photo', true);
+    showViewfinder(true, document.documentElement, this.el, this.zoomBar);
     // level, skill and reward cards wait while the phone is up: not in the viewfinder (M-18)
     this.ctx.ui.cards.hold('photo', true);
     this.syncSignal();
@@ -392,9 +400,7 @@ class Photo {
     this.isOpen = false;
     lensDown(this.ctx.player.rig, this.ctx.camera, forced);
     for (const a of MUTED) this.ctx.input.muted.delete(a);
-    this.el.classList.add('kq-hidden');
-    this.zoomBar.classList.add('kq-hidden');
-    document.documentElement.toggleAttribute('data-kq-photo', false);
+    showViewfinder(false, document.documentElement, this.el, this.zoomBar);
     this.ctx.ui.cards.hold('photo', false);
     this.ctx.events.emit('photo:close', {});
   }
