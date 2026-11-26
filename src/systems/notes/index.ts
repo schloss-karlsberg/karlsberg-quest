@@ -159,6 +159,10 @@ class Notes {
       }
     });
     const ev = ctx.events;
+    // the story repeats the slot's saved objective when it resumes: that is no progress either
+    const savedObjective = () => (this.storyObjective = ctx.state.state.systems.story?.objective?.text ?? null);
+    savedObjective();
+    this.offs.push(ctx.state.subscribe((_s, reason) => (reason === 'load' || reason === 'new' || reason === 'replace') && savedObjective()));
     this.offs.push(ev.onAny((name, payload) => this.ring.push(now(), name, payload)));
     const play = () => ctx.state.state.meta.playSeconds;
     this.offs.push(
@@ -170,8 +174,9 @@ class Notes {
       ev.on('quest:progress', () => this.tele.progress()),
       ev.on('quest:objective', () => this.tele.progress()),
       ev.on('quest:ready', () => this.tele.progress()),
-      ev.on('story:beat', () => this.tele.progress()),
-      ev.on('story:chapter', () => this.tele.progress()),
+      // a beat or chapter entered again (a load, a boot, a wake) is no progress
+      ev.on('story:beat', ({ resume }) => !resume && this.tele.progress()),
+      ev.on('story:chapter', ({ resume }) => !resume && this.tele.progress()),
       ev.on('objective:set', ({ text }) => {
         if (text !== this.storyObjective) this.tele.progress();
         this.storyObjective = text;

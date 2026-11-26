@@ -508,6 +508,8 @@ The tour and quests grant survey skills (`skill:grant`, unlock cards and Laub’
   Zeichen** (four marked stones across eras), **Planblätter**, **Mannlichs Festpläne**. A complete set
   gives XP and a line from its owner. Relief patterns (rm.01–08) stay codex cards.
 - **Funde** in Sammlungen shows route discoveries with a count and a FIKTION label on each find.
+- A partly collected stack stays visible. Replaying its placement after a load keeps the quantity
+  left on the ground. Picking up the last item retires the placement.
 - **Fläschchen** (hidden collectibles, docs/IDEAS-ROUND11.md §4; `src/systems/flaschen/`, state
   `systems.flaschen`): 24 small bottles hand-placed at named places in all five eras (today 6, 1789 6,
   Feb 1793 4, Jul 1793 3, 1796 5; the spring holds one in every year), never guarded, no glow, no map
@@ -522,6 +524,11 @@ The tour and quests grant survey skills (`skill:grant`, unlock cards and Laub’
   codex XP. The bottle carries the real beer label as the owner's swappable placeholder: the text lives
   in `content/collectibles/flaschen.json` → `label` only, drawn to one texture / one material
   (`label.ts`); `tests/flaschen.test.ts` fails if it appears in any other file.
+  A bottle stays hidden inside a memorial, inside a threat arena of at most 100 m (the pack's arena
+  as `hunt:start` announces it, Hunt's default radius included) and while a boss is past phase 1,
+  also a boss rebuilt in a later phase after a load or a defeat. On a slot change, saved memorials
+  and the incoming encounter determine bottle visibility. A cover that disappears also releases its
+  collision shape.
 - **Collectibles** (item kind `collectible`, TASK-002): plain things gathered for their count. They
   stack to 99, cannot be used or equipped, and lie in the world as small glowing pickups: no light
   column, ordinary pickup sound. The feed counts them („+ Kastanie ×1 (7)“). The first is
@@ -1072,6 +1079,10 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | A playtest overwrites a stored game or spends most of a chapter drawing intermediate steps (TASK-019, 2026-11-26) | `?nosave` protects save slots during „Neues Spiel“. The campaign uses `?manual&faststep` for subtitle timing and batched draws while still testing quest state, save and continue, and all three endings. |
 | The minimap leads through the Nordflügel wall or away from historical paths, and notices collide with touch controls (TASK-015, 2026-11-26) | The minimap follows the entrance route for the story lead and prepares the historical path overlay during loading. The touch notice dock clears the action pill and unlocked skills. Dialogue and notices reclaim the space when the map hides. |
 | The next turn or the tour group is hard to find at a glance (TASK-015, 2026-11-26) | The local minimap uses a steady north-up view, live tour dots and the compass objective. Map layers follow the era, distant markers retain their bearing along the edge, and reduced motion snaps the heading arrow. |
+| Indoor and scenery state can outlive its room, era or save slot (TASK-059, 2026-11-26) | Restore the saved storey (also from a doorway); while the palace streams, the room catalogue holds the floor and walls. A shift away from the Festsaal choice hides its objects and prompt until the player returns; a fire that ends releases them. A shift drops the previous scenery obstacles, and slot loads restore the gate, coat and lit windows. |
+| A load during a hunt or while collecting can carry an encounter or reward across slots (TASK-058, 2026-11-26) | The incoming slot restores the pack configuration, bottle count, lantern glass and codex receipt. Tests cover partial pickups, a bottle saved mid-fall, and loading a peaceful slot during a capture. |
+| Very large headings in shared links can freeze horizontal look (TASK-060, 2026-11-26) | Wrap the starting heading within one turn before converting it to radians so look input can adjust it. |
+| Invalid shared positions and interrupted gameplay events (TASK-060, 2026-11-26) | Both URL coordinates must be finite before teleporting. Each event observer can fail independently, so later listeners still receive the era change, reward or pause event. |
 | Fast travel can save the departure pose or leave a curtain on a newly opened game (TASK-030, 2026-11-26) | The autosave captures the arrival pose before the travel pause is released. Loading a slot or starting a game clears the curtain during its fade. |
 | Travel effects can outlast the action that started them (TASK-030, 2026-11-26) | A loaded game cancels pending fast travel. The outdoor sprint boost clears on combat entry. Regression tests also exercise one-time lore XP and the 120-second Wegstein cooldown across a reload. |
 | Accepting „Der Jaguar“ while Hanne’s conversation is open delays saved calm credit (TASK-040 review, 2026-11-26) | The acceptance autosave includes the payout. For a save recovered at the title, „Weiter“ presents the reward dialogue and notice. „Neues Spiel“ drops that presentation. A quest finished on acceptance shows no „Nebenaufgabe“ banner after its payout. |

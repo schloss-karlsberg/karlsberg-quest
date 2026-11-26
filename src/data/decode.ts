@@ -2,6 +2,7 @@
 import type { TerrainMeta, TerrainSurfaceMeta } from './types';
 
 function asInt16(bytes: Uint8Array): Int16Array {
+  if (bytes.byteLength % 2 !== 0) throw new Error('terrain height: incomplete int16 sample');
   const copy = bytes.byteOffset % 2 === 0 ? bytes : bytes.slice();
   return new Int16Array(copy.buffer, copy.byteOffset, copy.byteLength / 2);
 }
