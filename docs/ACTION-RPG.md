@@ -1048,6 +1048,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| An unreadable autosave appears to be resumable (TASK-024, 2026-11-26) | The title tests whether the autosave can be read and shows a German explanation when loading is unavailable. „Neues Spiel“ asks before replacing any occupied writable slot. Cancellation preserves the original bytes. |
 | A read-only playtest resumes its temporary tour or advances HUD time twice per fast step (TASK-019 review, 2026-11-26) | „Weiter“ reloads the saved chapter and beat from the title. „Neues Spiel“ in `?nosave` opens the content warning directly. Deferred paints reuse the presentation from the step, and K3 waits for the skill card only for screenshots. |
 | A playtest overwrites a stored game or spends most of a chapter drawing intermediate steps (TASK-019, 2026-11-26) | `?nosave` protects save slots during „Neues Spiel“. The campaign uses `?manual&faststep` for subtitle timing and batched draws while still testing quest state, save and continue, and all three endings. |
 | The minimap leads through the Nordflügel wall or away from historical paths, and notices collide with touch controls (TASK-015, 2026-11-26) | The minimap follows the entrance route for the story lead and prepares the historical path overlay during loading. The touch notice dock clears the action pill and unlocked skills. Dialogue and notices reclaim the space when the map hides. |

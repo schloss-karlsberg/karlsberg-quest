@@ -7,7 +7,7 @@ import { newsUnseen, versionLabel } from './news';
 type TitleStart = 'new' | 'continue' | 'extra';
 
 export interface TitleCallbacks {
-  save: Pick<SaveManager, 'load' | 'enabled'>;
+  save: Pick<SaveManager, 'availability' | 'has' | 'load' | 'enabled'>;
   onStart(mode: TitleStart): void;
   onLicences(): void;
   /** „Neuigkeiten“ (release notes); call `title.refreshNews()` once they were seen. */
@@ -44,15 +44,16 @@ export class TitleScreen {
   private readonly page: HTMLElement;
   private readonly startBtn: HTMLButtonElement;
   private readonly newBtn: HTMLButtonElement;
+  private readonly saveStatus: HTMLElement;
   private readonly settingsBtn: HTMLButtonElement;
   private readonly extrasEl: HTMLElement;
   private readonly newsBadge: HTMLElement;
-  private hasSave = false;
   private busy = false;
 
   constructor(private readonly cb: TitleCallbacks, private readonly loader?: BootLoader) {
     this.startBtn = h('button.kq-btn.primary.kq-hidden', { disabled: true, 'data-testid': 'title-continue', onclick: () => this.start('continue') }, t('title.continue'));
     this.newBtn = h('button.kq-btn', { disabled: true, 'data-testid': 'title-new', onclick: () => this.newGame() }, t('title.newGame'));
+    this.saveStatus = h('p.kq-hidden', { role: 'status', 'data-testid': 'title-save-status' });
     this.settingsBtn = h('button.kq-btn', { 'data-testid': 'title-settings', onclick: () => titleHooks.openSettings?.() }, t('pause.settings'));
     this.extrasEl = h('div.kq-title-extras');
     this.newsBadge = h('span.kq-news-badge', { 'aria-label': t('news.unseen'), title: t('news.unseen') });
@@ -61,6 +62,7 @@ export class TitleScreen {
     this.page = h('div.kq-title-page.kq-paper', [
       h('h1', t('game.title')),
       h('p.note', t('title.headphones')),
+      this.saveStatus,
       h('div.actions', [this.startBtn, this.newBtn, this.extrasEl, this.settingsBtn]),
       h('p.controls', t('title.hint')),
       h('div.kq-title-links', [newsBtn, h('button.kq-link', { onclick: () => cb.onLicences() }, t('title.licences'))]),
@@ -79,19 +81,23 @@ export class TitleScreen {
     this.newsBadge.classList.toggle('kq-hidden', !newsUnseen());
   }
 
-  setReady(hasSave: boolean): void {
-    this.hasSave = hasSave;
+  setReady(): void {
+    const availability = this.cb.save.availability();
+    const canContinue = availability === 'readable';
+    const unreadable = availability === 'unreadable';
     this.busy = false;
-    this.startBtn.disabled = false;
+    this.startBtn.disabled = !canContinue;
     this.newBtn.disabled = false;
     this.loader?.hide();
     this.startBtn.textContent = t('title.continue');
     this.newBtn.textContent = t('title.newGame');
-    this.startBtn.classList.toggle('kq-hidden', !hasSave);
-    this.newBtn.classList.toggle('primary', !hasSave);
+    this.startBtn.classList.toggle('kq-hidden', !canContinue);
+    this.newBtn.classList.toggle('primary', !canContinue);
+    this.saveStatus.textContent = unreadable ? t('title.unreadableSave') : '';
+    this.saveStatus.classList.toggle('kq-hidden', !unreadable);
     this.settingsBtn.classList.toggle('kq-hidden', !titleHooks.openSettings);
     this.renderExtras();
-    (hasSave ? this.startBtn : this.newBtn).focus();
+    (canContinue ? this.startBtn : this.newBtn).focus();
   }
 
   private renderExtras(): void {
@@ -101,7 +107,7 @@ export class TitleScreen {
         h('button.kq-btn', {
           'data-testid': a.testid,
           onclick: async () => {
-            if (this.busy || this.startBtn.disabled) return;
+            if (this.busy || this.newBtn.disabled) return;
             this.busy = true;
             const go = await Promise.resolve(a.run()).catch((err) => {
               console.error('[title] action failed', err);
@@ -120,7 +126,7 @@ export class TitleScreen {
     if (this.busy || this.newBtn.disabled) return;
     this.busy = true;
     try {
-      if (this.hasSave && this.cb.save.enabled && !(await this.cb.confirm(t('title.confirmNew')))) return;
+      if (this.cb.save.enabled && this.cb.save.has() && !(await this.cb.confirm(t('title.confirmNew')))) return;
       if (titleHooks.beforeNewGame) {
         let go = true;
         this.page.inert = true;
@@ -143,8 +149,14 @@ export class TitleScreen {
   }
 
   private start(mode: TitleStart): void {
-    if (this.startBtn.disabled) return;
-    if (mode === 'continue' && (this.busy || !this.hasSave || !this.cb.save.load())) return;
+    if (this.newBtn.disabled) return;
+    if (mode === 'continue') {
+      if (this.busy || this.startBtn.disabled) return;
+      if (!this.cb.save.load()) {
+        this.setReady();
+        return;
+      }
+    }
     this.startBtn.disabled = true;
     this.newBtn.disabled = true;
     this.cb.onStart(mode);
@@ -152,8 +164,7 @@ export class TitleScreen {
 
   show(): void {
     this.el.classList.remove('fade-out', 'kq-hidden');
-    this.startBtn.disabled = false;
-    this.newBtn.disabled = false;
+    this.setReady();
   }
 
   hide(instant = false): void {

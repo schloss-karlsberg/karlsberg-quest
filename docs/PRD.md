@@ -22,6 +22,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-26 | **Unreadable autosaves (TASK-024).** The title explains when the autosave cannot be loaded and offers „Weiter“ for readable saves, including saves that need migration. Cancelling „Neues Spiel“ preserves the occupied slot byte for byte. |
 | unreleased | 2026-11-26 | **Read-only playtests and campaign pacing (TASK-019 review).** „Weiter“ loads the autosave, including after returning to the title from a `?nosave` session. Read-only new games open the content warning directly. A deferred paint reuses the prepared presentation, and the campaign skips the K3 station's cosmetic wait when chapter screenshots are off. |
 | unreleased | 2026-11-26 | **Campaign testing and save protection (TASK-019).** Manual campaign tests can use subtitle timing and draw once after a batch of steps. The travel and group-walk tests bound work independently of machine speed. Starting „Neues Spiel“ with `?nosave` preserves the stored game. |
 | unreleased | 2026-11-26 | **Minimap review fixes (TASK-015).** The Registratur marker leads through the doorway, and historical paths follow the in-game terrain over the survey. On landscape phones, notices clear long action labels. The minimap steps aside for staged scenes and the touch survey menu. |
@@ -184,7 +185,10 @@ flowchart LR
     F -->|Caught| H
 ```
 
-The player keeps earned progress when caught. Continue resumes from the latest saved state.
+The player keeps earned progress when caught. „Weiter“ resumes the current autosave, including
+older saves that can be migrated. If the autosave is unreadable or comes from a newer version,
+the title explains why „Weiter“ is unavailable. „Neues Spiel“ can replace an occupied slot after
+the player confirms the overwrite and completes the new-game flow.
 
 ### 3.2 Verbs and controls
 

@@ -132,7 +132,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     save,
     onStart: (mode) => {
       if (mode === 'continue') applyStartOverrides();
-      startGame(mode === 'new');
+      startGame(mode === 'new' ? 'new' : 'restore');
     },
     onLicences: () => openLicences({ modals: ui.modals, attribution: () => ctxRef?.data.attribution.items ?? [] }),
     onNews: () => openNews(ui.modals, () => title.refreshNews()),
@@ -689,9 +689,9 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   for (const ev of ['mousemove', 'mousedown', 'keydown', 'wheel', 'pointerdown', 'pointermove', 'pointerup'] as const) window.addEventListener(ev, () => loop.manual && loop.requestRender(), { passive: true });
   window.setInterval(() => started && !pause.paused && save.autosave('interval'), 60_000);
 
-  function startGame(fresh: boolean): void {
+  function startGame(mode: 'new' | 'restore' | 'direct'): void {
     audio.unlock();
-    if (fresh) {
+    if (mode === 'new') {
       save.delete();
       state.replace(createInitialState(), 'new');
       restore();
@@ -715,7 +715,8 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     // the first click into the picture takes the mouse (pointer lock): say so until it has it
     // (playtest 2026-11-19: the view did not turn and nothing said why)
     window.setTimeout(() => ui.hud.showClickToPlay(started && !input.locked && modalOpen === 0), 900);
-    events.emit('game:start', { resumed: !fresh && state.state.meta.savedAt !== null });
+    // Title restores have already loaded a slot, including old saves without a timestamp.
+    events.emit('game:start', { resumed: mode === 'restore' || (mode === 'direct' && state.state.meta.savedAt !== null) });
     save.autosave('start', true);
   }
 
@@ -732,7 +733,6 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     ui.hud.show(false);
     if (!title.el.isConnected) ui.add(title.el);
     title.show();
-    title.setReady(save.has());
   }
 
   // ---- feature systems
@@ -789,11 +789,11 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   }
   if (skipTitle) {
     await loadPalace();
-    startGame(false);
+    startGame('direct');
     loader.hide();
   } else {
     // The present-day title needs only the opening assets. The palace streams once play starts.
-    title.setReady(save.has());
+    title.setReady();
   }
   mark('ready');
   // Compile the current scene in parallel (KHR_parallel_shader_compile). The shift's own warmer

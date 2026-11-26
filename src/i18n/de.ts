@@ -6,6 +6,7 @@ export const de: Record<string, string> = {
   'game.title': 'Schloss Karlsberg Tour',
   'title.continue': 'Weiter',
   'title.newGame': 'Neues Spiel',
+  'title.unreadableSave': 'Der Spielstand lässt sich nicht laden. Er ist möglicherweise beschädigt oder stammt aus einer neueren Spielversion.',
   'title.loading': 'Gelände wird geladen … {pct} %',
   'loader.starting': 'Spiel wird vorbereitet …',
   'loader.terrain': 'Gelände wird geladen …',

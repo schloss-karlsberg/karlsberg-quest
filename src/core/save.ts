@@ -147,6 +147,12 @@ export class SettingsStore extends Store<Settings> {
   }
 }
 
+type SaveAvailability = 'empty' | 'readable' | 'unreadable';
+type SlotRead =
+  | { status: 'empty' }
+  | { status: 'readable'; state: GameState }
+  | { status: 'unreadable'; error: unknown };
+
 /**
  * Save slots in localStorage. `autosave(reason)` is the API features call at meaningful moments
  * (era shift, clue confirmed); it is throttled so it can be called freely.
@@ -171,6 +177,11 @@ export class SaveManager {
 
   has(slot = 'auto'): boolean {
     return this.storage.getItem(SAVE_KEY(slot)) !== null;
+  }
+
+  /** Check a slot without changing the game state or stored bytes. */
+  availability(slot = 'auto'): SaveAvailability {
+    return this.read(slot).status;
   }
 
   save(slot = 'auto', reason = 'manual'): boolean {
@@ -220,28 +231,29 @@ export class SaveManager {
 
   /** Load a slot into the store. Returns false when the slot is empty or unreadable. */
   load(slot = 'auto'): boolean {
-    const raw = this.storage.getItem(SAVE_KEY(slot));
-    if (!raw) return false;
-    let s: GameState;
-    try {
-      s = deserializeState(raw);
-    } catch (err) {
-      console.warn('[save] unreadable save, ignoring', err);
+    const result = this.read(slot);
+    if (result.status !== 'readable') {
+      if (result.status === 'unreadable') console.warn('[save] unreadable save, ignoring', result.error);
       return false;
     }
-    this.store.replace(s, 'load');
+    this.store.replace(result.state, 'load');
     this.events?.emit('save:loaded', { slot });
     return true;
   }
 
   /** Read a slot without loading it (null when empty or unreadable). */
   peek(slot = 'auto'): GameState | null {
+    const result = this.read(slot);
+    return result.status === 'readable' ? result.state : null;
+  }
+
+  private read(slot: string): SlotRead {
     const raw = this.storage.getItem(SAVE_KEY(slot));
-    if (!raw) return null;
+    if (raw === null) return { status: 'empty' };
     try {
-      return deserializeState(raw);
-    } catch {
-      return null;
+      return { status: 'readable', state: deserializeState(raw) };
+    } catch (error) {
+      return { status: 'unreadable', error };
     }
   }
 

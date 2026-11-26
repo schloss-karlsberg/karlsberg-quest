@@ -70,7 +70,9 @@ async function shoot(page: Page, name: string, v: View): Promise<void> {
 
 test('the tour starts with audio and Continue restores the read-only autosave', async ({ page }) => {
   const errors = trackErrors(page);
-  const stored = readFileSync(new URL('../tests/fixtures/saves/v0.8.0.json', import.meta.url), 'utf8');
+  const legacy = JSON.parse(readFileSync(new URL('../tests/fixtures/saves/v0.8.0.json', import.meta.url), 'utf8'));
+  delete legacy.meta.savedAt;
+  const stored = JSON.stringify(legacy);
   await page.addInitScript((raw) => localStorage.setItem('kq.save.v1.auto', raw), stored);
   await page.goto('./?nosave&fresh');
   await expect(page.getByTestId('title')).toBeVisible();
@@ -132,6 +134,27 @@ test('the tour starts with audio and Continue restores the read-only autosave', 
   expect(await k1Entries.jsonValue()).toEqual([{ beat: 'k1_0', onTitle: false }]);
   expect(await page.evaluate(() => localStorage.getItem('kq.save.v1.auto'))).toBe(stored);
   expect(errors).toEqual([]);
+});
+
+test('the title protects an unreadable autosave when New Game is cancelled', async ({ page }) => {
+  const stored = '{\n  "version": 999,\n  "flags": { "future": true }\n}\n';
+  const readAutosave = () => page.evaluate(() => localStorage.getItem('kq.save.v1.auto'));
+  await page.addInitScript((raw) => localStorage.setItem('kq.save.v1.auto', raw), stored);
+  await page.goto('./');
+  const title = page.getByTestId('title');
+  const start = title.getByTestId('title-new');
+  await expect(start).toBeEnabled({ timeout: 90_000 });
+  await expect(title.getByTestId('title-continue')).toBeHidden();
+  await expect(title.getByRole('status')).toHaveText(/Spielstand.*neueren Spielversion/);
+  expect(await readAutosave()).toBe(stored);
+
+  await start.click();
+  await expect(page.getByText(/Der bisherige Spielstand wird überschrieben/)).toBeVisible();
+  await page.getByRole('button', { name: 'Nein', exact: true }).click();
+  await expect(title).toBeVisible();
+  await expect(title.getByRole('status')).toBeVisible();
+  await expect(page.getByTestId('content-warning')).toBeHidden();
+  expect(await readAutosave()).toBe(stored);
 });
 
 for (const view of [
