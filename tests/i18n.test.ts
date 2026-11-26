@@ -1,19 +1,65 @@
+import { Scene } from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { GameContext } from '../src/core/context';
 import { ERA_INFO } from '../src/core/era';
+import { EventBus } from '../src/core/events';
+import { GameStateStore, createInitialState } from '../src/core/state';
 import { REBINDABLE } from '../src/player/input';
 
 beforeEach(() => { vi.resetModules(); });
-afterEach(() => { vi.restoreAllMocks(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe('German string lookup', () => {
-  it('resolves the keys built by the era HUD, remapping table and controls page', async () => {
+  it('resolves the keys built by the era HUD and remapping table', async () => {
     const { hasString } = await import('../src/i18n');
-    const { CONTROL_KEYS } = await import('../src/ui/menus');
     for (const { labelKey } of Object.values(ERA_INFO)) expect(hasString(labelKey), labelKey).toBe(true);
     for (const action of REBINDABLE) expect(hasString(`action.${action}`), action).toBe(true);
-    for (const id of CONTROL_KEYS) {
-      expect(hasString(`ui.keys.${id}`), id).toBe(true);
-      expect(hasString(`ui.keys.${id}.key`), id).toBe(true);
+  });
+
+  it('resolves both labels for every control after feature initialization', async () => {
+    const [{ hasString }, { CONTROL_KEYS }, { default: skills }, { default: photo }, { default: notes }] = await Promise.all([
+      import('../src/i18n'),
+      import('../src/ui/menus'),
+      import('../src/systems/skills'),
+      import('../src/systems/photo'),
+      import('../src/systems/notes'),
+    ]);
+    const createElement = () => Object.assign(new EventTarget(), {
+      append: vi.fn(),
+      appendChild: vi.fn(),
+      classList: { remove: vi.fn() },
+      getContext: () => null,
+      remove: vi.fn(),
+      setAttribute: vi.fn(),
+      style: {},
+    });
+    vi.stubGlobal('Node', EventTarget);
+    vi.stubGlobal('window', new EventTarget());
+    vi.stubGlobal('document', Object.assign(new EventTarget(), { createElement, createTextNode: () => new EventTarget() }));
+    vi.stubGlobal('indexedDB', undefined);
+
+    const ctx = {
+      events: new EventBus(),
+      state: new GameStateStore(createInitialState()),
+      scene: new Scene(),
+      era: { current: 'today' },
+      world: { heightAt: () => 0 },
+      ui: { root: createElement(), layer: createElement, cards: { source: vi.fn() } },
+    } as unknown as GameContext;
+    const features = [skills, photo, notes];
+    try {
+      for (const feature of features) feature.init(ctx);
+      expect(CONTROL_KEYS).toEqual(expect.arrayContaining(['relief_off', 'xray', 'plans', 'photo', 'notes']));
+      for (const id of CONTROL_KEYS) {
+        const key = `ui.keys.${id}`;
+        expect(hasString(key), key).toBe(true);
+        expect(hasString(`${key}.key`), `${key}.key`).toBe(true);
+      }
+    } finally {
+      for (const feature of features.reverse()) feature.dispose();
     }
   });
 
