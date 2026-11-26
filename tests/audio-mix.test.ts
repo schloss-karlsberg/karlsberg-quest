@@ -449,6 +449,15 @@ describe('speech mix', () => {
     expect(duckGain(audio, 'ambience')).toBe(0.38);
   });
 
+  it.each(['voice', 'master'] as const)('leaves timing to the subtitles when %s is muted', (channel) => {
+    const audio = new AudioManager();
+    audio.unlock();
+    audio.setVolumes({ [channel]: 0 });
+    const voice = new Voice(audio);
+    expect(voice.playClip(buffer, speakerMeta('imhoff').voice)).toBeNull();
+    expect((audio.ctx as unknown as Context).sources).toHaveLength(0);
+  });
+
   it('routes Gerold clips and murmurs through one moving source on the voice bus', () => {
     const audio = new AudioManager();
     audio.unlock();

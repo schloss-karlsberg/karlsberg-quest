@@ -5,6 +5,7 @@ import type { Animal, AnimalSpawnOpts } from '../src/systems/fauna/types';
 import { createCinematicBridge, createPhotoBridge, type PhotoTargetHooks } from '../src/systems/animals/photoBridge';
 import { AnimalsRuntime, type AnimalsBus, type PersonLike } from '../src/systems/animals/runtime';
 import type { AnimalAction, AnimalSave } from '../src/systems/animals/types';
+import type { CrowdCircle } from '../src/world/crowd';
 
 const DT = 1 / 60;
 
@@ -75,7 +76,7 @@ function fakeFauna() {
   return { fauna, spawned };
 }
 
-function setup(opts: { save?: AnimalSave; photoMods?: Record<string, unknown>; people?: PersonLike[]; npcs?: { npc: string; x: number; z: number }[] } = {}) {
+function setup(opts: { save?: AnimalSave; photoMods?: Record<string, unknown>; people?: PersonLike[]; npcs?: { npc: string; x: number; z: number }[]; visitors?: CrowdCircle[] } = {}) {
   const bus = new FakeBus();
   const { fauna, spawned } = fakeFauna();
   const player = { x: 0, z: 40, speed: 0, stance: 'stand' as Stance };
@@ -99,6 +100,7 @@ function setup(opts: { save?: AnimalSave; photoMods?: Record<string, unknown>; p
       los: () => world.los,
       people: () => opts.people ?? [],
       npcs: () => opts.npcs ?? [],
+      tourVisitors: () => opts.visitors ?? [],
     },
   });
   const step = (seconds: number, each?: () => void) => {
@@ -116,6 +118,22 @@ const RICKE: AnimalAction = { do: 'animal', op: 'spawn', kind: 'reh', look: 'ric
 const KITZ: AnimalAction = { do: 'animal', op: 'spawn', kind: 'reh', look: 'kitz', id: 'kitz', follow: 'animal:ricke', spacing: 1.5, era: 'today' };
 
 describe('animals runtime (C5)', () => {
+  it('pushes a tour dog clear of a visitor before syncing the body', () => {
+    const visitors: CrowdCircle[] = [];
+    const { rt, step, spawned, player } = setup({ npcs: [{ npc: 'double.jost', x: 0, z: 0 }], visitors });
+    rt.request({ do: 'animal', op: 'spawn', kind: 'hund', look: 'diane', id: 'diane', follow: 'npc:double.jost' });
+    const dog = rt.dogs[0]!;
+    const visitor = { x: dog.x, y: 300, z: dog.z, radius: 0.32 };
+    visitors.push(visitor);
+    step(DT);
+    const p = spawned[0]!.root.position;
+    expect(Math.hypot(p.x - visitor.x, p.z - visitor.z)).toBeGreaterThanOrEqual(0.58);
+    Object.assign(player, { x: p.x, z: p.z });
+    step(DT);
+    expect(Math.hypot(p.x - player.x, p.z - player.z)).toBeGreaterThanOrEqual(0.61);
+    expect(rt.tourDogs()[0]).toMatchObject({ x: p.x, z: p.z });
+  });
+
   it('an animal:request spawns bodies through the fauna API (spec ids, ground y, the fawn at the doe)', () => {
     const { bus, rt, spawned } = setup();
     bus.emit('animal:request', RICKE);

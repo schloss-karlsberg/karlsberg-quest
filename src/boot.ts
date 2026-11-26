@@ -3,6 +3,7 @@ import { AssetLoader } from './assets/loader';
 import { AudioManager } from './audio/audio';
 import { loadBundledContent } from './content/db';
 import type { EraController, GameContext, PauseController } from './core/context';
+import { separateFromCrowd, type TourCrowd } from './world/crowd';
 import { ERA_INFO, type Era, isEra } from './core/era';
 import { EventBus } from './core/events';
 import { FixedStepLoop, frameCap, renderRate } from './core/loop';
@@ -211,10 +212,17 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   // ---- input + player
   const input = new Input(renderer.domElement);
   input.enabled = false;
+  const tourCrowd: TourCrowd = {};
   const player = new Player(
     {
       heightAt: (x, z) => world.heightAt(x, z),
       collide: (x, z, r) => world.collider.resolve(x, z, r),
+      separate: (x, z, radius, from) => {
+        const body = { x, y: from.y, z, radius };
+        separateFromCrowd(body, tourCrowd.visitors?.() ?? [], from);
+        separateFromCrowd(body, tourCrowd.dogs?.() ?? [], from);
+        return body;
+      },
       bounds: () => world.bounds(),
       surfaceAt: (x, z) => world.surfaceAt(x, z),
       coverAt: (x, z) => world.coverAt(x, z),
@@ -504,6 +512,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     player,
     input,
     world,
+    tourCrowd,
     data,
     state,
     settings,

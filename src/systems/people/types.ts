@@ -103,7 +103,7 @@ export interface Person {
   /** idle/talk/sit/sitTalk/lookAround loop; point/wave/interact one-shot, then back to idle/locomotion; unsupported → nearest fallback. */
   play(clip: PersonClip, o?: { loop?: boolean; fade?: number; speed?: number }): void;
   /** Smooth body turn toward a yaw (radians, player convention). */
-  face(yaw: number): void;
+  face(yaw: number, snap?: boolean): void;
   /** Head turn toward a world point; null = forward. */
   lookAt(p: { x: number; y: number; z: number } | null): void;
   setLook(look: PersonLook): void;

@@ -108,7 +108,7 @@
       "id": "t3",
       "title_de": "Los geht's",
       "enter": [
-        { "do": "say", "id": "imhoff.t.los", "speaker": "imhoff", "text": "So. Dann mal los. Bleibt zusammen, der Weg ist schmal." },
+        { "do": "say", "id": "imhoff.t.los", "speaker": "imhoff", "text": "So. Dann mal los. Bleibt zusammen, der Weg ist schmal.", "wait": true, "onResume": true },
         { "do": "npc", "op": "follow", "group": "fuehrung", "leader": "imhoff" },
         { "do": "npc", "op": "walk", "npc": "imhoff", "route": "p-fuehrung", "to": "abzweig", "speed": 1.9, "wait": { "for": "player", "r": 25, "bark": "imhoff.bark.wait" } },
         { "do": "objective", "id": "tour", "text": "Der Gruppe folgen", "x": 515.2, "z": -729.9 },
@@ -188,9 +188,8 @@
           "id": "tour.hunde",
           "skippable": true,
           "keys": [
-            { "t": 0, "eye": { "rel": "player", "back": 2.6, "up": 2.0 }, "look": { "target": "animal:diane" }, "fov": 55 },
-            { "t": 3, "look": { "target": "animal:diane" }, "fov": 42 },
-            { "t": 6, "look": { "target": "animal:bijou" }, "fov": 42 }
+            { "t": 0, "eye": { "x": 697, "z": -651, "y": 10 }, "look": { "targets": ["animal:diane", "animal:bijou"] }, "fov": 55 },
+            { "t": 6, "eye": { "x": 701, "z": -654, "y": 10 }, "fov": 65 }
           ]
         },
         { "do": "animal", "op": "run", "id": "bijou", "path": [[677, -637], [701, -642], [718, -652]], "bark": true, "back": true, "delay": 0.4 },

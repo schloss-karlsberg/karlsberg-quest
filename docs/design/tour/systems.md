@@ -57,6 +57,11 @@ Storage: thumbnails in the save make it heavy; cap at 60 × 30 KB (≈ 1.8 MB) o
 
 **Tests.** Unit: keyframe interpolation and the skip path (`tests/cinematic.test.ts`, like the existing stage tests); reduced motion gives ≤ 2 stills. e2e: covered by the photo / tour specs (the deer cinematic ends and returns control).
 
+**Wind shot (TASK-016).** Beat t8 starts the skippable shot with the dogs' run cues. The camera
+looks down from a fixed path beside the hillside and aims between the two live dog targets.
+Reduced motion holds the camera still on each side of the cut. The headless tour test simulates
+both dogs over the shipped terrain and checks landscape and portrait framing.
+
 ---
 
 ## 3. Tour group that follows the guide
@@ -82,6 +87,15 @@ Storage: thumbnails in the save make it heavy; cap at 60 × 30 KB (≈ 1.8 MB) o
 `path` names a polyline registered from `paths.json` node ids (route `p-fuehrung`, segments between stops). Followers: a boids-lite offset (slot ring behind the guide, 1.2–4 m, jitter), terrain-snapped, trunk avoidance via `forest.trunksNear`. Walk speed 1.6 m/s for the group when the player is close, catching up at 2.4 m/s; the player's walk is 3.2 m/s (`STANCES.stand.speed`), so the player is never held back. Performance: 14 figures at low tier use the K3 crowd's cheap path; full rigs only within 25 m.
 
 **Tests.** Unit: `tests/npc-walk.test.ts` (polyline progress, leash wait/resume, gather slots don't overlap, no follower inside a trunk); validator: every `walk` path resolves to `paths.json` nodes and stays inside the extent. e2e: `e2e/tour.spec.ts` (a walk-only bot follows the marker from the car park to the Quelle; the group arrives at each stop; standing still 40 s → group waits and barks; total time within the pacing budget below).
+
+**Stop staging (TASK-016).** Stopped members turn toward Gerold. He faces the player during
+conversation and nearby story dialogue while he is stopped. Reduced motion sets the heading
+immediately. The first departure waits until the line ends, its subtitle has had time to read
+when muted, or the player advances it. At Felsenpfad, fourteen authored slots follow the trail
+and reserve space from scattered boulders. The camera checks the final lens path for terrain
+and solid scenery after framing. Felsenpfad dialogue and radio captions sit in the upper band
+on desktop and phones. Horizontal circles keep the walking player clear of tour visitors and
+dogs and push the dogs clear of visitors.
 
 ---
 

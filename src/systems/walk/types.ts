@@ -20,7 +20,11 @@ export interface GroupDespawnOp { op: 'despawn'; group: string }
 export interface WarpOp { op: 'warp'; group: string; to: string; route?: string }
 export type WalkRequest = WalkOp | GroupOp | FollowOp | GatherOp | GroupDespawnOp | WarpOp;
 /** content/routes/<id>.json: named stops along a polyline (local metres, x east, z south). */
-export interface Route { id: string; stops: { id: string; x: number; z: number }[]; points: [number, number][] }
+export interface Route {
+  id: string;
+  stops: { id: string; x: number; z: number; slots?: [number, number][] }[];
+  points: [number, number][];
+}
 
 /** One walker in the save: `s` = metres along the polyline. `path` only for raw-path walkers (route = ''). */
 export interface WalkerSave {

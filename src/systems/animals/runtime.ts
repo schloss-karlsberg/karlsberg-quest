@@ -21,6 +21,7 @@ import {
   type DeerInput,
 } from './deer';
 import { applyDogRequest, createDog, dogSlot, stepDogs, type Dog, type DogTarget } from './dogs';
+import { DOG_RADIUS, PLAYER_RADIUS, separateFromCrowd, type CrowdCircle } from '../../world/crowd';
 import { createCinematicBridge, createPhotoBridge, type CinematicBridge, type P3, type PhotoBridge } from './photoBridge';
 import { restoreAnimals, serializeAnimals } from './save';
 import { specIdFor, toRequest, type AnimalAction, type AnimalEvent, type AnimalKind, type AnimalRequest, type AnimalSave } from './types';
@@ -50,6 +51,7 @@ export type FaunaLike = Pick<FaunaApi, 'spawn'>;
 
 export interface AnimalsPlayer {
   x: number;
+  y?: number;
   z: number;
   /** Ground speed m/s. */
   speed: number;
@@ -68,6 +70,7 @@ export interface AnimalsWorld {
   era(): string;
   player(): AnimalsPlayer;
   walkable?(x: number, z: number): boolean;
+  tourVisitors?(): readonly CrowdCircle[];
   /** Can the deer at (ax, az) see the player at (bx, bz) in this stance? Default: yes. */
   los?(ax: number, az: number, bx: number, bz: number, stance: Stance): boolean;
   /** Live people (ctx.people.list()). */
@@ -311,6 +314,14 @@ export class AnimalsRuntime {
     if (s.body) {
       const o = { x: 0, y: 0, z: 0 };
       s.body.headWorld(o);
+      // The camera updates before body sync. Keep its target on the current simulation pose.
+      const d = this.deer.find((a) => a.id === id) ?? this.dogs.find((a) => a.id === id);
+      if (d) {
+        const root = s.body.root.position;
+        o.x += d.x - root.x;
+        o.y += this.deps.world.heightAt(d.x, d.z) - root.y;
+        o.z += d.z - root.z;
+      }
       return o;
     }
     const c = this.centreOf(id);
@@ -416,7 +427,23 @@ export class AnimalsRuntime {
     const input: DeerInput = { player, los: this.los };
     if (w.walkable) input.walkable = (x, z) => w.walkable!(x, z);
     const evs = this.deer.length ? stepDeerHerd(this.deer, dt, input) : [];
-    if (this.dogs.length) evs.push(...stepDogs(this.dogs, dt, this.resolve));
+    if (this.dogs.length) {
+      evs.push(...stepDogs(this.dogs, dt, this.resolve));
+      const visitors = w.tourVisitors?.();
+      if (visitors?.length) {
+        const blockers = p.flying ? visitors : [...visitors, { x: p.x, y: p.y ?? w.heightAt(p.x, p.z), z: p.z, radius: PLAYER_RADIUS }];
+        for (const dog of this.dogs) {
+          if (dog.follow !== 'npc:double.jost') continue;
+          const body = { x: dog.x, y: w.heightAt(dog.x, dog.z), z: dog.z, radius: DOG_RADIUS };
+          const from = { x: dog.x + Math.sin(dog.yaw), z: dog.z + Math.cos(dog.yaw) };
+          separateFromCrowd(body, blockers, from);
+          if ((body.x !== dog.x || body.z !== dog.z) && Math.abs(w.heightAt(body.x, body.z) - body.y) < 0.45) {
+            dog.x = body.x;
+            dog.z = body.z;
+          }
+        }
+      }
+    }
     // keep the follow refs' samples fresh (the player and leaders) even when no dog asked this tick
     for (const d of this.dogs) if (d.follow) this.resolve(d.follow);
     this.sampleRefs();
@@ -426,6 +453,14 @@ export class AnimalsRuntime {
       this.saveT = 1 / SAVE_HZ;
       this.writeSave();
     }
+  }
+
+  tourDogs(): CrowdCircle[] {
+    const w = this.deps.world;
+    if (w.era() !== ANIMAL_ERA) return [];
+    return this.dogs
+      .filter((dog) => dog.follow === 'npc:double.jost' && this.slots.get(dog.id)?.body)
+      .map((dog) => ({ x: dog.x, y: w.heightAt(dog.x, dog.z), z: dog.z, radius: DOG_RADIUS }));
   }
 
   /** Any self-led deer sees the player (the doe leads; followers mirror her). */

@@ -426,11 +426,11 @@ export class Voice {
 
   /**
    * Start a recorded clip through the speaker's clip chain. Null when it cannot start now (audio
-   * locked or the context suspended): the caller murmurs instead.
+   * muted, locked or the context suspended): the caller uses subtitle timing instead.
    */
   playClip(buffer: AudioBuffer, spec: VoiceSpec): VoiceClip | null {
     const ctx = this.audio.ctx;
-    if (!ctx || ctx.state !== 'running') return null;
+    if (!ctx || ctx.state !== 'running' || this.audio.volumes.voice <= 0 || this.audio.volumes.master <= 0) return null;
     const chain = this.chain(spec, 'clip');
     if (!chain) return null;
     if (spec.radio && !this.beds) this.beds = makeRadioBeds(ctx);

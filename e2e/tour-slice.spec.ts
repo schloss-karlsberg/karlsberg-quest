@@ -143,6 +143,15 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   });
   expect(greeting).toEqual(['imhoff.t.station1', 'imhoff.t.station1a', 'imhoff.t.station1b']);
   await follow(page, 't3', 70);
+  const departure = await page.evaluate(() => {
+    const k = window.kq!;
+    const before = k.walk!.walker('imhoff')!;
+    k.step(30);
+    const during = k.walk!.walker('imhoff')!;
+    return { line: k.story!.state().dialogue?.id, before: before.s, during: during.s, to: during.to };
+  });
+  expect(departure).toMatchObject({ line: 'imhoff.t.los', to: 'parkplatz' });
+  expect(departure.during).toBe(departure.before);
   await follow(page, 't4', 120);
   // the fade: Gerold's line, black, the group warped to the Felsenpfad entry, the player behind it
   for (let i = 0; i < 20 && (await beat(page)) === 't4'; i++) await page.evaluate(() => window.kq!.step(30));
@@ -152,11 +161,42 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   expect(Math.hypot(p4.x - 623.4, p4.z + 485.9)).toBeLessThan(15);
   await follow(page, 't6', 200);
   await viewGroup(page);
+  const card = page.getByTestId('dialogue');
+  await expect(card).toHaveClass(/kqs-dlg-raised/);
+  const desktop = page.viewportSize()!;
+  const touch = await page.evaluate(() => {
+    const settings = window.kq!.ctx.settings;
+    const old = settings.state.touchControls;
+    settings.update((s) => (s.touchControls = 'on'), 'touchControls');
+    return old ?? 'auto';
+  });
+  for (const viewport of [{ width: 844, height: 390 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    await expect.poll(async () => {
+      const box = await card.boundingBox();
+      return !!box && box.x >= 0 && box.x + box.width <= viewport.width && box.y + box.height < viewport.height / 2;
+    }).toBe(true);
+  }
+  await page.setViewportSize(desktop);
+  await page.evaluate((mode) => window.kq!.ctx.settings.update((s) => (s.touchControls = mode), 'touchControls'), touch);
+  await expect.poll(async () => {
+    const box = await card.boundingBox();
+    return !!box && box.y + box.height < desktop.height / 2;
+  }).toBe(true);
   await shot(page, '04-felsenpfad-station2');
   await follow(page, 't8', 200);
   expect(await shown(page, 'imhoff.t.station2')).toEqual(['imhoff.t.station2', 'imhoff.t.station2a', 'imhoff.t.station2b', 'imhoff.t.station2c']);
   await page.evaluate(() => window.kq!.step(150));
   await expect(page.locator('.kq-subtitles').getByText('[Diane und Bijou bellen]')).toBeVisible();
+  const framed = await page.evaluate(() => {
+    const k = window.kq!;
+    const { camera, world } = k.ctx;
+    return k.animals!.list().filter((a) => a.id === 'diane' || a.id === 'bijou').map((dog) => {
+      const p = camera.position.clone().set(dog.x, world.heightAt(dog.x, dog.z) + 0.45, dog.z).project(camera);
+      return [dog.id, Math.max(Math.abs(p.x), Math.abs(p.y), Math.abs(p.z)) < 1];
+    }).sort();
+  });
+  expect(framed).toEqual([['bijou', true], ['diane', true]]);
   await shot(page, '05-wind-hunde');
   await follow(page, 't9', 60);
   await follow(page, 't10', 240);

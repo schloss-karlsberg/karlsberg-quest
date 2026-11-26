@@ -5,6 +5,7 @@
  * tests/walk-system.test.ts drives it with fakes. index.ts wires it to the game.
  */
 import { FIND, rejoinArc } from './find';
+import { VISITOR_RADIUS, type CrowdCircle } from '../../world/crowd';
 import { buildRoute, type BuiltRoute } from './route';
 import { MEMBER_SPEEDS, assignSlots, followSlots, gatherSlots, pushOutOfTrunks, separate, stepMember, type MemberSpeeds, type Slot, type TrunksNear } from './group';
 import { arriveAtTarget, createWalker, earlyArrival, headingOf, restoreWalker, serializeWalker, snapAhead, stepWalker, type WalkEvent, type Walker } from './walker';
@@ -16,7 +17,7 @@ export type BodyClip = 'idle' | 'walk' | 'run';
 /** One figure as the walk system sees it. Yaw is a heading (0 faces −z), like `Walker.yaw`. */
 export interface Body {
   setPos(x: number, y: number, z: number): void;
-  face(yaw: number): void;
+  face(yaw: number, snap?: boolean): void;
   setSpeed(mps: number): void;
   play(clip: BodyClip): void;
   setVisible(on: boolean): void;
@@ -45,6 +46,7 @@ export interface WalkWorld {
   trunksNear?: TrunksNear;
   player(): { x: number; z: number };
   era(): string;
+  reducedMotion?(): boolean;
 }
 
 export interface WalkBus {
@@ -193,6 +195,7 @@ export class WalkRuntime {
   private jumped = false;
   /** Npcs in an open conversation (their walk pauses). */
   private readonly talking = new Set<string>();
+  private activeSpeaker: string | null = null;
   private active = true;
   /** ms spent in the last update / sync (stats). */
   updateMs = 0;
@@ -207,6 +210,9 @@ export class WalkRuntime {
     ev.on('npc:conversation', (({ npc, open }: { npc: string; open: boolean }) => {
       if (open) this.talking.add(npc);
       else this.talking.delete(npc);
+    }) as (p: never) => void);
+    ev.on('dialogue:active', (({ speaker }: { speaker: string | null }) => {
+      this.activeSpeaker = speaker;
     }) as (p: never) => void);
     ev.on('player:teleport', (() => (this.jumped = true)) as (p: never) => void);
     ev.on('travel:arrived', () => {
@@ -538,11 +544,17 @@ export class WalkRuntime {
     const L = this.npcs.get(g.leader);
     if (!L) return [];
     const n = g.members.length;
+    const w = this.walkers.get(g.leader);
     if (mode === 'gather') {
       const c = this.npcs.get(g.around ?? g.leader) ?? L;
-      return gatherSlots(n, { x: c.x, z: c.z, yaw: c.yaw }, this.posOf(g.face ?? g.around ?? g.leader), g.r ?? [3, 7]);
+      const face = this.posOf(g.face) ?? c;
+      const stop = w?.arrived ? w.rt?.stops.find((st) => st.id === w.to) : undefined;
+      if (c === L && stop?.slots && stop.slots.length >= n) {
+        return stop.slots.slice(0, n).map(([x, z]) => ({ x, z, yaw: headingOf(face.x - x, face.z - z) }));
+      }
+      return gatherSlots(n, { x: c.x, z: c.z, yaw: (c === L ? w?.yaw : undefined) ?? c.yaw }, face, g.r ?? [3, 7]);
     }
-    return followSlots(n, { x: L.x, z: L.z, yaw: L.yaw }, g.spacing ?? [1.2, 4], hash(g.id));
+    return followSlots(n, { x: L.x, z: L.z, yaw: w?.yaw ?? L.yaw }, g.spacing ?? [1.2, 4], hash(g.id));
   }
 
   private reslot(g: GroupRt): void {
@@ -564,6 +576,17 @@ export class WalkRuntime {
 
   get era(): boolean {
     return this.o.world.era() === GROUP_ERA;
+  }
+
+  tourVisitors(): CrowdCircle[] {
+    const group = this.groups.get('fuehrung');
+    if (!this.era || !group) return [];
+    const circles: CrowdCircle[] = [];
+    for (const id of [group.leader, ...group.members]) {
+      const n = this.npcs.get(id);
+      if (n?.body) circles.push({ x: n.x, y: this.o.world.heightAt(n.x, n.z), z: n.z, radius: VISITOR_RADIUS });
+    }
+    return circles;
   }
 
   /** One fixed step: leash, walkers, members, slots (the bodies follow in `sync`, per drawn frame). */
@@ -588,11 +611,15 @@ export class WalkRuntime {
       delete this.o.slice().pendingTravelSnap;
     }
     if (!inEra) return;
+    const turn = this.o.world.reducedMotion?.() ? 1 : dt * 4;
     for (const w of this.walkers.values()) {
       const n = this.npcs.get(w.npc);
       if (this.isTalking(w.npc)) {
         // the player talks to the walker: it stands (and the group with it)
-        if (n) n.speed = 0;
+        if (n) {
+          n.speed = 0;
+          n.yaw = turnTo(n.yaw, facing(n, p), turn);
+        }
         continue;
       }
       // the player got to the stop first (cut a bent leg): the group is there when the guide is
@@ -609,8 +636,10 @@ export class WalkRuntime {
       if (n) {
         n.x = w.x;
         n.z = w.z;
-        n.yaw = w.yaw;
         n.speed = w.speedNow;
+        const speaking = this.activeSpeaker !== null && this.activeSpeaker === speakerFor(w.npc);
+        const address = speaking && n.speed === 0 && Math.hypot(p.x - n.x, p.z - n.z) < 12;
+        n.yaw = turnTo(n.yaw, address ? facing(n, p) : w.yaw, turn);
       }
       for (const e of evs) this.walkEvent(w, e);
     }
@@ -620,13 +649,18 @@ export class WalkRuntime {
     for (const g of this.groups.values()) {
       if (slotTick || g.slots.length !== g.members.length) this.reslot(g);
       const paused = this.isTalking(g.leader);
-      const speeds = memberSpeeds(this.npcs.get(g.leader)?.speed ?? 0);
+      const leader = this.npcs.get(g.leader);
+      const w = this.walkers.get(g.leader);
+      const stopped = paused || g.mode !== 'follow' || w?.arrived || w?.waiting;
+      const face = stopped ? this.posOf(g.face ?? g.around ?? g.leader) : undefined;
+      const speeds = memberSpeeds(leader?.speed ?? 0);
       g.members.forEach((m, i) => {
         const n = this.npcs.get(m);
         const sl = g.slots[g.assign[i] ?? -1];
         if (!n || !sl) return;
         if (paused || g.mode === 'hold') {
           n.speed = 0;
+          if (face) n.yaw = turnTo(n.yaw, facing(n, face), turn);
           return;
         }
         const ox = n.x;
@@ -634,7 +668,8 @@ export class WalkRuntime {
         n.speed = stepMember(n, sl, dt, speeds);
         const mx = n.x - ox;
         const mz = n.z - oz;
-        n.yaw = n.speed > 0.05 && Math.hypot(mx, mz) > 1e-4 ? headingOf(mx, mz) : turnTo(n.yaw, sl.yaw, dt * 4);
+        const yaw = n.speed > 0.05 && Math.hypot(mx, mz) > 1e-4 ? headingOf(mx, mz) : face ? facing(n, face) : sl.yaw;
+        n.yaw = turnTo(n.yaw, yaw, turn);
       });
       if (slotTick && g.mode !== 'hold') {
         const pos = g.members.map((m) => this.npcs.get(m)!).filter(Boolean);
@@ -699,7 +734,7 @@ export class WalkRuntime {
         continue;
       }
       b.setPos(n.x, this.o.world.heightAt(n.x, n.z), n.z);
-      b.face(n.yaw);
+      b.face(n.yaw, this.o.world.reducedMotion?.());
       b.setSpeed(n.speed);
       const clip: BodyClip = n.speed < 0.1 ? 'idle' : n.speed > 2.2 ? 'run' : 'walk';
       if (clip !== n.clip) {
@@ -881,4 +916,10 @@ function atStop(w: Walker): string {
 function turnTo(a: number, b: number, k: number): number {
   const d = Math.atan2(Math.sin(b - a), Math.cos(b - a));
   return a + d * Math.min(1, k);
+}
+
+function facing(from: { x: number; z: number; yaw: number }, to: { x: number; z: number }): number {
+  const dx = to.x - from.x;
+  const dz = to.z - from.z;
+  return Math.hypot(dx, dz) > 1e-4 ? headingOf(dx, dz) : from.yaw;
 }

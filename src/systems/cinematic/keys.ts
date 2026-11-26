@@ -101,6 +101,7 @@ export type Normalized = { ok: true; plan: Plan } | { ok: false; id: string; err
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const fin = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const optFin = (v: unknown) => v === undefined || fin(v);
+const isTarget = (v: unknown): v is CineTarget => typeof v === 'string' && (v === 'player' || TARGET_RE.test(v));
 export const smooth = (v: number): number => {
   const c = Math.max(0, Math.min(1, v));
   return c * c * (3 - 2 * c);
@@ -127,7 +128,8 @@ function checkEye(e: unknown): string | null {
 
 function checkLook(l: unknown): string | null {
   if (!isObj(l)) return 'look must be an object';
-  if (l.target !== undefined) return typeof l.target === 'string' && (l.target === 'player' || TARGET_RE.test(l.target)) ? null : `look.target "${String(l.target)}" is not npc:<id>, animal:<id> or player`;
+  if (l.target !== undefined) return isTarget(l.target) ? null : `look.target "${String(l.target)}" is not npc:<id>, animal:<id> or player`;
+  if (l.targets !== undefined) return Array.isArray(l.targets) && l.targets.length === 2 && l.targets.every(isTarget) ? null : 'look.targets needs two target ids';
   if (l.pitch !== undefined) return fin(l.pitch) && optFin(l.yaw) ? null : 'look.pitch / look.yaw must be numbers';
   if (!fin(l.x) || !fin(l.z) || !optFin(l.y)) return 'look needs a target, numeric x / z or a pitch';
   return null;
@@ -262,6 +264,11 @@ export function anglesTo(e: Vec3, p: Vec3, out: { yaw: number; pitch: number }):
 }
 
 const _p: Vec3 = { x: 0, y: 0, z: 0 };
+function targetPoint(env: Env, target: CineTarget): Vec3 | null {
+  const p = env.target(target);
+  return p && fin(p.x) && fin(p.y) && fin(p.z) ? p : null;
+}
+
 /** The view of a look from eye `e`; false when a target cannot be found (the caller holds). */
 function lookAngles(look: Look | undefined, eye: Eye | undefined, e: Vec3, snap: Snapshot, env: Env, out: { yaw: number; pitch: number }): boolean {
   if (!look) {
@@ -270,9 +277,21 @@ function lookAngles(look: Look | undefined, eye: Eye | undefined, e: Vec3, snap:
     return true;
   }
   if ('target' in look) {
-    const p = env.target(look.target);
-    if (!p || !fin(p.x) || !fin(p.y) || !fin(p.z)) return false;
+    const p = targetPoint(env, look.target);
+    if (!p) return false;
     anglesTo(e, p, out);
+    return true;
+  }
+  if ('targets' in look) {
+    const a = targetPoint(env, look.targets[0]);
+    const b = targetPoint(env, look.targets[1]);
+    if (a && b) {
+      _p.x = (a.x + b.x) / 2;
+      _p.y = (a.y + b.y) / 2;
+      _p.z = (a.z + b.z) / 2;
+      anglesTo(e, _p, out);
+    } else if (a || b) anglesTo(e, (a ?? b)!, out);
+    else return false;
     return true;
   }
   if ('pitch' in look) {

@@ -730,8 +730,12 @@ export class StandInPerson implements Person {
     return plan.gestures === true || (plan.talkLoop === true && this.loco.talk === null);
   }
 
-  face(yaw: number): void {
-    if (Number.isFinite(yaw)) this.faceTarget = wrapPi(yaw);
+  face(yaw: number, snap = false): void {
+    if (!Number.isFinite(yaw)) return;
+    if (snap) {
+      this.root.rotation.y = wrapPi(yaw);
+      this.faceTarget = null;
+    } else this.faceTarget = wrapPi(yaw);
   }
 
   lookAt(p: { x: number; y: number; z: number } | null): void {

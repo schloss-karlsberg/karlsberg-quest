@@ -37,7 +37,7 @@ interface FakeBody extends Body {
 function setup(slice: WalkSlice = { walkers: [], groups: [] }, factory?: BodyFactory) {
   const bus = new FakeBus();
   const player = { x: 524, z: -765 };
-  const world = { era: 'today' };
+  const world = { era: 'today', reducedMotion: false };
   const bodies: FakeBody[] = [];
   const rt = new WalkRuntime({
     bus,
@@ -48,6 +48,7 @@ function setup(slice: WalkSlice = { walkers: [], groups: [] }, factory?: BodyFac
       heightAt: () => 300,
       player: () => player,
       era: () => world.era,
+      reducedMotion: () => world.reducedMotion,
       // one trunk right on the route, 30 m in
       trunksNear: (x, z, r, fn) => {
         if (Math.hypot(x - 512, z - -740) < r + 1) fn(512, -740, 0.5, 20);
@@ -105,6 +106,54 @@ function demo(s: ReturnType<typeof setup>, to = 'abzweig', wait = true) {
 }
 
 describe('walk system', () => {
+  it('turns stopped visitors toward the guide and the guide toward the player during the active line', () => {
+    const s = setup();
+    s.req({ op: 'walk', npc: 'imhoff', route: ROUTE.id, to: 'parkplatz' });
+    s.req({ op: 'group', group: 'fuehrung', leader: 'imhoff', members: MEMBERS });
+    const guide = s.rt.npcs.get('imhoff')!;
+    const member = s.rt.npcs.get(MEMBERS[0]!)!;
+    const initial = 0.4;
+    member.yaw = initial;
+    const bearing = Math.atan2(member.x - guide.x, member.z - guide.z);
+    s.bus.emit('dialogue:active', { speaker: 'imhoff' });
+    s.step(DT);
+    expect(member.yaw).not.toBe(initial);
+    expect(Math.cos(member.yaw - bearing)).toBeLessThan(0.999);
+    s.world.reducedMotion = true;
+    s.step(DT);
+    expect(Math.cos(member.yaw - bearing)).toBeCloseTo(1, 10);
+    expect(Math.cos(guide.yaw - Math.atan2(guide.x - s.player.x, guide.z - s.player.z))).toBeCloseTo(1, 10);
+    const parked = s.rt.walkers.get('imhoff')!;
+    s.bus.emit('dialogue:active', { speaker: null });
+    s.step(DT);
+    expect(Math.cos(guide.yaw - parked.yaw)).toBeCloseTo(1, 10);
+    expect(s.rt.tourVisitors()).toHaveLength(1 + MEMBERS.length);
+    s.world.era = '1789';
+    expect(s.rt.tourVisitors()).toHaveLength(0);
+  });
+
+  it('uses the trail slots for the Felsenpfad gathering before and after a save', () => {
+    const s = setup();
+    s.req({ op: 'walk', npc: 'imhoff', route: ROUTE.id, to: 'felsen' });
+    s.req({ op: 'group', group: 'fuehrung', leader: 'imhoff', members: MEMBERS_14 });
+    expect(s.rt.snap('fuehrung', 'felsen')).toBe(true);
+    s.req({ op: 'gather', group: 'fuehrung', around: 'imhoff' });
+    s.step(10);
+    const slots = ROUTE.stops.find((stop) => stop.id === 'felsen')!.slots!;
+    const check = () => {
+      for (const [x, z] of slots) {
+        expect(MEMBERS_14.some((m) => {
+          const n = s.rt.npcs.get(m)!;
+          return Math.hypot(x - n.x, z - n.z) < 0.051;
+        })).toBe(true);
+      }
+    };
+    check();
+    s.rt.writeSlice();
+    s.rt.restore();
+    check();
+  });
+
   it('maps npc ids to people specs', () => {
     expect(specFor('imhoff')).toBe('guide');
     expect(specFor('double.herzog')).toBe('double.herzog');
