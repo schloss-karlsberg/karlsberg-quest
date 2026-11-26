@@ -111,17 +111,20 @@ describe('survey skill grants and cards', () => {
     expect(t.cards.showing).toBeNull();
   });
 
-  it('clears the active and queued unlocks on load and retains saved tiers silently', () => {
+  it('clears the active and queued unlocks on load and applies a higher saved tier silently', () => {
     const t = setupSkills();
-    t.events.emit('skill:grant', { skill: 'relief', level: 3 });
+    t.events.emit('skill:grant', { skill: 'relief', level: 2 });
     t.step(6);
     expect(t.shown()).toBe(1);
     t.events.emit('skill:grant', { skill: 'kartograf', level: 2 });
     expect(t.autosave.mock.calls).toEqual([['skill'], ['skill']]);
+    expect(t.state.state.skills.relief).toBe(2);
     const saved = JSON.parse(t.state.toJSON()) as GameState;
+    saved.skills.relief = 3;
     t.unlocked.mockClear();
     t.state.replace(saved, 'load');
     t.events.emit('save:loaded', { slot: 'test' });
+    expect(t.state.state.skills.relief).toBe(3);
     t.step(10);
     expect(t.shown()).toBe(0);
     expect(t.cards.showing).toBeNull();

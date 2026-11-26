@@ -55,13 +55,21 @@ _Status: approved 2026-11-26_
 - [x] Add and time the focused tests. Capture baseline failures.
 - [x] Fix confirmed failures and document design questions.
 - [x] Run the four gate commands and attempt the locked smoke spec. Record the results.
-- [ ] Finish the local commits and run the sandbox-blocked validation and smoke checks.
+- [x] Re-run all gates and attempt smoke after the review fixes, then record the outcome.
+- [ ] Commit the remaining loot and skill test updates with the task record.
 
 **Test plan** — Run focused Vitest files, then `pnpm typecheck && pnpm test && pnpm validate && pnpm build`. Run `KQ_E2E_PORT=5416 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line`.
 
 **Risks** — Use fixed simulation steps, explicit inputs and seeded samples. Keep the overlapping combat item-use and hunt lantern work outside the fixes.
 
 **Open questions** — Record ambiguous behaviour in the sweep as it is identified.
+
+### Review repair plan
+
+- [x] Reproduce a falling stone outliving its pack. Cancel the pending damage, warning and stone when the responsible encounter is removed, and verify that another encounter keeps its attacks.
+- [x] Verify scoped bolt removal with two airborne shots and step beyond the removed shot's impact window.
+- [x] Assert every boss's guaranteed Balsam chance and count bounds. Load a higher skill tier and verify that it applies silently.
+- [x] Update the combat behaviour docs and gate record, removing the commands superseded by `bd8b4db`.
 
 ## Behaviour and unit coverage map
 
@@ -124,23 +132,21 @@ The coverage column records existing tests and the gaps found by searching `test
 - Branch `dev/task-028`, starting at `d2d1f48` (local `origin/main`).
 - 2026-11-26 — Mapped existing unit coverage and identified lifecycle, save and boundary gaps.
 - 2026-11-26 — The baseline run reproduced four failures across three defects. Scoped despawn and dematerialisation left caster bolts alive. Held Warner prints blocked expiry of regular prints placed later. A skill card could enter while a reward owned the centre slot on the frame its settle clock crossed the threshold.
-- 2026-11-26 — Fixed the three defects and recorded the remaining lob behaviour question as a test todo. Git committed the combat fix as `f035337`. The next index lock was denied by the sandbox, leaving the hunt and skills fixes and the remaining tests and docs in this worktree.
+- 2026-11-26 — Fixed the three defects and recorded the remaining lob behaviour question as a test todo. `f035337` contains the initial combat fix. `bd8b4db` contains the hunt and skills fixes together with the remaining tests and docs.
 - 2026-11-26 — Focused run completed in 219 ms with `Tests  17 passed | 1 todo (18)`. This includes 14 new passing tests and three existing hunt tests.
 - 2026-11-26 — `pnpm typecheck` and `pnpm build` passed. The full unit gate reported `Tests  1587 passed | 1 todo (1588)` with zero failures. `pnpm validate` stopped before validation because the sandbox denied the TypeScript runner's IPC socket with `listen EPERM`.
 - 2026-11-26 — The shared lock ran the smoke command, but the sandbox denied the preview server's bind to `127.0.0.1:5416` with `listen EPERM`. No browser tests started. No browser specs changed.
+- 2026-11-26 — Independent review passed content validation and reported `Tests  17 passed | 1 todo (18)` across the four focused files on `bd8b4db`.
+- 2026-11-26 — Reproduced the pre-existing falling-stone bug with scoped despawn, scoped dematerialisation and despawn-all. In each case the stone still landed and took 14 HP. `97fb31d` ties each hazard to its triggering pack and verifies that removing another encounter preserves the warning and that removing the responsible pack cancels it while a second pack is fighting.
+- 2026-11-26 — Strengthened the bolt, Balsam and silent-load tests. Temporary mutations confirmed the tests reject clearing every bolt, a 7% Balsam chance, a Balsam count above one and an unlock event on load. The four focused files reported `Tests  20 passed | 1 todo (21)` in 205 ms.
+- 2026-11-26 — Review round gates. `pnpm typecheck`, `pnpm test` and `pnpm build` passed. The unit gate reported `Tests  1590 passed | 1 todo (1591)` with zero failures. `pnpm validate` was blocked by `listen EPERM` on the `tsx` IPC socket. The locked smoke command was blocked by `listen EPERM` on `127.0.0.1:5416` before any browser tests started. No browser specs changed.
+- 2026-11-26 — The hazard fix was committed locally with the required trailer. The sandbox denied `git add` for the remaining loot and skill fixtures and task record at the worktree's `index.lock`. Those changes are in the worktree.
 
-### Remaining local commands
+### Checks to rerun outside the sandbox
 
 ```sh
 pnpm validate
 KQ_E2E_PORT=5416 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line
-
-git add src/systems/hunt/tracks.ts tests/hunt-k2.test.ts
-git commit -m 'fix(combat): expire snow prints alongside held trails' -m 'Co-Authored-By: Codex <noreply@openai.com>'
-git add src/systems/skills/card.ts tests/skills-runtime.test.ts
-git commit -m 'fix(ui): wait for the shared slot before showing skill unlocks' -m 'Co-Authored-By: Codex <noreply@openai.com>'
-git add tests/rpg-stats.test.ts docs/ACTION-RPG.md docs/ARCHITECTURE.md docs/PRD.md .mc/tasks/todo/TASK-028-combat-rpg-hunt-skills-coverage.md
-git commit -m 'test(combat): cover RPG stats and record the coverage sweep' -m 'Co-Authored-By: Codex <noreply@openai.com>'
 ```
 
 ## Follow-ups

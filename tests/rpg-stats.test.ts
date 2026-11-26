@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ENEMIES } from '../src/rpg/enemies';
 import { collectionDef, lootTable } from '../src/rpg/items';
 import { deriveStats, levelProgress, weaponPower } from '../src/rpg/stats';
-import { mulberry32, rollLoot } from '../src/systems/progression/logic';
+import { rollLoot } from '../src/systems/progression/logic';
 
 describe('RPG catalogues and stat boundaries', () => {
   it('uses each staff’s spectral damage and gives the sweeping upgrade priority', () => {
@@ -49,8 +49,12 @@ describe('RPG catalogues and stat boundaries', () => {
     for (const boss of ENEMIES.filter((enemy) => enemy.boss)) {
       const table = lootTable(boss.loot ?? '');
       expect(table, boss.id).toBeDefined();
-      const drops = rollLoot(table!, mulberry32(2201));
-      expect(drops.filter((drop) => drop.item === 'item.balsam'), boss.id).toEqual([{ item: 'item.balsam', count: 1 }]);
+      const balsam = table!.entries.filter((entry) => entry.item === 'item.balsam');
+      expect(balsam, boss.id).toEqual([expect.objectContaining({ chance: 1 })]);
+      for (const roll of [0, 0.999999]) {
+        const drops = rollLoot(table!, () => roll);
+        expect(drops.filter((drop) => drop.item === 'item.balsam'), boss.id).toEqual([{ item: 'item.balsam', count: 1 }]);
+      }
     }
   });
 });
