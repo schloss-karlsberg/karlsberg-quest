@@ -9,7 +9,7 @@
  */
 import { ELITES, ENEMIES, enemyDef } from '../../rpg/enemies';
 import { BASE_STATS } from '../../rpg/stats';
-import type { DerivedStats, EnemyAttackDef, EnemyDef, EnemyGroupState } from '../../rpg/types';
+import type { CombatSlice, DerivedStats, EnemyAttackDef, EnemyDef, EnemyGroupState } from '../../rpg/types';
 import { callOf, eliteIndex, escortHost, escortsOf, hazardOf, packWorthy, waveOf } from './packs';
 import { BOSS_TURN, type BossView, bossCooldown, bossHitMul, chooseBossAttack, sealBolts, sparkRain, summonOf } from './bosses';
 import {
@@ -661,6 +661,21 @@ export class CombatSim {
       cds: { ausfall: 0, erdstoss: 0, wirbel: 0 },
       dazzle: 0,
     };
+  }
+
+  /**
+   * Take the saved resources after the stats have set the caps. A missing or non-numeric value (a
+   * sparse or hand-edited save) starts full instead of turning into NaN.
+   */
+  loadResources(saved: Partial<Pick<CombatSlice, 'hp' | 'stamina' | 'bann'>>): void {
+    const p = this.p;
+    const read = (v: unknown, cap: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.min(cap, v)) : cap);
+    const hp = read(saved.hp, p.max);
+    p.hp = hp > 0 ? hp : p.max;
+    p.st.stamina = read(saved.stamina, p.st.max);
+    p.bann = read(saved.bann, p.bannMax);
+    // The recharge timer is not saved: a loaded charge count starts a fresh recharge.
+    p.bannT = 0;
   }
 
   // ---- options -------------------------------------------------------------------------------
