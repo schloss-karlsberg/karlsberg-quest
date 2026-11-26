@@ -439,13 +439,7 @@ class Combat {
   }
 
   private loadResources(): void {
-    const s = this.slice();
-    const p = this.sim.p;
-    p.hp = s.hp > 0 ? Math.min(p.max, s.hp) : p.max;
-    p.st.stamina = Math.min(p.st.max, s.stamina);
-    p.bann = Math.min(p.bannMax, s.bann);
-    // The recharge timer is not saved: a loaded charge count starts a fresh recharge.
-    p.bannT = 0;
+    this.sim.loadResources(this.slice());
   }
 
   private syncResources(): void {

@@ -1000,6 +1000,8 @@ first-person story, credits, "Ende noch einmal wählen" (title and, after the cr
 menu). The last K4 beat (`k4_15` "Das Feldbuch") has Laub say that what you did and what you left
 both count. After the credits the HUD points to Sammlungen, Codex and the ending replay action in
 Pause. The ending card presents the ending's own lines, and the presenter is cleared at the credits.
+Weiter restores the chosen epilogue when the save is waiting for Abspann and keeps the mouse free
+while the epilogue is open. Ende noch einmal wählen loads the separate save from before the choice.
 `flags['combat.disabled']` is set from the finale on (`k4_11` … `e2`; cleared after the credits).
 The fallback epilogue keys accept the pack's value spellings (`herzog_selbst` ≡ `herzog` …).
 
@@ -1060,6 +1062,8 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Pointer lock can intercept Abspann after desktop Weiter (TASK-039, 2026-11-26) | Boot requests pointer lock after the startup handlers run and only when the modal stack is empty. |
+| The epilogue disappears on continue (TASK-039, 2026-11-26) | Weiter restores the saved ending's epilogue and its Abspann button. The button starts that ending's party and credits. |
 | Motion and focus regressions (TASK-032 review, 2026-11-26) | Verify shoulder clearance before extending the reduced-motion camera. Keep steady cues for the torch, reflected Bannlicht, fireworks, survey markers, loot and party lights. Both credits views honor the OS preference. Release notes open at the top, and inline pilot choices apply through the story API. |
 | Involuntary motion and lost keyboard focus (TASK-032, 2026-11-26) | Reduced motion uses still title and map views, camera cuts and short fades. Survey activations, the lantern and staged effects retain steady cues. Menus keep Tab inside the active dialog and restore focus after a page closes or a journal filter changes. |
 | Storage failures can stall play or leave a stale checkpoint after a cinematic (TASK-031, 2026-11-26) | The first failure allows an immediate retry. From the second consecutive failure onward, autosaves back off for one second of elapsed time. The game retries queued forced checkpoints, and hiding the tab or returning to the title gives one immediate attempt when there is no active cinematic hold. |
@@ -1083,6 +1087,9 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | A playtest overwrites a stored game or spends most of a chapter drawing intermediate steps (TASK-019, 2026-11-26) | `?nosave` protects save slots during „Neues Spiel“. The campaign uses `?manual&faststep` for subtitle timing and batched draws while still testing quest state, save and continue, and all three endings. |
 | The minimap leads through the Nordflügel wall or away from historical paths, and notices collide with touch controls (TASK-015, 2026-11-26) | The minimap follows the entrance route for the story lead and prepares the historical path overlay during loading. The touch notice dock clears the action pill and unlocked skills. Dialogue and notices reclaim the space when the map hides. |
 | The next turn or the tour group is hard to find at a glance (TASK-015, 2026-11-26) | The local minimap uses a steady north-up view, live tour dots and the compass objective. Map layers follow the era, distant markers retain their bearing along the edge, and reduced motion snaps the heading arrow. |
+| Cinematic hand-back and court transitions can leave stale state (TASK-055, 2026-11-26) | Consecutive shots restore the gameplay field of view. Cinematic disposal clears its marker before flushing the autosave. A load, era change or system disposal releases an interrupted court escort's movement lock. |
+| Returning home during an escort or loading after cinematic disposal can stop play (TASK-055 review, 2026-11-26) | The shift takes over movement after the court releases the escort and restores it at the end. A deferred autosave retains the interrupted cinematic's ID for one skipped completion on load. |
+| Cinematic hand-back and court transitions can leave stale state (TASK-055, 2026-11-26) | Consecutive shots restore the gameplay field of view. A load, era change or system disposal releases an interrupted court escort's movement lock. Loading clears the inspection ring and letter hold timer. |
 | Indoor and scenery state can outlive its room, era or save slot (TASK-059, 2026-11-26) | Restore the saved storey (also from a doorway); while the palace streams, the room catalogue holds the floor and walls. A shift away from the Festsaal choice hides its objects and prompt until the player returns; a fire that ends releases them. A shift drops the previous scenery obstacles, and slot loads restore the gate, coat and lit windows. |
 | A load during a hunt or while collecting can carry an encounter or reward across slots (TASK-058, 2026-11-26) | The incoming slot restores the pack configuration, bottle count, lantern glass and codex receipt. Tests cover partial pickups, a bottle saved mid-fall, and loading a peaceful slot during a capture. |
 | Very large headings in shared links can freeze horizontal look (TASK-060, 2026-11-26) | Wrap the starting heading within one turn before converting it to radians so look input can adjust it. |

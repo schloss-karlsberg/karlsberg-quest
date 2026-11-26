@@ -19,6 +19,7 @@
  *
  * Yaw: heading, `atan2(-dx, -dz)` (0 faces −z), the player / people / fauna convention.
  */
+import { allOf, finiteOr, isRecord } from '../../core/saved';
 import { STANCES, type Stance } from '../../player/stance';
 import type { AnimalEvent, AnimalLook, AnimalMotion, AnimalSpawnOp, DeerSave, ShyRadii } from './types';
 
@@ -152,13 +153,19 @@ export function createDeer(op: AnimalSpawnOp, at?: { x: number; z: number; yaw?:
     calm: 0,
     follow,
     spacing: op.spacing ?? DEER.FAWN_SPACING,
-    shy: { ...(op.shy ?? { notice: DEER.NOTICE, flee: DEER.FLEE, settle: DEER.SETTLE }) },
+    shy: shyRadii(op.shy),
     flee: null,
     away: null,
     lastDist: NaN,
     motion: { tx: x, tz: z, speed: 0, yaw, clip: 'graze' },
   };
   return d;
+}
+
+/** Radii from a spawn op or a save: each missing or non-positive radius takes its default. */
+function shyRadii(shy: Partial<ShyRadii> | undefined): ShyRadii {
+  const r = (v: unknown, fallback: number) => (finiteOr(v, 0) > 0 ? (v as number) : fallback);
+  return { notice: r(shy?.notice, DEER.NOTICE), flee: r(shy?.flee, DEER.FLEE), settle: r(shy?.settle, DEER.SETTLE) };
 }
 
 /** Whether the player counts as sneaking (crouched or prone, at crouch speed or slower). */
@@ -427,7 +434,8 @@ export function stepFollower(f: Deer, leader: Deer, dt: number, input: DeerInput
 
 /** The leader id of a follower ('animal:ricke' → 'ricke'), or '' for a self-led deer. */
 export function leaderId(d: Pick<Deer, 'follow'>): string {
-  return d.follow?.startsWith('animal:') ? d.follow.slice(7) : '';
+  // (a saved herd is read before restore: `follow` may be anything there)
+  return typeof d.follow === 'string' && d.follow.startsWith('animal:') ? d.follow.slice(7) : '';
 }
 
 /** Step all deer: self-led first, then followers whose leader has been stepped (chains allowed). */
@@ -493,7 +501,7 @@ export function serializeDeer(d: Deer): DeerSave {
   return s;
 }
 
-const DEER_STATES: readonly DeerState[] = ['graze', 'alert', 'flee', 'settled', 'leave', 'gone'];
+const DEER_STATES = allOf<DeerState>()(['graze', 'alert', 'flee', 'settled', 'leave', 'gone']);
 
 function hasDeparture(deer: DeerSave, herd: readonly DeerSave[]): boolean {
   const seen = new Set<string>();
@@ -509,14 +517,19 @@ function hasDeparture(deer: DeerSave, herd: readonly DeerSave[]): boolean {
 }
 
 export function restoreDeer(s: DeerSave, herd: readonly DeerSave[] = []): Deer {
-  const d = createDeer({ op: 'spawn', id: s.id, kind: 'reh', look: s.look, x: s.x, z: s.z, follow: s.follow, spacing: s.spacing, shy: s.shy });
-  d.yaw = s.yaw;
+  const d = createDeer({
+    op: 'spawn', id: s.id, kind: 'reh', look: s.look, x: finiteOr(s.x, 0), z: finiteOr(s.z, 0),
+    follow: typeof s.follow === 'string' ? s.follow : undefined, spacing: finiteOr(s.spacing, DEER.FAWN_SPACING),
+    shy: isRecord(s.shy) ? s.shy : undefined,
+  });
+  d.yaw = finiteOr(s.yaw, 0);
   d.state = DEER_STATES.includes(s.state as DeerState) ? (s.state as DeerState) : 'graze';
-  d.t = s.t;
-  d.meter = s.meter;
-  d.calm = s.calm;
-  d.flee = s.flee ? { ...s.flee } : null;
-  d.away = s.away ? { ...s.away } : null;
+  d.t = finiteOr(s.t, 0);
+  d.meter = finiteOr(s.meter, 0);
+  d.calm = finiteOr(s.calm, 0);
+  const f = s.flee;
+  d.flee = isRecord(f) && [f.fx, f.fz, f.tx, f.tz].every(Number.isFinite) && (f.dist === undefined || Number.isFinite(f.dist)) ? { ...f, by: f.by === 'cue' ? 'cue' : 'player' } : null;
+  d.away = isRecord(s.away) && Number.isFinite(s.away.x) && Number.isFinite(s.away.z) ? { x: s.away.x, z: s.away.z } : null;
   if (d.state === 'flee' && !d.flee) d.state = 'settled';
   if (d.state === 'leave' && !hasDeparture(s, herd)) d.state = 'gone';
   d.motion.yaw = d.yaw;

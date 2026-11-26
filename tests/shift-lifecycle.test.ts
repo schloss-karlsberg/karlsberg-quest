@@ -30,7 +30,8 @@ describe('reduced-motion shift lifecycle', () => {
     events.onAny((name, payload) => phases.push([name, era.current, player.frozen, meta.shifts, payload]));
     const end = effect.start('today', { reduced: true, reason: 'return' });
     const journey = { from: '1789', to: 'today' };
-    expect(phases).toEqual([['shift:begin', '1789', true, 7, journey]]);
+    expect(phases).toEqual([['shift:begin', '1789', false, 7, journey]]);
+    expect(player.frozen).toBe(true);
     effect.advance(SHIFT_MID_REDUCED - 0.01);
     effect.frozen = true;
     effect.advance(SHIFT_DURATION_REDUCED);

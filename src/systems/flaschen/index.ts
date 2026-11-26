@@ -33,7 +33,7 @@ import { clink } from './audio';
 import { disposeLabel, labelCanvas } from './label';
 import { registerEraMaterials } from '../fx/shift/prewarm';
 import { type BottleVisual, buildBottle, buildCover, disposeCover } from './model';
-import { FLASCHEN, FLASCHEN_TOTAL, type FlaschenBase, type FlaschenSpot, MILESTONES, countByEra } from './spots';
+import { FLASCHEN, FLASCHEN_TOTAL, type FlaschenBase, type FlaschenSpot, MILESTONES, countByEra, readBottleSlice } from './spots';
 import { FLASCHEN_DE } from './strings';
 
 export interface FlaschenSlice {
@@ -133,10 +133,7 @@ class Flaschen {
 
   loadSlice(): FlaschenSlice {
     const s = this.ctx.state.slice('flaschen', () => ({ found: [], dropped: [], said: [] }));
-    s.found ??= [];
-    s.dropped ??= [];
-    s.said ??= [];
-    return s;
+    return Object.assign(s, readBottleSlice(s));
   }
 
   // ---- heights -------------------------------------------------------------------------------
