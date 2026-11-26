@@ -659,6 +659,9 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 - Pause and journal page tests use `tests/ui-fixture.ts` to run the real renderers and handlers on a
   small in-memory element tree. Assert control state and text there; use Playwright for layout,
   browser focus behaviour and canvas drawing. The fixture does not run timers or animation frames.
+- `tests/disposal-counts.ts` listens for three.js `dispose` events on resources reached by a test.
+  Use it across repeated transitions to check the live count and detect double disposal. Track owned
+  textures and render targets explicitly so shared textures can remain live until their owner exits.
 - Unit (`tests/`): event bus, loop determinism, state/save round trip and throttling, settings,
   system ordering + error isolation, heightfield sampling, decoders (incl. real data), collision,
   forest determinism, validator (good + each failure class), ContentDB.
@@ -1011,6 +1014,9 @@ Round-4 (polish: set dressing) integration rules:
   increment `meta.shifts` unless the reason is `caught`. The transition emits `shift:begin` before
   it captures and freezes movement, so the court can release an active escort. The transition
   restores movement before `shift:done`. `scan:mode` 1–3 → scan pulse. Era particles always.
+  increment `meta.shifts` unless the reason is `caught`. `scan:mode` 1–3 → scan pulse. Era particles always.
+  A shift releases its point clouds and streaks at completion. Its screen passes and shader warm-up
+  stand-ins live until the effect is disposed.
 - `threat:configure {kind:'fire'|'oblivion'}` → fire schedule over the real rooms (`fire:room`,
   `fire:progress`, smoke meter, `flags['fire.hold']` pauses it) / Steinfraß (`oblivion:progress`,
   pushed back by `clue:found`, `echo:start`, `oblivion:remember {amount?}`); full meter →
@@ -1042,7 +1048,8 @@ Round-4 (polish: set dressing) integration rules:
   the Chronik's registry (`chronik/staging.ts`). Shared bits in `common.ts` (instanced solid
   material with fog, `GlowPoints`, `GradeLoan` for a temporary grade). `end-memories.ts` is used by
   the burn ending (`endings/stage.ts`). Reduced motion / reduced flash honoured per piece. Hooks
-  `kq.stage.active/state/hold/cue/advance/line`.
+  `kq.stage.active/state/hold/cue/advance/line`. Retired pieces release instance buffers as well
+  as their geometry and materials. Director teardown releases the event subscriptions and card hold.
 
 ### chronik (`src/systems/chronik/`) – clues, echoes (the board is gone, D-008)
 - Clue markers + E examine card (`clue:found`, `noun:learned` kept for story conditions but no
@@ -1581,7 +1588,9 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   window light `lightmap.ts`, nearest 12 candles/chandeliers) per building and era, built within
   60 m of the player, dropped beyond 85 m. 1789 candle-lit; 1793-02 dark, dust sheets, one candle
   in the Kabinett; 1793-07 looted (bible ch. 3) and burning; 1796 broken masonry, rubble, open
-  sky; today low mossy foundations only (no collision).
+  sky; today low mossy foundations only (no collision). Era changes release the old building
+  meshes, lightmaps and distance records. Festsaal choice replays release each prop geometry and
+  material once and reuse one glint texture until teardown.
 - Medium / high tier: the finishes take the CC0 surface layers (parquet, plaster, boards,
   marble, damask …) and the chandeliers / fauteuils are CC0 models (`Built.models`, instanced
   beside the mesh, dropped with it; candle flames sit at the model's candle tips). The model groups

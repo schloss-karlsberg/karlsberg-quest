@@ -32,12 +32,13 @@ transition-owned resources, and verify that repeated transitions keep live count
 ## Acceptance criteria
 
 - [x] Map the relevant modules, contracts, existing tests and gaps.
-- [ ] Add at least 25 meaningful deterministic assertions and keep the focused run under about three seconds.
+- [x] Add at least 25 meaningful deterministic assertions and keep the focused run under about three seconds.
 - [x] Demonstrate bounded live resource counts through repeated transitions.
 - [x] Reproduce each bug before fixing it and commit each confirmed fix separately.
 - [x] Record design ambiguities as test todos and keep concurrent work out of scope.
-- [ ] Update the relevant architecture and changelog documentation.
-- [ ] Run the four gates and attempt locked smoke on port 5443.
+- [x] Update the relevant architecture and changelog documentation.
+- [ ] Pass all four gates. The validator CLI was blocked by the sandbox.
+- [x] Check smoke eligibility on port 5443 and record the spec for a human run when blocked.
 
 ## Plan
 
@@ -58,7 +59,7 @@ explicit steps. Verify intentional shared and session-wide ownership at teardown
 - [x] Record the transition and coverage map.
 - [x] Add deterministic checks and run them against the starting implementation.
 - [x] Fix confirmed leaks in reviewable commits and repeat the focused checks.
-- [ ] Run the four gates and locked smoke, then record results and follow-ups.
+- [x] Attempt the four gates, check smoke eligibility, and record results and follow-ups.
 
 **Test plan**
 
@@ -91,6 +92,15 @@ Record design-dependent ownership decisions only if encountered during the audit
 - 2026-11-26: Repeated full shifts returned to their allocation baseline, but effect teardown
   left 12 resources alive (screen passes and warm-up stand-ins). The tests check reuse between
   shifts and disposal at teardown.
+- 2026-11-26: Added 13 tests, plus one design todo. Focused gate on Node.js 24.19.0 reported
+  `Tests  22 passed | 1 todo (23)` in 361 ms. The title, phone, credits, party, and audio tests
+  passed with their production modules unchanged from `origin/main`.
+- 2026-11-26: `pnpm typecheck` and `pnpm build` passed. `pnpm test` reported
+  `Tests  1618 passed | 2 todo (1620)`, with zero failures. `pnpm validate` exited before running
+  the content validator because the sandbox denied the `tsx` IPC socket (`EPERM`) on Node.js 24
+  and 26. A loopback probe returned `EPERM` for `127.0.0.1:5443`, so browser smoke was skipped.
+- 2026-11-26: Documented the test helper and resource lifetimes in the architecture, and added
+  changelog rows in the PRD and action-RPG design docs. No voiced lines need new recordings.
 
 ## Coverage map
 
@@ -103,3 +113,10 @@ Record design-dependent ownership decisions only if encountered during the audit
 | `photo/index`, `photo/core`, `photo/demo` | Phone up takes input/camera, forced close releases them; album and grants persist with a cap and no past-era rewards. The phone chrome and placeholder board are session-owned. | `photo` and `camera-photo` cover shot edge cases, grants, album cap, save conformance and camera snap. Repeated open/close and the global key listener are unpinned. |
 | `party/runtime`, `party/strip`, `party/fest` | Skip releases camera/credits UI, keeps the party; clear/load drops party set, or restores the saved variant. Reduced motion uses a static strip. | `party`, `party-set`, `story-party` and `credits` cover these transitions with a fake strip, scene removal and render budget. The real strip's attached nodes and set disposals are unpinned. |
 | `ui/title`, `boot`, `core/systems`, `audio/audio`, `ambience` | Start/return reuse one title, renderer, systems registry and audio graph. Fresh start emits load for clean state; Continue restores saved state. Pause and backgrounding stop gameplay and have separate audio policy. | `core`, `story`, `story-party`, `travel-journey`, `play-dismissal` and `audio-mix` cover loop/store, load, travel cancellation, pause input and audio routing. Title fade timing and audio ownership across repeated switches are unpinned. |
+
+## Follow-ups
+
+- Decide whether Continue after a title round trip should resume a half-heard Chronik echo or
+  retire its stage and audio. The question is an `it.todo` in `tests/session-resources.test.ts`.
+- Run `pnpm validate` in an environment that permits the CLI's IPC socket.
+- Verify browser smoke with `KQ_E2E_PORT=5443 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line`.
