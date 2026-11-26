@@ -39,6 +39,8 @@ export interface SkillsHooks {
   free(on: boolean | null): void;
   /** The card currently on screen. */
   card(): { skill: string; level: number } | null;
+  /** Includes unlocks still settling or waiting for the shared slot. */
+  cardsBusy(): boolean;
   /** Lines Laub said for unlocks (debug/tests). */
   said(): string[];
 }
@@ -52,12 +54,14 @@ declare module '../../debug/hooks' {
 let cards: UnlockCards | null = null;
 
 function tickCards(dt: number, ctx: GameContext): void {
-  if (!cards) return;
-  let hold = ctx.pause.reasons.has('title') || ctx.ui.cards.held;
+  if (!cards?.busy) {
+    ctx.ui.cards.release('skill');
+    return;
+  }
+  let hold = ctx.pause.paused || ctx.ui.cards.held;
   // one centre card at a time (src/ui/cards.ts)
   if (cards.wants && !hold && !ctx.ui.cards.claim('skill')) hold = true;
-  // game time: a card on screen waits while the game is paused (modal, menu) instead of running out unseen
-  cards.frame(ctx.pause.paused ? 0 : Math.min(dt, 0.1), ctx.settings.state.reducedMotion, hold);
+  cards.frame(dt, ctx.settings.state.reducedMotion, hold);
   if (!cards.wants) ctx.ui.cards.release('skill');
 }
 /** window.kq is installed after the systems' init: hooks go in on the first frame. */
@@ -169,18 +173,17 @@ export default defineSystem({
         gate: () => skillGate(ctx),
         free: (on) => setFreeOverride(on),
         card: () => cards?.showing ?? null,
+        cardsBusy: () => cards?.busy ?? false,
         said: () => said.slice(),
       };
     }
   },
-  // bullet time / `?manual`: the card also runs on `kq.step`, like the story's title cards (a spec
-  // steps through it instead of waiting for rendered frames, slow under software WebGL)
   update(dt, ctx) {
-    if (ctx.loop.manual) tickCards(dt, ctx);
+    tickCards(ctx.pause.paused ? 0 : dt, ctx);
   },
-  frame(dt, ctx) {
+  frame(_dt, ctx) {
     if (skillHooks && typeof window !== 'undefined' && window.kq && window.kq.skills !== skillHooks) window.kq.skills = skillHooks;
-    tickCards(dt, ctx);
+    if (ctx.pause.paused) tickCards(0, ctx);
   },
   dispose() {
     cards?.clear();

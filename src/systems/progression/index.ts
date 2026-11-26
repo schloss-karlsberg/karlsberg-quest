@@ -432,6 +432,7 @@ class Progression {
       openPausePage(this.ctx.ui.modals, 'gear');
     }
     this.pickupTick();
+    this.tickCard(this.ctx.pause.paused ? 0 : dt);
   }
 
   frame(dt: number): void {
@@ -445,13 +446,22 @@ class Progression {
       this.updateXp(true);
     }
     this.hud.frame(dt, ctx.camera, window.innerWidth, window.innerHeight, reduced);
+    if (ctx.pause.paused) this.tickCard(0);
+  }
+
+  private tickCard(dt: number): void {
+    const { ctx } = this;
+    if (!this.cards.wants) {
+      ctx.ui.cards.release('level');
+      return;
+    }
     const skillCard = !!document.querySelector('.kqk-card.kqk-in:not(.kqk-out):not(.kqk-held)');
-    let hold = ctx.pause.reasons.has('title') || skillCard || ctx.ui.cards.held;
+    let hold = ctx.pause.paused || skillCard || ctx.ui.cards.held;
     // on touch a tap on the play surface sends the card off (CardDirector.dismissNotice); on a
     // desktop Escape keeps opening the pause menu
     const dismiss = ctx.input.touchMode ? () => this.cards.dismiss() : undefined;
-    if (this.cards.wants && !hold && !ctx.ui.cards.claim('level', dismiss)) hold = true;
-    this.cards.frame(ctx.pause.paused ? 0 : Math.min(dt, 0.1), reduced, hold);
+    if (!hold && !ctx.ui.cards.claim('level', dismiss)) hold = true;
+    this.cards.frame(dt, ctx.settings.state.reducedMotion, hold);
     if (!this.cards.wants) ctx.ui.cards.release('level');
   }
 
