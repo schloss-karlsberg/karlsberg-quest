@@ -78,6 +78,20 @@ overlap with visible dialogue.
 - [ ] Complete the standard validation gate and locked browser checks on a host that permits
   local sockets.
 
+### Verification and remaining fixes (2026-11-26)
+
+Finish the review on top of `a77cea1`. Both phone credit modes should retain the touch surface
+outside the strip and Skip button. The animated orbit should yield to a drag while the crawl
+continues. The small-landscape tour should prove that the skill notice fits, retains its reading
+time during movement, and fades on an early tap.
+
+- [x] Fix the cinematic rule that hides the touch surface during the input-enabled credits
+  orbit. Cover the input policy and verify the drag and ongoing crawl in the party spec.
+- [x] Check the seven review findings against the implementation and regression tests. Keep the
+  tour's layout and early-dismiss assertions independent of the real-time card expiry.
+- [ ] Run the four gates and the locked party, smoke and device checks where available.
+- [x] Record the results and update the mobile audit and changelogs.
+
 ## Progress
 
 - Branch: `dev/task-020`.
@@ -101,19 +115,33 @@ overlap with visible dialogue.
   `pnpm build` and `mc validate` passed. `pnpm validate` and the locked full `small-landscape`
   tour returned `EPERM` on the tsx IPC socket. The locked party spec returned `EPERM` starting
   preview at `127.0.0.1:5407`. Smoke and the other device runs were skipped after the socket errors.
-- Git denied creation of the worktree `index.lock` during staging. The review changes are in the
-  worktree. Branch HEAD is `cde0d603577c18cc483a1f005fdb770b6d9caff4`.
+- Git denied creation of the worktree `index.lock` during staging in the first review session.
+- The first review pass is now committed as `a77cea1`. Its saved small-landscape report has
+  87 shots and records `skill-unlock` and Pause as passing. Animated credits still failed
+  because the cinematic rule hid the input surface even for an unlocked orbit.
+- Commit `80f2a3f` ties cinematic touch visibility to its input policy. The party spec
+  verifies where the drag lands, consumes the look on a rendered frame, then checks that the
+  camera releases and the crawl advances. The tour gives the stamp time to settle before
+  sampling live frames and tests the stick interruption and tap on independent fresh notices.
+- Second-pass gates passed for `pnpm typecheck`, `pnpm test` (`Tests  1582 passed (1582)`, 0 failed)
+  and `pnpm build`. `pnpm validate` and the locked full `small-landscape` tour returned
+  `EPERM` on the tsx IPC socket. The locked party spec returned `EPERM` starting preview at
+  `127.0.0.1:5407`. Smoke and the remaining device checks are pending.
+- Git accepted the credits fix commit and denied the following staging attempt at
+  `index.lock`. The mobile tour hardening and documentation edits are in the worktree.
+- No voiced dialogue changes are required.
 
 | Review finding | Result |
 | --- | --- |
 | 1. Skill notice expires during stick hold | Fixed. Unit coverage holds the stick past the full duration before and after the notice appears. |
-| 2. Phone credits capture the entire play surface | Fixed. The party spec asserts that a drag hands back the camera while the crawl stays visible. Browser verification is pending. |
+| 2. Phone credits capture the entire play surface | Fixed. Phone credits hide the controls and keep the touch surface active. The party spec asserts that a drag hands back the camera while the crawl stays visible and advances. Browser verification is pending. |
 | 3. Tour checks decorative overflow before the card settles | Fixed. The tour measures visible text fragments and the settled stamp against the card clip. |
 | 4. An early tap silences Laub | Fixed. An eligible grouped remark queues once even when the player skips the stamp. |
 | 5. Tour can pass after natural expiry | Fixed. The tour taps a fresh card with automatic game frames stopped and checks `kqk-out` after two explicit steps. |
 | 6. Pause probe accepts absent dialogue | Fixed. The 667×375 probe requires visible dialogue, a positive intersection and a hit owned by the paper. |
 | 7. Dismiss callback is recreated each frame | Fixed. Slot claims reuse one callback, checked by identity in the unit test. |
-| Mobile tour blocker | The failing check was replaced and the dismissal check was isolated. Full 667×375 rerun is pending because the sandbox blocks the launcher socket. |
+| Mobile tour blocker | Fixed. The layout probe excludes decorative overflow and checks the settled text and stamp. Movement and dismissal use fresh notices and explicit game steps. The full 667×375 rerun is pending because the sandbox blocks the launcher socket. |
+| Party spec blocker | Fixed. The cinematic stylesheet on `origin/main` hid touch during every cinematic, including the input-enabled party orbit. The touch surface now follows the cinematic's input policy. Preview startup is blocked in the sandbox. |
 
 ## Follow-ups
 

@@ -854,35 +854,25 @@ const STATES: State[] = [
       await expect(c.page.getByTestId('level-card')).toHaveCount(0);
       const stamp = card.locator('.kqk-stamp');
       await stamp.evaluate(async (el) => {
-        await Promise.all(el.getAnimations().map((animation) => animation.finished));
+        // The CSS animation uses browser time. Keep the notice's game clock available for the shot.
+        const { loop } = window.kq!.ctx;
+        loop.stop();
+        try {
+          await Promise.all(el.getAnimations().map((animation) => animation.finished));
+        } finally {
+          loop.start();
+        }
       });
       await expect(stamp).toHaveCSS('opacity', '1');
-      expect(await card.evaluate(clippedSkillCardContent)).toEqual([]);
+      expect(await card.evaluate(clippedSkillCardContent), 'settled skill text and stamp fit inside the card').toEqual([]);
       await c.shot('', 'standalone unlock with a long Aktion prompt');
       await expect(card).toHaveCSS('opacity', '1');
       const { ui } = c.f.shots.at(-1)!;
       expect(ui.issues.filter((i) => i.what.includes('[skill-card]') && (
         i.kind === 'safe-area' || i.kind === 'overlap' && /\[touch-|\[dialogue\]/.test(i.what)
       ))).toEqual([]);
-      if (unit.height <= 500) {
-        const stick = new Finger(c.cdp, 25);
-        const x = unit.width * 0.22;
-        const y = unit.height * 0.55;
-        await stick.start(x, y);
-        try {
-          await stick.move(unit.width * 0.29, y, 3);
-          await expect(card).toBeHidden();
-          await expect(card).toHaveClass(/kqk-held/);
-          await stick.move(x, y, 3); // keep the stick held without walking out of the fixture
-          await c.page.waitForTimeout(6500);
-          expect(await card.count()).toBe(1);
-        } finally {
-          await stick.end();
-        }
-        await expect(card).toHaveCSS('opacity', '1');
-      }
-      // Stop automatic frames, stage a fresh card and step only a few frames after the tap.
-      // Its normal 5.6 s fade threshold cannot account for kqk-out here.
+      // Sample gameplay above. Use manual time for the interaction checks so their clocks
+      // depend on the steps in the test.
       const manual = await c.page.evaluate(() => {
         const { loop } = window.kq!.ctx;
         const wasManual = loop.manual;
@@ -890,16 +880,62 @@ const STATES: State[] = [
         loop.stop();
         return wasManual;
       });
-      try {
+      const freshCard = async () => {
         await c.page.evaluate(() => {
           const k = window.kq!;
+          const { loop, ui } = k.ctx;
           k.skills!.reset();
           k.skills!.grant('baumeister', 1);
-          for (let i = 0; i < 600 && !k.skills!.card(); i++) k.ctx.loop.advance();
+          for (let i = 0; i < 600 && !k.skills!.card(); i++) {
+            loop.advance();
+            ui.cards.tick(loop.dt);
+          }
           k.step(2); // claim the notice slot
         });
         await expect(card).toHaveClass(/kqk-in/, { timeout: 4000 });
         await expect(card).not.toHaveClass(/kqk-held|kqk-out/);
+      };
+      try {
+        if (unit.height <= 500) {
+          await freshCard();
+          const stick = new Finger(c.cdp, 25);
+          const x = unit.width * 0.22;
+          const y = unit.height * 0.55;
+          await stick.start(x, y);
+          try {
+            await stick.move(unit.width * 0.29, y, 3);
+            await c.page.evaluate(() => window.kq!.step(2));
+            await expect(card).toHaveClass(/kqk-held/);
+            await expect(card).toBeHidden();
+            await stick.move(x, y, 3); // keep the stick held without walking out of the fixture
+            await c.page.evaluate(() => {
+              const { loop, ui } = window.kq!.ctx;
+              const frames = Math.ceil(6.5 / loop.dt);
+              for (let i = 0; i < frames; i++) {
+                loop.advance();
+                ui.cards.tick(loop.dt);
+              }
+            });
+            await expect(card).toHaveCount(1);
+            await expect(card).not.toHaveClass(/kqk-out/);
+          } finally {
+            await stick.end();
+          }
+          await c.page.evaluate(() => {
+            const k = window.kq!;
+            const { loop, ui } = k.ctx;
+            // A story line can take over the hold when the stick is released.
+            for (let i = 0; i < 600 && ui.cards.held; i++) {
+              loop.advance();
+              ui.cards.tick(loop.dt);
+            }
+            k.step(2);
+          });
+          await expect(card).not.toHaveClass(/kqk-held|kqk-out/);
+          await expect(card).toHaveCSS('opacity', '1');
+        }
+        // Two fixed steps after a tap on a fresh card cannot reach the normal 5.6 s fade.
+        await freshCard();
         await new Finger(c.cdp, 26).tap(unit.width * 0.53, unit.height * 0.55);
         await c.page.evaluate(() => window.kq!.step(2));
         await expect(card).toHaveClass(/kqk-out/, { timeout: 1000 });

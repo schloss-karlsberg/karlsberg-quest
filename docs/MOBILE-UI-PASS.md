@@ -537,6 +537,8 @@ Every unit stays under the 15-min hold; the test itself times out at 14 min. All
 **Credits (MR 13).** Both credit modes hide the visible gameplay controls on phones and keep the
 strip and Skip button within the safe width. The crawl clears the lower letterbox. A drag on the
 play surface outside the strip and Skip button hands the camera back while the crawl continues.
+The cinematic marks whether it locks input, so the unlocked credits orbit leaves that surface
+available. The party spec checks the hit targets and that the track keeps moving after hand-back.
 The reduced-motion list sits above the home indicator and scrolls natively. Controls return when
 the credits end. The portrait phone keeps the rotate overlay in front, and tablets retain the side
 gutter for controls.
@@ -580,8 +582,9 @@ done
   check the prompt can be read between the vitals and the arc and that the caption clears Aktion.
 - Inspect `26-skill-unlock.png` for the complete description and stamp, below the dialogue band
   and clear of the top row and the long Aktion pill. The tour checks the text fragments and settled
-  stamp against the card's clipping rectangle, holds the stick for more than the card's full
-  duration, then verifies that a tap starts the fade on a fresh card.
+  stamp against the card's clipping rectangle. After capturing the shot, it advances the game by
+  6.5 seconds with the stick held and verifies that the card returns on release. It then uses a fresh
+  card and two simulation steps to verify that a tap starts the fade.
 - In the `13-pause*` shots, look for dialogue showing through the dim backdrop beside the paper
   only. Pause buttons should take taps at the same point even if dialogue runs behind them.
 - In `27-credits*`, check the crawl is cropped to the safe strip, Skip sits above it and the
