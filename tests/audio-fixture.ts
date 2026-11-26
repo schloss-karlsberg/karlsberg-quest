@@ -3,7 +3,7 @@ import type { AudioManager, Bus } from '../src/audio/audio';
 
 class Param {
   value = 1;
-  setTargetAtTime(value: number) { this.value = value; }
+  setTargetAtTime = vi.fn((value: number, _startTime: number, _timeConstant: number) => { this.value = value; });
   setValueAtTime(value: number) { this.value = value; }
   linearRampToValueAtTime = vi.fn((value: number) => { this.value = value; });
   exponentialRampToValueAtTime(value: number) { this.value = value; }

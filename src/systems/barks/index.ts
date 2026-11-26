@@ -106,11 +106,12 @@ class BarksRuntime {
     this.mutedLines = new Set(
       ctx.content.packs.filter((p) => p.file.includes('/examples/') || (p.pack.placeholder && !placeholder)).flatMap((p) => (p.pack.dialogue ?? []).map((d) => d.id)),
     );
-    // These deadlines belong to the old clock. Reset before save:loaded can resume dialogue.
+    // Reset the old session's timers before save:loaded can resume dialogue.
     this.unwatchState = ctx.state.subscribe((_state, reason) => {
       if (reason !== 'load' && reason !== 'new') return;
       this.requests = [];
       this.dialogueUntil = this.curtainUntil = this.introUntil = 0;
+      this.onInput();
     });
     const ev = ctx.events;
     ev.onAny((name, payload) => this.onEvent(name, payload));

@@ -34,11 +34,20 @@ the audio engine, ambience, footsteps, barks and spoken-dialogue paths.
 - [x] Record each module's player-facing contract and existing unit coverage.
 - [x] Add at least 25 deterministic assertions across the area in a focused run under about three seconds.
 - [x] Reproduce each confirmed bug before changing behaviour and record design questions as test todos.
-- [ ] Commit each fix separately. The sandbox denied Git's worktree index lock.
+- [ ] Commit each fix separately. The capture fix is committed. The sandbox denied Git's worktree index lock for the remaining review fixes.
 - [x] Update the affected docs and the PRD changelog.
 - [x] Pass typecheck, the full unit suite with zero failures and the production build.
-- [ ] Pass the `pnpm validate` gate as written. Its launcher could not open its IPC socket. The validator itself passed when run directly.
+- [ ] Pass the `pnpm validate` gate as written. Its launcher could not open its IPC socket in either round.
 - [x] Run the locked smoke spec on port 5441 or record the sandbox blocker and human-run command.
+
+### Review round acceptance criteria
+
+- [x] Replacing the session cancels the capture, discards its deferred dialogue and releases its curtain and movement lock before the loaded story resumes.
+- [x] Full clip queues evict the oldest background request and protect waiting playback requests.
+- [x] Loading a save or starting a game resets the idle-bark timer and its fired flag.
+- [x] The latest playback request made during manifest loading gets the first available fetch slot.
+- [x] Water and score tests verify timed gain automation on altitude and era changes.
+- [x] Add a regression for each finding, record the four gate results and check the locked smoke spec.
 
 ## Plan
 
@@ -62,7 +71,56 @@ and `pnpm build`. Use the shared lock and port 5441 for `e2e/smoke.spec.ts`.
 **Risks** — Keep gameplay content and concurrent UI, save and world work outside the patch.
 Use explicit simulation steps and stubbed time and audio. Preserve all shipped recordings.
 
+### Review round plan (2026-11-26)
+
+- [x] Reproduce capture leakage through the story runtime and cancel capture at the state-replacement boundary.
+- [x] Reproduce full-queue and delayed-manifest ordering, then preserve playback priority through both paths.
+- [x] Exercise near-threshold and already-fired idle timers across session replacement, then reset both fields.
+- [x] Record gain automation timing in the fixture and assert the water and score fades.
+- [x] Update the audio and session docs, rerun the gates, and record the smoke and commit blockers.
+
 ## Progress
+
+### Review round (2026-11-26)
+
+- Capture survived state replacement on `origin/main`. The new regressions reproduced the held
+  curtain and freeze on load and new game. The fix cancels capture before save listeners restore
+  the story. The focused run also confirms a prior curtain timer cannot hide a new capture.
+- The voice queue regressions reproduced eviction of the first playback request and the loss of
+  priority while the manifest loaded. Both pass with per-job priority and a single retained startup request.
+- Idle-bark regressions reproduced early firing after 59 seconds and suppressed firing after 60
+  seconds for both replacement paths. The idle reset fixes both cases.
+- The audio fixture records the target, start time and time constant. The fade test rejects a
+  zero-duration mutation in either the water or the score path.
+- All five findings are fixed. `docs/ARCHITECTURE.md`, the action-RPG log and the PRD changelog
+  record the resulting behaviour. No voiced lines need new text.
+
+```text
+pnpm typecheck
+$ tsc --noEmit
+
+Focused run
+ Test Files  4 passed (4)
+      Tests  40 passed | 2 todo (42)
+   Duration  250ms
+
+pnpm test
+ Test Files  126 passed (126)
+      Tests  1630 passed | 3 todo (1633)
+
+pnpm validate
+Error: listen EPERM: operation not permitted (tsx IPC socket)
+
+pnpm build
+✓ 469 modules transformed.
+✓ built in 306ms
+```
+
+The full unit run had zero failures. The locked smoke command entered the machine-wide queue.
+A loopback bind probe confirmed `listen EPERM` on `127.0.0.1:5441`, so the queued run was
+cancelled before Playwright started. `e2e/smoke.spec.ts` still needs a browser-enabled run.
+
+### Initial implementation
 
 - Branch `dev/task-054` started at `79c5718` on 2026-11-26.
 - Checked module imports, public functions and event names against `tests/`. The inventory below
@@ -116,23 +174,24 @@ environment. No voiced lines need new text.
 - Run `pnpm validate` with access to the launcher socket and run the smoke spec with
   `KQ_E2E_PORT=5441 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line`.
 
-### Local commits pending
+### Local commits
 
-The sandbox denied creation of the existing worktree's `index.lock` during `git add`. The changes
-are in the worktree. Run these commands there with a writable index.
+The original sweep is in `5f9636d`. The capture fix was committed as `10b04ce`. The next `git add`
+failed because the sandbox denied creation of the worktree's `index.lock`. The remaining review
+changes are in the worktree. Run these commands there with a writable index.
 
 ```sh
 git add src/systems/story/dialogue/voiceClips.ts tests/voice-clips.test.ts
-git commit -m 'fix(story): prioritize current voice clips in a full preload queue' -m 'Co-Authored-By: Codex <noreply@openai.com>'
+git commit -m 'fix(story): preserve playback priority through voice preloading' -m 'Co-Authored-By: Codex <noreply@openai.com>'
 
 git add src/systems/barks/index.ts tests/barks-runtime.test.ts
-git commit -m 'fix(story): reset transient bark deadlines when replacing a session' -m 'Co-Authored-By: Codex <noreply@openai.com>'
+git commit -m 'fix(story): reset idle bark timing on session replacement' -m 'Co-Authored-By: Codex <noreply@openai.com>'
 
-git add src/systems/story/index.ts tests/story-voice.test.ts tests/audio-fixture.ts
-git commit -m 'fix(story): clear active voice and subtitles when loading a save' -m 'Co-Authored-By: Codex <noreply@openai.com>'
+git add tests/audio-fixture.ts tests/audio-mix.test.ts
+git commit -m 'test: assert timed water and score fades' -m 'Co-Authored-By: Codex <noreply@openai.com>'
 
-git add tests/audio-mix.test.ts docs/ARCHITECTURE.md docs/PRD.md docs/ACTION-RPG.md .mc/tasks/todo/TASK-054-audio-coverage.md
-git commit -m 'test: expand audio runtime coverage and document the sweep' -m 'Co-Authored-By: Codex <noreply@openai.com>'
+git add docs/ARCHITECTURE.md docs/PRD.md docs/ACTION-RPG.md .mc/tasks/todo/TASK-054-audio-coverage.md
+git commit -m 'docs: record the TASK-054 review fixes' -m 'Co-Authored-By: Codex <noreply@openai.com>'
 ```
 
 ## Coverage inventory

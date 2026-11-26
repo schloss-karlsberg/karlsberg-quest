@@ -162,7 +162,7 @@ it('fades water with altitude and winter, routes dread to music, and stops both 
     expect(audio.ctx).toBeNull();
     audio.unlock();
     ambience.update(0.2);
-    const { sources } = audio.ctx as unknown as Context;
+    const { sources, currentTime } = audio.ctx as unknown as Context;
     const loops = sources.filter((source) => source.loop);
     expect(loops).toHaveLength(3);
     const [, pond, brook] = loops;
@@ -171,6 +171,11 @@ it('fades water with altitude and winter, routes dread to music, and stops both 
     const dreadGain = score[0]!.connections[0]!.connections[0]!.gain;
     const pondGain = pond!.connections[0]!.connections[0]!.gain;
     const brookGain = brook!.connections[0]!.connections[0]!.gain;
+    const expectFade = (gain: typeof pondGain, target: number) => {
+      const call = gain.setTargetAtTime.mock.lastCall;
+      expect(call).toEqual([expect.closeTo(target), currentTime, expect.any(Number)]);
+      expect(call![2]).toBeGreaterThan(0);
+    };
     const shore = pondGain.value;
     expect(shore).toBeGreaterThan(0);
     expect(brookGain.value).toBe(0);
@@ -180,6 +185,7 @@ it('fades water with altitude and winter, routes dread to music, and stops both 
     player.position.y += 15;
     ambience.update(0.2);
     expect(pondGain.value).toBeCloseTo(shore / 2);
+    expectFade(pondGain, shore / 2);
     player.position.y += 15;
     ambience.update(0.2);
     expect(pondGain.value).toBe(0);
@@ -191,6 +197,8 @@ it('fades water with altitude and winter, routes dread to music, and stops both 
     ambience.update(0);
     expect(pondGain.value).toBe(0);
     expect(dreadGain.value).toBeCloseTo(0.7 * 0.12);
+    expectFade(pondGain, 0);
+    expectFade(dreadGain, 0.7 * 0.12);
     expect(sources.filter((source) => source.loop)).toEqual(loops);
     ambience.dispose();
     expect(pond?.stop).toHaveBeenCalledWith(2);

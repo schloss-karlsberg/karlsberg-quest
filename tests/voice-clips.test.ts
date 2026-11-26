@@ -26,15 +26,18 @@ const manifest = {
   ),
 };
 
-function server(opts: { manifest?: unknown; status?: number; gate?: boolean; body?: (url: string) => number | null } = {}) {
+function server(opts: { manifest?: unknown; status?: number; gate?: boolean; gateManifest?: boolean; body?: (url: string) => number | null } = {}) {
   let open = 0;
   let peak = 0;
   const urls: string[] = [];
   const release: (() => void)[] = [];
+  let releaseManifest!: () => void;
+  const manifestGate = new Promise<void>((resolve) => { releaseManifest = resolve; });
   const fetchFn = vi.fn(async (url: string | URL | Request) => {
     const u = String(url);
     urls.push(u);
     if (u.endsWith('manifest.json')) {
+      if (opts.gateManifest) await manifestGate;
       if (opts.status) return new Response('nope', { status: opts.status });
       return new Response(JSON.stringify(opts.manifest ?? manifest));
     }
@@ -46,7 +49,7 @@ function server(opts: { manifest?: unknown; status?: number; gate?: boolean; bod
     if (n === null) return new Response('missing', { status: 404 });
     return new Response(new ArrayBuffer(n));
   }) as unknown as typeof fetch;
-  return { fetchFn, urls, release, peak: () => peak };
+  return { fetchFn, urls, release, releaseManifest, peak: () => peak };
 }
 
 describe('VoiceClips', () => {
@@ -78,6 +81,46 @@ describe('VoiceClips', () => {
     await advance();
     expect(c.take(id, text)?.id).toBe(id);
     expect(s.urls.filter((url) => url.endsWith('/current.mp3'))).toHaveLength(1);
+  });
+
+  it('protects both recent playback requests and evicts the oldest background preload', async () => {
+    const text = 'An der Quelle.';
+    const backlog = Array.from({ length: 27 }, (_, i) => ({ id: `old-${i}` }));
+    const later = { id: 'later' };
+    const s = server({ manifest: { version: 1, lines: Object.fromEntries([...backlog, later].map(({ id }) => [
+      id, { file: `${id}.mp3`, textHash: textHash(text) },
+    ])) } });
+    const c = new VoiceClips(fakeAudio(), './', s.fetchFn, false);
+    c.preload(backlog.slice(0, 3));
+    await flush();
+    c.preload(backlog.slice(3));
+    expect(c.stats()).toMatchObject({ loading: 3, queued: 24 });
+
+    expect(c.take('old-25', text)).toBeNull();
+    expect(c.take('old-26', text)).toBeNull();
+    c.preload([later]);
+    expect(c.stats().queued).toBe(24);
+    for (const release of s.release.splice(0)) release();
+    await flush();
+    expect(s.urls.slice(4)).toEqual(['./voice/old-26.mp3', './voice/old-25.mp3', './voice/old-4.mp3']);
+
+    s.release[1]!();
+    await flush();
+    expect(c.take('old-25', text)?.id).toBe('old-25');
+  });
+
+  it('starts the latest playback request before pending preloads when the manifest arrives', async () => {
+    const s = server({ gateManifest: true });
+    const c = new VoiceClips(fakeAudio(), './', s.fetchFn, false);
+    c.preload(Object.keys(LINES).map((id) => ({ id })));
+    expect(c.take('d', LINES.d!)).toBeNull();
+    expect(c.take(undefined, ['Andere Zeile', LINES.e!], 'laub')).toBeNull();
+    expect(s.urls).toEqual(['./voice/manifest.json']);
+
+    s.releaseManifest();
+    await flush();
+    expect(s.urls.slice(1)).toEqual(['e', 'a', 'b'].map((id) => `./voice/${id}.${textHash(LINES[id]!)}.m4a`));
+    expect(c.stats()).toMatchObject({ loading: 3, queued: 2 });
   });
 
   it('a missing manifest means no voices and one debug line', async () => {

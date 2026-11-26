@@ -1084,21 +1084,25 @@ Round-4 (polish: set dressing) integration rules:
   voice) and ContentDB dialogue triggers. Voice: a recorded clip when `voice/manifest.json`
   (under the Vite base; contract and FNV-1a `textHash` over the raw `text_de` in
   `dialogue/voiceManifest.ts`) has a current one for the line (by id, else by text hash for id-less
-  quest lines and variant / era ids) and it is already decoded (`dialogue/voiceClips.ts`: per-beat
-  preload, 3 parallel fetches, 24 waiting jobs, 16-clip LRU; the line that just fell back to the
-  murmur takes the next available fetch slot for future playback; Opus/WebM when `canPlayType` says
-  "probably", else AAC/M4A, an Opus decode failure retries as AAC and switches to AAC for the session; the old
-  single `file` is still read); else the per-syllable murmur. Both get the
-  speaker's character (`dialogue/voice.ts` `RADIO_CHAIN` / `RING_CHAIN` / `HALL_CHAIN`, a `blip`
+  quest lines and variant / era ids) and it is already decoded. `dialogue/voiceClips.ts` preloads
+  per beat with 3 parallel fetches, 24 waiting jobs and a 16-clip LRU. If a recording still needs to
+  be fetched, the latest playback request takes the next available slot. While the manifest loads,
+  the latest request is retained and resolved before pending preloads start. On overflow, the queue
+  drops the oldest background preload first. It drops the oldest playback request only when all
+  waiting jobs were requested for playback. Clips use Opus/WebM when `canPlayType` says "probably"
+  and AAC/M4A otherwise. An Opus decode failure retries as AAC and switches to AAC for the session.
+  The legacy single `file` is supported. A line without a ready clip uses the per-syllable murmur.
+  Both get the speaker's character (`dialogue/voice.ts` `RADIO_CHAIN` / `RING_CHAIN` / `HALL_CHAIN`, a `blip`
   and a `clip` variant; the clip values are the casting render's, so in-game clips sound like the
   casting page; clips at −18 LUFS enter at unity `CLIP_GAIN`). With a clip the typing paces to its
   length; skip / next stops it; the game's pause and an echo pause it; a suspended context (hidden
   tab, `AudioManager.setHidden`) freezes it and no clip starts then. Bullet time (`loop.manual`)
   does not pause clips: they run in real time while the simulation waits, and the subtitle
   completes when the clip ends. If a source's end event is delayed, the audio clock still marks
-  the clip as ended and releases speech ducking on the next playback state check. Loading a save
-  clears the previous line and waiting subtitles, then resumes dialogue if the loaded story is
-  active. Stale counts only lines whose id the manifest knows (an id-less line with a changed text just finds no match);
+  the clip as ended and releases speech ducking on the next playback state check. Loading a save or
+  starting a new game cancels any capture, discards its deferred dialogue and releases its curtain
+  and movement lock at state replacement. Loading also clears the previous line and waiting
+  subtitles before resuming an active story. The stale count covers lines whose id the manifest knows.
   NPC conversations keep the murmur (only presenter lines play clips). `public/voice/` holds
   committed MOSS clips only; the build emits an empty manifest when there is
   none (no 404). Hook: `kq.story.voice.stats()/preload()`. The title flow asks the visitor to read the
@@ -1472,9 +1476,10 @@ stand-ins, the **authored meshes later behind the same interface**.
   prologue before the compass first speaks at the Orangerie) mutes Laub's barks and the Chronik's
   hint ladder (its clock waits).
 - Emits `bark:idle` (60 s without input), `bark:enter-fire`, `dialogue:say`.
-- State `systems.barks {t, mem, memorials}`. Loading or starting a game clears pending requests and
-  dialogue, curtain and intro deadlines from the prior session. The saved clock, cooldowns and
-  memorials are restored on load. Hooks `kq.barks.state/advance/reset`.
+- State `systems.barks {t, mem, memorials}`. Loading or starting a game clears pending requests,
+  resets the 60-second idle countdown and allows the idle bark to fire again. It also clears the
+  prior session's dialogue, curtain and intro deadlines. Loading restores the saved clock,
+  cooldowns and memorials. Hooks `kq.barks.state/advance/reset`.
 
 ### animals (`src/systems/animals/`) – tour animals: the roe doe and fawn, Jost's dogs
 Tour contract C5 (`docs/design/tour/systems.md` §4 / C5), the behaviour layer over the fauna bodies.

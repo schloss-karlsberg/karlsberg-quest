@@ -89,6 +89,36 @@ it('counts idle game time once until input and excludes time in a modal', () => 
   expect(idle).toHaveBeenCalledTimes(2);
 });
 
+it.each([
+  { reason: 'load', elapsed: 59 },
+  { reason: 'load', elapsed: 60 },
+  { reason: 'new', elapsed: 59 },
+  { reason: 'new', elapsed: 60 },
+])('restarts idle detection on $reason after $elapsed seconds idle', ({ reason, elapsed }) => {
+  const { events, state, save, line, step, idle, said } = setupBarks();
+  const id = 'laub.bark.idle.1';
+  line(id, 'bark:idle');
+  expect(save.save('same-pose')).toBe(true);
+  step(elapsed);
+  expect(idle).toHaveBeenCalledTimes(elapsed === 60 ? 1 : 0);
+  idle.mockClear();
+  said.mockClear();
+
+  if (reason === 'load') expect(save.load('same-pose')).toBe(true);
+  else {
+    state.replace(createInitialState(), 'new');
+    events.emit('game:start', { resumed: false });
+  }
+  step(1);
+  expect(idle).not.toHaveBeenCalled();
+  step(58);
+  expect(said).not.toHaveBeenCalled();
+  expect(idle).not.toHaveBeenCalled();
+  step(1);
+  expect(idle).toHaveBeenCalledOnce();
+  expect(said).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id }));
+});
+
 it('discards the previous slot’s waiting barks and dialogue deadline while preserving loaded cooldowns', () => {
   const { events, line, step, modals, said, save, hooks } = setupBarks();
   line('laub.bark.scan.1', 'scan:mode');
