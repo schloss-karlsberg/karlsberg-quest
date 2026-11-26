@@ -104,6 +104,32 @@ async function lossless(page: Page): Promise<string> {
   });
 }
 
+test('court: leaving the era during the escort fade gives control back', async ({ page }) => {
+  await boot(page);
+  await setFlags(page, { 'disguise.coat': true });
+  await spawn(page, COURT_WATCHER);
+  await place(page, 1212, -1116, 0);
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.ctx.events.emit('court:take', {});
+    k.step(1);
+  });
+  expect((await court(page)).ejecting).toBe(true);
+  const afterShift = await page.evaluate(() => {
+    const k = window.kq!;
+    k.setEra('today');
+    const { x, z } = k.ctx.player.position;
+    return [x, z];
+  });
+  await step(page, 75);
+  expect(await page.evaluate(() => window.kq!.ctx.player.frozen)).toBe(false);
+  expect(await page.evaluate(() => {
+    const { x, z } = window.kq!.ctx.player.position;
+    return [x, z];
+  })).toEqual(afterShift);
+  expect(await events(page, 'court:ejected')).toEqual([]);
+});
+
 test('court: a watcher sees the hi-vis vest — meter, caption, lossless ejection with the first-time hint', async ({ page }) => {
   const errors = trackErrors(page);
   await boot(page);

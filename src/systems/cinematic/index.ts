@@ -405,6 +405,7 @@ export class CinematicRuntime {
     if (c) {
       this.cur = null;
       this.teardown(c);
+      this.slice().playing = null;
       this.ctx.save.hold('cinematic', false);
     }
   }

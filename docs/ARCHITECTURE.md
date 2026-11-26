@@ -594,6 +594,9 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 
 ## 11. Testing
 
+- `tests/set-piece-dom.ts` stubs the element operations and window input events used by the
+  cinematic and court unit tests. Drive the simulation and camera with explicit steps. Use
+  Playwright to verify browser event propagation and rendered styling.
 - `tests/travel-fixture.ts` runs the registered travel system on flat ground with a real game state
   store and event bus. Use `step()` for a simulation tick and Vitest's fake timers for a timed journey.
 - Pause and journal page tests use `tests/ui-fixture.ts` to run the real renderers and handlers on a
@@ -1842,7 +1845,9 @@ carry over. The timeline runs on fixed steps (Esc / modals stop it); `cinematic:
 when not skippable; for features that route the input themselves, e.g. the party); skip after 0.5 s by any key
 (not Esc / P / F-keys), click or touch; the HUD steps back except subtitles (`html[data-kq-cinematic]`),
 centre cards wait, autosaves are held (`save.hold`) and written after; a save that holds a playing
-cinematic ends it skipped after the load. Reduced motion: 'stills' = first and last key with a dip
+cinematic ends it skipped after the load. Disposal clears the playing marker before releasing the
+autosave hold. When a new shot starts during hand-back, the final hand-back restores the gameplay
+field of view from before the first shot. Reduced motion: 'stills' = first and last key with a dip
 through black (≤ 3 s), 'skip' = start + end skipped. Debug `kq.cinematic.play(id | spec)`, `skip()`,
 `at(id, t)`, `list()`, `playing()`. Tests: `tests/cinematic-keys.test.ts`,
 `tests/cinematic-system.test.ts`, `e2e/cinematic.spec.ts` (`cinematic-*.png`).

@@ -243,10 +243,12 @@ class CourtRuntime {
       else if (id === 'court:reset') this.resetAll();
     });
     ev.on('era:change', () => {
+      this.finishEject();
       this.resetAll();
       this.emitCostume();
     });
     ev.on('save:loaded', () => {
+      this.finishEject();
       this.resetAll();
       this.lastCoat = null;
       this.lastCostume = null;
@@ -518,10 +520,12 @@ class CourtRuntime {
         this.hintCard(e.tell);
       }
     }
-    if (e.t >= EJECT_FADE + 0.5) {
-      if (e.froze) ctx.player.frozen = false;
-      this.eject = null;
-    }
+    if (e.t >= EJECT_FADE + 0.5) this.finishEject();
+  }
+
+  private finishEject(): void {
+    if (this.eject?.froze) this.ctx.player.frozen = false;
+    this.eject = null;
   }
 
   /** The first ejection explains itself: what gave you away and how to avoid it. */
@@ -765,6 +769,7 @@ class CourtRuntime {
   }
 
   dispose(): void {
+    this.finishEject();
     this.cones.object.removeFromParent();
     this.cones.dispose();
     this.ringMesh.removeFromParent();

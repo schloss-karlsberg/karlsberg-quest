@@ -1,14 +1,19 @@
 import { PerspectiveCamera, Vector3 } from 'three';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { GameContext } from '../src/core/context';
 import { EventBus } from '../src/core/events';
+import { FixedStepLoop } from '../src/core/loop';
 import { SaveManager } from '../src/core/save';
 import { GameStateStore, createInitialState } from '../src/core/state';
-import { CAMERA_OWNER, CinematicRuntime, SKIP_GRACE } from '../src/systems/cinematic';
+import { CAMERA_OWNER, CinematicRuntime, SKIP_GRACE, registerTarget } from '../src/systems/cinematic';
+import { loadBundledCinematics } from '../src/systems/cinematic/data';
 import { CameraTakeover, HANDBACK_S, OverrideSlot } from '../src/systems/cinematic/takeover';
+import { registeredTarget } from '../src/systems/cinematic/targets';
 import type { CinematicFile } from '../src/systems/cinematic/types';
+import { ERA_LOOKS } from '../src/world/eraPresets';
 import '../src/systems/contracts';
 import reh from '../content/cinematics/reh.json';
+import { stubSetPieceDom } from './set-piece-dom';
 
 const DT = 1 / 60;
 
@@ -17,12 +22,17 @@ function memStorage() {
   return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k) };
 }
 
-function setup(opts: { reduced?: boolean; title?: () => boolean } = {}) {
+function setup(opts: {
+  reduced?: boolean;
+  title?: () => boolean;
+  files?: Record<string, CinematicFile>;
+  heightAt?: () => number;
+} = {}) {
   const events = new EventBus();
   const log: [string, unknown][] = [];
   events.onAny((n, p) => log.push([n, p]));
   const state = new GameStateStore(createInitialState());
-  const save = new SaveManager(state, memStorage(), events);
+  const save = new SaveManager(state, memStorage(), events, () => 100_000);
   const camera = new PerspectiveCamera(70, 1, 0.2, 7000);
   const player = { position: new Vector3(100, 10, 200), renderPos: new Vector3(100, 10, 200), yaw: 0.4, pitch: -0.2, eyeHeight: 1.6, frozen: false, lookLocked: false };
   let now = 0;
@@ -30,6 +40,11 @@ function setup(opts: { reduced?: boolean; title?: () => boolean } = {}) {
   const settings = { state: { reducedMotion: opts.reduced === true } };
   const takeover = new CameraTakeover({ slot, player, events, reducedMotion: () => settings.state.reducedMotion, now: () => now, titleActive: opts.title });
   const holds = new Set<string>();
+  const world = { heightAt: opts.heightAt ?? (() => 10), look: structuredClone(ERA_LOOKS.today), applyLook: vi.fn() };
+  const era: { current: GameContext['era']['current'] } = { current: 'today' };
+  const pause = { paused: false };
+  const modals = { count: 0 };
+  const busy = vi.fn();
   const ctx = {
     events,
     state,
@@ -37,13 +52,13 @@ function setup(opts: { reduced?: boolean; title?: () => boolean } = {}) {
     camera,
     player,
     settings,
-    world: { heightAt: () => 10, look: {}, applyLook: () => {} },
-    era: { current: 'today' },
-    ui: { cards: { hold: (r: string, on: boolean) => (on ? holds.add(r) : holds.delete(r)) }, hud: { busy: () => {} }, modals: { count: 0 } },
-    pause: { paused: false },
+    world,
+    era,
+    ui: { cards: { hold: (r: string, on: boolean) => (on ? holds.add(r) : holds.delete(r)) }, hud: { busy }, modals },
+    pause,
     cinematic: takeover,
   } as unknown as GameContext;
-  const rt = new CinematicRuntime(ctx, { reh: reh as CinematicFile });
+  const rt = new CinematicRuntime(ctx, opts.files ?? { reh: reh as CinematicFile });
   rt.init();
   /** One drawn frame: the "rig" puts the camera at a fixed spot, then the slot runs. */
   const rig = new Vector3(100, 12, 204);
@@ -57,10 +72,15 @@ function setup(opts: { reduced?: boolean; title?: () => boolean } = {}) {
     for (let i = 0; i < n; i++) rt.update(DT);
   };
   const named = (n: string) => log.filter(([k]) => k === n).map(([, p]) => p);
-  return { events, log, state, save, camera, player, slot, takeover, rt, render, steps, named, settings, holds, rig };
+  return { events, log, state, save, camera, player, slot, takeover, rt, render, steps, named, settings, holds, rig, world, era, modals, pause, busy };
 }
 
 const ORBIT = { id: 'ring', orbit: { x: 100, z: 200, r: 8, period: 10, seconds: 3 } };
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 describe('cinematic system', () => {
   it('play → start, the camera moves, the player is frozen; end emitted once with yaw / pitch back', () => {
@@ -199,11 +219,15 @@ describe('cinematic system', () => {
     ]) {
       const s = setup();
       s.rt.play(ORBIT);
+      s.save.autosave('pending', true);
       s.steps(10);
       fire(s.events);
       expect(s.takeover.cameraOwner).toBeNull();
       expect(s.named('cinematic:end')).toEqual([{ id: 'ring', skipped: true }]);
-      expect(s.player.frozen).toBe(false);
+      expect(s.player).toMatchObject({ frozen: false, lookLocked: false });
+      expect(s.holds.size).toBe(0);
+      expect(s.save.held).toBe(false);
+      expect(s.save.peek()?.systems.cinematic?.playing).toBeNull();
     }
   });
 
@@ -356,4 +380,238 @@ describe('cinematic system', () => {
     s.steps(600);
     expect(s.named('cinematic:end')).toEqual([{ id: 'reh', skipped: false }]);
   });
+
+  it('captures fresh keyboard input but leaves pause and tool keys available', () => {
+    const dom = stubSetPieceDom();
+    const s = setup();
+    const key = (code: string, repeat = false) => {
+      const event = Object.assign(new Event('keydown', { cancelable: true }), { code, repeat });
+      dom.window.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    s.rt.play(ORBIT);
+    expect(dom.root.attributes.has('data-kq-cinematic')).toBe(true);
+    expect(key('KeyE')).toBe(true);
+    expect(s.rt.playing).toBe('ring');
+    s.steps(31);
+    expect(key('Escape')).toBe(false);
+    expect(key('KeyP')).toBe(false);
+    expect(key('F8')).toBe(false);
+    expect(key('KeyE', true)).toBe(true);
+    expect(s.rt.playing).toBe('ring');
+    expect(key('KeyE')).toBe(true);
+    expect(s.named('cinematic:end')).toEqual([{ id: 'ring', skipped: true }]);
+    expect(key('KeyE')).toBe(false);
+    expect(dom.root.attributes.has('data-kq-cinematic')).toBe(false);
+    expect(dom.body.children.size).toBe(0);
+  });
+
+  it.each(['touch', 'mouse'])('respects grace and modals for %s pointer skips', (pointerType) => {
+    const dom = stubSetPieceDom();
+    const s = setup();
+    const press = () => dom.window.dispatchEvent(Object.assign(new Event('pointerdown'), { pointerType }));
+    s.rt.play(ORBIT);
+    press();
+    expect(s.rt.playing).toBe('ring');
+    s.steps(31);
+    s.modals.count = 1;
+    press();
+    expect(s.rt.playing).toBe('ring');
+    s.modals.count = 0;
+    press();
+    press();
+    expect(s.named('cinematic:end')).toEqual([{ id: 'ring', skipped: true }]);
+    expect(s.player.frozen).toBe(false);
+    expect(s.player.lookLocked).toBe(false);
+  });
+
+  it('dips to black between the reduced-motion stills and clears the overlay on exit', () => {
+    const dom = stubSetPieceDom();
+    const s = setup({ reduced: true });
+    s.rt.play({ id: 'stills', keys: [{ t: 0, fov: 40 }, { t: 8, fov: 18 }], lockInput: false, skippable: false });
+    const overlay = [...dom.body.children][0]!;
+    const fade = [...overlay.children].find((child) => child.attributes.get('data-testid') === 'cinematic-fade')!;
+    s.render();
+    s.rt.frame();
+    expect(s.camera.fov).toBe(40);
+    expect(fade.style.opacity).toBe('0.000');
+    s.rt.at('stills', 1.5);
+    s.render();
+    s.rt.frame();
+    expect(s.camera.fov).toBe(18);
+    expect(fade.style.opacity).toBe('1.000');
+    expect(s.rt.userSkip()).toBe(false);
+    expect(s.player).toMatchObject({ frozen: false, lookLocked: false });
+    s.rt.at('stills', -1);
+    s.steps(100);
+    s.render();
+    expect(s.camera.fov).toBe(70);
+    expect(s.slot.fn).toBeNull();
+    expect(dom.body.children.size).toBe(0);
+  });
+
+  it('keeps the shot, locks and deferred autosave through paused render frames', () => {
+    const s = setup();
+    const loop = new FixedStepLoop({ update: (dt) => s.rt.update(dt), render: () => s.render() });
+    s.rt.play(ORBIT);
+    loop.step(45);
+    const time = s.rt.time;
+    const eye = s.camera.position.clone();
+    expect(s.save.autosave('interval', true)).toBe(false);
+    s.pause.paused = loop.paused = true;
+    for (let i = 0; i < 210; i++) loop.frame(i * DT);
+    expect(s.rt.time).toBe(time);
+    expect(s.camera.position.equals(eye)).toBe(true);
+    expect(s.rt.userSkip()).toBe(false);
+    expect(s.save.held).toBe(true);
+    expect(s.save.peek()).toBeNull();
+    expect(s.player).toMatchObject({ frozen: true, lookLocked: true });
+    s.pause.paused = loop.paused = false;
+    loop.frame(212 * DT);
+    expect(s.rt.time).toBeGreaterThan(time!);
+    expect(s.rt.time! - time!).toBeLessThan(0.1);
+    loop.step(140);
+    expect(s.named('cinematic:end')).toEqual([{ id: 'ring', skipped: false }]);
+    expect(s.save.peek()?.systems.cinematic?.playing).toBeNull();
+  });
+
+  it('skips both the outgoing and saved shots when loading a different cinematic', () => {
+    const s = setup();
+    s.rt.play({ id: 'reh', ref: 'reh' });
+    s.save.save('during-reh');
+    s.rt.end(true);
+    s.rt.play(ORBIT);
+    s.save.autosave('hidden', true);
+    expect(s.save.load('during-reh')).toBe(true);
+    expect(s.named('cinematic:start').map((p) => (p as { id: string }).id)).toEqual(['reh', 'ring']);
+    expect(s.named('cinematic:end')).toEqual([
+      { id: 'reh', skipped: true },
+      { id: 'ring', skipped: true },
+      { id: 'reh', skipped: true },
+    ]);
+    expect(s.save.peek()?.systems.cinematic?.playing).toBeNull();
+    expect(s.save.held).toBe(false);
+    expect(s.player).toMatchObject({ frozen: false, lookLocked: false });
+    expect(s.holds.size).toBe(0);
+    expect(s.busy).toHaveBeenLastCalledWith('stage-cinematic', false, 0);
+  });
+
+  it('restores the gameplay FOV after a second shot interrupts the hand-back', () => {
+    const s = setup();
+    s.rt.play({ id: 'first', keys: [{ t: 0, fov: 22 }, { t: 1 }] });
+    s.render();
+    expect(s.camera.fov).toBe(22);
+    s.rt.end(true);
+    s.render(HANDBACK_S * 500);
+    expect(s.camera.fov).toBeCloseTo(46);
+    s.rt.play({ id: 'second', keys: [{ t: 0, fov: 37 }, { t: 1 }] });
+    s.render();
+    expect(s.camera.fov).toBe(37);
+    s.rt.end(true);
+    s.render(HANDBACK_S * 1000);
+    expect(s.slot.fn).toBeNull();
+    expect(s.camera.fov).toBe(70);
+    expect(s.named('camera:override')).toEqual([{ active: true }, { active: false }]);
+  });
+
+  it('tears down on a thrown shot and preserves an existing movement lock', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const s = setup({ heightAt: () => { throw new Error('missing terrain'); } });
+    s.player.frozen = true;
+    s.rt.play(ORBIT);
+    s.save.autosave('interval', true);
+    s.render();
+    expect(error).toHaveBeenCalledOnce();
+    expect(s.named('cinematic:end')).toEqual([{ id: 'ring', skipped: true }]);
+    expect(s.camera.position.equals(s.rig)).toBe(true);
+    expect(s.player).toMatchObject({ frozen: true, lookLocked: false });
+    expect(s.holds.size).toBe(0);
+    expect(s.save.peek()?.systems.cinematic?.playing).toBeNull();
+    s.render();
+    expect(s.slot.fn).toBeNull();
+  });
+
+  it('restores the original lighting on stop and keeps the new era lighting on a shift', () => {
+    const s = setup();
+    const spec = { id: 'look', keys: [{ t: 0, fog: 1, sun: 1, dark: 1 }, { t: 1 }] };
+    s.rt.play(spec);
+    s.render();
+    s.rt.frame();
+    expect(s.world.look.fog.density).toBeGreaterThan(ERA_LOOKS.today.fog.density);
+    expect(s.world.look.sun.intensity).toBeLessThan(ERA_LOOKS.today.sun.intensity);
+    s.events.emit('cinematic:stop', { id: 'look' });
+    expect(s.world.look).toEqual(ERA_LOOKS.today);
+    s.rt.play(spec);
+    s.render();
+    s.rt.frame();
+    s.world.look = structuredClone(ERA_LOOKS['1789']);
+    s.era.current = '1789';
+    s.events.emit('era:change', { from: 'today', to: '1789' });
+    expect(s.world.look).toEqual(ERA_LOOKS['1789']);
+    expect(s.holds.size).toBe(0);
+    expect(s.player).toMatchObject({ frozen: false, lookLocked: false });
+  });
+
+  it('clears the playing marker before flushing a held autosave on disposal', () => {
+    const dom = stubSetPieceDom();
+    const s = setup();
+    s.rt.play(ORBIT);
+    s.save.autosave('hidden', true);
+    s.rt.dispose();
+    expect(s.rt.playing).toBeNull();
+    expect(s.player).toMatchObject({ frozen: false, lookLocked: false });
+    expect(s.takeover.cameraOwner).toBeNull();
+    expect(s.save.held).toBe(false);
+    expect(s.holds.size).toBe(0);
+    expect(dom.root.attributes.has('data-kq-cinematic')).toBe(false);
+    expect(s.save.peek()?.systems.cinematic?.playing).toBeNull();
+  });
+
+  it('plays the bundled deer shot on live targets and holds aim after a lost target', () => {
+    const files = loadBundledCinematics();
+    const s = setup({ files });
+    const kitz = { x: 725.8, y: 11.6, z: -764 };
+    const offKitz = registerTarget('animal:kitz', () => kitz);
+    const offRicke = registerTarget('animal:ricke', () => ({ x: 750, y: 11.6, z: -753.4 }));
+    try {
+      expect(s.rt.play({ id: 'reh', ref: 'reh' })).toBe(true);
+      s.render();
+      expect(s.camera.rotation.y).toBeCloseTo(0);
+      expect(s.camera.fov).toBe(40);
+      kitz.x += 10;
+      s.rt.at('reh', 2.5);
+      s.render();
+      const aim = s.camera.rotation.y;
+      expect(aim).toBeLessThan(-0.5);
+      expect(s.camera.fov).toBe(18);
+      offKitz();
+      s.render();
+      expect(s.camera.rotation.y).toBeCloseTo(aim);
+      s.rt.at('reh', 6);
+      s.render();
+      expect(s.camera.rotation.y).toBeCloseTo(-Math.PI / 2);
+      expect(s.camera.fov).toBe(18);
+    } finally {
+      offKitz();
+      offRicke();
+    }
+  });
+
+  it('keeps the newest target when an old registration unmounts, including a failing getter', () => {
+    const offOld = registerTarget('animal:test', () => ({ x: 1, z: 2 }));
+    const offNew = registerTarget('animal:test', () => ({ x: 3, z: 4 }));
+    const offBad = registerTarget('animal:bad', () => { throw new Error('despawned'); });
+    try {
+      offOld();
+      expect(registeredTarget('animal:test')).toEqual({ x: 3, z: 4 });
+      expect(registeredTarget('animal:bad')).toBeNull();
+      offNew();
+      expect(registeredTarget('animal:test')).toBeNull();
+    } finally {
+      offNew();
+      offBad();
+    }
+  });
+
+  it.todo('decide whether Continue should resume or skip a shot suspended by returning to the title');
 });
