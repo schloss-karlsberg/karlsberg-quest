@@ -39,6 +39,8 @@ These are intentionally **on in production** too, so you can reproduce a bug on 
 | `?x=…&z=…` | Start at a local position |
 | `?party=museum\|burn\|keep` | Start at the end-of-game party on the plateau at dusk, credits rolling |
 | `?manual` | Bullet time: the game advances only when stepped |
+| `?manual&faststep` | Campaign test mode. Dialogue uses subtitle timing on fixed steps. `kq.step(n)` and `kq.press(code, n)` update frame-driven prompts and cameras. A browser frame requested just to show that view draws it without advancing presentation again. Use `await kq.screenshotReady()` before a capture. |
+| `?nosave` | Makes save slots read-only. „Neues Spiel“ opens the content warning directly, and „Weiter“ reloads the autosave from the title. Add `&fresh` to skip loading the autosave on boot. |
 | `window.kq` | Debug API in the browser console: teleport, set the era, step, press keys, combat hooks |
 | `kq.pilot` | Scripted play on top of `window.kq`: act, observe, choose, `bulletTime(true)`, `showStrip(true)` |
 | F8 (in game) | Write a playtest note with the current position and state; export it from the pause menu |
@@ -56,31 +58,72 @@ pnpm build        # production build
 
 ### End-to-end tests
 
-The Playwright suites in `e2e/` build the game and drive a real browser. They are a regression
-net, not a gate, and some suites (the full campaign) take about an hour.
+The Playwright suites in `e2e/` drive a real browser. The release campaign uses
+`?manual&faststep` on every load, including the mid-chapter save and continue.
+Chapter 3 waits for skill cards to fade when it captures screenshots.
+Use ordinary `?manual` when testing recorded audio or inspecting individual draws.
 
 ```sh
 pnpm e2e --workers=1
 ```
 
 Always use `--workers=1`: the game is GPU-heavy, and parallel workers produce flaky timings.
-The preview server uses port 5281 by default. To run suites from several checkouts at the same
-time, give each its own port, e.g. `KQ_E2E_PORT=5301 pnpm e2e --workers=1`.
+The preview server uses port 5281 by default (5281 + k inside `heavy.sh` slot k, see below). To
+run suites from several checkouts at the same time, give each its own port, e.g.
+`KQ_E2E_PORT=5301 pnpm e2e --workers=1`.
 
 On a machine shared by several sessions, wrap heavy jobs (e2e, real-GPU screenshots, local model
-runs) in `scripts/dev/heavy.sh`. It is a machine-wide lock with a first-come-first-served queue;
-`scripts/dev/heavy.sh --status` shows the holder and the queue. Hold it for one spec file or one
-screenshot set at a time, never a whole multi-spec batch, so short jobs can interleave:
+runs) in `scripts/dev/heavy.sh`. It is a machine-wide lock with three slots (`KQ_HEAVY_SLOTS`,
+default 3) and a first-come-first-served queue, so up to three normal jobs, such as SwiftShader
+e2e specs, run at once. `scripts/dev/heavy.sh --status` shows each slot's holder and the queue.
+Hold a slot for one spec file or one screenshot set at a time, never a whole multi-spec batch, so
+short jobs can interleave:
 
 ```sh
 for s in e2e/a.spec.ts e2e/b.spec.ts; do scripts/dev/heavy.sh -- pnpm exec playwright test "$s" --workers=1; done
 ```
 
+Jobs that need a quiet machine pass `--exclusive`, which takes every slot: the walk, framerate
+and perf specs, the real-GPU config (`playwright.gpu.config.ts`), real-GPU screenshot sets and
+local model runs (MOSS / TTS). An exclusive job waits until all slots are free, and jobs queued
+behind it wait as well, so it cannot starve:
+
+```sh
+scripts/dev/heavy.sh --exclusive --max-hold 10 -- pnpm exec playwright test e2e/framerate.spec.ts --workers=1
+scripts/dev/heavy.sh --exclusive --max-hold 15 -- pnpm exec playwright test -c playwright.gpu.config.ts --workers=1
+```
+
+The real-GPU and fixed-port tools refuse a normal slot (exit 2), so run them `--exclusive`:
+`scripts/dev/mobile-tour.ts` (mobile UI tour, port 5340), `scripts/dev/storyboard.mjs` (5370) and
+`scripts/dev/look.mjs` (5602). Each also takes its port from the slot (base + k in slot k) unless
+`KQ_MOBILE_PORT`, `KQ_STORYBOARD_PORT` or `KQ_LOOK_PORT` is set. `heavy.sh` passes the job
+`KQ_HEAVY_SLOT` and `KQ_HEAVY_MODE` (`exclusive` or `normal`). The walk "d" perf, framerate and perf specs and
+`playwright.gpu.config.ts` print a warning, but don't fail, when they run in a normal slot while other
+slots are busy. In slot k ≥ 1 the Playwright artifacts and screenshots go to
+`test-results/artifacts-slot<k>` and `test-results/screens-slot<k>`, so two jobs from the same checkout
+never wipe or overwrite each other's files. Slot 0 and exclusive jobs keep `test-results/artifacts`
+and `test-results/screens`.
+
 Pass `--max-hold 15` or less. The merge gate (`KQ_HEAVY_OWNER=kq-integrate` or `kq-integrate-*`)
 has a priority lane: it goes ahead of the queue, but after 2 priority holds in a row the oldest
 waiting normal job gets the next hold. A priority job without `--max-hold` of 15 or less is refused
 (exit 2); for everyone else a larger value only prints a warning. `--status` marks priority tickets
-with `P` and shows who is next.
+with `P` and exclusive tickets with `X`, and shows who is next.
+
+To compare campaign timings, build once and run both modes with the same machine,
+browser and port. Use Playwright’s reported durations so time in the lock queue is excluded.
+Leave `CAMPAIGN_FROM` and `CAMPAIGN_TO` unset for a full release run.
+
+```sh
+pnpm build
+for fast in 0 1; do
+  CAMPAIGN_FASTSTEP=$fast KQ_E2E_PORT=5405 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/campaign.spec.ts --workers=1 --reporter=line || exit 1
+done
+```
+
+Vitest prints a `FAIL` line with the file and case name for each failed test.
+Capture both output streams when investigating a load flake, for example
+`pnpm test --maxWorkers=1 >/tmp/kq-vitest.log 2>&1`.
 
 ## Project rules
 

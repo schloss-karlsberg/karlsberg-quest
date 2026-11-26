@@ -158,14 +158,17 @@ export class TouchControls {
   /** Gameplay running without a modal (boot decides). */
   private playing = false;
   private touchSeen = false;
+  private photoOpen = false;
   private readonly coarse: boolean;
   private stickId: number | null = null;
   private stickOrigin = { x: 0, y: 0 };
   private held: Action[] = [];
   private readonly looks = new Map<number, { x: number; y: number }>();
   private surfaceTap: PointerTap | null = null;
-  /** pointerId → actions that button holds. */
-  private readonly btnHeld = new Map<number, Action[]>();
+  /** The button held by each active pointer. */
+  private readonly btnHeld = new Map<number, Btn>();
+  /** Brief holds from keyboard or assistive technology activation. */
+  private readonly btnTaps = new Map<Btn, number>();
   /** Called whenever the active state flips (boot: pointer lock, click-to-play chip). */
   onActiveChange: ((on: boolean) => void) | null = null;
 
@@ -366,7 +369,11 @@ export class TouchControls {
 
   /** Photo mode: the attack button becomes the shutter, the camera button lights up. */
   private setPhoto(on: boolean, photoBtn: HTMLElement): void {
-    if (on) this.setSurveyMenu(null);
+    this.photoOpen = on;
+    if (on) {
+      this.setSurveyMenu(null);
+      this.surfaceTap = null;
+    }
     photoBtn.classList.toggle('on', on);
     this.attackBtn.classList.toggle('shutter', on);
     this.attackBtn.replaceChildren(svg(on ? TOUCH_ICONS.shutter : TOUCH_ICONS.attack), h('i.kq-t-ring'));
@@ -416,6 +423,16 @@ export class TouchControls {
 
   /** A pressable button: holds its actions while the finger is down. */
   private wire(b: Btn, after?: () => void): void {
+    const pointerHeld = () => [...this.btnHeld.values()].includes(b);
+    const held = () => this.btnTaps.has(b) || pointerHeld();
+    const press = () => {
+      if (held()) return false;
+      for (const a of b.actions) this.deps.input.press(a, true);
+      return true;
+    };
+    const release = () => {
+      if (!held()) for (const a of b.actions) this.deps.input.press(a, false);
+    };
     b.el.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -424,18 +441,18 @@ export class TouchControls {
       } catch {
         /* synthetic pointer */
       }
-      for (const a of b.actions) this.deps.input.press(a, true);
-      this.btnHeld.set(e.pointerId, b.actions);
+      press();
+      this.btnHeld.set(e.pointerId, b);
       b.el.classList.add('down');
     });
     const up = (e: PointerEvent) => {
       e.stopPropagation();
-      const acts = this.btnHeld.get(e.pointerId);
-      if (!acts) return;
+      if (this.btnHeld.get(e.pointerId) !== b) return;
       this.btnHeld.delete(e.pointerId);
-      for (const a of acts) this.deps.input.press(a, false);
-      b.el.classList.remove('down');
       if (e.type === 'pointerup') swallowNextClick(b.el);
+      if (pointerHeld()) return;
+      release();
+      b.el.classList.remove('down');
       after?.();
     };
     for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) b.el.addEventListener(ev, up);
@@ -443,9 +460,14 @@ export class TouchControls {
     // keyboard / screen-reader activation still works as a tap
     b.el.addEventListener('click', (e) => {
       if ((e as PointerEvent).pointerType || e.detail > 0) return;
-      for (const a of b.actions) this.deps.input.press(a, true);
-      setTimeout(() => b.actions.forEach((a) => this.deps.input.press(a, false)), 60);
-      after?.();
+      const tap = this.btnTaps.get(b);
+      if (tap !== undefined) clearTimeout(tap);
+      const pressed = press();
+      this.btnTaps.set(b, window.setTimeout(() => {
+        this.btnTaps.delete(b);
+        release();
+      }, 60));
+      if (pressed) after?.();
     });
   }
 
@@ -466,7 +488,7 @@ export class TouchControls {
   }
 
   private surfaceDown(e: PointerEvent): void {
-    if (e.pointerType === 'touch' && e.isPrimary && e.target === this.el) this.surfaceTap = new PointerTap(e);
+    if (!this.photoOpen && e.pointerType === 'touch' && e.isPrimary && e.target === this.el) this.surfaceTap = new PointerTap(e);
     e.preventDefault();
     this.setSurveyMenu(null);
     try {
@@ -544,6 +566,8 @@ export class TouchControls {
     this.looks.clear();
     this.surfaceTap = null;
     this.btnHeld.clear();
+    for (const tap of this.btnTaps.values()) clearTimeout(tap);
+    this.btnTaps.clear();
     for (const b of this.el.querySelectorAll('.down')) b.classList.remove('down');
     this.deps.input.releaseVirtual();
   }

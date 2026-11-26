@@ -1,8 +1,12 @@
 // Dev helper: VIEWS='[...]' node scripts/dev/look.mjs <outdir> [baseUrl]
 // Like shots.mjs, plus per view: `js` (code run in the page before the shot, `k` = window.kq),
 // `steps` (fixed steps after teleport), `fly` (metres above ground), `wait` (ms real time).
+// A screenshot set: run it in the EXCLUSIVE lane of scripts/dev/heavy.sh (a normal slot is refused).
+// Without baseUrl: http://127.0.0.1:<KQ_LOOK_PORT, else 5602 + heavy.sh slot>/.
 import { chromium } from 'playwright';
-const [outDir, base = 'http://127.0.0.1:5602/'] = process.argv.slice(2);
+import { requireExclusive, slotPort } from './heavy-env.mjs';
+requireExclusive('look', "VIEWS='[...]' scripts/dev/heavy.sh --exclusive --max-hold 15 -- node scripts/dev/look.mjs <outdir> [baseUrl]");
+const [outDir, base = `http://127.0.0.1:${slotPort(5602, 'KQ_LOOK_PORT')}/`] = process.argv.slice(2);
 const views = JSON.parse(process.env.VIEWS ?? '[]');
 const query = process.env.QUERY ?? '?debug&nosave&fresh&manual';
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });

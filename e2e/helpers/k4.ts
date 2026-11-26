@@ -474,7 +474,7 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   await page.evaluate(() => window.kq!.lantern!.toggle(true));
   await run(page, 8);
   expect((await events(page, 'hunt:finale')).map((p) => (p as { outcome: string }).outcome)).toContain('calmed');
-  await page.waitForTimeout(2500);
+  if (SHOTS) await page.waitForTimeout(2500);
   await shot(page, 'w8-finale');
   await run(page, 24);
   expect((await events(page, 'hunt:finale')).map((p) => (p as { outcome: string }).outcome)).toContain('faded');

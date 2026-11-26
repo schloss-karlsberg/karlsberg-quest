@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import jpeg from 'jpeg-js';
-import { trackErrors } from './helpers/common';
+import { SCREENS, trackErrors } from './helpers/common';
 
 /**
  * Bullet-time pilot (`window.kq.pilot`, src/debug/pilot.ts): act / observe / choose in ?manual,
@@ -9,6 +9,22 @@ import { trackErrors } from './helpers/common';
 
 /** A meadow south of the Apfelallee, far from the field station and from NPCs (as e2e/combat.spec.ts). */
 const FIELD = { x: 1452, z: -640, yaw: 330 };
+
+test('pilot selects the chapter-two inline choice and applies the selected branch', async ({ page }) => {
+  await page.goto('./?notitle&nosave&fresh&manual&q=low&nowarm');
+  await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.pilot, null, { timeout: 90_000 });
+  const result = await page.evaluate(() => {
+    const k = window.kq!;
+    k.story!.start('Alex');
+    k.story!.goto('k2', 'k2_8');
+    k.setEra('1793-02');
+    for (let i = 0; i < 20 && k.story!.choice() === null; i++) k.step(60);
+    const choice = k.story!.choice();
+    const label = k.pilot.choose(1);
+    return { choice, label, closed: k.story!.choice() === null, branch: k.state().flags['flag.k2_tor'] };
+  });
+  expect(result).toEqual({ choice: 'k2.tor', label: 'Ihnen leuchten (Laterne an)', closed: true, branch: 'leuchten' });
+});
 
 /** Mean luminance (0..255) and its spread of a JPEG data URL. */
 function stats(dataUrl: string): { w: number; h: number; mean: number; sd: number } {
@@ -161,6 +177,6 @@ test('pilot: act, observe, frames, look, telegraph, dialogue', async ({ page }) 
   });
   expect(kept).toEqual({ down: true, after: false });
 
-  await page.screenshot({ path: 'test-results/screens/pilot.png' });
+  await page.screenshot({ path: `${SCREENS}/pilot.png` });
   expect(errors).toEqual([]);
 });

@@ -136,8 +136,10 @@
 .kq-fx-card.show {
   opacity: 1;
 }
-@media (prefers-reduced-motion: reduce) {
-  .kq-fx-gauge.warn .kq-fx-gauge-tube {
-    animation: none;
-  }
+html[data-kq-reduced-motion] .kq-fx-gauge-fill {
+  transition: none;
+}
+html[data-kq-reduced-motion] .kq-fx-gauge.warn .kq-fx-gauge-tube,
+html[data-kq-reduced-flash] .kq-fx-gauge.warn .kq-fx-gauge-tube {
+  animation: none;
 }

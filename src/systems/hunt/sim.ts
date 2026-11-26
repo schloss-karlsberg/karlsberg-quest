@@ -635,7 +635,7 @@ export class PackSim {
     for (let i = T.prints.length - 1; i >= 0; i--) {
       const p = T.prints[i]!;
       if (now - p.t > maxAge) break;
-      if (p.kind !== 'boot' || !ok(p.seg) || (p.x - x) ** 2 + (p.z - z) ** 2 > r * r) continue;
+      if (p.kind !== 'boot' || p.agent !== -1 || !ok(p.seg) || (p.x - x) ** 2 + (p.z - z) ** 2 > r * r) continue;
       if (!best || p.seq > best.seq) best = p;
     }
     return best;

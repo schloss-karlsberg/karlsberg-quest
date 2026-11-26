@@ -144,14 +144,16 @@ describe('DGM1 terrain geometry', () => {
       ...TRAIL.flatMap((strand) => trailLine(strand)).map(({ x, z, half }) => [x, z, half]),
       ...[...props, ...plants].map(({ x, z, radius }) => [x, z, radius]),
     ] as [number, number, number][];
-    for (const [x, z, radius] of protectedCircles) {
+    function checkBase(x: number, z: number, radius: number): void {
       const pad = radius + Math.SQRT2;
       for (let r = Math.ceil(z - pad); r <= z + pad; r++) {
         for (let c = Math.ceil(x - pad); c <= x + pad; c++) {
-          if (Math.hypot(c - x, r - z) <= pad) expect(offset(c, r), `${c}/${r}`).toBe(0);
+          if (Math.hypot(c - x, r - z) <= pad && offset(c, r) !== 0)
+            throw new Error(`Nonzero terrain offset at ${c}/${r}`);
         }
       }
     }
+    for (const [x, z, radius] of protectedCircles) checkBase(x, z, radius);
     const lines = [
       [tour.points, 2],
       [approach.points, 2],
@@ -161,12 +163,7 @@ describe('DGM1 terrain geometry', () => {
       const line = new Polyline(points as [number, number][]);
       for (let s = 0; s <= line.length; s += 0.5) {
         const { x, z } = line.pointAt(s);
-        const pad = width + Math.SQRT2;
-        for (let r = Math.ceil(z - pad); r <= z + pad; r++) {
-          for (let c = Math.ceil(x - pad); c <= x + pad; c++) {
-            if (Math.hypot(c - x, r - z) <= pad) expect(offset(c, r), `${c}/${r}`).toBe(0);
-          }
-        }
+        checkBase(x, z, width);
       }
     }
     // Nonzero vertices must also be clear of the nearby 2 m water and OSM cells.
@@ -190,7 +187,8 @@ describe('DGM1 terrain geometry', () => {
   it('loads the optional offsets from the game base and rejects invalid buffers', async () => {
     const fetch = vi.fn(async () => new Response(new Uint8Array(file)));
     vi.stubGlobal('fetch', fetch);
-    await expect(loadTerrainRelief('/kq/data/', relief)).resolves.toEqual(data);
+    const loaded = await loadTerrainRelief('/kq/data/', relief);
+    expect(Buffer.compare(loaded, data)).toBe(0);
     expect(fetch).toHaveBeenCalledExactlyOnceWith(`/kq/data/${relief.path}`);
     await expect(loadTerrainRelief('/kq/data/', { ...relief, cols: relief.cols - 1 })).rejects.toThrow('size mismatch');
   });

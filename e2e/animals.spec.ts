@@ -4,7 +4,7 @@ import { trackErrors } from './helpers/common';
 
 /**
  * Tour C5 animals (src/systems/animals): the shy roe deer (an upright walk at them → alert → fled;
- * a crouched sneak to the 14 m photo range → nothing), Jost's dogs following (here: the player)
+ * a crouched sneak to the 22 m photo range → nothing), Jost's dogs following (here: the player)
  * and the t5 bolt (run with back → animal:returned per dog). Screenshots in test-results/animals/.
  * The player is driven with real input (kq.press('KeyW')), so speed and stance are the game's own.
  */
@@ -89,7 +89,7 @@ test('animals (a): demo deer; walking upright straight at them → animal:alert,
   const demo = await page.evaluate(() => window.kq!.animals!.demo());
   console.log(`[animals a] demo ${JSON.stringify(demo)}`);
   expect(await page.evaluate(() => window.kq!.animals!.stats())).toMatchObject({ deer: 2, dogs: 2, bodies: 4, active: true });
-  // 1: grazing, seen from 13 m crouched (inside the photo range, below the sneak radius)
+  // 1: grazing, seen from 13 m while crouched and still
   await lineUp(page, 13, 'crouch');
   await step(page, 30);
   expect((await doeDist(page)).state).toBe('graze');
@@ -122,7 +122,7 @@ test('animals (a): demo deer; walking upright straight at them → animal:alert,
   expect(errors).toEqual([]);
 });
 
-test('animals (b): after a restore, a crouched sneak to ≤ 14 m → no alert, no flight', async ({ page }) => {
+test('animals (b): after a restore, a crouched sneak to ≤ 22 m → no alert, no flight', async ({ page }) => {
   const errors = trackErrors(page);
   await boot(page);
   await page.evaluate(() => window.kq!.animals!.demo());
@@ -136,7 +136,7 @@ test('animals (b): after a restore, a crouched sneak to ≤ 14 m → no alert, n
   await lineUp(page, 30, 'crouch');
   await step(page, 10);
   let d = await doeDist(page);
-  for (let i = 0; i < 80 && d.dist > 13.5; i++) {
+  for (let i = 0; i < 80 && d.dist > 22; i++) {
     await page.evaluate(() => window.kq!.press('KeyW', 15));
     d = await doeDist(page);
   }
@@ -144,7 +144,7 @@ test('animals (b): after a restore, a crouched sneak to ≤ 14 m → no alert, n
   await step(page, 180); // three seconds crouched at the photo range
   d = await doeDist(page);
   console.log(`[animals b] stance ${speed}, doe at ${d.dist.toFixed(1)} m, state ${d.state}, events ${JSON.stringify(await events(page))}`);
-  expect(d.dist).toBeLessThanOrEqual(14);
+  expect(d.dist).toBeLessThanOrEqual(22);
   expect(await events(page, 'animal:fled')).toEqual([]);
   expect(await events(page, 'animal:alert')).toEqual([]);
   expect(d.state).toBe('graze');
@@ -289,6 +289,8 @@ test('animals (d): t10 opens on the deer with the reh shot, from the stop and fr
     expect(ends.at(-1)?.p).toEqual({ id: 'tour.reh', skipped: true });
     expect(await page.evaluate(() => window.kq!.story!.state().beat)).toBe('t10');
     await expect(sneak).toBeVisible();
+    if (s.touch) await expect(sneak.locator('kbd')).toHaveAttribute('data-key', 'Ducken');
+    else await expect(sneak.locator('kbd')).toHaveText('C');
   }
   expect(errors).toEqual([]);
 });

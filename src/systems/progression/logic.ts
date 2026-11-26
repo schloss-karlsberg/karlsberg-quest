@@ -8,7 +8,7 @@
  *   A stronger weapon equips itself; a charm fills a free charm slot (charmSlots(level)).
  * - Consumables: `use` takes one and emits `item:use` — combat looks up the ItemEffect in
  *   src/rpg/items.ts and applies heal / stamina / Bannlicht / Kalkstaub itself (combat owns
- *   Lebenskraft). Lampenöl also emits `lantern:request {lit: true, refill: true}`.
+ *   Lebenskraft). Lampenöl also emits `lantern:request` with its oil amount.
  * - Loot: seeded per drop (mulberry32 of the enemy id and a drop counter), every entry rolls
  *   independently with chance + stats.loot + bad-luck protection (+6 % per empty roll, ≤ 30 %).
  * - Collections: members are items with `set` (core + quest files); complete → XP once.
@@ -309,7 +309,7 @@ export class ProgressionCore {
     s.inventory[item] = this.count(item) - 1;
     if (s.inventory[item]! <= 0) delete s.inventory[item];
     this.env.emit('item:use', { item });
-    if (def.effect?.oil || def.effect?.bann) this.env.emit('lantern:request', { lit: true, refill: true });
+    if (def.effect?.oil) this.env.emit('lantern:request', { lit: true, refill: def.effect.oil });
     return true;
   }
 
@@ -398,7 +398,10 @@ export class ProgressionCore {
     const s = this.s;
     if (s.taken.includes(p.id)) return false;
     const placed = (s.placed ??= {});
-    placed[p.id] = { ...placed[p.id], ...p, drop: p.drop ?? placed[p.id]?.drop };
+    const previous = placed[p.id];
+    // Replaying a placement may move it, but the saved remainder belongs to this pickup.
+    const count = previous?.item === p.item ? previous.count : p.count;
+    placed[p.id] = { ...previous, ...p, count, drop: p.drop ?? previous?.drop };
     const drops = Object.values(placed).filter((x) => x.drop);
     for (let i = 0; i < drops.length - MAX_DROPS; i++) delete placed[drops[i]!.id];
     return true;

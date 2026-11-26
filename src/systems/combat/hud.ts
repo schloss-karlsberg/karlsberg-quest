@@ -37,6 +37,7 @@ const CSS = `
 .kqc-st.denied .kqc-track { border-color: #ffd9a0; box-shadow: 0 0 0 1px #ffd9a0; }
 @keyframes kqc-pulse { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.45); } }
 html[data-kq-reduced-motion] .kqc-hp.low .fill, html[data-kq-reduced-flash] .kqc-hp.low .fill { animation: none; }
+html[data-kq-reduced-motion] .kqc-track .ghost { transition: none; }
 .kqc-bann { display: flex; align-items: center; gap: 7px; padding: 5px 10px; border-radius: 3px;
   background: linear-gradient(180deg, rgba(20,16,11,0.7), rgba(20,16,11,0.5)); transition: opacity 0.6s; }
 .kqc-bann.calm { opacity: 0.55; }
@@ -74,6 +75,10 @@ html[data-kq-reduced-motion] .kqc-hp.low .fill, html[data-kq-reduced-flash] .kqc
 html[data-kq-reduced-motion] .kqc-skill.flash { animation: none; }
 html[data-kq-contrast] .kqc-skills { background: #0d0a07; opacity: 1; border: 1px solid #f3e6c8; }
 .kqc-dazzle { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at center, rgba(235,242,255,0.75) 0%, rgba(210,225,245,0.3) 40%, rgba(200,220,240,0) 75%); }
+.kqc-dazzle span { display: none; }
+.kqc-dazzle.steady { inset: calc(50% + 26px) auto auto 50%; transform: translateX(-50%);
+  padding: 3px 8px; border: 1px solid #bbd4ef; border-radius: 3px; background: #1b2634; color: #e7f1ff; font: 13px var(--serif); }
+.kqc-dazzle.steady span { display: inline; }
 .kqc-pips .tag.guard { color: #f3dca6; border-color: rgba(233,199,122,0.8); background: rgba(28,20,8,0.85); }
 .kqc-pips .tag.veil { color: #d8efff; border-color: rgba(190,225,250,0.9); }
 .kqc-pips .tag.mirror { color: #ffffff; border-color: #ffffff; background: rgba(30,40,55,0.85); }
@@ -346,6 +351,7 @@ export class CombatHud {
     this.tell = el('div', 'kqc-tell');
     this.tell.setAttribute('aria-live', 'polite');
     this.dazzleEl = el('div', 'kqc-dazzle');
+    this.dazzleEl.append(el('span', '', 'Geblendet'));
     layer.append(this.low, this.vignette, this.dazzleEl, this.tell);
   }
 
@@ -603,7 +609,7 @@ export class CombatHud {
       // never on the boss bar: outgoing numbers stay below its bottom edge
       const floor = !n.screen && this.bossEl.style.display !== 'none' ? this.bossEl.getBoundingClientRect().bottom + 22 : 24;
       if (n.screen || !p.ok) {
-        n.el.style.left = `${p.x + n.dx * t}px`;
+        n.el.style.left = `${p.x + n.dx * (o.reducedMotion ? 0 : t)}px`;
         n.el.style.top = `${Math.max(floor, p.y - lift)}px`;
       } else {
         // beside the body, not on it (round 6): its projected half width from the camera distance
@@ -615,7 +621,7 @@ export class CombatHud {
         const topY = project(n.x, span.top, n.z).y;
         const baseY = project(n.x, span.base, n.z).y;
         const w = Math.max(24, n.el.offsetWidth || 40);
-        const q = placeNumber({ cx: p.x, cy: p.y, half, topY, baseY, side: n.dx, t, lift, W, H, floor, w });
+        const q = placeNumber({ cx: p.x, cy: p.y, half, topY, baseY, side: n.dx, t: o.reducedMotion ? 0 : t, lift, W, H, floor, w });
         n.el.style.left = `${q.x}px`;
         n.el.style.top = `${q.y}px`;
       }
@@ -688,13 +694,14 @@ export class CombatHud {
     }
     // frost vignette when hit; low Lebenskraft darkens the edges (≤ 25 % with reduced flash)
     this.vig = Math.max(0, this.vig - o.dt * 2.2);
-    const cap = o.reducedFlash ? 0.25 : 1;
+    const cap = o.reducedMotion || o.reducedFlash ? 0.25 : 1;
     this.vignette.style.opacity = String(Math.min(cap, this.vig));
     const pulse = o.reducedMotion || o.reducedFlash ? 1 : 0.8 + 0.2 * Math.sin(performance.now() / 160);
     this.low.style.opacity = String(Math.min(cap, o.lowHp * 0.9 * pulse));
-    // dazzled by a mirror: a white bloom that fades (≤ 25 % with reduced flash)
-    // (round 9: a near-white frame; now a cold glare at the centre that leaves the edges readable)
-    this.dazzleEl.style.opacity = String(Math.min(o.reducedFlash ? 0.2 : 0.38, (o.dazzle ?? 0) * 0.35));
+    const dazzle = o.dazzle ?? 0;
+    const steady = o.reducedMotion && dazzle > 0;
+    this.dazzleEl.classList.toggle('steady', steady);
+    this.dazzleEl.style.opacity = String(steady ? 1 : Math.min(o.reducedFlash ? 0.2 : 0.38, dazzle * 0.35));
   }
 
   clearWorld(): void {

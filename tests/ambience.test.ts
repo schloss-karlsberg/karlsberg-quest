@@ -59,6 +59,15 @@ describe('tour ambience profiles', () => {
   });
 });
 
+describe('campaign birdsong', () => {
+  it('returns in 1789 but stays silent in both 1793 eras and the ruins', () => {
+    const forest = (era: Era) => ambienceAt(era, 0, 0).birds;
+    expect(forest('1789')).toBeGreaterThan(0);
+    expect(forest('1789')).toBeLessThan(forest('today'));
+    expect((['1793-02', '1793-07', '1796'] as const).map(forest)).toEqual([0, 0, 0]);
+  });
+});
+
 describe('ambience captions', () => {
   it('announces distinctive water once per visit and removes old captions on leaving or disposal', () => {
     const scene = captionScene();

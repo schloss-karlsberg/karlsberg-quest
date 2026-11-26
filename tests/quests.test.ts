@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { GameEvents } from '../src/core/events';
 import type { FlagValue, QuestDef, QuestFile } from '../src/rpg/types';
+import type { MenagerieSlice } from '../src/systems/menagerie';
 import { questsInPlay } from '../src/systems/quests/data';
 import { QuestBook, type QuestDefIn, type QuestEnv, availableHolds, createQuestSlice, normaliseSlice, seededRng, spawnGroup, turninOf } from '../src/systems/quests/logic';
 
@@ -14,13 +15,14 @@ const testFile = JSON.parse(readFileSync(new URL('../content/quests/99-test.ques
 
 type Ev = { n: string; p: Record<string, unknown> };
 
-function env(seed = 7): QuestEnv & { log: Ev[]; flags: Record<string, FlagValue>; codex: string[] } {
+function env(seed = 7, menagerie?: MenagerieSlice): QuestEnv & { log: Ev[]; flags: Record<string, FlagValue>; codex: string[] } {
   const log: Ev[] = [];
   const rng = seededRng(seed);
   return {
     log,
     flags: {},
     codex: [],
+    menagerie,
     emit: <K extends keyof GameEvents>(n: K, p: GameEvents[K]) => {
       if (n === 'xp:grant') {
         const grant = p as GameEvents['xp:grant'];
@@ -140,6 +142,60 @@ const chain = (over: Partial<QuestDef> = {}): QuestDef => ({
 });
 
 describe('objectives', () => {
+  it('still earns an optional bonus while ready, with no progress or payout after turn-in', () => {
+    const q = chain({
+      objectives: [
+        { id: 'required', type: 'manual', text_de: 'Aufgabe' },
+        { id: 'bonus', type: 'manual', text_de: 'Zusatz', count: 2, optional: true, bonus_xp: 30 },
+        { id: 'unfinished', type: 'manual', text_de: 'Weitere Aufgabe', count: 2, optional: true, bonus_xp: 20 },
+      ],
+    });
+    const { b, of } = book([q]);
+    b.accept(q.id);
+    b.progress(q.id, 'required');
+    expect(b.state(q.id)).toBe('ready');
+    expect(b.progress(q.id, 'bonus', 0)).toBe(false);
+    expect(b.progress(q.id, 'bonus', -1)).toBe(false);
+    expect(b.count(q.id, 'bonus')).toBe(0);
+    expect(b.progress(q.id, 'bonus', 5)).toBe(true);
+    expect(b.count(q.id, 'bonus')).toBe(2);
+    expect(b.progress(q.id, 'bonus')).toBe(false);
+    expect(b.progress(q.id, 'unfinished')).toBe(true);
+    expect(b.count(q.id, 'unfinished')).toBe(1);
+    expect(b.complete(q.id)?.xp).toBe(100);
+    expect(b.complete(q.id, true)).toBeNull();
+    expect(b.progress(q.id, 'unfinished')).toBe(false);
+    expect(b.count(q.id, 'unfinished')).toBe(1);
+    expect(of('xp:grant').map((p) => p.amount)).toEqual([30, 100]);
+    expect(of('quest:ready')).toEqual([{ id: q.id }]);
+  });
+
+  it('restores completed seconds of a survive objective and resumes counting in its era and room', () => {
+    const here = { x: 10, z: 10, era: '1789', room: 'KB-B06/B06.1.bildergalerie' } as const;
+    const q = chain({
+      objectives: [{ id: 'wait', type: 'survive', text_de: 'Warten', seconds: 3, where: { ...here, room: 'B06.1.bildergalerie' } }],
+    });
+    const { b } = book([q]);
+    b.accept(q.id);
+    b.tick(1, here);
+    const restoredEnv = env();
+    const restored = new QuestBook(b.defs, JSON.parse(JSON.stringify(b.slice)), restoredEnv);
+    restored.mirror();
+    expect(restored.state(q.id)).toBe('active');
+    expect(restoredEnv.flags[`quest.${q.id}.wait`]).toBe(1);
+    restored.tick(4, { ...here, era: 'today' });
+    restored.tick(4, { ...here, room: '' });
+    expect(restored.count(q.id, 'wait')).toBe(1);
+    restored.tick(1.5, here);
+    expect(restored.count(q.id, 'wait')).toBe(2);
+    expect(restored.state(q.id)).toBe('active');
+    restored.tick(1, here);
+    expect(restored.count(q.id, 'wait')).toBe(3);
+    expect(restored.state(q.id)).toBe('ready');
+  });
+
+  it.todo('decide whether a partial second of survival should also persist across a reload');
+
   it('honour `after`: later objectives neither count nor spawn early', () => {
     const { b, of } = book([chain()]);
     b.accept('q.test.kette');
@@ -238,6 +294,25 @@ describe('objectives', () => {
     expect(b.state('q.test.alles')).toBe('done');
   });
 
+  it('counts a heard echo and ignores an interrupted one for both objective forms', () => {
+    const q = chain({
+      objectives: [
+        { id: 'listen', type: 'echo', text_de: 'Zuhören', clue: 'clue.test.echo' },
+        { id: 'event', type: 'event', text_de: 'Erinnerung', event: 'echo:end', match: { id: 'clue.test.echo' } },
+      ],
+    });
+    const { b, of } = book([q]);
+    b.accept(q.id);
+    expect(b.handle('echo:end', { id: 'clue.test.echo', aborted: true })).toBe(false);
+    expect(of('quest:progress')).toEqual([]);
+    expect(b.state(q.id)).toBe('active');
+    expect(b.handle('echo:end', { id: 'clue.test.other' })).toBe(false);
+    expect(b.handle('echo:end', { id: 'clue.test.echo' })).toBe(true);
+    expect(b.count(q.id, 'listen')).toBe(1);
+    expect(b.count(q.id, 'event')).toBe(1);
+    expect(b.state(q.id)).toBe('ready');
+  });
+
   it('rolls drops deterministically with a seeded rng and places them at the kill', () => {
     const q: QuestDef = {
       id: 'q.test.drop',
@@ -264,6 +339,84 @@ describe('objectives', () => {
     const first = a[0]!;
     expect(first.x).toBe(-Number(first.z));
     expect(run(43)).not.toEqual(a);
+  });
+});
+
+describe('Der Jaguar', () => {
+  const id = 'q.k3.jaguar';
+  const festsaal = 'q.k3.festsaal';
+  const spawn = { id: 'k3.jaguar', animal: 'jaguar', x: 1276, z: -1418, era: '1793-07' } as const;
+  const chapter = JSON.parse(readFileSync(new URL('../content/quests/03-kapitel-3.quests.json', import.meta.url), 'utf8')) as QuestFile;
+  const { quests } = questsInPlay([{ data: chapter }], false);
+
+  function accept(b: QuestBook) {
+    b.slice.quests[festsaal] = { state: 'done', counts: {}, t: 0 };
+    expect(b.offerAvailable('k3', '1793-07')).toContain(id);
+    expect(b.accept(id)).toBe(true);
+  }
+
+  function expectPayout(b: QuestBook, e: ReturnType<typeof env>) {
+    expect(b.count(id, 'jaguar')).toBe(1);
+    expect(b.state(id)).toBe('done');
+    const grants = e.log.filter(({ p }) => p.reason === `quest:${id}`);
+    expect(grants).toEqual([
+      { n: 'xp:grant', p: expect.objectContaining({ amount: 200 }) },
+      { n: 'item:grant', p: expect.objectContaining({ item: 'item.lampenoel', count: 2 }) },
+    ]);
+  }
+
+  it('credits a jaguar calmed before Hanne can offer the quest', () => {
+    const e = env(7, { animals: [spawn], calmed: [spawn.id] });
+    const b = new QuestBook(quests, createQuestSlice(), e);
+    expect(b.offerAvailable('k3', '1793-07')).not.toContain(id);
+    expect(b.handle('menagerie:calmed', { animal: spawn.animal, id: spawn.id })).toBe(false);
+    b.settleKnown(() => false);
+    expect(b.count(id, 'jaguar')).toBe(0);
+    accept(b);
+    expectPayout(b, e);
+    b.settleKnown(() => false);
+    expectPayout(b, e);
+  });
+
+  it('keeps the live calm payout when the quest was accepted first', () => {
+    const e = env();
+    const b = new QuestBook(quests, createQuestSlice(), e);
+    accept(b);
+    b.handle('menagerie:calmed', { animal: spawn.animal, id: spawn.id });
+    b.settleKnown(() => false);
+    b.handle('menagerie:calmed', { animal: spawn.animal, id: spawn.id });
+    expectPayout(b, e);
+  });
+
+  it('recovers a stranded save from the calm ID when the spawn record is gone', () => {
+    const slice = createQuestSlice();
+    slice.quests[id] = { state: 'active', counts: { jaguar: 0 }, t: 0 };
+    const menagerie: MenagerieSlice = { animals: [], calmed: [spawn.id] };
+    const e = env(7, menagerie);
+    e.codex.push('cx.12');
+    const b = new QuestBook(quests, slice, e);
+    b.mirror();
+    b.settleKnown(() => false);
+    expectPayout(b, e);
+    expect(e.log.some(({ n }) => n === 'codex:unlocked')).toBe(false);
+
+    const reloadEnv = env(7, menagerie);
+    const reloaded = new QuestBook(quests, structuredClone(slice), reloadEnv);
+    reloaded.settleKnown(() => false);
+    expect(reloaded.state(id)).toBe('done');
+    expect(reloadEnv.log).toEqual([]);
+  });
+
+  it('ignores an unrelated calmed species', () => {
+    const cassowary = { ...spawn, id: 'kasuar', animal: 'cassowary' } as const;
+    const e = env(7, { animals: [spawn, cassowary], calmed: [cassowary.id] });
+    const b = new QuestBook(quests, createQuestSlice(), e);
+    accept(b);
+    b.handle('menagerie:calmed', { animal: cassowary.animal, id: cassowary.id });
+    b.settleKnown(() => false);
+    expect(b.count(id, 'jaguar')).toBe(0);
+    expect(b.state(id)).toBe('active');
+    expect(e.log.some(({ p }) => p.reason === `quest:${id}`)).toBe(false);
   });
 });
 

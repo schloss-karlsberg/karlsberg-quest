@@ -9,7 +9,8 @@
  *
  * Contract (src/systems/contracts.ts): listens to enemy:spawn / despawn (quests, story),
  * stats:changed / equip:change / item:use (progression), era:change, hub:enter / leave,
- * memorial:set, npc:spawn / despawn / conversation, game:start, save:loaded, settings:change;
+ * memorial:set, npc:spawn / despawn / conversation, game:start, save:loaded, settings:change,
+ * travel:poi (cache checkpoint);
  * emits enemy:spawned / killed / cleared / aggro, boss:phase, combat:hit / state / bann,
  * player:damaged / healed / died, xp:grant (kills) and player:caught {by:'combat'}.
  * Input actions: attack (LMB / K; hold = Wuchthieb), bannlicht (RMB / G), dodge (Space), the
@@ -211,11 +212,7 @@ class Combat {
       { gentle: ctx.settings.state.gentleMode, reducedMotion: ctx.settings.state.reducedMotion, stats: this.computeStats(), sweep: false, konter: false, waerme: false, dritter: false },
     );
     this.applyStats();
-    // restore the saved resources
-    const s = this.slice();
-    if (s.hp > 0) this.sim.p.hp = Math.min(this.sim.p.max, s.hp);
-    this.sim.p.st.stamina = Math.min(this.sim.p.st.max, s.stamina);
-    this.sim.p.bann = Math.min(this.sim.p.bannMax, s.bann);
+    this.loadResources();
     ctx.scene.add(this.visuals.object);
     ctx.scene.add(this.viewmodel.root);
     this.visuals.setQuality(ctx.quality.level);
@@ -330,6 +327,10 @@ class Combat {
     });
     ev.on('talent:learned', () => this.applyStats());
     ev.on('item:use', ({ item }) => this.useItem(item));
+    ev.on('travel:poi', ({ kind }) => {
+      // Cache XP can change live HP before the next combat step. Travel still holds saves here.
+      if (kind === 'cache') this.syncResources();
+    });
     ev.on('settings:change', ({ key }) => {
       if (key === 'gentleMode' || key === 'rauhnacht' || key === 'reducedMotion') this.applyStats();
       if (key === 'graphics') this.visuals.setQuality(ctx.quality.level);
@@ -370,8 +371,7 @@ class Combat {
       this.sim.groups = this.slice().groups;
       this.sim.dematerialise();
       this.applyStats();
-      const s = this.slice();
-      this.sim.p.hp = s.hp > 0 ? Math.min(this.sim.p.max, s.hp) : this.sim.p.max;
+      this.loadResources();
       this.sim.p.dead = false;
       this.deadT = -1;
       this.hud.clearWorld();
@@ -422,10 +422,7 @@ class Combat {
     if (!e) return;
     const s = this.sim.opt.stats;
     if (e.heal || e.stamina || e.bann || e.burst) this.sim.drink();
-    if (e.heal) {
-      const a = this.sim.heal(e.heal * s.healing, item);
-      if (a > 0) this.emit('player:healed', { amount: a, hp: this.sim.p.hp, max: this.sim.p.max, by: item });
-    }
+    const healed = e.heal ? this.sim.heal(e.heal * s.healing, item) : 0;
     if (e.stamina) {
       const st = this.sim.p.st;
       st.stamina = Math.min(st.max, st.stamina + e.stamina);
@@ -436,6 +433,26 @@ class Combat {
       const n = this.sim.burst(e.burst);
       if (n) this.hud.caption(t('combat.burst'), 'info');
     }
+    // Progression saves as soon as item use returns, even with the simulation paused.
+    this.syncResources();
+    if (healed > 0) this.emit('player:healed', { amount: healed, hp: this.sim.p.hp, max: this.sim.p.max, by: item });
+  }
+
+  private loadResources(): void {
+    const s = this.slice();
+    const p = this.sim.p;
+    p.hp = s.hp > 0 ? Math.min(p.max, s.hp) : p.max;
+    p.st.stamina = Math.min(p.st.max, s.stamina);
+    p.bann = Math.min(p.bannMax, s.bann);
+    // The recharge timer is not saved: a loaded charge count starts a fresh recharge.
+    p.bannT = 0;
+  }
+
+  private syncResources(): void {
+    const s = this.slice();
+    s.hp = Math.round(this.sim.p.hp * 10) / 10;
+    s.stamina = Math.round(this.sim.p.st.stamina);
+    s.bann = this.sim.p.bann;
   }
 
   // ---- input ----------------------------------------------------------------------------------
@@ -566,7 +583,14 @@ class Combat {
       if (this.revealLeft <= 0) ctx.ui.hud.busy('reveal', false, 0);
     }
     const evs = this.frozenAI ? this.stepFrozen(dt * slowK, inp) : this.sim.step(dt * slowK, inp);
-    for (const e of evs) this.onEvent(e, inp);
+    // One step's events land in one autosave: a last guard's kill XP must not persist a cleared
+    // cache group before travel opens the cache on enemy:cleared.
+    ctx.save.hold('combat:step', true);
+    try {
+      for (const e of evs) this.onEvent(e, inp);
+    } finally {
+      ctx.save.hold('combat:step', false);
+    }
     this.fights.observe(dt, evs, this.viewForFights());
     // the player's movement hooks
     const pl = ctx.player;
@@ -599,11 +623,7 @@ class Combat {
       // no story to wake us (or it never teleports): get up after a while
       if (this.caughtSent && this.deadT > 8 && !pl.frozen) this.revive();
     }
-    // mirror the resources into the slice (saved)
-    const s = this.slice();
-    s.hp = Math.round(this.sim.p.hp * 10) / 10;
-    s.stamina = Math.round(this.sim.p.st.stamina);
-    s.bann = this.sim.p.bann;
+    this.syncResources();
   }
 
   /** What the fight log needs each step: the camera frustum as last drawn and the feedback settings. */
@@ -1016,7 +1036,7 @@ class Combat {
         break;
       case 'reflect': {
         const e = ev.e;
-        this.visuals.reflectBeam(e.x, e.y, e.z, inp.x, inp.y + 1.4, inp.z, st.reducedFlash);
+        this.visuals.reflectBeam(e.x, e.y, e.z, inp.x, inp.y + 1.4, inp.z, st.reducedFlash, st.reducedMotion);
         this.audio.reflect(this.posOf(e, 0), false);
         this.captionOnce('reflect', t('combat.reflect'), 'boss', 6, 2800);
         break;
@@ -1290,13 +1310,14 @@ class Combat {
       dt: this.deathSlow > 0 ? dt * 0.3 : dt,
       frozen,
       heightAt: (x, z) => ctx.world.heightAt(x, z),
-      reducedFlash: st.reducedFlash,
+      reducedFlash: st.reducedFlash || st.reducedMotion,
+      reducedMotion: st.reducedMotion,
       bann: this.bannFx,
       // the reveal camera looks at the boss: nothing may stand in the way of it
       focus: this.introCam ? [{ x: this.introCam.e.x, y: this.introCam.e.y + this.visuals.topOf(this.introCam.e) * 0.5, z: this.introCam.e.z, id: this.introCam.e.id }] : undefined,
     });
     // an ability under way: the Wirbel's ring of motes, the Ausfall's streak
-    if (p.skill && !frozen) {
+    if (p.skill && !frozen && !st.reducedMotion) {
       const gy = ctx.world.heightAt(pl.position.x, pl.position.z);
       if (p.skill.id === 'wirbel') this.visuals.whirl(pl.position.x, gy + 0.2, pl.position.z, SKILLS.wirbel.radius * 0.7, ctx.loop.time, st.reducedFlash);
       if (p.skill.id === 'ausfall' && this.lungeFrom) {

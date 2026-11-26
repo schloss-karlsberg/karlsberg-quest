@@ -120,7 +120,7 @@ class Fireworks {
       this.glow.pos[j * 3 + 2]! += this.vel[j * 3 + 2]! * dt;
       // a hot white flash at the burst (not with reduced flash), then the colour, then out
       const hot = soft ? 0 : Math.max(0, 1 - a / 0.12);
-      const flick = 0.75 + 0.25 * Math.sin(a * 40 + j);
+      const flick = soft ? 0.75 : 0.75 + 0.25 * Math.sin(a * 40 + j);
       this.glow.col[j * 4] = this.tint[j * 3]! + hot * 3;
       this.glow.col[j * 4 + 1] = this.tint[j * 3 + 1]! + hot * 3;
       this.glow.col[j * 4 + 2] = this.tint[j * 3 + 2]! + hot * 3;
@@ -228,7 +228,10 @@ export class MemoryShots {
 
   frame(dt: number): void {
     if (this.fireworks) {
-      this.fireworks.frame(dt, this.ctx.settings.state.reducedFlash);
+      const { reducedFlash, reducedMotion } = this.ctx.settings.state;
+      this.fireworks.glow.points.visible = !reducedMotion;
+      if (reducedMotion) return;
+      this.fireworks.frame(dt, reducedFlash);
       this.fireworks.glow.commit(pxScale(this.ctx));
     }
   }

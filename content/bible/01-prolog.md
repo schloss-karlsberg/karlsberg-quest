@@ -47,7 +47,7 @@ See the [guide sources](../../docs/design/tour/sources.md) for historical claims
 | Abzweig und Einstieg | 515,2 / −729,9 → 622,4 / −479 | Spielerposition nach der ersten Abkürzung |
 | Felsenpfad | 682,9 / −596,1 | Station 2 an der Holzbrücke |
 | Wind | 676,1 / −635,7 | Hang nach dem Felsenpfad |
-| Rehhalt und Tiere | 727,4 / −751,5 → 704 / −779 | Die Tiere stehen unterhalb des Wegs. |
+| Rehhalt und Tiere | 727,4 / −751,5 → 698 / −773 | Die Tiere stehen unterhalb des Wegs. |
 | Damm und Weiher | 829,5 / −838,7 → 897,2 / −845,3 | Spielerposition nach der zweiten Abkürzung und Station 3 |
 | Trog | 1059,3 / −833,1, Blick 50° | Station 4, erste Zeitreise, K1-Checkpoint und Heimkehr |
 | Plateau | 1216 / −1114 | Ehrenhof-Lichtung und Abschlussfest |

@@ -9,6 +9,7 @@
  * keeps the opening beat's timeline waiting, and the dialogue presenter's `held` keeps lines from
  * other sources (a quest offer's greeting, barks) queued.
  */
+import { storyFadeSeconds } from '../../core/motion';
 import { t } from '../../i18n';
 import { h } from '../../ui/dom';
 import type { Hud } from '../../ui/hud';
@@ -48,8 +49,8 @@ export class CardLineHold {
     this.shown = true;
   }
 
-  hide(): void {
-    if (this.up) this.fade = CARD_FADE_HOLD;
+  hide(reducedMotion = false): void {
+    if (this.up) this.fade = storyFadeSeconds(CARD_FADE_HOLD, reducedMotion);
     this.up = false;
     this.shown = false;
   }
@@ -61,13 +62,13 @@ export class CardLineHold {
   }
 
   /** Advance by `dt` s; true when the card's time ran out now (the caller fades it out). */
-  tick(dt: number): boolean {
+  tick(dt: number, reducedMotion = false): boolean {
     if (dt <= 0) return false;
     if (this.fade > 0) this.fade = Math.max(0, this.fade - dt);
     if (!this.shown) return false;
     this.left -= dt;
     if (this.left > 0) return false;
-    this.hide();
+    this.hide(reducedMotion);
     return true;
   }
 
@@ -106,7 +107,9 @@ export class StoryOverlays {
   constructor(
     private readonly layer: HTMLElement,
     private readonly modals: ModalManager,
+    private readonly inlineChoiceChanged: (open: boolean) => void,
     hud?: Hud,
+    private readonly reducedMotion: () => boolean = () => false,
   ) {
     this.curtainText = h('p.kqs-curtain-text');
     this.curtainSub = h('p.kqs-curtain-sub');
@@ -143,14 +146,14 @@ export class StoryOverlays {
    * missed behind the pause menu or a modal).
    */
   tickCard(dt: number): void {
-    if (this.hold.tick(dt)) this.hideCard();
+    if (this.hold.tick(dt, this.reducedMotion())) this.hideCard();
   }
 
   private hideCard(): void {
     const el = this.cardEl;
     if (!el) return;
     el.classList.remove('kqs-show');
-    window.setTimeout(() => el.remove(), 1400);
+    window.setTimeout(() => el.remove(), storyFadeSeconds(1.4, this.reducedMotion()) * 1000);
     this.cardEl = null;
   }
 
@@ -185,6 +188,11 @@ export class StoryOverlays {
     window.setTimeout(() => this.curtain.classList.remove('kqs-down', 'kqs-up'), 2600);
   }
 
+  /** Lift the curtain without a wake line (a load replaced the game under it; CSS fades it). */
+  curtainOff(): void {
+    this.curtain.classList.remove('kqs-down', 'kqs-up');
+  }
+
   /**
    * A plain fade to black (`to` 1) or back (0) over `seconds` (the tour's transitions, „Zur
    * Gruppe“). No text; prepended to the layer, so subtitles and cards stay readable on top.
@@ -195,7 +203,7 @@ export class StoryOverlays {
       el = this.fadeEl = h('div.kqs-fade', { 'data-testid': 'story-fade' });
       this.layer.prepend(el);
     }
-    el.style.transition = `opacity ${Math.max(0, seconds)}s linear`;
+    el.style.transition = `opacity ${storyFadeSeconds(seconds, this.reducedMotion())}s linear`;
     // the transition needs a frame between append and the new value
     void el.offsetWidth;
     el.style.opacity = String(to);
@@ -252,11 +260,12 @@ export class StoryOverlays {
       this.choice = null;
       c?.dispose();
       close();
+      if (!modal) this.inlineChoiceChanged(false);
       apply(i);
       return true;
     };
     const options = a.options.map((o, i) =>
-      h(`${modal ? 'button.kq-btn' : 'div'}.kqs-choice-btn`, { 'data-testid': `choice-${i}`, onclick: () => pick(i) }, [h('span.kqs-choice-n', modal ? String(i + 1) : '•'), o.label]),
+      h(`${modal ? 'button.kq-btn' : 'div'}.kqs-choice-btn`, { 'data-testid': `choice-${i}`, onclick: modal ? () => pick(i) : undefined }, [h('span.kqs-choice-n', { 'aria-hidden': 'true' }, modal ? String(i + 1) : '•'), o.label]),
     );
     const body = h(`div.kqs-choice${modal ? '' : '.kqs-choice-inline'}`, [
       h('p.kqs-choice-prompt', a.prompt),
@@ -267,6 +276,7 @@ export class StoryOverlays {
     let el: HTMLElement;
     if (modal) {
       const m = this.modals.open({ body, closable: false, className: 'kqs-choice-modal' });
+      m.el.setAttribute('aria-label', a.prompt);
       m.el.dataset.testid = 'story-choice';
       close = () => m.close();
       el = m.el;
@@ -305,6 +315,7 @@ export class StoryOverlays {
       },
       dispose: () => window.removeEventListener('keydown', keys, true),
     };
+    if (!modal) this.inlineChoiceChanged(true);
     this.tickChoice(0);
   }
 
@@ -343,6 +354,7 @@ export class StoryOverlays {
     this.choice = null;
     c.dispose();
     c.close();
+    if (!c.modal) this.inlineChoiceChanged(false);
   }
 
   clear(): void {

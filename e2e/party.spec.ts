@@ -296,6 +296,7 @@ test.describe('landscape phone', () => {
     // Exercise the OS preference even when an older game setting explicitly enables motion.
     await page.addInitScript(() => localStorage.setItem('kq.settings.v1', JSON.stringify({ reducedMotion: false })));
     await boot(page, 'burn');
+    expect(await page.evaluate(() => window.kq!.ctx.settings.state.reducedMotion)).toBe(false);
     const credits = page.getByRole('region', { name: 'Abspann' });
     const track = page.getByTestId('party-credits-track');
     await expect(credits).toBeVisible();

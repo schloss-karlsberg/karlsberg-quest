@@ -250,9 +250,17 @@ class WalkSystem {
   dispose(): void {
     this.rt.clear();
   }
+
+  visitTourMembers(visit: (x: number, z: number, guide: boolean) => void): void {
+    this.rt.visitTourMembers(visit);
+  }
 }
 
 let sys: WalkSystem | null = null;
+
+export function visitTourMembers(visit: (x: number, z: number, guide: boolean) => void): void {
+  sys?.visitTourMembers(visit);
+}
 
 export default defineSystem({
   id: 'walk',

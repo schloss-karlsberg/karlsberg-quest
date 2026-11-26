@@ -160,7 +160,7 @@ uniform float uShift;      // 0..1 era-shift distortion (feature hook)
 uniform vec3 uFlash;       // additive full-screen tint (damage, fire flash)
 uniform float uDesaturate; // extra desaturation (threat, memory)
 uniform float uHeat;       // 0..1 heat shimmer above bright (burning) areas (fx system)
-uniform float uFlashScale; // settings.reducedFlash: full-screen flashes are scaled down here
+uniform float uFlashScale; // flash and motion settings attenuate or suppress full-screen flashes
 uniform float uBloom;      // bloom strength (0 = off)
 uniform float uAO;         // 0 = no AO texture
 uniform vec2 uAOTexel;

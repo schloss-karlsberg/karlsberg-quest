@@ -210,7 +210,7 @@ describe('items and equipment', () => {
     expect(t.core.setQuick('item.lampenoel')).toBe(true);
     expect(t.core.setQuick('item.stab.esche')).toBe(false);
     expect(t.core.use()).toBe(true);
-    expect(t.of('lantern:request')).toEqual([{ lit: true, refill: true }]);
+    expect(t.of('lantern:request')).toEqual([{ lit: true, refill: 0.5 }]);
     expect(t.core.use()).toBe(false);
     expect(t.core.use('item.balsam')).toBe(true);
     expect(t.slice.inventory['item.balsam']).toBeUndefined();

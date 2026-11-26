@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { warnIfShared } from '../scripts/dev/heavy-env.mjs';
 import { trackErrors } from './helpers/common';
 
 /**
@@ -182,6 +183,7 @@ const TIERS = (process.env.KQ_WALK_TIERS ?? 'high,medium,low').split(',');
 
 test('walk (d): perf — 16 bodies vs. none at the high, medium and low tiers; screenshots', async ({ page }) => {
   test.setTimeout(840_000);
+  warnIfShared('walk (d) perf'); // its frame times need heavy.sh --exclusive
   const rows: Sample[] = [];
   for (const tier of TIERS) {
     await boot(page, `&q=${tier}`);

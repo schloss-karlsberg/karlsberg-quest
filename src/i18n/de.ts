@@ -6,6 +6,7 @@ export const de: Record<string, string> = {
   'game.title': 'Schloss Karlsberg Tour',
   'title.continue': 'Weiter',
   'title.newGame': 'Neues Spiel',
+  'title.unreadableSave': 'Der Spielstand lässt sich nicht laden. Er ist möglicherweise beschädigt oder stammt aus einer neueren Spielversion.',
   'title.loading': 'Gelände wird geladen … {pct} %',
   'loader.starting': 'Spiel wird vorbereitet …',
   'loader.terrain': 'Gelände wird geladen …',
@@ -21,6 +22,7 @@ export const de: Record<string, string> = {
   'news.unseen': 'Neue Einträge',
   'news.empty': 'Noch keine Einträge.',
   'title.confirmNew': 'Der bisherige Spielstand wird überschrieben. Wirklich neu beginnen?',
+  'title.confirmReplay': 'Der bisherige Spielstand wird überschrieben. Das Ende noch einmal wählen?',
 
   'era.today': 'Heute · 2025',
   'era.1789': 'Sommer 1789',
@@ -53,6 +55,7 @@ export const de: Record<string, string> = {
   'settings.camera.first': 'Ich-Sicht',
   'settings.camera.help': 'Über die Schulter: Sie sehen Ihre Figur und den Kampf um sie herum (Mausrad zoomt, Tab oder Mausrad-Klick erfasst ein Ziel). Ich-Sicht: der Blick durch die eigenen Augen. F5 wechselt im Spiel.',
   'settings.gentle': 'Sanfter Modus',
+  'settings.minimap': 'Minikarte',
   'settings.gentle.help':
     'Für alle, die die Geschichte ohne Hetze erleben wollen: Gegner halten weniger aus und treffen schwächer, ihre Angriffe kündigen sich länger an, und nur einer greift zugleich an. Die Meute ist langsamer und gibt schneller auf, der Jaguar stößt dich nie um, der Rauch im Brand ist dünner. Im Finale reicht eine Taste. Die Geschichte und alle Enden bleiben dieselben.',
   'settings.reducedMotion': 'Weniger Bewegung (kein Kopfwippen, sanfte Übergänge)',
@@ -154,8 +157,7 @@ export const de: Record<string, string> = {
   'licences.code': 'Programmcode: Karlsberg Quest, MIT-Lizenz (Karlsberg-Quest-Mitwirkende).',
 
   'controls.title': 'Steuerung',
-  'ui.keys.turn': 'Umsehen ohne Maus: drehen (auch Komma / Punkt) und Blick heben / senken',
-  'ui.keys.turn.key': '[←][→] [Bild↑][Bild↓]',
+  'ui.keys.turn': 'Umsehen ohne Maus: nach links / rechts drehen, Blick heben / senken',
 
   'hud.compass.n': 'N',
   'hud.compass.e': 'O',
@@ -186,6 +188,8 @@ export const de: Record<string, string> = {
   'fly.prompt.touch': 'Landen · Stick: fliegen · Wischen: umsehen · Steigen und Sinken rechts',
 
   'modal.close': 'Schließen',
+  'modal.dialog': 'Dialog',
+  'game.field': 'Spielfeld',
   'modal.ok': 'Gut',
   'common.yes': 'Ja',
   'common.no': 'Nein',

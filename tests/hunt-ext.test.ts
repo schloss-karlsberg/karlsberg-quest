@@ -99,6 +99,20 @@ describe('snow tracks: the pack follows your prints until the trail breaks', () 
   // water band x ∈ [80, 90]
   const world = flatWorld((x) => x >= 80 && x <= 90);
 
+  it('a hound crossing the Warner’s boots only sounds the found horn for a real player trail', () => {
+    const field = new TrackField();
+    field.addTrail([{ x: -40, z: 0 }, { x: -30, z: 0 }], 0, 1.4, 1, 600);
+    const sim = new PackSim(world, null, opts({ x: -40, z: 0, hounds: 1, pikeur: false, seed: 11 }), { x: 140, z: 0 }, field, makeMode);
+    const hidden = player({ x: 140, z: 0, stance: 'prone', visibility: 0.05 });
+    sim.place(0, -40, 0);
+    const crossing = run(sim, 0.5, hidden);
+    expect(crossing.filter((event) => event.type === 'tracking')).toEqual([]);
+    expect(crossing).not.toContainEqual(expect.objectContaining({ type: 'horn', signal: 'found' }));
+    const hound = sim.hounds[0]!;
+    field.addPlayer(hound.x, hound.z, 0, field.now, 1, 1, null);
+    expect(run(sim, 0.5, hidden)).toContainEqual(expect.objectContaining({ type: 'tracking', on: true }));
+  });
+
   function trailSim(seed: number) {
     const T = new TrackField();
     // your trail from (−40, 0) east to the water, then on the far bank to (140, 0)

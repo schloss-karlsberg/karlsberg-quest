@@ -35,10 +35,10 @@ function env(over: Partial<StoryEnv> = {}): StoryEnv {
 }
 const say = (text: string, extra: Record<string, unknown> = {}) => ({ do: 'say', speaker: 'laub', text, ...extra }) as Action;
 
-function engineWith(f: StoryFile) {
+function engineWith(...files: StoryFile[]) {
   let slice: StorySlice = createStorySlice();
   const runs: { src: string; beat: string | null | undefined; texts: string[] }[] = [];
-  const engine = new StoryEngine([f], () => slice, {
+  const engine = new StoryEngine(files, () => slice, {
     run: (actions: Action[], o: RunOptions) => runs.push({ src: o.source, beat: o.beat, texts: actions.map((a) => (a as { text?: string }).text ?? a.do) }),
     chapterEntered: () => {},
     beatEntered: () => {},
@@ -83,6 +83,33 @@ describe('beat scope of action runs', () => {
 });
 
 describe('reaction cooldown, speed condition', () => {
+  it('re-arms chapter reactions when replaying or entering another chapter with the same reaction id', () => {
+    const first: StoryFile = {
+      chapter: 'a',
+      order: 0,
+      title_de: 'A',
+      start: 'b1',
+      on: [{ id: 'intro', when: { era: '1789' }, repeat: true, cooldown: 30, do: [say('A')] }],
+      beats: [{ id: 'b1', complete: { manual: true } }, { id: 'b2', complete: { manual: true } }],
+    };
+    const second: StoryFile = { ...first, chapter: 'b', title_de: 'B', order: 1 };
+    const { engine, runs } = engineWith(first, second);
+    const past = env({ era: '1789' });
+    engine.goto('a');
+    engine.tick(1, past);
+    expect(runs.map((r) => r.src)).toEqual(['a/c:intro']);
+    engine.skip();
+    engine.tick(1, past);
+    expect(runs.map((r) => r.src)).toEqual(['a/c:intro']);
+    engine.goto('b');
+    engine.tick(1, past);
+    expect(runs.map((r) => r.src)).toEqual(['a/c:intro', 'b/c:intro']);
+    engine.tick(1, env());
+    engine.goto('b');
+    engine.tick(1, past);
+    expect(runs.map((r) => r.src)).toEqual(['a/c:intro', 'b/c:intro', 'b/c:intro']);
+  });
+
   it('a repeatable reaction with a cooldown does not fire again within it', () => {
     const f: StoryFile = {
       chapter: 'c',
@@ -139,7 +166,7 @@ describe('validator: wake, variants, cooldown, follow pack', () => {
 
 describe('dialogue queue rules', () => {
   type L = QueuedLine & { id: string };
-  const mk = (playing: () => number | undefined = () => undefined, valid?: (l: L) => boolean) => new LineQueue<L>(playing, valid);
+  const mk = (playing: () => number | undefined = () => undefined, valid?: (l: L) => boolean) => new LineQueue<L>((group) => playing() === group, valid);
   const drain = (q: LineQueue<L>) => {
     const out: string[] = [];
     for (let l = q.take(); l; l = q.take()) out.push(l.id);
@@ -171,6 +198,38 @@ describe('dialogue queue rules', () => {
     expect(drain(q)).not.toContain('bark');
     expect(q.dropped).toBe(1);
   });
+
+  it('drops an incoming bark when all waiting slots hold story lines', () => {
+    const q = mk();
+    const ids = Array.from({ length: MAX_QUEUE }, (_, i) => `story-${i}`);
+    for (const id of ids) q.push({ id, beat: 'b1' });
+    q.push({ id: 'bark', priority: 'low' });
+    expect(q.length).toBe(MAX_QUEUE);
+    expect(q.dropped).toBe(1);
+    expect(drain(q)).toEqual(ids);
+  });
+
+  it('keeps a playing sequence when a new line competes for a waiting slot', () => {
+    const q = mk(() => 7);
+    q.push({ id: 'continuation', group: 7, priority: 'low' });
+    const ids = Array.from({ length: MAX_QUEUE - 1 }, (_, i) => `story-${i}`);
+    for (const id of ids) q.push({ id });
+    q.push({ id: 'next' });
+    expect(q.length).toBe(MAX_QUEUE);
+    expect(q.dropped).toBe(1);
+    expect(drain(q)).toEqual(['continuation', ...ids.slice(1), 'next']);
+  });
+
+  it('keeps all playing continuations when there is no waiting line to evict', () => {
+    const q = mk(() => 7);
+    const ids = Array.from({ length: MAX_QUEUE }, (_, i) => `continuation-${i}`);
+    for (const id of ids) q.push({ id, group: 7 });
+    q.push({ id: 'unstarted' });
+    expect(q.dropped).toBe(1);
+    expect(drain(q)).toEqual(ids);
+  });
+
+  it.todo('decide how to handle a playing sequence that alone exceeds the waiting line cap');
 
   it('low-priority lines expire after LOW_TTL seconds', () => {
     const q = mk();
@@ -292,6 +351,44 @@ describe('ending C: the follow pack', () => {
 describe('chapter content using the flow features', () => {
   const k1 = storyFile('01-kapitel-1');
   const k2 = storyFile('02-kapitel-2');
+
+  it.each([false, true])('k2: opens the lantern choice when the departure echo closes (aborted: %s)', (aborted) => {
+    const { engine, runs } = engineWith(k2);
+    const choiceReady = () => runs.some((run) => run.src === 'k2/b:k2_8-vorbei' && run.texts.includes('flag'));
+    engine.goto('k2', 'k2_8');
+    engine.tick(1, env({ era: '1793-02' }));
+    engine.onEvent('echo:end', { id: 'clue.k2.landremont', aborted: true });
+    engine.tick(1, env({ era: '1793-02' }));
+    expect(choiceReady()).toBe(false);
+
+    engine.onEvent('echo:end', { id: 'clue.k2.fackeln', ...(aborted ? { aborted: true } : {}) });
+    engine.tick(1, env({ era: aborted ? 'today' : '1793-02' }));
+    expect(choiceReady()).toBe(true);
+  });
+
+  it('k2: arriving at the departure in 1793 starts the oil meter, which lights the lantern', () => {
+    // e2e/chapter-k2.spec.ts put the lantern out before its first step into 1793-02: the oil
+    // meter (k2-oel, rising edge on the era) then lit it again and the gate went to 'leuchten'
+    const { engine, runs } = engineWith(k2);
+    engine.goto('k2', 'k2_0');
+    engine.tick(1, env());
+    engine.goto('k2', 'k2_8');
+    expect(runs.some((r) => r.src === 'k2/c:k2-oel')).toBe(false);
+    engine.tick(1, env({ era: '1793-02' }));
+    expect(runs.filter((r) => r.src === 'k2/c:k2-oel')).toHaveLength(1);
+    // story/index.ts startMeter: an `oil` meter requests the lantern lit
+    const meter = k2.on!.find((r) => r.id === 'k2-oel')!.do[0] as Extract<Action, { do: 'meter' }>;
+    expect([meter.do, meter.id]).toEqual(['meter', 'oil']);
+  });
+
+  it('k2: the gate choice follows the lantern once the departure has passed', () => {
+    const choice = k2.beats.find((b) => b.id === 'k2_8')!.on!.flatMap((r) => r.do).find((a) => a.do === 'choice') as Extract<Action, { do: 'choice' }>;
+    const pick = (e: StoryEnv) => choice.options.find((o, i) => o.when && evaluate(o.when, e, {}, `choice.k2.tor.${i}`, 0))?.key ?? null;
+    const passed = { 'k2.wagen': true };
+    expect(pick(env({ era: '1793-02', lantern: false }))).toBeNull();
+    expect(pick(env({ era: 'today', flags: passed, lantern: true }))).toBe('leuchten');
+    expect(pick(env({ era: 'today', flags: passed, lantern: false }))).toBe('dunkel');
+  });
 
   it('k1: the guard calls out runners in the 1789 Ehrenhof, at most every 30 s, with escalating lines', () => {
     const r = k1.on!.find((x) => x.id === 'wache-rennen')!;

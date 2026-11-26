@@ -38,7 +38,7 @@ void main() {
   float behind = step(d, uR) * exp(-(uR - d) / 28.0);
   if (uReduced > 0.5) { ring = 0.0; behind = step(d, uR); }
   // shimmering survey grain behind the ring
-  float sparkle = smoothstep(0.82, 1.0, kqNoise(vWorld.xz * 2.3 + uTime * 6.0)) * behind;
+  float sparkle = uReduced > 0.5 ? 0.0 : smoothstep(0.82, 1.0, kqNoise(vWorld.xz * 2.3 + uTime * 6.0)) * behind;
   float rel = clamp(vRelief / 0.9, -1.0, 1.0);
   vec3 col;
   if (uMode == 2) col = rel > 0.0 ? vec3(1.6, 0.35, 0.25) : vec3(0.3, 0.6, 1.7);
