@@ -6,7 +6,8 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { GameEvents } from '../src/core/events';
-import type { FlagValue, QuestDef, QuestFile } from '../src/rpg/types';
+import type { EnemyGroupState, FlagValue, QuestDef, QuestFile } from '../src/rpg/types';
+import { remaining, upsertGroup } from '../src/systems/combat/rules';
 import type { MenagerieSlice } from '../src/systems/menagerie';
 import { questsInPlay } from '../src/systems/quests/data';
 import { QuestBook, type QuestDefIn, type QuestEnv, availableHolds, createQuestSlice, normaliseSlice, seededRng, spawnGroup, turninOf } from '../src/systems/quests/logic';
@@ -47,6 +48,84 @@ function book(extra: QuestDef[] = [], chapter = 'test', seed = 7) {
 }
 
 const kill = (b: QuestBook, p: Record<string, unknown>) => b.handle('enemy:killed', { id: `e${Math.random()}`, group: 'g', kind: 'mahnbrief', x: 1271, z: -1214, era: '1789', boss: false, by: 'light', ...p });
+
+describe('Chapter 2 Pikeur credit', () => {
+  const id = 'q.k2.parforce';
+  const clue = 'clue.k2.landremont';
+  const encounter = { group: 'k2.pikeur', kind: 'pikeur', era: '1793-02', x: 826, z: -868, boss: true } as const;
+
+  function hunt() {
+    const file = JSON.parse(readFileSync(new URL('../content/quests/02-kapitel-2.quests.json', import.meta.url), 'utf8')) as QuestFile;
+    const { quests } = questsInPlay([{ data: file }], false);
+    const e = env();
+    const b = new QuestBook(quests, createQuestSlice(), e);
+    b.offer(id);
+    b.accept(id);
+    const groups: Record<string, EnemyGroupState> = {};
+    upsertGroup(groups, encounter);
+    return { b, e, groups };
+  }
+
+  it('credits the fight normally when the echo is heard first', () => {
+    const { b } = hunt();
+    b.handle('echo:end', { id: clue });
+    expect(b.count(id, 'kalk')).toBe(1);
+    expect(kill(b, encounter)).toBe(true);
+    expect(b.count(id, 'pikeur')).toBe(1);
+    expect(b.openObjectives(b.defs.get(id)!).map((o) => o.id)).toEqual(['heim']);
+  });
+
+  it('credits an early fight once the echo opens the Pikeur objective', () => {
+    const { b, e, groups } = hunt();
+    groups[encounter.group]!.killed = 1;
+    expect(kill(b, encounter)).toBe(false);
+    upsertGroup(groups, encounter); // the story declares the spawned fight again
+    const group = groups[encounter.group]!;
+    expect(remaining(group)).toBe(0);
+
+    b.settleKnown(() => false, undefined, { group, era: encounter.era });
+    expect(b.count(id, 'pikeur')).toBe(0);
+    b.handle('echo:end', { id: clue });
+    b.settleKnown(() => false, undefined, { group, era: encounter.era });
+    b.settleKnown(() => false, undefined, { group, era: encounter.era });
+    expect(b.count(id, 'kalk')).toBe(1);
+    expect(b.openObjectives(b.defs.get(id)!).map((o) => o.id)).toEqual(['heim']);
+    expect(e.flags[`quest.${id}.pikeur`]).toBe(1);
+    expect(e.log.filter(({ n }) => ['enemy:killed', 'enemy:spawn', 'xp:grant', 'item:grant', 'loot:place'].includes(n))).toEqual([]);
+  });
+
+  it.each(['1793-02', 'today'] as const)('recovers a stalled save in %s', (era) => {
+    const { b, groups } = hunt();
+    b.handle('echo:end', { id: clue });
+    groups[encounter.group]!.killed = 1;
+    const saved = JSON.parse(JSON.stringify({ quest: b.slice, combat: groups }));
+    const e = env();
+    const resumed = new QuestBook(b.defs, normaliseSlice(saved.quest), e);
+    resumed.mirror();
+    resumed.reassert();
+    resumed.settleKnown(() => false, undefined, { group: saved.combat[encounter.group], era });
+
+    expect(e.flags[`quest.${id}.pikeur`]).toBe(1);
+    if (era === '1793-02') {
+      expect(resumed.count(id, 'heim')).toBe(0);
+      resumed.handle('era:change', { from: era, to: 'today' });
+    }
+    expect(resumed.state(id)).toBe('done');
+    expect(e.log.filter(({ n }) => n === 'enemy:killed' || n === 'enemy:spawn')).toEqual([]);
+    expect(e.log.filter(({ n, p }) => n === 'xp:grant' && p.reason === `quest:${id}`)).toHaveLength(1);
+  });
+
+  it('ignores a living Pikeur and clears of other groups or enemy kinds', () => {
+    const { b, groups } = hunt();
+    b.handle('echo:end', { id: clue });
+    const group = groups[encounter.group]!;
+    expect(kill(b, { ...encounter, group: 'other.pikeur' })).toBe(false);
+    for (const candidate of [group, { ...group, group: 'other.pikeur', killed: 1 }, { ...group, kind: 'streuner', killed: 1 }]) {
+      b.settleKnown(() => false, undefined, { group: candidate, era: encounter.era });
+      expect(b.count(id, 'pikeur')).toBe(0);
+    }
+  });
+});
 
 describe('quest lifecycle (q.test.lohnzettel)', () => {
   it('offer → accept → kill 3 → collect → ready → turn-in', () => {

@@ -264,6 +264,7 @@ did not move on).
 
 - Combat is on in every era, but **enemies only exist where content spawns them** (quest objectives,
   story `enemy` actions, ambient groups declared by chapters). The present (today) is calm by default.
+  Removing an encounter also clears its airborne attacks and their landing warnings.
 - **Safe zones** (no spawns, attacks do nothing, enemies leash out after 4.5 s): the home at the Karlsbergquelle (r 40 m; until tour WP-01 the field station),
   memorials (`memorial:set`), conversations, NPC talk radius (6 m), and `flags['combat.disabled']`
   (story sets it, e.g. the finale W8 and the endings).
@@ -396,7 +397,10 @@ A group of **three or more** in the past (not today, not a boss) is a pack:
 - **Era hazards** (`hazardOf` / `HAZARD`): in a pack fight, every 6.5 s: **1793-07 Glut** — two 2.3 m
   rings fill for 1.4 s with embers falling into them, then burn (10 to you, 30 % of their HP to
   enemies, elites half); **1796 Steinschlag** — one 2.1 m ring for 1.5 s, a dressed block falls onto
-  it (14, 45 %). Rings land near you and near the pack; enemies are fair game (lure them in).
+  it (14, 45 %). The second fire ring targets an enemy from the triggering pack. Enemies from
+  other packs can also take damage if they enter a ring.
+  Removing the pack that triggered a hazard cancels its warning rings, any falling stone and the
+  pending damage. Other encounters keep their attacks.
 
 **Balance (`tests/combat-balance.test.ts`, bots in `tests/combat-bots.ts`):** per chapter, at the
 intended build (§6), a standard encounter (prologue 4 Nebelinge today; K1 3 Streuner 1789; K2 4
@@ -973,6 +977,11 @@ As built (`content/quests/02-kapitel-2.quests.json`, `scripts/content-build/kapi
 | `q.k2.lichter` "Lichter im Wald" | side | Laub (after `q.k2.wachbuch`) → Laub | three lights on the slope, each two Irrlichter; the kiln (`clue.k2.koehler`) | irrlicht ×6 | 120 XP, Kalkstaub ×3; stance `flag.k2_lichter` (kalkoefen / fackeln / wachfeuer / laternen / offen) | cx.19, rm.03 |
 | `q.k2.kisten` "Bepackte Wagen" | side | the servant (`diener`, 1268/−950) → servant (after `q.k2.spur`) | 4 crates for Mannheim in the snow; **4 Streuner** sniff at them | streuner ×4 | 110 XP, Riechsalz ×2 | cx.20 |
 
+The Landremont echo and the Pikeur fight can happen in either order. Hearing the echo after the
+fight credits the recorded clear of `k2.pikeur` and opens the return to the Quelle. Loading a stalled
+save applies the same credit. If the player is already in the present, the quest also credits the
+return. The combat payout belongs to the original fight.
+
 ### 11.3 Kapitel 3 "Die Nacht" (28 Jul 1793, afternoon → fire) — tier 3, levels 8–10
 
 | Id | Kind | Giver → turn-in | Objectives (place) | Enemies | Rewards | History taught |
@@ -995,7 +1004,7 @@ As built (`content/quests/02-kapitel-2.quests.json`, `scripts/content-build/kapi
 | `q.k4.baumagazin` "Das letzte Haus" | main | Soll (Baumagazin, 496/−842) → Soll | the lease letter (`clue.k4.pacht`); Peter's cart: Matthes' mark (`clue.k4.stein_karren`, stone 2/4); **5 Steinfresser** gnaw at the stockpile in the yard (478/−852) — defend it; bonus: 6 Gruslinge | steinfresser ×5, grusling ×6 | 300 XP | cx.32 Das Baumagazin, cx.30 |
 | `q.k4.steinplatz` "Der Steinplatz" | main | Laub → auto | Ehrenhof 1796 (1216/−1114): the notice on the pillar (`clue.k4.anschlag`, 1195/−1112); **Der Steinbrecher** (1224/−1116) — defeat it (W7 follows: the Steinfraß); the robbed-out trench (`clue.k4.graben`, 1240/−1193) and its page (`item.k4.seite`) | **steinbrecher** (boss) | 450 XP, **Messstab V (Laubs Lot)** | cx.29 Tod und Schulden (STRITTIG), rm.05 Ausbruchgraben |
 | `q.k4.standpunkt` "Standpunkt siebzehn" | main | Laub → auto | the Forsthausbrunnen (1386/−1477): Laub's echo of 1840 (`clue.k4.laub_1840`); Laub's confession (2); the pack **drives** you (lossless) to the Zwinger (today, 1216/−1571) | the pack (drive, threat) | 350 XP; stances `flag.k4_zerstoerer` | cx.33 (the 1840 survey Laub belonged to) |
-| `q.k4.stellen` "Sich stellen" | main | Laub (voice) → Jost (the Pikeur, Zwinger today) | **W8: lie down (X) and light the lantern (L)** — combat disabled; Jost takes off his hat; the horn | — (no fight) | 800 XP, **Das Horn**; stance `flag.k4_meute` | cx.39 Der Karlsberg heute |
+| `q.k4.stellen` "Sich stellen" | main | Laub (voice) → Jost (the Pikeur, Zwinger today) | **W8: lie down (X or Hinlegen) and light the lantern (L or Laterne) in either order.** One-key mode only needs the prone action. If the pack is still waiting, the reminder suggests landing, lying down or lighting the lantern according to the player's state. Combat is disabled. Jost takes off his hat; the horn. | — (no fight) | 800 XP, **Das Horn**; stance `flag.k4_meute` | cx.39 Der Karlsberg heute |
 | `q.k4.zeichen` "Matthes' Zeichen" | side | Peter (Baumagazin, 494/−826) → auto (Laub) | the four marked stones: 1 (bonus: `clue.k1.zeichen`, counts if seen), 2 (Peter's cart, `clue.k4.stein_karren`), 3 in the Ehrenhof rubble 1796 (1240/−1105, guarded by Gruslinge), 4 today — seen from the road at the Karlsberger Hof (483/−839, private ground: look, never enter) | grusling ×8 | 300 XP, Matthes' Zeichen (charm); stance `flag.k4_steine` | cx.31 (Karlsberg stones in Homburg houses) |
 | `q.k4.graeben` "Gruslinge im Graben" | side | Laub (after `q.k4.steinplatz`) → auto | clear 3 robbed-out trenches of Grusling swarms (1232/−1188, 1236/−1180, 1226/−1194), compare with Relief 3 today (`clue.k4.graben_heute`) | grusling ×15 | 250 XP | rm.05 Ausbruchgraben (the "walls" of the prologue are trenches) |
 | `q.k4.pacht` "Die Pächter" | side | Soll (after `q.k4.baumagazin`) → Soll | recover 3 lease and demolition notices from Steinfresser lairs on the slope (650/−930, 800/−960, 1000/−1000; they drop them) | steinfresser ×3 | 250 XP | cx.30 Pacht und Abriss (1796) |
@@ -1071,6 +1080,9 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | Risk | Mitigation |
 | --- | --- |
 | Photos vanish on reload and cannot be kept (TASK-006, 2026-11-26) | Every shot with signal is stored on the device: IndexedDB `kq-photos` holds a full JPEG (≤ 1920 px), a thumbnail and the shot's metadata, or memory where IndexedDB is blocked. The gallery opens with G on the phone, its „Galerie“ button on touch, or Pause → Album. It shows a grid, a full-size viewer, Löschen, Herunterladen and Teilen (the OS share sheet where files can be shared, else a download). At most 100 photos; beyond that a toast instead of a silent drop. The photos are not in the save, and the gallery says they live only on this device. `tests/photo-gallery.test.ts`, `e2e/photo.spec.ts`. |
+| Era hazards outlive their pack or target a different pack (TASK-028, 2026-11-26) | The second fire ring targets a member of the triggering pack. Despawning or dematerialising the responsible pack cancels its hazards. Regression tests cover the impact window for falling stones and both removal orders for fire rings. |
+| Hounds follow the Warner’s prints after player prints expire (TASK-028, 2026-11-26) | Patrol and search use the same lookup for player prints, skipping story trails. |
+| Attacks linger after an encounter disappears (TASK-028, 2026-11-26) | Removing an encounter clears its airborne attacks with its warnings. The regression tests also cover reloading earned kills and reached boss phases, restoring Bannlicht charges and capping healing. |
 | The Wegweiser can draw through a wall or miss a reachable detour (TASK-026, 2026-11-26) | The solver checks grid edges during search and can try more than one approach to a free off-grid goal. It uses player clearance (less a little for a player pressed against a wall) and the wading limit to leave the start, keeps the quick straight route when clear, and stops at a reachable approach when it cannot finish. An enclosed start with no reachable leg hides the trail. |
 | Legacy garden saves can have every required objective credited after Continue without a turn-in topic (TASK-037, 2026-11-26) | After restoring counts, Continue marks the quest ready when its required objectives are complete. Hanne then offers the normal turn-in and pays once. Laub's exit lines queue first. The quests start on entry and queue their offers before the autosave. |
 | A Chapter 3 autosave can strand the player before a mandatory quest starts (TASK-037, 2026-11-26) | „Der Festsaal“ starts on entering „Hinauf“, and „Die Hunde los“ starts on entering „Zum Zwinger“, before each beat autosaves. „Hinaus“ also records the room and choice objectives on entry. Continue repairs missing quest progress proven by the saved beat. Hanne and Jost still handle turn-ins and rewards. |
@@ -1113,6 +1125,10 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | Dialogue and bark state after load (TASK-054, 2026-11-26) | Loading ends the previous session's clip and clears its waiting subtitles and bark requests. Saved bark cooldowns resume with the loaded clock. When a recording is unavailable at playback time, the subtitle and murmur start immediately and the recording moves to the head of the preload queue. |
 | Fast travel can save the departure pose or leave a curtain on a newly opened game (TASK-030, 2026-11-26) | The autosave captures the arrival pose before the travel pause is released. Loading a slot or starting a game clears the curtain during its fade. |
 | Travel effects can outlast the action that started them (TASK-030, 2026-11-26) | A loaded game cancels pending fast travel. The outdoor sprint boost clears on combat entry. Regression tests also exercise one-time lore XP and the 120-second Wegstein cooldown across a reload. |
+| The Pikeur browser fixture can reset to the Quelle or start the earlier Orangerie echo (TASK-036 review, 2026-11-26) | The fixture jumps to the dam beat before setting the era and position. It records the earlier Orangerie and Fackeln echoes as heard so E starts Landremont after the fight. |
+| An early Pikeur fight stalls Chapter 2 (TASK-036, 2026-11-26) | Once the Landremont echo is complete, the quest credits the saved clear of the named Pikeur encounter during play and on load (§11.2). |
+| The Chapter 4 kennel reminder could highlight a button the player had already used or could no longer see (TASK-035, 2026-11-26) | The reminder follows flight, stance and the lantern. Ending replay refreshes the touch controls once the player is back on foot. |
+| Touch players could stall at the Chapter 4 kennel (TASK-035, 2026-11-26) | Hinlegen and Laterne expose the two finale actions. Hinlegen suffices in one-key mode. Continuing at „Sich stellen“ restores the encounter and the empty-lantern fallback. |
 | A combat autosave records Die Enge kills before their rewards, or Laub warns from the present-day wake point (TASK-038 review, 2026-11-26) | Combat releases the autosave after all rewards from the tick have been applied. The reinforcement reaction waits for 1789. Unit and browser coverage check the survivors' regular and elite XP. |
 | Saving between the waves of Die Enge strands Chapter 1 (TASK-038, 2026-11-26) | The story restores the wave transition from saved group counts. A partial second wave resumes with its survivors, and a completed second wave advances the beat. Only actual kills award XP and roll loot. Coverage lives in `tests/story-enge.test.ts` and `e2e/enge-save.spec.ts`. |
 | Accepting „Der Jaguar“ while Hanne’s conversation is open delays saved calm credit (TASK-040 review, 2026-11-26) | The acceptance autosave includes the payout. For a save recovered at the title, „Weiter“ presents the reward dialogue and notice. „Neues Spiel“ drops that presentation. A quest finished on acceptance shows no „Nebenaufgabe“ banner after its payout. |

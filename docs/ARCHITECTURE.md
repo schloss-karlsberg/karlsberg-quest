@@ -478,6 +478,7 @@ controls a `data-testid` and an `id` (the label's `for` is set from it).
 
 `game:start {resumed}`, `game:pause {paused}`, `era:change {from,to}` (world already switched),
 `scan:mode {mode}`, `player:stance {stance,previous}`, `player:fly {flying}`,
+`player:restored {}` (a load put the player back on the ground: position, view, stance),
 `player:step {x,z,surface,running}`, `player:teleport {x,z}`, `save:written {slot,reason}`,
 `save:loaded {slot}`, `settings:change {key}`, `ui:toast {text,ms?}`.
 Features add their own via declaration merging (see §4). Naming `<domain>:<what>`.
@@ -675,6 +676,8 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 - Unit (`tests/`): event bus, loop determinism, state/save round trip and throttling, settings,
   system ordering + error isolation, heightfield sampling, decoders (incl. real data), collision,
   forest determinism, validator (good + each failure class), ContentDB.
+- Survey unlocks (`tests/skills-runtime.test.ts`): `setupSkills` uses the real state store, event
+  bus and `CardDirector` with a small DOM stub and explicit frame steps for grants, pause and reload.
 - `tests/control-fixture.ts` records the controls that the settings form and touch overlay build.
   Node tests dispatch events to their handlers by test ID. Playwright covers layout, focus and native pointer capture.
 - Quest, story and Chronik units reuse the existing headless fixtures for quest reloads, chapter
@@ -934,9 +937,12 @@ Round-4 (polish: set dressing) integration rules:
 - **Modes** (`modes.ts`, pure): `patrol` (default); `drive` (Ch. 4: arc of hounds 12–20 m behind and
   beside the player, horn from behind / a flank, they give 5 m when you turn back, pushing through
   = soft catch `player:caught {by:'pack', soft:true}`, story curtain "Die Meute hat dich
-  heimgebracht", chronik loses nothing); `finale` (W8 at the kennel: 6 m circle, X + L in any order,
-  one key — `settings.oneKey` or gentle — X alone; hounds lie down, eyes dim, mist settles, they and
-  the Pikeur fade; > 10 m away = faded back into the circle; emits contract event
+  heimgebracht", chronik loses nothing); `finale` (W8 at the kennel: 6 m circle, X + L or Hinlegen
+  + Laterne on touch in either order. In one-key or gentle mode, lying down suffices. After seven
+  seconds in the wait phase, the HUD cues Landen in flight, Hinlegen on foot when standing or
+  crouching, and Laterne an when prone and still needing light. Hounds lie down, their eyes dim,
+  and they fade with the Pikeur as the mist settles. Beyond 10 m, the player
+  fades back into the circle. Emits contract event
   `hunt:finale {outcome: gathered|returned|calmed|faded}`); `parforce` (Ch. 2 long chase from `from`
   to `target`/water: release horn + head start, surges with a rubber-banded pack, breathers
   `hunt:rest`, the Pikeur riding in from a flank, `hunt:goal` → `hunt:end {reason:'escaped'}`;
@@ -971,7 +977,9 @@ Round-4 (polish: set dressing) integration rules:
   and at 40 m.
 - **Snow tracks** (`tracks.ts`, `trackVisuals.ts`; 1793-02 or a snowy look, `snow` overrides): boot
   prints on every `player:step`, paw / hoof prints of the pack, instanced decals that fade over
-  240 s. Your trail breaks on water, cobbles / building floors, today's roads and steep rock; the
+  240 s. A story trail can extend the lifetime of its own prints. Ordinary prints expire on
+  schedule even when a story trail passes through the same area. Hounds track player prints only.
+  Your trail breaks on water, cobbles / building floors, today's roads and steep rock; the
   pack follows it print by print (`hunt:tracking {on, why?}`, horn found / lost) but never across a
   break. Crouching / standing over the pack's prints reads them (Spurenleser: kind, number,
   rider, age, direction; tier 2 highlights their routes) → caption + `hunt:read`.
@@ -1104,7 +1112,7 @@ Round-4 (polish: set dressing) integration rules:
   tier pips, "Freigeschaltet" stamp, `data-testid=skill-card`), plays the stamp chime, emits
   `skill:unlocked {skill, level}` and lets Laub comment (`dialogue:say`, `skills.laub.<id>.<n>`)
   once `flags['story.laub']` is set (or without a running story). Cards wait while a modal or a
-  story card is open.
+  story card is open. A settled standalone unlock appears once the card director grants the slot.
 - **Free survey**: without a running story (sandbox, `?notitle` tests) every tool is open;
   `?skills=strict` forces gating, `?skills=all` opens everything. Locked keys leave a toast.
 - Survey checks the active scan and map against the incoming game's skills on its first tick.
@@ -2473,7 +2481,11 @@ Rules that came out of it:
     tracked by pointer id.
   - **Buttons press actions:**
     - Hieb → `attack` + `interact`. Hold for the Wuchthieb; the ring fills in 0.45 s.
-    - Ausweichen → `dodge` + `up`. It becomes "Steigen" while flying, and "Sinken" (`down`) appears.
+    - Ausweichen → `dodge` + `up`. It becomes "Steigen" while flying. Ducken → `crouch` + `down`.
+      It toggles crouch on foot and becomes "Sinken" while flying.
+    - Hinlegen → `prone` on foot. Laterne → `lantern` to toggle the light.
+      `player:restored` refreshes the flight and stance controls after the player is back on the
+      ground, including when replaying an ending from Pause.
     - Bannlicht, Ziel (`lockOn`), Balsam (`quickUse`), abilities 1–3. An ability button stays hidden
       until it is learnt (`skillUnlocked(n)` from boot: `skillsForLevel(progression.level)`, re-checked
       on `level:up`, `stats:changed`, `game:start` and `save:loaded`).
