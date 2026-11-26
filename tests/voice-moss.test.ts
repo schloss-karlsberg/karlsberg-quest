@@ -238,10 +238,10 @@ describe('heavy lock and quiet window (mocked child process)', () => {
     return { run, calls };
   };
 
-  it('the command line is heavy.sh --check-load --strict --max-hold 10 -- <venv python> -I runner.py <job>, owner kq-voice-moss', () => {
+  it('the command line is heavy.sh --exclusive --check-load --strict --max-hold 10 -- <venv python> -I runner.py <job>, owner kq-voice-moss', () => {
     const c = heavyCommand(cfg, '/w/job.json');
     expect(c.cmd).toBe('scripts/dev/heavy.sh');
-    expect(c.args).toEqual(['--check-load', '--strict', '--max-hold', '10', '--', cfg.python, '-I', 'scripts/voice/moss/runner.py', '/w/job.json']);
+    expect(c.args).toEqual(['--exclusive', '--check-load', '--strict', '--max-hold', '10', '--', cfg.python, '-I', 'scripts/voice/moss/runner.py', '/w/job.json']);
     expect(c.env).toMatchObject({ KQ_HEAVY_OWNER: HEAVY_OWNER, KQ_MOSS_VOICES: VOICES, HF_HUB_OFFLINE: '1' });
     expect(HEAVY_OWNER).toBe('kq-voice-moss');
   });

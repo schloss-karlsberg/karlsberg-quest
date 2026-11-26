@@ -152,11 +152,11 @@ export interface Command {
   env: Record<string, string>;
 }
 
-/** `scripts/dev/heavy.sh --check-load --strict --max-hold 10 -- <venv python> -I scripts/voice/moss/runner.py <job>` (cwd = repo). */
+/** `scripts/dev/heavy.sh --exclusive --check-load --strict --max-hold 10 -- <venv python> -I scripts/voice/moss/runner.py <job>` (cwd = repo; a model run needs the whole machine). */
 export function heavyCommand(cfg: MossConfig, jobPath: string): Command {
   return {
     cmd: HEAVY_SH,
-    args: ['--check-load', '--strict', '--max-hold', String(HEAVY_MAX_HOLD_MIN), '--', cfg.python, '-I', RUNNER, jobPath],
+    args: ['--exclusive', '--check-load', '--strict', '--max-hold', String(HEAVY_MAX_HOLD_MIN), '--', cfg.python, '-I', RUNNER, jobPath],
     env: { KQ_HEAVY_OWNER: cfg.owner || HEAVY_OWNER, KQ_MOSS_HOME: cfg.home, KQ_MOSS_VOICES: cfg.voices, HF_HUB_OFFLINE: '1' },
   };
 }

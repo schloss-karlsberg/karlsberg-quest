@@ -65,7 +65,7 @@ Code: `scripts/voice/moss.ts` (config, guard, batching, lock), `providers.ts` `m
   resolve inside `KQ_MOSS_VOICES` and never under `/casting/clips/` (ElevenLabs clips); the runner
   checks every reference before the model loads. Reference WAVs and clips are never committed.
 - **Lock:** at most 6 lines per runner process (one model load, 25–37 GB peak), each process wrapped in
-  `KQ_HEAVY_OWNER=kq-voice-moss scripts/dev/heavy.sh --check-load --strict --max-hold 10 -- <venv>/bin/python -I scripts/voice/moss/runner.py <job>`
+  `KQ_HEAVY_OWNER=kq-voice-moss scripts/dev/heavy.sh --exclusive --check-load --strict --max-hold 10 -- <venv>/bin/python -I scripts/voice/moss/runner.py <job>`
   (a `KQ_HEAVY_OWNER` in the env relabels the owner, e.g. `kq-voice-gate` for a gate run).
   No batch starts while `/tmp/kq-quiet-window` exists (the runner also exits 76 if it appears inside the
   lock, and the batch is retried); `--strict` refusing (exit 75) stops the run. WAVs are post-processed
@@ -611,7 +611,7 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   `skill` action (Kartograf 3 card) → measuring the gallery in 1793-07 (`measure:done`, the
   Chronik's measuring clue) → the story's pack in 1793-02 leaving snow tracks
   (`int-r2-*.png`). Unit rules of the integration: `tests/integration-round2.test.ts`.
-  `KQ_E2E_PORT` picks the preview port (default 5281; an existing server on it is reused).
+  `KQ_E2E_PORT` picks the preview port (default 5281, or 5281 + k inside `scripts/dev/heavy.sh` slot k; an existing server on it is reused).
 - E2E (`e2e/smoke.spec.ts`, Chromium + SwiftShader WebGL): title → content note → name → paper map → "Tour starten" → game
   starts; every era and scan mode render with no console errors / failed requests; walking,
   crouch, spirit view rules and a save round trip.

@@ -1,7 +1,9 @@
 import { defineConfig } from '@playwright/test';
 
 // KQ_E2E_PORT: run several worktrees' suites side by side without reusing each other's server.
-const PORT = Number(process.env.KQ_E2E_PORT ?? 5281);
+// Without it, a run inside scripts/dev/heavy.sh slot k (KQ_HEAVY_SLOT) uses 5281 + k, so jobs in
+// different slots never reuse each other's preview server.
+const PORT = Number(process.env.KQ_E2E_PORT ?? 5281 + (Number.parseInt(process.env.KQ_HEAVY_SLOT ?? '', 10) || 0));
 
 export default defineConfig({
   testDir: 'e2e',
