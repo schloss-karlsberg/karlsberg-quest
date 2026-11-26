@@ -70,7 +70,7 @@ export class HuntOverlay {
   private readonly caughtRule: HTMLElement;
   private readonly arrows: Arrow[] = [];
   private pulse = 0;
-  private vignetteOpacity = NaN;
+  private vignetteOpacityThousandths = -1;
   private curtainOpacity = NaN;
   private titleOpacity = NaN;
   private readonly blinkEl: HTMLElement;
@@ -190,10 +190,10 @@ export class HuntOverlay {
     this.pulse = Math.max(0, this.pulse - dt * 3.2);
     const base = Math.max(0, (o.alert - 0.25) / 0.75) * 0.75;
     const p = o.reducedMotion ? 0 : this.pulse * this.pulse * 0.35 * Math.min(1, o.alert * 1.5);
-    const vignette = base + p;
-    if (vignette !== this.vignetteOpacity) {
-      this.vignette.style.opacity = vignette.toFixed(3);
-      this.vignetteOpacity = vignette;
+    const vignette = Math.round((base + p) * 1000);
+    if (vignette !== this.vignetteOpacityThousandths) {
+      this.vignette.style.opacity = (vignette / 1000).toFixed(3);
+      this.vignetteOpacityThousandths = vignette;
     }
     const w = window.innerWidth;
     const h = window.innerHeight;

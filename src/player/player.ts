@@ -315,18 +315,35 @@ export class Player {
     this.stats.inWater = 0;
     const world = this.world;
     if (world.waterDepth) {
+      const { x, z } = this.position;
       let here = world.waterDepth(nx, nz);
       // If already in deep water, allow a step towards the bank or along the same depth.
-      const limit = here > WADE_LIMIT_M ? Math.max(WADE_LIMIT_M, world.waterDepth(this.position.x, this.position.z)) : WADE_LIMIT_M;
-      if (here > limit) {
-        this.stats.deepWater = true;
-        if (world.waterDepth(nx, this.position.z) <= limit) nz = this.position.z;
-        else if (world.waterDepth(this.position.x, nz) <= limit) nx = this.position.x;
-        else {
-          nx = this.position.x;
-          nz = this.position.z;
+      if (here > WADE_LIMIT_M && (nx !== x || nz !== z)) {
+        const currentDepth = world.waterDepth(x, z);
+        const limit = Math.max(WADE_LIMIT_M, currentDepth);
+        if (here > limit) {
+          this.stats.deepWater = true;
+          // An axis-aligned step can only retry the proposed and current positions.
+          if (nx === x || nz === z) {
+            nx = x;
+            nz = z;
+            here = currentDepth;
+          } else {
+            const xDepth = world.waterDepth(nx, z);
+            if (xDepth <= limit) {
+              nz = z;
+              here = xDepth;
+            } else {
+              const zDepth = world.waterDepth(x, nz);
+              nx = x;
+              if (zDepth <= limit) here = zDepth;
+              else {
+                nz = z;
+                here = currentDepth;
+              }
+            }
+          }
         }
-        here = world.waterDepth(nx, nz);
       }
       this.stats.inWater = Math.max(0, Math.min(1, here / WADE_LIMIT_M));
       if (here > 0 && moving) {
