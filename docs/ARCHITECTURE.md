@@ -1618,7 +1618,7 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   `moveScale`, never compounds). Never indoors; no separate 1789-court rule exists.
 - Wegweiser (`trail.ts` + `src/world/route.ts`): A* on a 2 m grid over the collider (footprints +
   set solids + the interiors' walls, no corner cutting, the midpoint of every move tested on a
-  cached half-cell grid so a thin wall is never stepped through, string-pulled at 0.3 m; a 1 m
+  cached half-cell grid, and all returned legs checked at intervals of at most 0.3 m; a 1 m
   grid for goals within 170 m, else 2 m; probe radius 0.38; each probe sets the feet to the
   ground-floor height there because the interiors' walls are height-aware — so the Durchfahrten
   and vestibules with a step up read open) from the player to the story objective or the tracked
@@ -1627,6 +1627,10 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   doors and gates instead of into corners). While that straight line is blocked the compass
   carries a chalk-blue "Weg" marker (`hud.setMarker('wegweiser')`) at the route's next bend
   (> 4 m ahead) beside the gold objective marker; hook `kq.travel.way()`.
+  The straight route checks both endpoints and skips the search when the segment is clear. A*
+  starts at the player's exact position, checks the final leg to an off-grid goal and returns the
+  reachable portion for blocked goals or unfinished searches. If no leg is reachable, the single
+  start point leaves the trail hidden.
   Present day (playtest round 10): the straight-line check counts only water (`wayLineBlocked`
   in `points.ts`; trunks and ruins would fire it every few steps, the Weiher must), and the A*
   takes a ground cost (`RouteOptions.cost` / `minCost`): OSM path cells (`World.pathAt`, the
