@@ -29,9 +29,9 @@ updated: 2026-11-26
 - [x] Map the player-facing contracts of each in-scope module against existing unit tests.
 - [x] Add at least 25 meaningful deterministic assertions, under about three seconds together.
 - [x] Reproduce proven bugs before changing gameplay; record design questions as todos.
-- [ ] Commit each fix separately (sandbox blocked staging).
+- [x] Commit the changes (landed as two commits: the sweep in `99889d8`, the review fixes in `045da6b`).
 - [x] Document the changed contracts, test helpers and PRD changelog.
-- [ ] Pass all four literal gate commands and run locked smoke if permitted (IPC and preview port blocked; validator itself passed).
+- [x] Pass all four literal gate commands and run locked smoke (see the second review below).
 - [x] Leave the tour dogs, other teams' topics and voice content untouched.
 
 ## Plan
@@ -131,8 +131,8 @@ deer leader validation, and NPC test gap concern changes made on this branch.
 - [x] Resolve saved deer follow chains to a departing leader with a destination, with chain and cycle regressions.
 - [x] Reload Soll after despawning him and verify the conversation opens without duplicate rewards or greetings.
 - [x] Update the encounter contracts, changelogs, and task record.
-- [ ] Pass all four literal gate commands and run locked smoke where permitted.
-- [ ] Commit the review fixes locally.
+- [x] Pass all four literal gate commands and run locked smoke where permitted.
+- [x] Commit the review fixes locally.
 
 Add focused regression assertions before each gameplay fix. Use the existing simulation and system
 test harnesses. Keep the existing branch and leave publishing and voice content untouched.
@@ -174,3 +174,12 @@ test harnesses. Keep the existing branch and leave publishing and voice content 
   | `docs: record campaign encounter review fixes` | `docs/ACTION-RPG.md`, `docs/ARCHITECTURE.md`, `docs/PRD.md`, and this task file |
 
   Use `git add -- <paths>` and `git commit -m "<commit>" -m 'Refs: TASK-048' -m 'Co-Authored-By: Codex <noreply@openai.com>'` for each row.
+
+## Second review (2026-11-26)
+
+- The sweep and the review fixes are committed as `99889d8` and `045da6b`; the intended commit
+  lists above are superseded.
+- All five first-round findings are confirmed fixed in the code and covered by regression tests.
+- Gates outside the sandbox: `pnpm typecheck` passed; `pnpm test` reported `Test Files  128 passed (128)`
+  and `Tests  1649 passed | 1 todo (1650)`; `pnpm validate` reported `✓ content valid (1 warning(s))`;
+  `pnpm build` passed. The locked e2e specs `npc`, `animals` and `smoke` passed on the branch.
