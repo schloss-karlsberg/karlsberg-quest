@@ -105,6 +105,7 @@ export class DialoguePresenter {
   private skipTouch: boolean | null = null;
   /** Waiting lines (cap, stale and place rules: ./queue.ts). */
   private readonly queue: LineQueue<DialogueItem>;
+  private readonly interruptedGroups = new Set<number>();
   private cur: Active | null = null;
   private hideTimer = 0;
   private mouthTimer = 0;
@@ -113,7 +114,7 @@ export class DialoguePresenter {
   private paused = false;
   readonly voiceStats: PresenterVoiceStats = { clips: 0, murmured: 0, lastClip: null };
   constructor(private readonly o: PresenterOptions) {
-    this.queue = new LineQueue<DialogueItem>(() => this.cur?.item.group, o.valid);
+    this.queue = new LineQueue<DialogueItem>((group) => this.cur?.item.group === group || this.interruptedGroups.has(group), o.valid);
     ensurePortraitDefs();
     this.portraitEl = h('div.kqs-portrait');
     this.whoEl = h('span.kqs-who');
@@ -167,12 +168,12 @@ export class DialoguePresenter {
   }
 
   enqueue(item: DialogueItem): void {
-    this.queue.push(item);
+    const canInterrupt = item.priority === 'now' && this.cur?.item.priority !== 'now' && !this.o.held?.(item);
+    const interrupt = this.queue.push(item, canInterrupt);
     // the clip is hashed over the raw template ({Name} …); the displayed text is tried too
     if (this.o.clips) this.o.clips.preload([{ id: item.id, text: [item.text, substituteName(item.text, this.o.name())], speaker: this.o.meta(item.speaker).id }]);
-    if (!this.cur) this.next();
-    // a 'now' line cuts in: the line on screen ends at once (unless it is 'now' itself)
-    else if (item.priority === 'now' && this.cur.item.priority !== 'now') this.next();
+    if (interrupt) this.next(interrupt);
+    else if (!this.cur || (canInterrupt && this.queue.urgent)) this.next();
   }
 
   /** A beat began: waiting lines of other beats retire (./queue.ts). */
@@ -182,6 +183,7 @@ export class DialoguePresenter {
 
   clear(): void {
     this.queue.clear();
+    this.interruptedGroups.clear();
     this.stopClip();
     this.cur = null;
     this.el.classList.remove('kqs-show', 'kqs-speaking');
@@ -221,9 +223,19 @@ export class DialoguePresenter {
     }
   }
 
-  private next(): void {
+  private next(interrupt?: DialogueItem): void {
     this.stopClip();
-    const item = this.queue.take(this.o.held);
+    const item = interrupt ?? this.queue.take(this.o.held);
+    const previous = this.cur?.item;
+    if (item?.priority === 'now' && previous?.priority !== 'now' && previous?.group !== undefined) {
+      this.interruptedGroups.add(previous.group);
+    }
+    if (item?.group !== undefined) this.interruptedGroups.delete(item.group);
+    if (item?.priority !== 'now') {
+      for (const group of this.interruptedGroups) {
+        if (!this.queue.some((q) => q.group === group)) this.interruptedGroups.delete(group);
+      }
+    }
     if (!item) {
       this.cur = null;
       this.el.classList.remove('kqs-speaking');

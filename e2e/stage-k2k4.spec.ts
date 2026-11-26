@@ -148,6 +148,8 @@ test.describe('staged set pieces (K2 / K4 / endings)', () => {
       k.story.start('Alex');
       k.story.goto('k4', 'k4_13');
       k.step(4);
+      // the beat's resting-pack cue waits for the chapter card (M-11): run its timeline now
+      k.story.flush();
     });
     await place(page, 'today', 1223.5, -1564, 294, -6);
     await page.evaluate(() => {

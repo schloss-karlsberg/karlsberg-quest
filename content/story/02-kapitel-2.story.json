@@ -710,7 +710,11 @@
         {
           "id": "k2_8-vorbei",
           "when": {
-            "any": [{ "event": "echo:end", "match": { "id": "clue.k2.fackeln" } }, { "timer": 45 }]
+            "any": [
+              { "event": "echo:end", "match": { "id": "clue.k2.fackeln" } },
+              { "event": "echo:end", "match": { "id": "clue.k2.fackeln", "aborted": true } },
+              { "timer": 45 }
+            ]
           },
           "do": [{ "do": "flag", "set": { "k2.wagen": true } }]
         }

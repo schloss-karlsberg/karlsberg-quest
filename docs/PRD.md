@@ -22,6 +22,8 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-26 | **Urgent dialogue and pack validation (TASK-029 review).** The dodge tutorial can interrupt dialogue with every waiting slot filled. Pack discovery accepts regular files and links to regular files. |
+| unreleased | 2026-11-26 | **Quest and story reliability (TASK-029).** Interrupted memories release their scene without advancing quests or the story. Chapter replay starts with fresh reaction timers, and crowded dialogue retains story lines ahead of barks. Content validation skips directories named like pack files. |
 | unreleased | 2026-11-26 | **Autosave protection (TASK-024 review).** Malformed system slices make a save unavailable to „Weiter“. If another tab writes a different autosave during „Neues Spiel“, the title asks before replacing those bytes. A cancelled or failed setup preserves the slot. |
 | unreleased | 2026-11-26 | **Unreadable autosaves (TASK-024).** The title explains when the autosave cannot be loaded and offers „Weiter“ for readable saves, including saves that need migration. Cancelling „Neues Spiel“ preserves the occupied slot byte for byte. |
 | unreleased | 2026-11-26 | **Read-only playtests and campaign pacing (TASK-019 review).** „Weiter“ loads the autosave, including after returning to the title from a `?nosave` session. Read-only new games open the content warning directly. A deferred paint reuses the prepared presentation, and the campaign skips the K3 station's cosmetic wait when chapter screenshots are off. |

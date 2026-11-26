@@ -151,7 +151,8 @@ declare module '../core/events' {
     'clue:found': { id: string; kind: string };
     'noun:learned': { id: string };
     'echo:start': { id: string };
-    'echo:end': { id: string };
+    /** Releases the echo scene. `aborted` distinguishes interruptions from heard or skipped echoes. */
+    'echo:end': { id: string; aborted?: true };
     /** A memory's line comes up (subtitle shown): set pieces stage what the line is about. */
     'echo:line': { id: string; line: string; i: number; dur: number };
     'chronik:batch': { caseId: string; correct: boolean; confirmed: string[] };

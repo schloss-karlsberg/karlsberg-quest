@@ -602,6 +602,9 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 - Unit (`tests/`): event bus, loop determinism, state/save round trip and throttling, settings,
   system ordering + error isolation, heightfield sampling, decoders (incl. real data), collision,
   forest determinism, validator (good + each failure class), ContentDB.
+- Quest, story and Chronik units reuse the existing headless fixtures for quest reloads, chapter
+  reactions, dialogue queues and the echo director. `content-validation-cli.test.ts` verifies pack
+  discovery and terrain bounds with temporary files.
 - Campaign encounters: `encounter()` in `tests/npc-encounter.test.ts` and `pen()` in
   `tests/menagerie-encounter.test.ts` drive real systems with an `EventBus`, a `GameStateStore`
   and explicit ticks. Replace the store with a JSON snapshot and emit `save:loaded` to test a
@@ -986,6 +989,9 @@ Round-4 (polish: set dressing) integration rules:
   (`kq.chronik.echo()` → `walking`). While it whispers on, E and the prompts are free for other
   clues; starting another echo ends the walking one as heard. Clue cards go through `ctx.ui.cards`
   (one at a time).
+- An interrupted memory emits `echo:end {id, aborted: true}` to release scene and HUD holds.
+  Quest objectives and default story event conditions count completed and skipped memories.
+  Chapter 2 also listens for the interrupted departure to let the lantern choice resolve.
 - Pause and `chronik:open` open the Codex page. `check()` re-evaluates case state for older saves
   (`state.chronik` stays readable). `player:caught` finishes a running echo and preserves progress.
 - Uses real packs; placeholder packs (`content/test/chronik-test.pack.json`, `ct.*`) only when no
@@ -1094,15 +1100,20 @@ Round-4 (polish: set dressing) integration rules:
   delayed actions of other beats retire: presentation (`say`, `toast`, `sound`, `card`, `prompt`,
   `echo`, `choice`) is dropped, state changes run at once. A line that will not be spoken (said
   once already) costs no reading time in a run. The dialogue queue (`dialogue/queue.ts`, pure)
-  caps waiting lines at 6 (barks / skill remarks first), drops barks after 14 s, gives lines of an
-  ended beat or a left place `STALE_GRACE` = 3 s, beat lines `NORMAL_TTL` = 20 s and lore
+  caps waiting lines at 6. It evicts unplayed barks / skill remarks first and ordinary lines ahead
+  of queued `now` lines. A playable `now` line can interrupt ordinary dialogue directly, without
+  taking a waiting slot. Further urgent lines can queue while an urgent line is showing. An
+  interrupted sequence keeps its queue protection until it resumes. The queue drops barks after
+  14 s, gives lines of an ended beat or a left place `STALE_GRACE` = 3 s, beat lines
+  `NORMAL_TTL` = 20 s and lore
   (`dialogue:say {lore}`, sourced lines) `LORE_TTL` = 50 s, never cuts a playing sequence; while
   `hud.acting('combat')` lore and lines over 120 chars are held (`take(held)`), barks pass; while
   `hud.acting('reveal')` (a boss's reveal, combat) every line but `now` is held; a beat's own
   non-lore line is queued ahead of waiting lore that has not started (quest history at a turn-in
   never pushes the beat's line past its moment). Lines a
   trigger fires on `story:ending` are assembled by the ending card, not spoken; the presenter is
-  cleared at the credits. Reactions take `cooldown` (s, with `repeat`); the `speed {gte, lte}` condition reads the
+  cleared at the credits. Reactions take `cooldown` (s, with `repeat`). Starting or replaying a
+  chapter resets reaction cooldowns and rising-edge state. The `speed {gte, lte}` condition reads the
   player's speed; `say.variants` is a running joke (n-th run → n-th text, counted in
   `slice.sayCount`). Beats take `wake {x, z, yaw, era:'today', text}`: being caught / an empty
   meter brings you to the present there instead of the home at the Quelle. Ending choice: the field
@@ -2025,7 +2036,7 @@ card, sound, toast, cue, chronik, ending, echo, grant):
 `npc:talk {npc, topic}`, `measure:done {building, room}`, `skill:unlocked {skill, level}`,
 `hunt:goal {mode}`, `hunt:finale {outcome}`, `hunt:tracking {on, why}`, `hunt:read`,
 `player:caught {by, soft}`, `menagerie:seen / knockdown / yield {id}`, `clue:found {id}`,
-`echo:end {id}`, `chronik:batch`, `chronik:case-complete {caseId}`, `fire:room {roomId, state}`,
+`echo:end {id, aborted?}`, `chronik:batch`, `chronik:case-complete {caseId}`, `fire:room {roomId, state}`,
 `story:choice {id, option}`, `story:meter-full {id}`, `bark:idle`.
 
 **Recipes**
