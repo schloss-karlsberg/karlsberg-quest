@@ -9,7 +9,7 @@ import { FestPartySet } from '../src/systems/party/fest';
 import { partyLayout } from '../src/systems/party/placements';
 import { CreditsStrip } from '../src/systems/party/strip';
 import photo, { type PhotoHooks } from '../src/systems/photo';
-import { TitleScreen } from '../src/ui/title';
+import { TitleScreen, type TitleCallbacks } from '../src/ui/title';
 import { disposalCounts } from './disposal-counts';
 
 class Element extends EventTarget {
@@ -60,6 +60,9 @@ class Element extends EventTarget {
     }
     return null;
   }
+  contains(node: unknown): boolean {
+    return node === this || this.children.some((child) => child.contains(node));
+  }
   focus() {}
   getContext() { return null; }
 }
@@ -86,23 +89,28 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/** A save slot with a readable autosave, so the title offers „Weiter“. */
+function readableSave(): TitleCallbacks['save'] {
+  return { enabled: true, availability: () => 'readable', readRaw: () => '{}', load: () => true };
+}
+
 it('reuses a single title menu through animated and reduced-motion start and return', () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
   const { body } = setupDom();
   const onStart = vi.fn();
-  const title = new TitleScreen({ onStart, onLicences() {}, confirm: async () => true });
+  const title = new TitleScreen({ save: readableSave(), onStart, onLicences() {}, confirm: async () => true });
   const el = title.el as unknown as Element;
   body.append(el);
   const continueButton = el.querySelector('.primary')!;
 
   for (const reduced of [false, true, false, true]) {
     title.show();
-    title.setReady(true);
+    title.setReady();
     expect(el.classList.contains('kq-hidden')).toBe(false);
     const calls = onStart.mock.calls.length;
     continueButton.dispatchEvent(new Event('click'));
     expect(onStart).toHaveBeenCalledTimes(calls + 1);
-    expect(onStart).toHaveBeenLastCalledWith(false);
+    expect(onStart).toHaveBeenLastCalledWith('continue');
     title.hide(reduced);
     expect(vi.getTimerCount()).toBe(reduced ? 0 : 1);
     vi.advanceTimersByTime(950);
@@ -115,7 +123,7 @@ it('reuses a single title menu through animated and reduced-motion start and ret
 it('keeps a reopened title visible past the interrupted fade deadline', () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
   setupDom();
-  const title = new TitleScreen({ onStart() {}, onLicences() {}, confirm: async () => true });
+  const title = new TitleScreen({ save: readableSave(), onStart() {}, onLicences() {}, confirm: async () => true });
 
   title.hide();
   vi.advanceTimersByTime(475);
