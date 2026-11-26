@@ -18,7 +18,8 @@ export interface BenchScene {
   label: string;
   era: Era;
   /** Prepare the scene (teleport, threats). */
-  setup(k: BenchKq): void;
+  setup(k: BenchKq, opts: BenchOptions): void;
+  fire?: true;
   /** Camera for frame i of n (absolute pose); null = the player's own camera with `yaw` sweep. */
   camera?(cam: PerspectiveCamera, i: number, n: number, k: BenchKq): void;
   /** Player yaw sweep in degrees (ground scenes): [from, to]. */
@@ -40,6 +41,8 @@ export interface BenchSceneResult {
   programs: number;
   /** Draw calls and triangles within PERF_BUDGET. */
   withinBudget: boolean;
+  withinFrameTarget: boolean;
+  fireClock?: { start: number; end: number };
 }
 
 export interface BenchResult {
@@ -60,6 +63,8 @@ export interface BenchOptions {
   warmup?: number;
   /** Minimum wall-clock warmup per scene, in seconds (default 0). */
   warmupSeconds?: number;
+  /** In manual mode, hold the fire at 120 s or advance its clock by one fixed step per sample. */
+  fireClock?: 'fixed' | 'advancing';
   /** Only these scene ids. */
   only?: string[];
   /** Log a table to the console (default true). */
@@ -75,16 +80,29 @@ interface BenchKq {
   step(n?: number): void;
   hunt?: { start(o?: Record<string, unknown>): unknown; stop(): void; freeze(on: boolean): void; placeInView(i: number, d: number, ang: number, look?: boolean): void };
   lantern?: { toggle(on?: boolean): boolean };
-  fx?: { fire(on: boolean, opts?: Record<string, unknown>): void; fireTime(t: number): void };
+  fx?: {
+    fire(on: boolean, opts?: Record<string, unknown>): void;
+    fireTime(t: number): void;
+    state(): { fire: { active: boolean; clock: number } };
+  };
   interiors?: {
     enter(roomId: string, opts?: Record<string, unknown>): boolean;
     fire(roomId: string, state: string): void;
     list(): { id: string; roomId: string; building: string; storey: number }[];
+    room(): { building: string; roomId: string } | null;
   };
 }
 
 /** Palace centre (Corps de logis) in the local frame. */
 const PALACE = { x: 1195, z: -1095 };
+const FIRE_START = 120;
+
+function palaceExterior(k: BenchKq, x: number, z: number, yaw: number): void {
+  k.teleport(x, z, yaw, -6);
+  k.step(1);
+  const room = k.interiors?.room();
+  if (room?.building === 'KB-B01') throw new Error(`Exterior benchmark is still in ${room.roomId}`);
+}
 
 function orbit(radius: number, height: number, turns = 0.35) {
   return (cam: PerspectiveCamera, i: number, n: number, k: BenchKq) => {
@@ -133,11 +151,12 @@ export const BENCH_SCENES: BenchScene[] = [
     id: '1793-07-festsaal-fire',
     label: '1793-07, brennender Festsaal (innen)',
     era: '1793-07',
-    setup: (k) => {
+    fire: true,
+    setup: (k, opts) => {
       k.step(1);
       k.interiors?.enter('B01.2.og-festsaal', { u: 0.1, v: 0.5, toU: 1, toV: 0.5, pitch: 6 });
-      k.fx?.fire(true, { seconds: 300 });
-      k.fx?.fireTime(120);
+      k.fx?.fire(true, { seconds: 300, clock: opts.fireClock ? FIRE_START : 0 });
+      if (!opts.fireClock) k.fx?.fireTime(FIRE_START);
       k.interiors?.fire('B01.2.og-festsaal', 'burning');
       for (const r of k.interiors?.list().filter((x) => x.building === 'KB-B01' && x.storey === 2 && x.roomId !== 'B01.2.og-festsaal') ?? []) k.interiors?.fire(r.id, 'smoke');
       k.step(3);
@@ -148,9 +167,11 @@ export const BENCH_SCENES: BenchScene[] = [
     id: '1793-07-fire-outside',
     label: '1793-07, Brand von außen',
     era: '1793-07',
-    setup: (k) => {
+    fire: true,
+    setup: (k, opts) => {
       k.teleport(1125, -1120, 90, 3);
       k.step(3);
+      if (opts.fireClock) k.fx?.fire(true, { seconds: 300, clock: FIRE_START });
     },
     sweep: [50, 130],
     teardown: (k) => {
@@ -185,8 +206,8 @@ const PALACE_SCENES: BenchScene[] = [
     },
     sweep: [60, 130],
   },
-  { id: '1789-palace-front', label: '1789, Schlossfront', era: '1789', setup: (k) => k.teleport(1184, -1126, 90, -6) },
-  { id: '1789-palace-plateau', label: '1789, Schlossplateau', era: '1789', setup: (k) => k.teleport(1216, -1114, 180, -6) },
+  { id: '1789-palace-front', label: '1789, Schlossfront', era: '1789', setup: (k) => palaceExterior(k, 1184, -1126, 90) },
+  { id: '1789-palace-plateau', label: '1789, Schlossplateau', era: '1789', setup: (k) => palaceExterior(k, 1216, -1114, 180) },
 ];
 
 const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
@@ -201,7 +222,8 @@ export async function runBench(
   const ctx = k.ctx;
   const frames = Math.max(2, opts.frames ?? 150);
   const warmup = Math.max(1, opts.warmup ?? 20);
-  const { only } = opts;
+  const { only, fireClock } = opts;
+  if (fireClock && !ctx.loop.manual) throw new Error('Fire clock benchmarks require manual mode');
   const scenes = only ? [...BENCH_SCENES, ...PALACE_SCENES].filter((s) => only.includes(s.id)) : BENCH_SCENES;
   const saved = { era: ctx.era.current, x: ctx.player.position.x, z: ctx.player.position.z, yaw: ctx.player.yaw, pitch: ctx.player.pitch, flying: ctx.player.flying };
   const gpuWas = perf.gpuEnabled;
@@ -219,7 +241,10 @@ export async function runBench(
     for (const sc of scenes) {
       ctx.player.setFlying(false);
       if (ctx.era.current !== sc.era) k.setEra(sc.era);
-      sc.setup(k);
+      sc.setup(k, opts);
+      const fire = sc.fire && fireClock ? k.fx : undefined;
+      if (sc.fire && fireClock && !fire?.state().fire.active) throw new Error(`No active fire for ${sc.id}`);
+      fire?.fireTime(FIRE_START);
       let i = 0;
       const total = warmup + frames;
       setCamera((cam) => {
@@ -246,6 +271,7 @@ export async function runBench(
         await nextFrame();
         if (i < warmup) i++;
       }
+      const fireStart = fire?.state().fire.clock;
       perf.resetClock();
       perf.onFrame = (f, c, dc, tr) => {
         fm.push(f);
@@ -256,6 +282,8 @@ export async function runBench(
         trisMax = Math.max(trisMax, tr);
       };
       while (i < total) {
+        // Advance only the fire schedule. Keep the camera, gameplay and fire interval identical across builds.
+        if (fireClock === 'advancing') fire?.fireTime(FIRE_START + (i - warmup + 1) * ctx.loop.dt);
         ctx.loop.requestRender();
         await nextFrame();
         i++;
@@ -265,11 +293,12 @@ export async function runBench(
       fm.shift();
       const n = cm.length;
       const mem = ctx.renderer.info.memory;
+      const frameMs = frameStats(fm);
       const r: BenchSceneResult = {
         id: sc.id,
         label: sc.label,
         frames: n,
-        frameMs: frameStats(fm),
+        frameMs,
         cpuMs: frameStats(cm),
         gpuMs: perf.gpuMs,
         calls: { avg: Math.round(calls / n), max: callsMax },
@@ -278,6 +307,8 @@ export async function runBench(
         textures: mem.textures,
         programs: ctx.renderer.info.programs?.length ?? 0,
         withinBudget: callsMax <= PERF_BUDGET.calls && trisMax <= PERF_BUDGET.triangles,
+        withinFrameTarget: frameMs.n > 0 && frameMs.p95 <= PERF_BUDGET.frameMs,
+        ...(fireStart === undefined ? {} : { fireClock: { start: fireStart, end: fire!.state().fire.clock } }),
       };
       results.push(r);
       sc.teardown?.(k);

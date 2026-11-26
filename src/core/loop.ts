@@ -150,6 +150,8 @@ export class FixedStepLoop {
     this.manual_ = v;
     this.wake();
   }
+  /** In manual mode, only explicit renders advance visuals. rAF can still draw loading changes. */
+  holdVisualTime = false;
   /**
    * Render pacing: renders per second allowed right now (Infinity = every animation frame, 0 =
    * only on request). boot installs `renderRate(...)` with the game's state; the default draws every frame.
@@ -265,7 +267,7 @@ export class FixedStepLoop {
     this.held = false;
     const renderDt = first || this.resumed ? this.dt : Math.min(0.25, Math.max(0, gap));
     this.drawn++;
-    this.cb.render(renderDt, this.paused_ || this.manual_ ? 1 : this.acc / this.dt, fullFrame ? 'full' : 'paint');
+    this.cb.render(this.manual_ && this.holdVisualTime ? 0 : renderDt, this.paused_ || this.manual_ ? 1 : this.acc / this.dt, fullFrame ? 'full' : 'paint');
     this.resumed = false;
   }
 
