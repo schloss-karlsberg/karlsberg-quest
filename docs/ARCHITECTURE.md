@@ -904,7 +904,8 @@ Round-4 (polish: set dressing) integration rules:
   light drives it off. No catching: a knockdown freezes you prone for 1.8–3.2 s (view tips to the
   sky; reduced motion: no roll) → `menagerie:knockdown`. Gentle: slower, shorter, the jaguar never shoves.
 - Procedural low-poly rigs (`models.ts`, kqLight / kqFog), eyeshine sprites, Web Audio calls with captions.
-- State `systems.menagerie {animals: [{animal, x, z, id, heading?, count?, era}]}`.
+- State `systems.menagerie {animals: [{animal, x, z, id, heading?, count?, era}], calmed?: string[]}`.
+  `calmed` records spawn IDs and suppresses their bodies when the menagerie rebuilds.
 - Hooks `kq.menagerie.spawn/spawnInView/clear/state/down/setState/place/freeze/events/places`.
 - Example beats (test only, not loaded): `content/test/hunt-menagerie.test.story.json`.
 
@@ -2052,11 +2053,13 @@ Each RPG track adds its own subsection here when it fills its system in.
   `npc:talk`, `room:enter` …), `npc:topics` / `npc:marker` / `npc:follow` to npc, restore on
   `save:loaded` **and on a state replace** (`state.subscribe` reason `new` / `replace`: a new game
   from the title replaces the whole state, and the book must follow the new slice). State
-  `systems.quests` (`QuestSlice` + `bestiary`). A restore never autosaves (at boot it would write
-  an empty save before the title); accept / complete / fail / stance are forced autosaves.
-  Known clues settle one tick after any accept / objective (`settleKnown`). On `story:chapter`,
-  main quests of earlier chapters still running and unaccepted offers of earlier chapters are
-  reset (chapter jumps; the e2e `test` chapter counts as after the campaign); side quests the
+  `systems.quests` (`QuestSlice` + `bestiary`). Restore replays any newly credited progress through
+  the normal quest events and autosaves. Accept / complete / fail / stance are forced autosaves.
+  Saved clues, good photos and calms settle on restore and one tick after acceptance or objective
+  completion (`settleKnown`). Calm objectives match a saved spawn ID or species. „Der Jaguar“ can
+  also recover directly from `k3.jaguar` in the saved calm list after its spawn record was cleared.
+  On `story:chapter`, main quests of earlier chapters still running and unaccepted offers of earlier
+  chapters are reset (chapter jumps; the e2e `test` chapter counts as after the campaign). Side quests the
   player took keep running unless their chapter fails them. The book restores on a state `load`
   too (it fires before `save:loaded`, which reaches the story's resume first).
 - Main quest always visible (playtest round 10, F-30 / F-41, `tests/quests-tracker.test.ts`):

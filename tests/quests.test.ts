@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { GameEvents } from '../src/core/events';
 import type { FlagValue, QuestDef, QuestFile } from '../src/rpg/types';
+import type { MenagerieSlice } from '../src/systems/menagerie';
 import { questsInPlay } from '../src/systems/quests/data';
 import { QuestBook, type QuestDefIn, type QuestEnv, availableHolds, createQuestSlice, normaliseSlice, seededRng, spawnGroup, turninOf } from '../src/systems/quests/logic';
 
@@ -264,6 +265,83 @@ describe('objectives', () => {
     const first = a[0]!;
     expect(first.x).toBe(-Number(first.z));
     expect(run(43)).not.toEqual(a);
+  });
+});
+
+describe('Der Jaguar', () => {
+  const id = 'q.k3.jaguar';
+  const festsaal = 'q.k3.festsaal';
+  const spawn = { id: 'k3.jaguar', animal: 'jaguar', x: 1276, z: -1418, era: '1793-07' } as const;
+  const chapter = JSON.parse(readFileSync(new URL('../content/quests/03-kapitel-3.quests.json', import.meta.url), 'utf8')) as QuestFile;
+  const { quests } = questsInPlay([{ data: chapter }], false);
+
+  function accept(b: QuestBook) {
+    b.slice.quests[festsaal] = { state: 'done', counts: {}, t: 0 };
+    expect(b.offerAvailable('k3', '1793-07')).toContain(id);
+    expect(b.accept(id)).toBe(true);
+  }
+
+  function expectPayout(b: QuestBook, e: ReturnType<typeof env>) {
+    expect(b.count(id, 'jaguar')).toBe(1);
+    expect(b.state(id)).toBe('done');
+    const grants = e.log.filter(({ p }) => p.reason === `quest:${id}`);
+    expect(grants).toEqual([
+      { n: 'xp:grant', p: expect.objectContaining({ amount: 200 }) },
+      { n: 'item:grant', p: expect.objectContaining({ item: 'item.lampenoel', count: 2 }) },
+    ]);
+  }
+
+  it('credits a jaguar calmed before Hanne can offer the quest', () => {
+    const e = env();
+    const b = new QuestBook(quests, createQuestSlice(), e);
+    const menagerie: MenagerieSlice = { animals: [spawn], calmed: [spawn.id] };
+    expect(b.offerAvailable('k3', '1793-07')).not.toContain(id);
+    expect(b.handle('menagerie:calmed', { animal: spawn.animal, id: spawn.id })).toBe(false);
+    b.settleKnown(() => false, undefined, menagerie);
+    expect(b.count(id, 'jaguar')).toBe(0);
+    accept(b);
+    b.settleKnown(() => false, undefined, menagerie);
+    b.settleKnown(() => false, undefined, menagerie);
+    expectPayout(b, e);
+  });
+
+  it('keeps the live calm payout when the quest was accepted first', () => {
+    const e = env();
+    const b = new QuestBook(quests, createQuestSlice(), e);
+    accept(b);
+    b.handle('menagerie:calmed', { animal: spawn.animal, id: spawn.id });
+    b.settleKnown(() => false, undefined, { animals: [spawn], calmed: [spawn.id] });
+    b.handle('menagerie:calmed', { animal: spawn.animal, id: spawn.id });
+    expectPayout(b, e);
+  });
+
+  it('recovers a stranded save from the calm ID when the spawn record is gone', () => {
+    const slice = createQuestSlice();
+    slice.quests[id] = { state: 'active', counts: { jaguar: 0 }, t: 0 };
+    const menagerie: MenagerieSlice = { animals: [], calmed: [spawn.id] };
+    const e = env();
+    const b = new QuestBook(quests, slice, e);
+    b.mirror();
+    b.settleKnown(() => false, undefined, menagerie);
+    expectPayout(b, e);
+
+    const reloadEnv = env();
+    const reloaded = new QuestBook(quests, structuredClone(slice), reloadEnv);
+    reloaded.settleKnown(() => false, undefined, menagerie);
+    expect(reloaded.state(id)).toBe('done');
+    expect(reloadEnv.log).toEqual([]);
+  });
+
+  it('ignores an unrelated calmed species', () => {
+    const e = env();
+    const b = new QuestBook(quests, createQuestSlice(), e);
+    const cassowary = { ...spawn, id: 'kasuar', animal: 'cassowary' } as const;
+    accept(b);
+    b.handle('menagerie:calmed', { animal: cassowary.animal, id: cassowary.id });
+    b.settleKnown(() => false, undefined, { animals: [spawn, cassowary], calmed: [cassowary.id] });
+    expect(b.count(id, 'jaguar')).toBe(0);
+    expect(b.state(id)).toBe('active');
+    expect(e.log.some(({ p }) => p.reason === `quest:${id}`)).toBe(false);
   });
 });
 
