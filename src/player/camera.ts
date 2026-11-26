@@ -243,6 +243,8 @@ export class CameraRig {
   zoom = 3.6;
   /** Current boom length after collision and smoothing (m; 0 in first person). */
   distance = 0;
+  /** Outdoor sightline limit measured from the pivot after framing. Null while unrestricted. */
+  private lensLimit: number | null = null;
   /** Smoothed fight pull-back (m) and lift (m). */
   private pull = 0;
   private lift = 0;
@@ -500,6 +502,7 @@ export class CameraRig {
       this.pivot.set(o.x, py, o.z);
       this.pivotInit = true;
       this.distance = this.zoom;
+      this.lensLimit = null;
       this.rise = this.crane = this.enemyLift = this.tilt = 0;
     } else {
       this.pivot.x = o.x;
@@ -649,17 +652,24 @@ export class CameraRig {
     if (space0 === -1) {
       const P = this.pivot;
       const clear = this.sweep(world, P.x, P.z, px, pz, o.y, space0, STEP, [P.y, pyC]);
-      if (clear < 1) {
-        px = P.x + (px - P.x) * clear;
-        pz = P.z + (pz - P.z) * clear;
-        const rise = squeezeRise(Math.hypot(px - P.x, pz - P.z));
-        pyC = Math.max(P.y + (pyC - P.y) * clear, P.y + rise, world.heightAt(px, pz, o.y) + GROUND_CLEAR);
+      const reach = Math.hypot(px - P.x, pz - P.z);
+      const freeReach = reach * clear;
+      if (this.lensLimit !== null && freeReach > this.lensLimit) this.lensLimit = ease(this.lensLimit, freeReach, 2.5, 2.5, dt, instant);
+      else this.lensLimit = clear < 1 ? freeReach : null;
+      const limit = this.lensLimit ?? freeReach;
+      if (clear === 1 && reach - limit < 0.001) this.lensLimit = null;
+      if (this.lensLimit !== null) {
+        const fraction = reach > 0 ? limit / reach : clear;
+        px = P.x + (px - P.x) * fraction;
+        pz = P.z + (pz - P.z) * fraction;
+        const rise = squeezeRise(limit);
+        pyC = Math.max(P.y + (pyC - P.y) * fraction, P.y + rise, world.heightAt(px, pz, o.y) + GROUND_CLEAR);
         if (!this.shotInit) {
           const pullTilt = frameTilt(px, pyC, pz, P.x, P.y, P.z, yaw, o.pitch, fov, -0.5);
           pitch = Math.max(PITCH_MIN_3P - 0.45, Math.min(PITCH_MAX_3P + 0.2, o.pitch + pullTilt));
         }
       }
-    }
+    } else this.lensLimit = null;
     // a NaN that slipped through (the world's heights, a probe): keep the last good camera (F-15)
     if (!Number.isFinite(px + pyC + pz + pitch + yaw)) {
       this.fallBack(camera);
