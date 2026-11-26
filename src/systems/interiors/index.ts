@@ -560,10 +560,9 @@ function frame(ctx: GameContext, dt: number): void {
     const LP = b.mat.uniforms.uLightPos!.value as { set: (a: number, b: number, c: number, d: number) => void }[];
     const LC = b.mat.uniforms.uLightCol!.value as { set: (a: number, b: number, c: number, d: number) => void }[];
     // the fire lights the room: the nearest burning flame spots become flickering lights
-    const fireLights = fireLightSelection.update(b.built!.flames, b.fire, cam);
-    const nFire = fireLights.length;
+    const nFire = fireLightSelection.update(b.built!.flames, b.fire, cam);
     for (let i = 0; i < nFire; i++) {
-      const f = fireLights[i]!;
+      const f = fireLightSelection.spots[i]!;
       const fl = reduced ? 0.9 : 0.7 + 0.2 * Math.sin(rt.time * 9.7 + i * 2.1) + 0.12 * Math.sin(rt.time * 23.1 + i * 5.3) + 0.08 * Math.sin(rt.time * 3.1 + i);
       const k = b.fire[f.room]! * fl * 1.1;
       LP[i]!.set(f.x, f.y + 1.2, f.z, 9);

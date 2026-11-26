@@ -239,4 +239,19 @@ describe('fire map (palace window glow)', () => {
     expect(map.fill(() => 0, () => 0)).toBe(true);
     expect(map.data.every((v, i) => i % 4 === 2 ? v === before[i] : v === 0)).toBe(true);
   });
+
+  it('rewrites the facade during the advancing benchmark interval', () => {
+    const sim = new FireSim(units, 300);
+    const map = new FireMap(rasterizeUnits(units));
+    const fill = () => map.fill((i) => sim.intensity(i), (i) => sootAt(units[i]!, sim.clock, sim.seconds));
+    sim.setClock(120);
+    expect(fill()).toBe(true);
+    expect(fill()).toBe(false);
+    let rewrites = 0;
+    for (let frame = 1; frame <= 240; frame++) {
+      sim.setClock(120 + frame / 60);
+      if (fill()) rewrites++;
+    }
+    expect(rewrites).toBeGreaterThan(0);
+  });
 });

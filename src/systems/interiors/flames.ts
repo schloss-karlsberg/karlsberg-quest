@@ -172,8 +172,13 @@ function flameGeometry(spots: readonly FlameSpot[]) {
   for (const s of spots) {
     const count = s.kind === 2 ? SPARKS_PER_STREAM : 1;
     for (let j = 0; j < count; j++, i++) {
-      pos.set([s.x, s.y, s.z], i * 3);
-      size.set([s.w, s.h], i * 2);
+      const p = i * 3;
+      pos[p] = s.x;
+      pos[p + 1] = s.y;
+      pos[p + 2] = s.z;
+      const q = i * 2;
+      size[q] = s.w;
+      size[q + 1] = s.h;
       kind[i] = s.kind;
       room[i] = s.room;
       seed[i] = s.seed;

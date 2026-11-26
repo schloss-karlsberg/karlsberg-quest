@@ -1,5 +1,5 @@
 import { ShaderMaterial, type Vector3 } from 'three';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { FlameSpot } from '../src/systems/interiors/builder';
 import { FireLightSelection } from '../src/systems/interiors/fireLights';
 import { FlameLayer } from '../src/systems/interiors/flames';
@@ -12,15 +12,32 @@ describe('interior fire light budget', () => {
   it('keeps four closest eligible flame lights with stable ties and reuses the result', () => {
     const lights = new FireLightSelection();
     const sources = [spot(31), spot(12), spot(8), spot(-8), spot(1, 2), spot(2, 1, 1), spot(6), spot(4), spot(9)];
-    const chosen = lights.update(sources, [0.05, 0.049], camera);
-    expect(chosen).toEqual([sources[7], sources[6], sources[2], sources[3]]);
-    expect(lights.update(sources, [0, 0], camera)).toBe(chosen);
-    expect(chosen).toHaveLength(0);
-    expect(lights.update([spot(30), spot(31)], [1], camera)).toEqual([spot(30)]);
+    const slots = lights.spots;
+    expect(slots).toEqual([null, null, null, null]);
+    expect(lights.update(sources, [0.05, 0.049], camera)).toBe(4);
+    expect(slots).toEqual([sources[7], sources[6], sources[2], sources[3]]);
+    expect(lights.update(sources, [0, 0], camera)).toBe(0);
+    expect(slots).toEqual([null, null, null, null]);
+    expect(lights.update([spot(30), spot(31)], [1], camera)).toBe(1);
+    expect(slots).toEqual([spot(30), null, null, null]);
+    expect(lights.spots).toBe(slots);
   });
 });
 
 describe('interior flame batches', () => {
+  it('writes the nine spark positions and sizes without temporary arrays during construction', () => {
+    const stream = { ...spot(7, 2), y: -5, z: 2.5, w: 1.25, h: 4 };
+    const set = vi.spyOn(Float32Array.prototype, 'set');
+    const layer = new FlameLayer([stream], [0], [0], [0]);
+    const arrayWrites = set.mock.calls.filter(([source]) => Array.isArray(source));
+    set.mockRestore();
+    expect(arrayWrites).toHaveLength(0);
+    const g = layer.additive.geometry;
+    expect(Array.from(g.getAttribute('iPos').array)).toEqual(Array.from({ length: 9 }, () => [7, -5, 2.5]).flat());
+    expect(Array.from(g.getAttribute('iSize').array)).toEqual(Array.from({ length: 9 }, () => [1.25, 4]).flat());
+    layer.dispose();
+  });
+
   it('keeps candles alone when cold and draws fire and smoke in distinct batches when active', () => {
     const fire = [0];
     const smoke = [0];
