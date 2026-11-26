@@ -1900,6 +1900,8 @@ let rt: StoryRuntime | null = null;
 
 export default defineSystem({
   id: 'story',
+  // A story resume can issue walk commands immediately on save:loaded. Restore the route first.
+  after: ['walk'],
   async init(ctx) {
     rt = new StoryRuntime(ctx, creditSections(await ctx.assets.licences()));
   },

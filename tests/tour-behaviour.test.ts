@@ -3,11 +3,16 @@ import { describe, expect, it } from 'vitest';
 import route from '../content/routes/p-fuehrung.json';
 import tour from '../content/story/00-tour.story.json';
 import { EventBus } from '../src/core/events';
+import { createInitialState, deserializeState, serializeState } from '../src/core/state';
+import { sortByDeps } from '../src/core/systems';
 import { Player, type PlayerWorld } from '../src/player/player';
 import { applyDogRequest, createDog, dogSlot, stepDog, type DogTarget } from '../src/systems/animals/dogs';
 import { toRequest, type AnimalAction } from '../src/systems/animals/types';
 import { normalize, poseAt } from '../src/systems/cinematic/keys';
+import { createStorySlice } from '../src/systems/story/engine';
+import storySystem from '../src/systems/story/index';
 import type { StoryFile } from '../src/systems/story/types';
+import walkSystem from '../src/systems/walk/index';
 import { WalkRuntime, type WalkBus } from '../src/systems/walk/runtime';
 import type { Route, WalkSlice } from '../src/systems/walk/types';
 import { DOG_RADIUS, PLAYER_RADIUS, separateFromCrowd, VISITOR_RADIUS } from '../src/world/crowd';
@@ -118,5 +123,40 @@ describe('tour playtest regressions', () => {
     expect(actions[line]).toMatchObject({ do: 'say', wait: true, onResume: true });
     expect(actions.findIndex((a) => a.do === 'npc' && a.op === 'follow')).toBeGreaterThan(line);
     expect(actions.findIndex((a) => a.do === 'npc' && a.op === 'walk')).toBeGreaterThan(line);
+  });
+
+  it.each([
+    { to: 'parkplatz', s: 0, replay: true },
+    { to: 'abzweig', s: 23, replay: false },
+  ])('restores the first departure with Gerold headed for $to', ({ to, s, replay }) => {
+    const state = createInitialState();
+    state.systems.story = { ...createStorySlice(), chapter: 'tour', beat: 't3', active: true, said: ['imhoff.t.01', 'imhoff.t.los'] };
+    const savedWalker = { npc: 'imhoff', route: route.id, to, s, waiting: false };
+    state.systems.walk = { groups: [], walkers: [savedWalker] };
+    const restored = deserializeState(serializeState(state));
+    expect(restored.systems.story!.said).toEqual(replay ? ['imhoff.t.01'] : ['imhoff.t.01', 'imhoff.t.los']);
+    const events = new EventBus();
+    let slice: WalkSlice = { groups: [], walkers: [{ ...savedWalker, to: 'abzweig', s: 35 }] };
+    const walk = new WalkRuntime({
+      bus: events as unknown as WalkBus,
+      bodies: () => null,
+      routes: new Map([[route.id, route as Route]]),
+      slice: () => slice,
+      world: { heightAt: () => 300, player: () => ({ x: 524, z: -770 }), era: () => 'today' },
+    });
+    walk.restore();
+    slice = restored.systems.walk!;
+    const actions = story.beats.find((b) => b.id === 't3')!.enter!;
+    const departure = actions.find((action) => action.do === 'npc' && action.op === 'walk');
+    if (departure?.do !== 'npc' || departure.op !== 'walk') throw new Error('Missing departure walk');
+    const resume = () => {
+      if (restored.systems.story!.said.includes('imhoff.t.los')) events.emit('npc:walk', departure);
+    };
+    for (const { load } of sortByDeps([
+      { sys: storySystem, load: resume },
+      { sys: walkSystem, load: () => walk.restore() },
+    ])) events.on('save:loaded', load);
+    events.emit('save:loaded', { slot: 'auto' });
+    expect(walk.walkers.get('imhoff')).toMatchObject({ to, s });
   });
 });

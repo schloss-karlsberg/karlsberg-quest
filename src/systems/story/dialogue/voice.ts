@@ -441,7 +441,7 @@ export class Voice {
   /** One syllable. `stress` 0..1 raises pitch/level a little (sentence starts, capitals). */
   blip(spec: VoiceSpec, stress = 0): void {
     const ctx = this.audio.ctx;
-    if (!ctx || ctx.state !== 'running') return;
+    if (!ctx || ctx.state !== 'running' || this.audio.volumes.voice <= 0 || this.audio.volumes.master <= 0) return;
     const now = ctx.currentTime;
     if (now - this.last < 0.045) return; // never machine-gun
     const dest = this.chain(spec, 'blip')?.input;

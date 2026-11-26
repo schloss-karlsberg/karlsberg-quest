@@ -15,6 +15,7 @@ import { seededRng } from '../src/systems/barks/rules';
 import { EchoDirector } from '../src/systems/chronik/echo';
 import type { ChronikClue } from '../src/systems/chronik/types';
 import footsteps from '../src/systems/footsteps';
+import { DialoguePresenter } from '../src/systems/story/dialogue/presenter';
 import { speakerMeta } from '../src/systems/story/dialogue/speakers';
 import { Voice } from '../src/systems/story/dialogue/voice';
 import { playStorySoundAction } from '../src/systems/story/sfx';
@@ -22,6 +23,16 @@ import type { StoryFile } from '../src/systems/story/types';
 import { World } from '../src/world/world';
 import { bus, Context, duckGain, Panner, type Node } from './audio-fixture';
 import { loadWorldData } from './world-data';
+
+vi.mock('../src/ui/dom', () => {
+  const element = () => ({
+    dataset: {},
+    classList: { add() {}, remove() {}, toggle() {} },
+    addEventListener() {},
+    replaceChildren() {},
+  });
+  return { h: element, svg: element };
+});
 
 const buffer = { duration: 4 } as AudioBuffer;
 
@@ -449,13 +460,33 @@ describe('speech mix', () => {
     expect(duckGain(audio, 'ambience')).toBe(0.38);
   });
 
-  it.each(['voice', 'master'] as const)('leaves timing to the subtitles when %s is muted', (channel) => {
+  it.each(['voice', 'master'] as const)('types a recorded line without creating sources when %s is muted', (channel) => {
     const audio = new AudioManager();
     audio.unlock();
     audio.setVolumes({ [channel]: 0 });
+    const ctx = audio.ctx as unknown as Context;
     const voice = new Voice(audio);
-    expect(voice.playClip(buffer, speakerMeta('imhoff').voice)).toBeNull();
-    expect((audio.ctx as unknown as Context).sources).toHaveLength(0);
+    const blip = vi.spyOn(voice, 'blip');
+    const take = vi.fn(() => ({ id: 'departure', entry: { files: {}, textHash: '' }, buffer, seconds: 4 }));
+    const presenter = new DialoguePresenter({
+      layer: { append() {} } as unknown as HTMLElement,
+      meta: speakerMeta,
+      voice,
+      clips: { take, preload() {} },
+      reducedMotion: () => false,
+      name: () => 'Alex',
+    });
+    presenter.enqueue({ id: 'departure', speaker: 'imhoff', text: 'Ein kurzer Satz für den Test.', ms: 10_000, beat: 't3', group: 0, priority: 'normal' });
+    for (let i = 0; i < 7 * 60; i++) {
+      ctx.currentTime += 1 / 60;
+      presenter.update(1 / 60);
+    }
+    expect(take).toHaveBeenCalled();
+    expect(blip).toHaveBeenCalled();
+    expect(ctx.sources).toHaveLength(0);
+    expect(presenter.hasLine('departure', 't3')).toBe(true);
+    presenter.skip();
+    expect(presenter.hasLine('departure', 't3')).toBe(false);
   });
 
   it('routes Gerold clips and murmurs through one moving source on the voice bus', () => {
