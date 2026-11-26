@@ -30,16 +30,17 @@ import { endingScenes } from './endings/scenes';
 import { EndingStage } from './endings/stage';
 import { EndingScreen } from './endings/ui';
 import { HOME, atHome, bringHome } from './hub/home';
-import { ObjectiveView } from './objectives';
+import { ObjectiveView, objectivePoint } from './objectives';
 import { StoryOverlays, cardClockDt } from './overlays';
 import { playStorySound, playStorySoundAction } from './sfx';
-import { loadBundledStories, missingTourChestnuts, storiesInPlay } from './stories';
+import { acceptTourDeerPhoto, loadBundledStories, missingTourChestnuts, restoreTourDeerPhoto, storiesInPlay } from './stories';
 import { installTitleFlow } from './title/flow';
 import { titleHooks } from '../../ui/title';
 import { pauseHooks } from '../../ui/menus';
 import { h } from '../../ui/dom';
 import { addPausePage } from '../../ui/pause-pages';
-import { type Action, type Checkpoint, type ChoiceAction, type Condition, type EndingId, type FlagValue, type LookTime, type MeterAction, type NpcAction, type StoryFile, isWalkAction } from './types';
+import { actionLabel } from '../../ui/actionLabel';
+import { type Action, type Checkpoint, type ChoiceAction, type Condition, type EndingId, type FlagValue, type LookTime, type MeterAction, type NpcAction, type PromptAction, type StoryFile, isWalkAction } from './types';
 import type { WalkRequest } from '../walk/types';
 import type { AnimalAction } from '../animals/types';
 import type { CinematicPlay } from '../cinematic/types';
@@ -74,6 +75,10 @@ declare module '../../core/events' {
     'story:credits': Record<string, never>;
     /** A choice was answered (option = the option's key, or its index). */
     'story:choice': { id: string; option: string };
+    /** An inline choice started or stopped accepting answers. */
+    'story:inline-choice': { open: boolean };
+    /** A required line is queued or playing. The phone must stay down. */
+    'story:phone-block': { active: boolean };
     /** A story meter ran full (meter action `full`). */
     'story:meter-full': { id: string };
   }
@@ -256,7 +261,7 @@ class StoryRuntime {
   private hubToastShown = false;
   private storyPrompt = false;
   /** The story's prompt on screen (re-rendered when Touch-Steuerung switches) and the mode it was shown in. */
-  private promptShown: { key: string | null; text: string; touch?: string } | null = null;
+  private promptShown: PromptAction | null = null;
   private promptTouch = false;
   private shiftPending: { to: Era; age: number; reason?: string } | null = null;
   private qHold = 0;
@@ -292,6 +297,7 @@ class StoryRuntime {
   private choiceAction: ChoiceAction | null = null;
   /** An NPC conversation is open (npc:conversation). */
   private talking = false;
+  private phoneBlocked = false;
   /** Ids of the lines shown so far (hook `shown`, tests). */
   private readonly shownIds: string[] = [];
   private stillT = 0;
@@ -313,7 +319,7 @@ class StoryRuntime {
         this.gatePending = false;
         // the beat's spoken lines: fetch and decode their clips now (never waits)
         this.clips?.preload(sayLineIds(b).map((id) => ({ id })));
-        ctx.events.emit('story:beat', { chapter: ch, beat: b.id });
+        ctx.events.emit('story:beat', { chapter: ch, beat: b.id, ...(o.resume ? { resume: true as const } : {}) });
         if (!o.resume) this.pendingAutosave = true;
         if (this.storyPrompt) {
           ctx.ui.hud.prompt(null, undefined, 'story');
@@ -367,7 +373,7 @@ class StoryRuntime {
     ctx.events.on('story:cue', ({ id, data }) => {
       if (id.startsWith('bussole:')) this.objectives.cue(id, data ?? {}, ctx.settings.state.reducedMotion);
     });
-    this.overlays = new StoryOverlays(this.layer, ctx.ui.modals, ctx.ui.hud);
+    this.overlays = new StoryOverlays(this.layer, ctx.ui.modals, (open) => ctx.events.emit('story:inline-choice', { open }), ctx.ui.hud);
 
     addPausePage({
       id: 'chapters',
@@ -411,12 +417,24 @@ class StoryRuntime {
     // ---- events
     ctx.events.onAny((name, payload) => this.onEvent(name, payload));
     ctx.events.on('dialogue:say', (p) => this.showLine(p));
+    ctx.events.on('photo:open', () => this.presenter.setSuspended(true));
+    ctx.events.on('photo:close', () => this.presenter.setSuspended(false));
+    ctx.events.on('photo:good', (shot) => {
+      // Photo has already booked this shot. Save the accepted outcome with its album entry.
+      if (acceptTourDeerPhoto(this.slice, ctx.state.mutable.flags, shot)) ctx.save.autosave('tour-deer-photo', true);
+    });
     ctx.events.on('game:start', ({ resumed }) => this.onStart(resumed));
+    ctx.events.on('settings:change', ({ key }) => {
+      if (key === 'bindings' && this.promptShown?.action) this.renderPrompt();
+    });
     // the credits over the party ended (naturally, skipped, or a load while they played): the story is finished
     ctx.events.on('credits:done', () => {
       if (this.slice.ending && !this.slice.finished) this.finish();
     });
     ctx.events.on('save:loaded', () => {
+      // a curtain that was down belongs to the outgoing game: no wake teleport, meter reset or
+      // shift home in the loaded one
+      this.cancelCaught();
       this.resync();
       // a load during play (the pause menu's „Ende noch einmal wählen“) resumes the beat like a
       // boot does — e1's onResume opens the choice at the table (playtest round 4: it never came)
@@ -527,6 +545,8 @@ class StoryRuntime {
   /** Re-apply persistent presentation after a load. */
   private resync(): void {
     this.cancelScheduled();
+    this.overlays.closeChoice();
+    this.choiceAction = null;
     // a load never resumes in the middle of a fade (fade actions are one-shot)
     this.overlays.fade(0, 0);
     const s = this.slice;
@@ -592,8 +612,9 @@ class StoryRuntime {
 
   private chapterEntered(f: StoryFile, resume: boolean): void {
     const ctx = this.ctx;
-    ctx.events.emit('story:chapter', { id: f.chapter });
+    ctx.events.emit('story:chapter', { id: f.chapter, ...(resume ? { resume: true as const } : {}) });
     if (resume) {
+      restoreTourDeerPhoto(this.slice, ctx.state.mutable.flags);
       if (ctx.era.current === 'today') {
         for (const a of missingTourChestnuts(f, this.slice, ctx.state.state.systems.progression)) this.exec(a);
       }
@@ -790,17 +811,18 @@ class StoryRuntime {
           // a running joke: count how often it was told
           s.sayCount = { ...(s.sayCount ?? {}), [a.id]: (s.sayCount?.[a.id] ?? 0) + 1 };
         } else if (id && !s.said.includes(id)) s.said.push(id);
-        ctx.events.emit('dialogue:say', { speaker, text, ms: a.ms, id, fiction: a.echo ? true : undefined, until: a.until });
+        ctx.events.emit('dialogue:say', { speaker, text, ms: a.ms, id, fiction: a.echo ? true : undefined, until: a.until, phoneDown: a.phoneDown });
         return;
       }
       case 'objective': {
         // the post-game line promises the pause menu's „Ende noch einmal wählen“: only when the
         // ending's save exists (with saving off it never does — playtest round 5)
         const text = a.text && a.text.includes('Esc →') && !ctx.save.has(ENDING_SLOT) ? a.text.replace(/\s*·\s*Esc →.*$/, '') : a.text;
+        const { x, z } = objectivePoint(a, ctx.state.state.systems.animals);
         if (!text) s.objective = null;
-        else s.objective = { text, ...(a.x !== undefined && a.z !== undefined ? { x: a.x, z: a.z } : {}), ...(a.id ? { id: a.id } : {}) };
+        else s.objective = { text, ...(x !== undefined && z !== undefined ? { x, z } : {}), ...(a.id ? { id: a.id } : {}) };
         this.objectives.set(s.objective);
-        ctx.events.emit('objective:set', { text: text ?? null, x: a.x, z: a.z, id: a.id });
+        ctx.events.emit('objective:set', { text: text ?? null, x, z, id: a.id });
         return;
       }
       case 'threat': {
@@ -852,12 +874,12 @@ class StoryRuntime {
         this.applyLook();
         return;
       case 'prompt':
-        if (!a.key && !a.text) {
+        if (!a.key && !a.text && !a.action) {
           if (this.storyPrompt) ctx.ui.hud.prompt(null, undefined, 'story');
           this.storyPrompt = false;
           this.promptShown = null;
         } else {
-          this.promptShown = { key: a.key ?? null, text: a.text ?? '', ...(a.touch ? { touch: a.touch } : {}) };
+          this.promptShown = a;
           this.renderPrompt();
           this.storyPrompt = true;
         }
@@ -1283,12 +1305,14 @@ class StoryRuntime {
     const low = isLowLine(p.id);
     const pos = this.ctx.player.position;
     const where = sc?.where ?? (low ? { x: pos.x, z: pos.z, r: 0 } : null);
+    if (p.phoneDown) this.setPhoneBlocked(true);
     this.presenter.enqueue({
       id: p.id,
       speaker: p.speaker,
       text: p.text,
       ms: p.ms,
       fiction: p.fiction,
+      phoneDown: p.phoneDown,
       source: src ? (src.label ?? src.url) : undefined,
       beat: p.keep ? null : sc ? sc.beat : this.slice.beat,
       where,
@@ -1298,6 +1322,12 @@ class StoryRuntime {
       // sourced lines teach history: they wait out a fight (and are dropped if it lasts too long)
       lore: p.lore || !!src || undefined,
     });
+  }
+
+  private setPhoneBlocked(active: boolean): void {
+    if (this.phoneBlocked === active) return;
+    this.phoneBlocked = active;
+    this.ctx.events.emit('story:phone-block', { active });
   }
 
   /**
@@ -1431,6 +1461,19 @@ class StoryRuntime {
     this.caughtHoldS = Math.max(this.caughtHold / 1000, by === 'combat' ? 3.2 : 0);
     this.caughtHold = 2400;
     this.caughtCombat = by === 'combat';
+  }
+
+  /** A load under the curtain: drop the pending wake (teleport, meter reset, shift home, wake lines). */
+  private cancelCaught(): void {
+    if (!this.caughtBusy) return;
+    this.caughtBusy = false;
+    this.caughtT = 0;
+    this.caughtAt = null;
+    this.caughtCombat = false;
+    this.wakeLines = [];
+    this.ctx.player.frozen = false;
+    this.ctx.ui.hud.busy('caught', false, 0);
+    this.overlays.curtainOff();
   }
 
   private updateCaught(dt: number): void {
@@ -1583,8 +1626,8 @@ class StoryRuntime {
     this.updateShiftKey(dt);
     this.updateHome();
     this.updateAfterword();
-    // Touch-Steuerung switched while a prompt with a touch text is up: say it the other way
-    if (this.storyPrompt && this.promptShown?.touch && ctx.input.touchMode !== this.promptTouch) this.renderPrompt();
+    // Refresh prompts with input-specific labels when Touch-Steuerung switches.
+    if (this.storyPrompt && (this.promptShown?.touch || this.promptShown?.action) && ctx.input.touchMode !== this.promptTouch) this.renderPrompt();
     if (this.calmToasts.length && !ctx.ui.hud.inAction) {
       const tt = this.calmToasts.shift()!;
       ctx.ui.toast(tt.text, tt.ms);
@@ -1593,6 +1636,8 @@ class StoryRuntime {
     this.tickMeters(dt);
     this.updateInlineChoice(env);
     this.engine.tick(dt, env);
+    // A waiting action can start the next required line in the same tick.
+    this.setPhoneBlocked(this.presenter.needsPhoneDown);
     if (this.pendingAutosave) {
       this.pendingAutosave = false;
       ctx.save.autosave('beat', true);
@@ -1604,7 +1649,8 @@ class StoryRuntime {
     const p = this.promptShown;
     if (!p) return;
     this.promptTouch = this.ctx.input.touchMode;
-    this.ctx.ui.hud.prompt(p.key, this.promptTouch && p.touch ? p.touch : p.text, 'story');
+    const key = p.action ? actionLabel(this.ctx.input, p.action) : p.key;
+    this.ctx.ui.hud.prompt(key ?? null, this.promptTouch && p.touch ? p.touch : p.text ?? '', 'story');
   }
 
   /** The follow pack of ending C is out (in the era it was configured in). */
@@ -1811,6 +1857,7 @@ class StoryRuntime {
 
   dispose(): void {
     window.removeEventListener('keydown', this.onKey);
+    this.overlays.closeChoice();
     this.presenter.clear();
     this.unbindGuideVoice();
     this.stage.dispose();

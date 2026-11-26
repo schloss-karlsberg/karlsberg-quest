@@ -9,7 +9,7 @@ import { deContent } from './de.content';
  */
 export type Locale = 'de';
 
-const tables: Record<Locale, Record<string, string>> = { de: { ...de } };
+const tables: Record<Locale, Record<string, string>> = { de: Object.assign(Object.create(null), de) };
 let locale: Locale = 'de';
 const warned = new Set<string>();
 
@@ -39,7 +39,7 @@ export function t(key: string, params?: Record<string, string | number>): string
     }
     s = key;
   }
-  if (params) s = s.replace(/\{(\w+)\}/g, (m, k: string) => (k in params ? String(params[k]) : m));
+  if (params) s = s.replace(/\{(\w+)\}/g, (m, k: string) => (Object.hasOwn(params, k) ? String(params[k]) : m));
   return s;
 }
 

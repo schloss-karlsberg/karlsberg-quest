@@ -5,8 +5,20 @@
  */
 import { h, svg } from '../../ui/dom';
 import type { Hud } from '../../ui/hud';
+import type { AnimalSave } from '../animals/types';
 import { ensurePortraitDefs } from './dialogue/portraits';
 import type { ObjectiveState } from './engine';
+import type { ObjectiveAction } from './types';
+
+/** The save slice is available even when the animal bodies have yet to be rebuilt on load. */
+export function objectivePoint(a: ObjectiveAction, animals?: AnimalSave): { x?: number; z?: number } {
+  if (a.animal && animals?.v === 1) {
+    const matches = (animal: { id: string; state: string }) => animal.id === a.animal && animal.state !== 'gone';
+    const animal = animals.deer?.find(matches) ?? animals.dogs?.find(matches);
+    if (animal && Number.isFinite(animal.x) && Number.isFinite(animal.z)) return { x: animal.x, z: animal.z };
+  }
+  return { x: a.x, z: a.z };
+}
 
 /** Grid bearing (deg, 0 = north/−z, 90 = east/+x) from a to b. */
 export function bearingDeg(ax: number, az: number, bx: number, bz: number): number {

@@ -106,6 +106,7 @@ export class StoryOverlays {
   constructor(
     private readonly layer: HTMLElement,
     private readonly modals: ModalManager,
+    private readonly inlineChoiceChanged: (open: boolean) => void,
     hud?: Hud,
   ) {
     this.curtainText = h('p.kqs-curtain-text');
@@ -185,6 +186,11 @@ export class StoryOverlays {
     window.setTimeout(() => this.curtain.classList.remove('kqs-down', 'kqs-up'), 2600);
   }
 
+  /** Lift the curtain without a wake line (a load replaced the game under it; CSS fades it). */
+  curtainOff(): void {
+    this.curtain.classList.remove('kqs-down', 'kqs-up');
+  }
+
   /**
    * A plain fade to black (`to` 1) or back (0) over `seconds` (the tour's transitions, „Zur
    * Gruppe“). No text; prepended to the layer, so subtitles and cards stay readable on top.
@@ -252,6 +258,7 @@ export class StoryOverlays {
       this.choice = null;
       c?.dispose();
       close();
+      if (!modal) this.inlineChoiceChanged(false);
       apply(i);
       return true;
     };
@@ -305,6 +312,7 @@ export class StoryOverlays {
       },
       dispose: () => window.removeEventListener('keydown', keys, true),
     };
+    if (!modal) this.inlineChoiceChanged(true);
     this.tickChoice(0);
   }
 
@@ -343,6 +351,7 @@ export class StoryOverlays {
     this.choice = null;
     c.dispose();
     c.close();
+    if (!c.modal) this.inlineChoiceChanged(false);
   }
 
   clear(): void {

@@ -27,6 +27,8 @@ export interface DialogueItem extends QueuedLine {
   fiction?: boolean;
   /** Source label for historical quotes. */
   source?: string;
+  /** The viewfinder stays down until the line finishes. */
+  phoneDown?: boolean;
   /** The place the line is about: skipped if the player is far from it when its turn comes. */
   where?: { x: number; z: number; r: number } | null;
 }
@@ -112,6 +114,7 @@ export class DialoguePresenter {
   private lastPortrait = '';
   private prune = 0;
   private paused = false;
+  private suspended = false;
   readonly voiceStats: PresenterVoiceStats = { clips: 0, murmured: 0, lastClip: null };
   constructor(private readonly o: PresenterOptions) {
     this.queue = new LineQueue<DialogueItem>((group) => this.cur?.item.group === group || this.interruptedGroups.has(group), o.valid);
@@ -152,6 +155,10 @@ export class DialoguePresenter {
     return this.queue.length;
   }
 
+  get needsPhoneDown(): boolean {
+    return this.cur?.item.phoneDown === true || this.queue.some((item) => item.phoneDown === true);
+  }
+
   hasLine(id: string, beat: string | null): boolean {
     const matches = (item: DialogueItem) => item.id === id && item.beat === beat;
     return (this.cur !== null && matches(this.cur.item)) || this.queue.some(matches);
@@ -168,10 +175,12 @@ export class DialoguePresenter {
   }
 
   enqueue(item: DialogueItem): void {
-    const canInterrupt = item.priority === 'now' && this.cur?.item.priority !== 'now' && !this.o.held?.(item);
+    // while the viewfinder suspends the presenter, a 'now' line only queues (it plays on resume)
+    const canInterrupt = !this.suspended && item.priority === 'now' && this.cur?.item.priority !== 'now' && !this.o.held?.(item);
     const interrupt = this.queue.push(item, canInterrupt);
     // the clip is hashed over the raw template ({Name} …); the displayed text is tried too
     if (this.o.clips) this.o.clips.preload([{ id: item.id, text: [item.text, substituteName(item.text, this.o.name())], speaker: this.o.meta(item.speaker).id }]);
+    if (this.suspended) return;
     if (interrupt) this.next(interrupt);
     else if (!this.cur || (canInterrupt && this.queue.urgent)) this.next();
   }
@@ -191,7 +200,7 @@ export class DialoguePresenter {
 
   /** Finish typing, or advance to the next line. */
   skip(): void {
-    if (!this.cur) return;
+    if (this.suspended || !this.cur) return;
     this.stopClip();
     if (this.cur.typed < this.cur.text.length) {
       this.cur.typed = this.cur.text.length;
@@ -205,9 +214,19 @@ export class DialoguePresenter {
    */
   setPaused(paused: boolean): void {
     this.paused = paused;
+    this.syncClip();
+  }
+
+  /** The viewfinder hides the presenter. Freeze the current line and leave new lines queued. */
+  setSuspended(suspended: boolean): void {
+    this.suspended = suspended;
+    this.syncClip();
+  }
+
+  private syncClip(): void {
     const clip = this.cur?.clip;
     if (!clip || clip.done) return;
-    if (paused) clip.pause();
+    if (this.paused || this.suspended) clip.pause();
     else if (!clip.playing) clip.start(); // no-op until the context runs again
   }
 
@@ -297,6 +316,7 @@ export class DialoguePresenter {
 
   /** Advance typing / hold (seconds of game time). */
   update(dt: number): void {
+    if (this.suspended) return;
     this.queue.tick(dt);
     this.prune += dt;
     if (this.prune >= 0.25) {

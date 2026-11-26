@@ -42,6 +42,29 @@ describe('world:quiet', () => {
     expect(g.quiet).toBe(false);
   });
 
+  it('the phone hides gameplay markers until close without holding world triggers', () => {
+    const bus = new EventBus();
+    const beacon = new Group();
+    const gate = hideWhileQuiet(bus, beacon);
+
+    bus.emit('photo:open', {});
+    expect(beacon.visible).toBe(false);
+    expect(gate.quiet).toBe(false);
+    bus.emit('photo:close', {});
+    expect(beacon.visible).toBe(true);
+
+    bus.emit('world:quiet', { on: true, reason: 'party' });
+    bus.emit('photo:open', {});
+    bus.emit('photo:close', {});
+    expect(beacon.visible).toBe(false);
+    bus.emit('world:quiet', { on: false, reason: 'party' });
+    expect(beacon.visible).toBe(true);
+
+    gate.dispose();
+    bus.emit('photo:open', {});
+    expect(beacon.visible).toBe(true);
+  });
+
   it('holds the Ehrenhof tripod while quiet (the party clearing lies in its radius) and activates it normally after', () => {
     const bus = new EventBus();
     const g = new QuietGate(bus);

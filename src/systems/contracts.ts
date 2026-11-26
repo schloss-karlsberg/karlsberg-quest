@@ -87,6 +87,8 @@ declare module '../core/events' {
       id?: string;
       /** 'now': a tutorial for the action at hand cuts in (default: the line queues). */
       priority?: 'now' | 'normal' | 'low';
+      /** Put the phone away and keep it down until this line finishes. */
+      phoneDown?: boolean;
       /** A story Condition (story/types.ts): once it holds, the line is no longer worth saying. */
       until?: unknown;
       /** Not bound to the current beat (quest turn-ins teach history: a beat change never drops them). */
@@ -97,8 +99,9 @@ declare module '../core/events' {
        */
       lore?: boolean;
     };
-    'story:chapter': { id: string };
-    'story:beat': { chapter: string; beat: string };
+    /** `resume`: the chapter / beat is entered again after a load or a capture, not reached anew. */
+    'story:chapter': { id: string; resume?: true };
+    'story:beat': { chapter: string; beat: string; resume?: true };
     'story:ending': { id: 'museum' | 'burn' | 'keep' };
     'hub:enter': Record<string, never>;
     'hub:leave': Record<string, never>;

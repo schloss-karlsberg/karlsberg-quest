@@ -7,8 +7,8 @@ import { expectHandover } from './helpers/tour';
 /**
  * The tour (content/story/00-tour.story.json, the opening of a new game): a smoke run from the
  * car park to the shift to 1789 and the hand-over into chapter 1. The player keeps behind the guide by debug teleports (as a player
- * walking along would be), talks to Gerold, takes the deer photo from 12 m (calm via
- * kq.animals), steps to the trough and touches the water. Game seconds per beat are written to
+ * walking along would be), talks to Gerold, crouches for a 2× deer photo from about 23 m,
+ * steps to the trough and touches the water. Game seconds per beat are written to
  * test-results/tour/timings.json (the walking pace is the group's, so they approximate a player who
  * keeps up and does not dawdle). Screenshots: test-results/tour/tour-*.png.
  */
@@ -167,52 +167,84 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   await shot(page, '06-reh-sicht');
   await page.evaluate(() => window.kq!.step(181));
   expect(await page.evaluate(() => window.kq!.cinematic!.playing())).toBeNull();
+  // The cinematic ends inside step(181). Its camera hand-back still holds the override slot (photo
+  // blocked: 'scene') for HANDBACK_S of wall-clock time and only finishes on a drawn frame. Draw
+  // frames without simulating, so the guide's lines do not advance while the camera settles.
   await page.waitForFunction(() => {
     const k = window.kq!;
     k.ctx.loop.requestRender();
-    return k.photo!.state().blocked === null;
+    return k.photo!.state().blocked !== 'scene';
   });
-  // the deer are there, off the route, and the photo works from 12 m (calm: no flight on teleport)
-  const deer = await page.evaluate(() => window.kq!.animals!.list());
-  const ricke = deer.find((d) => d.id === 'ricke')!;
-  expect(ricke).toBeTruthy();
-  expect(deer.find((d) => d.id === 'kitz')).toBeTruthy();
-  const shotRes = await page.evaluate(
-    ({ x, z }) => {
-      const k = window.kq!;
-      k.animals!.calm('ricke', 60);
-      k.animals!.calm('kitz', 60);
-      const s = k.animals!.list().find((d) => d.id === 'ricke')!;
-      const kz = k.animals!.list().find((d) => d.id === 'kitz')!;
-      // 12 m from the pair, on the side towards the route stop, crouched, looking at their middle
-      const cx = (s.x + kz.x) / 2;
-      const cz = (s.z + kz.z) / 2;
-      const dx = 727.4 - cx;
-      const dz = -751.5 - cz;
-      const l = Math.hypot(dx, dz);
-      const px = cx + (dx / l) * 12;
-      const pz = cz + (dz / l) * 12;
-      const yaw = (Math.atan2(cx - px, -(cz - pz)) * 180) / Math.PI;
-      k.teleport(px, pz, yaw, -4);
-      k.ctx.player.setStance('crouch');
-      k.step(20);
-      const opened = k.photo!.open();
-      k.step(40);
-      return { opened, judge: k.photo!.judge('reh.ricke'), at: { x, z } };
-    },
-    { x: ricke.x, z: ricke.z },
-  );
-  expect(shotRes.opened).toBe(true);
-  console.log(`[tour] deer judge ${JSON.stringify(shotRes.judge)}`);
+  const instructions = await page.evaluate(() => {
+    const k = window.kq!;
+    const blocked = k.photo!.state().blocked;
+    const opened = k.photo!.open();
+    for (let i = 0; i < 20 && k.photo!.state().blocked === 'dialog'; i++) k.step(60);
+    return { blocked, opened, ready: k.photo!.state().blocked === null, shown: k.story!.shown() };
+  });
+  expect(instructions).toMatchObject({ blocked: 'dialog', opened: false, ready: true });
+  expect(instructions.shown.filter((id) => id === 'imhoff.t.reh1' || id === 'imhoff.t.reh2')).toEqual(['imhoff.t.reh1', 'imhoff.t.reh2']);
+  const opened = await page.evaluate(() => {
+    const k = window.kq!;
+    const targets = k.photo!.targets();
+    const ricke = targets.find((d) => d.id === 'reh.ricke')?.at;
+    const kitz = targets.find((d) => d.id === 'reh.kitz')?.at;
+    if (!ricke || !kitz) throw new Error('Both deer must be available for the tour photo');
+    // Frame the pair from the route side at 23 m, with ordinary crouching and the 2× lens.
+    const cx = (ricke.x + kitz.x) / 2;
+    const cz = (ricke.z + kitz.z) / 2;
+    const dx = 727.4 - cx;
+    const dz = -751.5 - cz;
+    const len = Math.hypot(dx, dz);
+    const px = cx + (dx / len) * 23;
+    const pz = cz + (dz / len) * 23;
+    const cy = (ricke.y + kitz.y) / 2;
+    const yaw = (Math.atan2(cx - px, pz - cz) * 180) / Math.PI;
+    k.ctx.player.setStance('crouch');
+    const pitch = (Math.atan2(cy - k.ctx.world.heightAt(px, pz) - 1.05, 23) * 180) / Math.PI;
+    k.teleport(px, pz, yaw, pitch);
+    k.step(20);
+    const opened = k.photo!.open();
+    k.photo!.zoom(2);
+    k.step(40);
+    return opened;
+  });
+  expect(opened).toBe(true);
+  // A bullet-time step advances the simulation but only draws one frame of the zoom animation.
+  const scale = await page.evaluate(() => {
+    const { loop, player: { rig } } = window.kq!.ctx;
+    const fixedDt = loop.dt;
+    for (let i = 0; i < 32 && rig.fovScale !== 2; i++) loop.renderOnce(fixedDt);
+    return rig.fovScale;
+  });
+  expect(scale).toBe(2);
+  const judge = await page.evaluate(() => window.kq!.photo!.judge('reh.ricke'));
+  expect(judge, JSON.stringify(judge)).toMatchObject({ good: true, stars: 2 });
+  expect(judge!.dist).toBeGreaterThanOrEqual(20);
+  expect(judge!.dist).toBeLessThanOrEqual(25);
   await shot(page, '07-reh-handy');
   const res = await page.evaluate(() => window.kq!.photo!.shoot());
-  console.log(`[tour] deer shot ${JSON.stringify(res)}`);
-  await page.evaluate(() => {
+  expect(res, JSON.stringify(res)).toMatchObject({ good: ['reh.ricke', 'reh.kitz'], stars: 2 });
+  const reaction = await page.evaluate(() => {
     const k = window.kq!;
-    k.step(30);
-    k.photo!.close();
+    const praise = ['imhoff.t.reh3', 'imhoff.t.reh.alert'];
+    const master = k.ctx.audio.volumes.master;
+    k.ctx.audio.setVolumes({ master: 0 });
+    let viewfinderUp: boolean | null = null;
+    let reopened: boolean | null = null;
+    const off = k.ctx.events.on('dialogue:say', ({ id }) => {
+      if (id && praise.includes(id)) {
+        viewfinderUp = k.photo!.state().open;
+        reopened = k.photo!.open();
+      }
+    });
+    k.step(900);
+    off();
+    k.ctx.audio.setVolumes({ master });
     k.ctx.player.setStance('stand');
+    return { viewfinderUp, reopened, shown: k.story!.shown().some((id) => praise.includes(id)) };
   });
+  expect(reaction).toEqual({ viewfinderUp: false, reopened: false, shown: true });
   expect(await page.evaluate(() => window.kq!.photo!.has('reh.ricke'))).toBe(true);
   const tDeer = await time(page);
   await follow(page, 't12', 120);

@@ -8,9 +8,14 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { DialogueLine } from '../src/content/types';
+import { createInitialState, deserializeState, serializeState } from '../src/core/state';
+import { createDeer } from '../src/systems/animals/deer';
+import { restoreAnimals, serializeAnimals } from '../src/systems/animals/save';
 import type { CinematicFile } from '../src/systems/cinematic/types';
 import { answer } from '../src/systems/npc/logic';
 import { type StoryEnv, type StorySlice, StoryEngine, createStorySlice, runsOnResume } from '../src/systems/story/engine';
+import { objectivePoint } from '../src/systems/story/objectives';
+import { acceptTourDeerPhoto, restoreTourDeerPhoto } from '../src/systems/story/stories';
 import { type Action, type StoryFile, isWalkAction } from '../src/systems/story/types';
 import { validateStories } from '../src/systems/story/validate';
 import { loadStoryFiles, loadWalkRefs } from '../src/systems/story/validate-cli';
@@ -22,7 +27,7 @@ const k1 = JSON.parse(readFileSync(`${ROOT}content/story/01-kapitel-1.story.json
 const route = JSON.parse(readFileSync(`${ROOT}content/routes/p-fuehrung.json`, 'utf8')) as Route;
 const pack = JSON.parse(readFileSync(`${ROOT}content/packs/tour.pack.json`, 'utf8')) as { dialogue: DialogueLine[] };
 
-function harness() {
+function harness(onAction?: (a: Action) => void | false) {
   let slice: StorySlice = createStorySlice();
   const flags: Record<string, boolean | number | string> = {};
   const pos = { x: 529, z: -777 };
@@ -31,6 +36,7 @@ function harness() {
   let era = 'today';
   const apply = (actions: Action[]) => {
     for (const a of actions) {
+      if (onAction?.(a) === false) continue;
       if (a.do === 'flag') for (const [k, v] of Object.entries(a.set)) v === null ? delete flags[k] : (flags[k] = v);
       else if (a.do === 'say') said.push(a.id ?? a.line ?? '?');
       else if (a.do === 'teleport') Object.assign(pos, { x: a.x, z: a.z });
@@ -67,6 +73,20 @@ function harness() {
     engine,
     tick,
     ev,
+    photo: (state: string | undefined, id = 'reh.ricke') => {
+      const shot = { id, stars: 2, state };
+      const accepted = acceptTourDeerPhoto(slice, flags, shot);
+      ev('photo:good', shot);
+      return accepted;
+    },
+    resumeSaved: () => {
+      const saved = deserializeState(serializeState({ ...createInitialState(), flags, systems: { story: slice } }));
+      slice = saved.systems.story!;
+      for (const key of Object.keys(flags)) delete flags[key];
+      Object.assign(flags, saved.flags);
+      restoreTourDeerPhoto(slice, flags);
+      engine.resume();
+    },
     flags,
     pos,
     sent,
@@ -179,10 +199,8 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     const deerShot = h.sent.findIndex(({ a }) => a.do === 'cinematic' && a.ref === 'reh');
     expect(rustle).toBeGreaterThanOrEqual(0);
     expect(rustle).toBeLessThan(deerShot);
-    // she looked up, then the good photo: Gerold's „Sie hat dich angesehen.“
-    h.ev('animal:alert', { id: 'ricke' });
-    h.ev('photo:good', { id: 'reh.ricke', stars: 2 });
-    h.ev('photo:good', { id: 'reh.kitz', stars: 2 });
+    // She was looking up when the shutter fired: Gerold's „Sie hat dich angesehen.“
+    h.photo('alert');
     h.tick();
     expect(h.said).toContain('imhoff.t.reh.alert');
     expect(h.said).not.toContain('imhoff.t.reh3');
@@ -256,9 +274,11 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     };
     const a = harness();
     go(a);
-    a.ev('photo:good', { id: 'reh.ricke', stars: 3 });
+    a.ev('animal:alert', { id: 'ricke' });
+    a.photo('graze');
     a.tick();
     expect(a.said).toContain('imhoff.t.reh3');
+    expect(a.said).not.toContain('imhoff.t.reh.alert');
     expect(a.beat()).not.toBe('t10');
 
     const b = harness();
@@ -274,6 +294,65 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     go(c);
     c.tick(181);
     expect(c.beat()).not.toBe('t10');
+  });
+
+  it.each([['graze', 'alert', 'imhoff.t.reh3'], ['alert', 'graze', 'imhoff.t.reh.alert']])(
+    'uses only the first good shot (%s), even if a %s shot arrives before the reaction finishes',
+    (first, second, reaction) => {
+      const h = harness((a) => {
+        // Simulate the completion flag waiting for the presenter to finish the reaction.
+        if (a.do === 'flag' && a.set['tour.reh.done']) return false;
+      });
+      h.engine.goto('tour', 't10');
+      h.tick(175);
+      expect(h.photo(second, 'reh.kitz')).toBe(false);
+      expect(h.photo(first)).toBe(true);
+      expect(h.photo(second)).toBe(false);
+      h.tick(20);
+      expect(h.flags['tour.reh.photo']).toBe(first);
+      expect(h.said.slice(2)).toEqual(['player.photo.gut', reaction]);
+      expect(h.beat()).toBe('t10');
+    },
+  );
+
+  it.each([false, true])('finishes an accepted shot on Continue (legacy save: %s)', (legacy) => {
+    let interrupted = true;
+    const h = harness((a) => {
+      if (interrupted && a.do === 'flag' && a.set['tour.reh.done']) return false;
+    });
+    h.engine.goto('tour', 't10');
+    if (legacy) {
+      h.engine.s.latched['br:foto-alert'] = 1;
+      h.engine.s.fired.push('b:foto-alert');
+      h.engine.s.said.push('player.photo.gut', 'imhoff.t.reh.alert');
+    } else {
+      expect(h.photo('alert')).toBe(true);
+      expect(h.said).toContain('imhoff.t.reh.alert');
+    }
+    expect(h.flags['tour.reh.done']).toBeUndefined();
+    expect(h.beat()).toBe('t10');
+
+    interrupted = false;
+    h.said.length = 0;
+    h.resumeSaved();
+    expect(h.engine.s.latched).toEqual({});
+    h.tick();
+    expect(h.said.slice(0, 2)).toEqual(['player.photo.gut', 'imhoff.t.reh.alert']);
+    expect(h.flags['tour.reh.done']).toBe(true);
+    expect(h.beat()).toBe('t11');
+  });
+
+  it('resolves the continued t10 objective at the pre-branch saved doe position', () => {
+    const h = harness();
+    h.engine.goto('tour', 't10');
+    h.sent.length = 0;
+    h.engine.resume();
+    const action = h.sent.find(({ a }) => a.do === 'objective')?.a;
+    if (action?.do !== 'objective') throw new Error('t10 must restore its objective on Continue');
+    const save = serializeAnimals([createDeer({ op: 'spawn', id: 'ricke', kind: 'reh', x: 704, z: -779 })], []);
+    const [restored] = restoreAnimals(save).deer;
+    expect(objectivePoint(action, save)).toEqual({ x: restored!.x, z: restored!.z });
+    expect(objectivePoint(action)).toEqual({ x: 698, z: -773 });
   });
 
   it('t10 opens on the deer: the reh shot from the group stop, then the sneak prompt (TASK-001)', () => {
@@ -309,6 +388,7 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     const setup = enter.slice(0, enter.findIndex((a) => a.do === 'say'));
     expect(setup.map((a) => a.do)).toEqual(['npc', 'sound', 'cinematic', 'prompt', 'objective']);
     expect(setup.every((a) => (a.delay ?? 0) === 0)).toBe(true);
+    expect(setup.find((a) => a.do === 'prompt')).toMatchObject({ action: 'crouch' });
 
     const h = harness();
     h.engine.goto('tour', 't10');
@@ -318,8 +398,8 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     expect(h.beat()).toBe('t10');
     expect(h.sent.map(({ a }) => a)).toMatchObject([
       { do: 'npc', op: 'hold', group: 'fuehrung' },
-      { do: 'prompt', key: 'C', touch: 'Langsam heranpirschen' },
-      { do: 'objective', id: 'tour', x: 704, z: -779 },
+      { do: 'prompt', action: 'crouch', touch: 'Langsam heranpirschen' },
+      { do: 'objective', id: 'tour', x: 698, z: -773 },
     ]);
     expect(h.said).toEqual([]);
   });
