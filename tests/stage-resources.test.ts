@@ -2,11 +2,12 @@ import { Color, PerspectiveCamera, Scene, Vector3 } from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { GameContext } from '../src/core/context';
 import { EventBus } from '../src/core/events';
-import { StageDirector } from '../src/systems/fx/stage';
+import { StageDirector, type StageHooks } from '../src/systems/fx/stage';
 import { disposalCounts } from './disposal-counts';
 
 function setup() {
-  vi.stubGlobal('window', {});
+  const kq: { stage?: StageHooks } = {};
+  vi.stubGlobal('window', { kq });
   const events = new EventBus();
   const scene = new Scene();
   const applyLook = vi.fn();
@@ -19,7 +20,7 @@ function setup() {
     post: { uniforms: { uLift: { value: new Color() }, uGain: { value: new Color() }, uFlash: { value: new Color() }, uDesaturate: { value: 0 } } },
     ui: { hud: { busy } },
   } as unknown as GameContext;
-  return { stage: new StageDirector(ctx), events, scene, applyLook, busy };
+  return { stage: new StageDirector(ctx), events, scene, applyLook, busy, kq };
 }
 
 afterEach(() => vi.unstubAllGlobals());
@@ -95,5 +96,27 @@ describe('staged set piece resources', () => {
     expect(applyLook).toHaveBeenCalledOnce();
     expect(busy).toHaveBeenLastCalledWith('stage', false, 0);
     expect({ live: counts.live(), repeated: counts.repeated() }).toEqual({ live: 0, repeated: [] });
+  });
+
+  it('releases the active card hold, debug hook and subscriptions at director teardown', () => {
+    const { stage, events, scene, busy, kq } = setup();
+    const off = vi.spyOn(events, 'off');
+    events.emit('echo:start', { id: 'echo.k4.rueckwaerts' });
+    stage.frame(0);
+    expect(kq.stage?.active()).toEqual(['k4-rewind']);
+    expect(busy).toHaveBeenLastCalledWith('stage', true, 0);
+    stage.dispose();
+    events.emit('story:cue', { id: 'k1-papers' });
+    expect({
+      active: kq.stage?.active(),
+      sceneObjects: scene.children.length,
+      lastHold: busy.mock.lastCall,
+      subscriptionsRemoved: off.mock.calls.map(([name]) => name).sort(),
+    }).toEqual({
+      active: undefined,
+      sceneObjects: 0,
+      lastHold: ['stage', false, 0],
+      subscriptionsRemoved: ['echo:end', 'echo:line', 'echo:start', 'player:caught', 'save:loaded', 'shift:begin', 'story:beat', 'story:cue'],
+    });
   });
 });

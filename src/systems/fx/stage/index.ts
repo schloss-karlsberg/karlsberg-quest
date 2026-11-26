@@ -75,7 +75,8 @@ export class StageDirector {
   private readonly pieces: Piece[] = [];
   private held = false;
   readonly frost: FrostOverlay;
-  private hooked = false;
+  private hooks: StageHooks | null = null;
+  private readonly offs: (() => void)[];
   /** frost-breath: seconds until the passing frost thaws again (−1: none pending). */
   private breath = -1;
   /** A set piece that is a climax holds the card queue and calm toasts (hud action reason 'stage'). */
@@ -87,37 +88,39 @@ export class StageDirector {
     registerEchoStagings();
     this.frost = new FrostOverlay(ctx);
     const ev = ctx.events;
-    ev.on('echo:start', ({ id }) => {
-      if (id === 'echo.k4.rueckwaerts') {
-        this.add(new RewindPiece(ctx));
-        // the caption "[Die Bussole tickt rückwärts]" is on the Bussole too: its needle ticks back
-        ev.emit('story:cue', { id: 'bussole:tick', data: { hold: REWIND_SECONDS } });
-      }
-      else if (id === 'clue.k4.laub_1840') this.add(new Laub1840Piece(ctx));
-      else if (id === 'clue.k2.warnung' || id === 'clue.k2.abschied') this.add(new DoorPiece(ctx, id));
-      else if (id === 'clue.k2.fackeln') this.add(new AbfahrtPiece(ctx));
-      else if (id === 'clue.k2.landremont') this.add(new ReiterPiece(ctx));
-    });
-    ev.on('echo:line', ({ line, dur }) => {
-      for (const p of this.pieces) p.line?.(line, dur);
-    });
-    ev.on('echo:end', ({ id }) => {
-      const want = id === 'echo.k4.rueckwaerts' ? 'k4-rewind' : id === 'clue.k4.laub_1840' ? 'k4-1840' : id === 'clue.k2.fackeln' ? 'k2-abfahrt' : id.startsWith('clue.k2.') ? 'k2-door' : null;
-      for (const p of this.pieces) if (p.id === want) p.end?.();
-      // the memory is over: its page may come (what still fades or rides off is no climax)
-      for (const p of this.pieces) if (MOMENTS.has(p.id)) this.ended.add(p);
-    });
-    ev.on('story:cue', ({ id, data }) => this.cue(id, data ?? {}));
-    // a shift or a load takes the stage down (the frost stays: it is on the compass)
-    ev.on('shift:begin', () => this.clear(['k2-candle', 'k4-quader', 'end-prints']));
-    ev.on('save:loaded', () => this.clear());
-    // undone: the swirling papers (and the like) do not follow you into the wake (playtest round 5)
-    ev.on('player:caught', () => this.clear(['k1-papers', 'k2-reiter', 'k2-abfahrt', 'k4-quader']));
-    // the frost belongs to chapter 2 (k2_0 … k2_12; k2_13 thaws it): a load or a jump puts it back
-    ev.on('story:beat', ({ chapter, beat }) => {
-      if (chapter === 'k2' && beat !== 'k2_13' && beat !== 'k2_0') this.frost.set(true);
-      else if (chapter !== 'k2' && this.frost.on) this.frost.set(false);
-    });
+    this.offs = [
+      ev.on('echo:start', ({ id }) => {
+        if (id === 'echo.k4.rueckwaerts') {
+          this.add(new RewindPiece(ctx));
+          // the caption "[Die Bussole tickt rückwärts]" is on the Bussole too: its needle ticks back
+          ev.emit('story:cue', { id: 'bussole:tick', data: { hold: REWIND_SECONDS } });
+        }
+        else if (id === 'clue.k4.laub_1840') this.add(new Laub1840Piece(ctx));
+        else if (id === 'clue.k2.warnung' || id === 'clue.k2.abschied') this.add(new DoorPiece(ctx, id));
+        else if (id === 'clue.k2.fackeln') this.add(new AbfahrtPiece(ctx));
+        else if (id === 'clue.k2.landremont') this.add(new ReiterPiece(ctx));
+      }),
+      ev.on('echo:line', ({ line, dur }) => {
+        for (const p of this.pieces) p.line?.(line, dur);
+      }),
+      ev.on('echo:end', ({ id }) => {
+        const want = id === 'echo.k4.rueckwaerts' ? 'k4-rewind' : id === 'clue.k4.laub_1840' ? 'k4-1840' : id === 'clue.k2.fackeln' ? 'k2-abfahrt' : id.startsWith('clue.k2.') ? 'k2-door' : null;
+        for (const p of this.pieces) if (p.id === want) p.end?.();
+        // the memory is over: its page may come (what still fades or rides off is no climax)
+        for (const p of this.pieces) if (MOMENTS.has(p.id)) this.ended.add(p);
+      }),
+      ev.on('story:cue', ({ id, data }) => this.cue(id, data ?? {})),
+      // a shift or a load takes the stage down (the frost stays: it is on the compass)
+      ev.on('shift:begin', () => this.clear(['k2-candle', 'k4-quader', 'end-prints'])),
+      ev.on('save:loaded', () => this.clear()),
+      // undone: the swirling papers (and the like) do not follow you into the wake (playtest round 5)
+      ev.on('player:caught', () => this.clear(['k1-papers', 'k2-reiter', 'k2-abfahrt', 'k4-quader'])),
+      // the frost belongs to chapter 2 (k2_0 … k2_12; k2_13 thaws it): a load or a jump puts it back
+      ev.on('story:beat', ({ chapter, beat }) => {
+        if (chapter === 'k2' && beat !== 'k2_13' && beat !== 'k2_0') this.frost.set(true);
+        else if (chapter !== 'k2' && this.frost.on) this.frost.set(false);
+      }),
+    ];
   }
 
   private cue(id: string, d: Record<string, unknown>): void {
@@ -168,10 +171,9 @@ export class StageDirector {
 
   private installHooks(): void {
     const kq = window.kq;
-    if (!kq || this.hooked) return;
-    this.hooked = true;
+    if (!kq || this.hooks) return;
     const self = this;
-    kq.stage = {
+    this.hooks = {
       active: () => self.pieces.map((p) => p.id),
       state(id) {
         const p = self.pieces.find((x) => x.id === id) as unknown as Record<string, unknown> | undefined;
@@ -201,12 +203,21 @@ export class StageDirector {
         for (const p of self.pieces) p.line?.(id, dur);
       },
     };
+    kq.stage = this.hooks;
   }
 
   dispose(): void {
+    for (const off of this.offs.splice(0)) off();
+    const kq = window.kq;
+    if (kq && kq.stage === this.hooks) delete kq.stage;
+    this.hooks = null;
     this.clear();
     for (const p of this.pieces) p.dispose();
     this.pieces.length = 0;
     this.frost.dispose();
+    if (this.busy) {
+      this.busy = false;
+      this.ctx.ui.hud.busy('stage', false, 0);
+    }
   }
 }

@@ -86,6 +86,8 @@ Record design-dependent ownership decisions only if encountered during the audit
 - 2026-11-26: Actual interior streaming released its GPU resources on the baseline, but the
   distance cache grew from one to five building records after four era changes. It now holds only
   the current plan's records and is empty at teardown.
+- 2026-11-26: A torn-down StageDirector still responded to eight subscriptions and retained its
+  debug hook and card hold. A later cue recreated paper meshes on the abandoned stage.
 
 ## Coverage map
 
