@@ -1,5 +1,5 @@
-import { de } from './de';
-import { deContent } from './de.content';
+import { de } from './de.ts';
+import { deContent } from './de.content.ts';
 
 /**
  * Tiny i18n layer. German only for now; English is planned for 1.0.

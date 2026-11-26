@@ -49,13 +49,29 @@ _Status: approved 2026-11-26_
 - [x] 2. Correct authored copy, rebuild generated files, and verify the voiced-text baseline.
 - [x] 3. Add the localization check and glossary and update design logs.
 - [x] 4. Run the four gates and attempt the locked browser check.
-- [ ] 5. Commit the changes. The worktree index is blocked by the sandbox.
+- [x] 5. Commit the original German text sweep (`2f275cb`).
 
 **Test plan:** Run `pnpm typecheck`, `pnpm test`, `pnpm validate`, and `pnpm build`. Run smoke and affected Playwright specs individually through the machine-wide lock on port 5422. Smoke covers title, loading, and entry into the game. Use the direct validator if the normal launcher is blocked.
 
 **Risks:** Translation keys can be overridden by systems. Recorded dialogue must remain byte-for-byte identical after JSON decoding. Keep shared-file edits limited to individual strings.
 
 **Open questions:** None for implementation.
+
+## Review fix plan
+
+The follow-up starts from `2f275cb` on `dev/task-034`. Fix player-facing issues in the tour,
+touch controls, controls help and public news. Restore coverage for the Ehrenhof banner and
+extend the English-word guard to authored prompts. Preserve recorded dialogue.
+
+- [x] The deer prompt cues the Fotomodus button and then the shutter while the camera is open.
+- [x] The sprint prompt explains full stick travel and leaves Aktion unlit.
+- [x] The touch Zeitsprung button announces regrouping only while the group hold is offered.
+- [x] The controls help and loading tip describe holding Q without an incorrect duration.
+- [x] The localization guard checks prompt `key`, `text` and `touch` and ignores internal action IDs.
+- [x] The Ehrenhof end-to-end check requires both the visible banner and its German text.
+- [x] The public news footer uses „Stand“, matching the in-game revision label.
+- [x] Regression assertions, updated docs, four gates and locked browser checks or documented blockers.
+- [ ] Local review commits. The sandbox denied creation of the worktree's `index.lock`.
 
 ## Progress
 
@@ -69,12 +85,32 @@ _Status: approved 2026-11-26_
 - 2026-11-26: Typecheck and build passed. Vitest reported `Tests  1576 passed (1576)`. The sandbox denied the tsx launcher’s socket for `pnpm validate`. Direct invocation with `node --import tsx scripts/validate-content.ts` passed with the existing warnings.
 - 2026-11-26: The locked smoke command stopped before browser startup with `listen EPERM 127.0.0.1:5422`. The affected specs are `e2e/smoke.spec.ts`, `e2e/art.spec.ts` and `e2e/world.spec.ts`. Run each through `KQ_E2E_PORT=5422 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/<spec>.spec.ts --workers=1 --reporter=line`.
 
-- 2026-11-26: `mc validate` passed. The sandbox rejected writes to the worktree's `index.lock`. The changes are unstaged and HEAD remains at the starting revision.
+- 2026-11-26: `mc validate` passed. The original implementation sandbox rejected writes to the
+  worktree index. The sweep was subsequently committed as `2f275cb`.
+
+- 2026-11-26: Fixed all seven review findings. The misleading deer hint, incomplete sprint
+  cue mapping, generic regroup label, incorrect return timing and English public footer had
+  counterparts on `origin/main` and were small enough to fix within TASK-034. The wording of
+  all 50 tour dialogue actions matches `2f275cb`.
+- 2026-11-26: `pnpm typecheck` and `pnpm build` passed. Vitest reported
+  `Test Files  120 passed (120)` and `Tests  1585 passed (1585)`. The build emitted the
+  translated footer in `dist/neu.html`. The sandbox denied the launcher socket for
+  `pnpm validate`. The direct validator (`node --import tsx scripts/validate-content.ts`)
+  passed with the existing warnings and reported zero story warnings.
+- 2026-11-26: The locked run of `e2e/world.spec.ts` stopped at `listen EPERM 127.0.0.1:5422`
+  before browser startup. The same preview requirement applies to `e2e/animals.spec.ts`
+  and `e2e/smoke.spec.ts`.
+- 2026-11-26: `git add` was blocked by `index.lock` permissions. The review changes
+  are in this worktree and HEAD is still `2f275cb`.
 
 ## Follow-ups
 
 - Recorded typography: `laub.k1.gagern`, `laub.k1.feenschloss`, `laub.k3.messen` and `laub.k4.graben` use single quotation marks around standalone quotations.
 - Recorded spacing: `player.q.laub` needs a space after the opening ellipsis.
 - In-fiction uses of „Feldbuch“ are deliberate (TASK-007). The legacy save migration still recognizes the original labels.
-
-- Intended commits: `fix(content): polish German story and codex text`, `fix(ui): standardize German player-facing copy`, and `docs(ui): record the German player-facing glossary`. Each message includes `Refs: TASK-034` and ends with `Co-Authored-By: Codex <noreply@openai.com>`.
+- Run `e2e/world.spec.ts`, `e2e/animals.spec.ts` and `e2e/smoke.spec.ts` individually with
+  `KQ_E2E_PORT=5422 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/<spec>.spec.ts --workers=1 --reporter=line`
+  on a machine that can start the preview server.
+- Commit the review changes as `fix(touch): correct guided tour control cues` and
+  `fix(ui): align German revision and prompt checks`. Include `Refs: TASK-034` and end
+  each message with `Co-Authored-By: Codex <noreply@openai.com>`.

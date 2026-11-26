@@ -32,7 +32,7 @@ export const deContent: Record<string, string> = {
   'ui.keys.listen.key': '[E] halten',
   'ui.keys.examine': 'Untersuchen',
   'ui.keys.examine.key': 'Klick',
-  'ui.keys.shift': 'Zeitsprung am Ankerpunkt. [Q] 3 Sekunden halten, um zur Quelle zurückzukehren, sobald die Meute dich aus den Augen verloren hat.',
+  'ui.keys.shift': 'Zeitsprung am Ankerpunkt. [Q] gedrückt halten, um zur Quelle zurückzukehren, sobald die Meute dich aus den Augen verloren hat.',
   'ui.keys.shift.key': '[Q]',
   'ui.keys.lantern': 'Laterne an / aus. Licht hilft beim Lesen, aber es lockt die Meute.',
   'ui.keys.lantern.key': '[L]',
@@ -228,7 +228,7 @@ export const deContent: Record<string, string> = {
   'ui.tip.17': 'Mannlich hat Jahre später geschrieben. Wer zeitnah schrieb, irrte sich seltener im Datum.',
   'ui.tip.18': 'Gestellt ist nicht gerissen.',
   'ui.tip.19': '1789 gibt es keinen Wald auf dem Berg. Den hat man erst später gepflanzt.',
-  'ui.tip.20': 'Q 3 Sekunden halten bringt dich heim, solange dich niemand sieht.',
+  'ui.tip.20': 'Q gedrückt halten, um zur Quelle zurückzukehren, solange dich niemand sieht.',
 
   // 13. Mitwirkende, Quellen und Lizenzen (minimum version; exact data attributions come from the data manifests)
   'ui.credits.title': 'Karlsberg Quest – ein Spiel über einen Ort, den es nicht mehr gibt.',

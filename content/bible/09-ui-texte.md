@@ -244,7 +244,7 @@ Zufällig beim Laden. Keine Lösungen, keine echten Fundstellen.
 17. Mannlich hat Jahre später geschrieben. Wer zeitnah schrieb, irrte sich seltener im Datum.
 18. Gestellt ist nicht gerissen.
 19. In 1789 gibt es keinen Wald auf dem Berg. Den hat man erst später gepflanzt.
-20. Q 3 Sekunden halten bringt dich heim, solange dich niemand sieht.
+20. Q gedrückt halten, um zur Quelle zurückzukehren, solange dich niemand sieht.
 
 ## 13. Mitwirkende, Quellen und Lizenzen (Abspann und Menüseite)
 

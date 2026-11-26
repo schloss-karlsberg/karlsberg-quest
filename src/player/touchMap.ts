@@ -155,14 +155,14 @@ export function touchIconFor(key: string): TouchIcon {
 }
 
 /**
- * Which touch button answers a HUD prompt (key + text): null when none does. A movement prompt
- * („W A S D: Gehen …“) belongs to the stick, not to the Aktion button: the button keeps „Aktion“
- * instead of carrying „Gehen · ins Bild klick…“ (M-05).
+ * Which touch button answers a HUD prompt (key + text): null when none does. Movement and sprint
+ * prompts belong to the stick (M-05). A photo prompt points to the shutter once the phone is up.
  */
-export function touchPromptIcon(key: string | null, text: string | null | undefined): TouchIcon | null {
+export function touchPromptIcon(key: string | null, text: string | null | undefined, photoOpen = false): TouchIcon | null {
   if (!key) return text?.trim() ? 'interact' : null;
-  if (/^\s*W\s*[,·/]?\s*A\s*[,·/]?\s*S\s*[,·/]?\s*D\b/i.test(key)) return null;
-  return touchIconFor(key);
+  if (/^\s*(?:W\s*[,·/]?\s*A\s*[,·/]?\s*S\s*[,·/]?\s*D|Umschalt|Shift)\b/i.test(key)) return null;
+  const icon = touchIconFor(key);
+  return icon === 'photo' && photoOpen ? 'attack' : icon;
 }
 
 /**

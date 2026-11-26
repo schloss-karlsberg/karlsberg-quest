@@ -289,6 +289,22 @@ test('animals (d): t10 opens on the deer with the reh shot, from the stop and fr
     expect(ends.at(-1)?.p).toEqual({ id: 'tour.reh', skipped: true });
     expect(await page.evaluate(() => window.kq!.story!.state().beat)).toBe('t10');
     await expect(sneak).toBeVisible();
+    if (s.touch) {
+      await page.evaluate(() => window.kq!.teleport(704, -758, 160, 0));
+      await step(page, 5);
+      const camera = page.getByTestId('touch-photo');
+      const shutter = page.getByTestId('touch-attack');
+      const photoPrompt = page.locator('.kq-prompt').filter({ hasText: 'Fotomodus öffnen' });
+      await expect(photoPrompt).toBeVisible();
+      await expect(camera).toHaveClass(/\bcue\b/);
+      expect(await page.evaluate(() => window.kq!.photo!.open())).toBe(true);
+      await expect(shutter).toHaveClass(/\bcue\b/);
+      await expect(shutter).toHaveAccessibleName('Auslöser: Foto machen');
+      await expect(camera).not.toHaveClass(/\bcue\b/);
+      await page.evaluate(() => window.kq!.photo!.close());
+      await expect(camera).toHaveClass(/\bcue\b/);
+      await expect(shutter).not.toHaveClass(/\bcue\b/);
+    }
   }
   expect(errors).toEqual([]);
 });
