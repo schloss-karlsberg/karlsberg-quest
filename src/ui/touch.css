@@ -483,9 +483,10 @@ html[data-kq-touch] .kq-crosshair {
   html[data-kq-touch] .kq-prompt kbd {
     flex: none;
   }
-  /* The combat callout is below the dialogue band and left of the Aktion pill. */
+  /* The combat callout is below the dialogue band, left of the Aktion pill and right of the
+     vitals column (the HUD prompt's 174 px reserve), so Lebenskraft stays readable in a fight. */
   html[data-kq-touch] .kqc-tell {
-    inset: var(--kq-phone-notice-top) var(--kq-phone-notice-right) auto calc(8px + var(--kq-safe-l));
+    inset: var(--kq-phone-notice-top) var(--kq-phone-notice-right) auto calc(174px + var(--kq-safe-l));
     transform: none;
   }
   html[data-kq-touch] .kqc-tell span {

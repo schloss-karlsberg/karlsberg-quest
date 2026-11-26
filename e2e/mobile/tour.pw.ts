@@ -332,6 +332,7 @@ const STATES: State[] = [
         const longHint = 'Gehen · ins Bild klicken, dann Maus: Schauen · Shift: Rennen';
         await c.page.evaluate((text) => window.kq!.ctx.ui.hud.prompt('W A S D', text, 'tour'), longHint);
         await expect(c.page.locator('.kq-prompt.show')).toHaveText(new RegExp(longHint));
+        await expect(c.page.locator('.kq-prompt.show')).toBeVisible();
         await c.shot('long-hint', 'long HUD hint wraps in the space between the vitals and the thumb arc');
         await c.page.evaluate(() => window.kq!.ctx.ui.hud.prompt(null, undefined, 'tour'));
         // Keep a telegraph on screen through the frame sample; normal combat captions time out.
@@ -341,11 +342,14 @@ const STATES: State[] = [
           tell.append(line);
           return line;
         });
+        await expect(c.page.locator('.kqc-tell span', { hasText: 'Nebelling duckt' })).toBeVisible();
         await c.shot('callout', 'telegraph clearance with the unlit Aktion pill');
         await caption.evaluate((el) => el.remove());
         const layout = c.f.shots.filter((s) => s.state === 'touch-buttons' && ['long-hint', 'callout'].includes(s.sub ?? ''));
+        expect(layout).toHaveLength(2);
         for (const { ui } of layout) {
-          expect(ui.issues.filter((i) => i.kind === 'overlap' && /kq-prompt|kqc-tell|Nebelling duckt/.test(i.what) && /\[touch-/.test(i.what))).toEqual([]);
+          // Clear of the thumb controls and of the vitals column (Lebenskraft must stay readable in a fight).
+          expect(ui.issues.filter((i) => i.kind === 'overlap' && /kq-prompt|kqc-tell|Nebelling duckt/.test(i.what) && /\[(touch-|hud-vitals|hud-xp|hud-quick)/.test(i.what))).toEqual([]);
         }
       }
       await c.tap('touch-survey');

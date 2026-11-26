@@ -562,8 +562,9 @@ has yet to play. Each eligible Laub remark still queues once.
 
 **MR 9 and Pause.** The tour opening already supplies the short touch hint „Wischen: Schauen“.
 The HUD pill now wraps longer text between the vitals and Balsam/Ausweichen, with its position
-adjusted for HUD zoom. Combat callouts wrap below the dialogue band and left of Aktion. The
-level card already uses the compact layout from §8.4. No new overlay uses the top-right region
+adjusted for HUD zoom. Combat callouts wrap below the dialogue band, left of Aktion and right of
+the vitals column, so Lebenskraft stays readable in a fight. The level card already uses the
+compact layout from §8.4. No new overlay uses the top-right region
 reserved for TASK-015. For the `13-pause*` S2 pairs, the pause paper is opaque and its modal
 layer sits above the dialogue. The measurer tests the intersection itself against the paper,
 including intersections with its buttons. A line may remain visible beside the paper under the
