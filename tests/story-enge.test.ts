@@ -52,7 +52,7 @@ vi.mock('../src/systems/story/objectives', async (original) => ({
 }));
 vi.mock('../src/systems/story/overlays', async (original) => ({
   ...await original<typeof import('../src/systems/story/overlays')>(),
-  StoryOverlays: class { fade() {} gauge() {} tickCard() {} tickChoice() {} },
+  StoryOverlays: class { fade() {} gauge() {} tickCard() {} tickChoice() {} closeChoice() {} },
 }));
 
 const FIRST = 'k1.enge';
@@ -86,7 +86,7 @@ async function encounter(storage = new MemoryStorage(), continued?: 'auto' | 'ma
   const state = new GameStateStore(initial);
   const events = new EventBus();
   let now = 0;
-  const save = new SaveManager(state, storage, events, () => now);
+  const save = new SaveManager(state, storage, events, () => now, () => now);
   if (continued) expect(save.load(continued)).toBe(true);
   const playerPosition = { ...state.state.player };
   const beats: string[] = [];
@@ -106,7 +106,7 @@ async function encounter(storage = new MemoryStorage(), continued?: 'auto' | 'ma
     events, state, save, content: new ContentDB([]), params: new URLSearchParams(),
     assets: { licences: async () => null }, audio: { bindVoiceEmitter: () => noop, noise: () => null },
     input: { isDown: () => false, wasPressed: () => false },
-    loop: { manual: true, time: 0, tick: 0 }, pause: { paused: false }, settings: { state: defaultSettings() },
+    loop: { manual: true, time: 0, tick: 0 }, pause: { paused: false, reasons: new Set<string>() }, settings: { state: defaultSettings() },
     era: { get current() { return state.state.era; }, get info() { return ERA_INFO[state.state.era]; } },
     player: { position: playerPosition, stance: 'stand', yaw: 0, stats: { speed: 0 } },
     world: { look: lookFor('night', '1789'), applyLook: noop, heightAt: () => 0, surfaceAt: () => 'ground', collider: { enabled: false }, heightfield: { slopeDeg: () => 0 } },
