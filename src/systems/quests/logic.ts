@@ -16,6 +16,7 @@
  * (`spawn` → enemy:spawn with group / quest / objective) and place its pickups (`place` →
  * loot:place). `optional` objectives are not needed for "ready" and pay `bonus_xp`.
  */
+import { allOf, isOneOf, numberRecord } from '../../core/saved';
 import type { Era } from '../../core/era';
 import type { GameEvents } from '../../core/events';
 import type { EnemyGroupState, FlagValue, ItemDef, QuestDef, QuestObjective, QuestPlace, QuestProgress, QuestRewards, QuestSlice, QuestState, QuestTopic, GiverMark, SpawnSpec } from '../../rpg/types';
@@ -72,6 +73,8 @@ export const QUEST_FLAG = (id: string) => `quest.${id}`;
 export const OBJ_FLAG = (id: string, obj: string) => `quest.${id}.${obj}`;
 const MAX_TRACKED = 3;
 
+const QUEST_STATES = allOf<QuestState>()(['hidden', 'offered', 'active', 'ready', 'done', 'failed']);
+
 export function createQuestSlice(): QuestSlice {
   return { quests: {}, tracked: [], unseen: [] };
 }
@@ -79,11 +82,17 @@ export function createQuestSlice(): QuestSlice {
 /** Fill the fields of an older / partial slice (old saves). */
 export function normaliseSlice(s: Partial<QuestSlice> | undefined | null): QuestSlice {
   const out = (s ?? {}) as QuestSlice;
-  if (!out.quests || typeof out.quests !== 'object') out.quests = {};
+  if (!out.quests || typeof out.quests !== 'object' || Array.isArray(out.quests)) out.quests = {};
   if (!Array.isArray(out.tracked)) out.tracked = [];
   if (!Array.isArray(out.unseen)) out.unseen = [];
-  for (const p of Object.values(out.quests)) {
-    if (!p.counts || typeof p.counts !== 'object') p.counts = {};
+  if (out.bestiary !== undefined) out.bestiary = numberRecord(out.bestiary);
+  for (const [id, p] of Object.entries(out.quests)) {
+    // A corrupt entry restores as never seen (the story re-offers what it needs).
+    if (!p || typeof p !== 'object' || Array.isArray(p) || !isOneOf(QUEST_STATES, p.state)) {
+      delete out.quests[id];
+      continue;
+    }
+    p.counts = numberRecord(p.counts);
     if (typeof p.t !== 'number') p.t = 0;
   }
   return out;

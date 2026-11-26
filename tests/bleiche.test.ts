@@ -21,6 +21,7 @@ import {
   LINES,
   mown,
   PIECES,
+  ROPE,
   ropeAt,
   ropeWorld,
   toLocal,
@@ -157,6 +158,39 @@ describe('bleiche layout', () => {
       }
       for (let i = 0; i + 1 < items.length; i++) expect(items[i]!.u0 + items[i]!.width).toBeLessThanOrEqual(items[i + 1]!.u0);
     }
+  });
+
+  it('limits the rope to its own posts and keeps it continuous over uneven ground', () => {
+    const posts = LINES[1]!.posts;
+    const middle = posts[1]!;
+    const last = posts[2]!;
+    const [mx, mz] = toWorld(...middle);
+    const [lx, lz] = toWorld(...last);
+    const uneven = (x: number, z: number) => 20 + (x - mx) * 0.3 + (z - mz) * 0.15;
+    const atMiddle = ropeWorld(uneven, 1, middle[0])!;
+    expect(atMiddle.y).toBeCloseTo(uneven(mx, mz) + ROPE.top, 6);
+    expect(ropeWorld(uneven, 1, middle[0] + 0.0001)!.y).toBeCloseTo(atMiddle.y, 3);
+    expect(ropeWorld(uneven, 1, last[0])!.y).toBeCloseTo(uneven(lx, lz) + ROPE.top, 6);
+    const midSpan = ropeWorld(uneven, 1, (middle[0] + last[0]) / 2)!;
+    expect(midSpan.y).toBeCloseTo((uneven(mx, mz) + uneven(lx, lz)) / 2 + ROPE.top - ROPE.sag, 6);
+    expect(Math.hypot(midSpan.nx, midSpan.nz)).toBeCloseTo(1);
+    expect(midSpan.nx * (lx - mx) + midSpan.nz * (lz - mz)).toBeCloseTo(0);
+    expect(ropeWorld(uneven, 1, last[0] + 0.01)).toBeNull();
+    expect(ropeAt(-1, 0)).toBeNull();
+  });
+
+  it('clears grass under the linen and wash props while keeping short grass around them', () => {
+    const rings = mown();
+    for (const f of PIECES.flat) {
+      const [x, z] = toWorld(f.u, f.w);
+      const halfDiagonal = Math.hypot(f.lu, f.lw) / 2;
+      expect(rings.some(([cx, cz, r, keep]) => keep === 0 && Math.hypot(cx - x, cz - z) + halfDiagonal < r)).toBe(true);
+    }
+    for (const p of [PIECES.tub, PIECES.bucket, PIECES.basket]) {
+      const [x, z] = toWorld(p.u, p.w);
+      expect(rings.some(([cx, cz, r, keep]) => keep === 0 && Math.hypot(cx - x, cz - z) < r)).toBe(true);
+    }
+    expect(rings.some(([x, z, r, keep]) => keep === 0.4 && Math.hypot(LIESE.x - x, LIESE.z - z) < r)).toBe(true);
   });
 
   it('hangs the coat on line B where the story looks for it', () => {

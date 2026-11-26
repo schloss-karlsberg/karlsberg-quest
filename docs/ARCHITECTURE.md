@@ -498,6 +498,25 @@ retries pending forced checkpoints with the current state after backoff and any 
 Tab hide and return to title each get one immediate attempt while no hold is active. A successful
 autosave clears the failure streak. Manual saves can still be attempted.
 
+Save invariants (enforced by the seeded fuzz in `tests/save-fuzz.test.ts`, TASK-053):
+- **Round trip.** Every registered slice survives save → JSON → load → save byte for byte, and the
+  owner's restore code gives back the generated state (200 seeded cases per slice).
+- **Legacy and sparse slices.** A v0 save, a missing field and unknown fields or systems load; known
+  progress and unknown data are kept.
+- **Unreadable.** Bad JSON, a non-object state, `systems` or slice, a newer version and malformed
+  story fields (`readStorySlice`) make the slot unreadable: it is never loaded, the running state and
+  the stored bytes stay untouched.
+- **Owner restore is total.** Any other corrupt field still loads; the owner falls back per field
+  (default, or the entry is dropped) instead of throwing or restoring NaN or a wrong type. The
+  helpers live in `src/core/saved.ts`. Owners that restore without a scene are fuzzed directly:
+  animals, combat resources, bottles, photo, progression, quests and walkers.
+- **Value lists follow their unions.** A list of allowed saved values (look times, endings, quest
+  states, deer and dog states, party variant and credits) is built with `allOf<Union>()`, so adding
+  a union value without the list fails the typecheck instead of rejecting or resetting new saves.
+- **Real saves.** The release fixtures in `tests/fixtures/saves/` load, restore without losing
+  entries and re-save. `KQ_SAVE_DIRS=<dir>[:<dir>…]` adds more slot directories (for example the
+  campaign's `test-results/campaign-saves`); `KQ_FUZZ_CASES` raises the corrupt-slot count.
+
 ## 8. Eras and world look
 
 `ERAS = today | 1789 | 1793-02 | 1793-07 | 1796`. `today` uses the 2025 DTM, all others the
@@ -621,6 +640,9 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 
 ## 11. Testing
 
+- `tests/set-piece-dom.ts` stubs the element operations and window input events used by the
+  cinematic and court unit tests. Drive the simulation and camera with explicit steps. Use
+  Playwright to verify browser event propagation and rendered styling.
 - `tests/interiors-runtime-fixture.ts` runs the interiors system with the shipped room catalogue,
   terrain, player and event bus. Tests can delay the palace shell, load a pose and step the
   simulation to check storeys, room events and doors without a renderer.
@@ -941,7 +963,10 @@ Round-4 (polish: set dressing) integration rules:
   break. Crouching / standing over the pack's prints reads them (Spurenleser: kind, number,
   rider, age, direction; tier 2 highlights their routes) → caption + `hunt:read`.
   The Warner's scripted boot trail is for the player to follow, not the hounds. Its hold extends
-  only its own lifetime. A cue with no valid positive stride uses the usual 1.4 m spacing.
+  only its own lifetime. The pack follows only the player's boots (agent −1) on a segment it has not
+  lost, never the Warner's (agent −2) or its own paw and hoof prints. Calm sentries on `beats` (the
+  K2 sneak) pick up no prints at all; their sight cones and hearing decide the sneak. Once they have
+  noticed you, the searching pack picks your prints up where it lost you (`PackSim.scanForTrail`). A cue with no valid positive stride uses the usual 1.4 m spacing.
   Each segment uses at most 1800 terrain samples, spread across its full length.
 - Emits `hunt:alert`, `hunt:horn {signal, x, z, mode}`, `hunt:finale`, `hunt:start`, `hunt:end {reason}`,
   `hunt:tracking`, `hunt:goal`, `hunt:rest`, `hunt:read`, `lantern:toggle/oil/empty`,
@@ -986,7 +1011,9 @@ Round-4 (polish: set dressing) integration rules:
 ### fx (`src/systems/fx/`) – era shift, scan pulse, ambience, fire, Steinfraß
 - `shift:request {to, instant?}` → 3.5 s LiDAR transition (1.4 s crossfade in reduced motion,
   none when instant) → `shift:begin`, era switched + `shift:midpoint`, `shift:done`. Both paths
-  increment `meta.shifts` unless the reason is `caught`. `scan:mode` 1–3 → scan pulse. Era particles always.
+  increment `meta.shifts` unless the reason is `caught`. The transition emits `shift:begin` before
+  it captures and freezes movement, so the court can release an active escort. The transition
+  restores movement before `shift:done`. `scan:mode` 1–3 → scan pulse. Era particles always.
 - `threat:configure {kind:'fire'|'oblivion'}` → fire schedule over the real rooms (`fire:room`,
   `fire:progress`, smoke meter, `flags['fire.hold']` pauses it) / Steinfraß (`oblivion:progress`,
   pushed back by `clue:found`, `echo:start`, `oblivion:remember {amount?}`); full meter →
@@ -1910,8 +1937,11 @@ pitch / yaw; fov and the look keys fade / fog / sun / dark; smooth or linear eas
 carry over. The timeline runs on fixed steps (Esc / modals stop it); `cinematic:stop {id}` ends that cinematic at once (no grace, also
 when not skippable; for features that route the input themselves, e.g. the party); skip after 0.5 s by any key
 (not Esc / P / F-keys), click or touch; the HUD steps back except subtitles (`html[data-kq-cinematic]`),
-centre cards wait, autosaves are held (`save.hold`) and written after; a save that holds a playing
-cinematic ends it skipped after the load. Reduced motion: 'stills' = first and last key with a dip
+centre cards wait, and autosaves are held (`save.hold`) until playback ends. If the system is
+disposed during a shot, the deferred autosave retains the shot ID. On load or startup the runtime
+consumes the saved ID and emits one skipped end event. When a new shot starts during hand-back,
+the final hand-back restores the gameplay field of view from before the first shot.
+Reduced motion: 'stills' = first and last key with a dip
 through black (≤ 3 s), 'skip' = start + end skipped. Debug `kq.cinematic.play(id | spec)`, `skip()`,
 `at(id, t)`, `list()`, `playing()`. Tests: `tests/cinematic-keys.test.ts`,
 `tests/cinematic-system.test.ts`, `e2e/cinematic.spec.ts` (`cinematic-*.png`).

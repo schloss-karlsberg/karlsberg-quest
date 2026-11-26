@@ -8,6 +8,7 @@
  * −z (north), +π/2 = facing −x (west) — the player/camera convention (player.yaw, npc/index.ts). A figure's
  * `rotation.y` (figures face +z at 0, see npc/logic.ts `yawToward`) is `yaw + π`: use `figureYaw()`.
  */
+import { finiteOr } from '../../core/saved';
 import { Polyline, buildRoute, type BuiltRoute } from './route';
 import type { Route, WalkWait, WalkerSave } from './types';
 
@@ -301,15 +302,20 @@ export function restoreWalker(
   resolve: (route: string) => BuiltRoute | Route | undefined,
   opts: { speed?: number; wait?: WalkWait } = {},
 ): Walker | null {
+  if (!save || typeof save !== 'object' || typeof save.npc !== 'string') return null;
   let w: Walker;
-  const speed = opts.speed ?? save.speed;
-  const wait = opts.wait ?? save.wait;
+  // A corrupt position or speed starts at the route's start at walking pace.
+  const speed = opts.speed ?? (finiteOr(save.speed, 0) > 0 ? save.speed : undefined);
+  const saved = save.wait;
+  const wait = opts.wait ?? (saved?.for === 'player' && Number.isFinite(saved.r)
+    && (saved.resume === undefined || Number.isFinite(saved.resume)) && (saved.bark === undefined || typeof saved.bark === 'string') ? saved : undefined);
+  const s = finiteOr(save.s, 0);
   try {
     if (save.route) {
       const r = resolve(save.route);
       if (!r) return null;
-      w = createWalker({ npc: save.npc, route: r, to: save.to, s: save.s, speed, wait });
-    } else if (save.path) w = createWalker({ npc: save.npc, path: save.path, s: save.s, speed, wait });
+      w = createWalker({ npc: save.npc, route: r, to: save.to, s, speed, wait });
+    } else if (save.path) w = createWalker({ npc: save.npc, path: save.path, s, speed, wait });
     else return null;
   } catch {
     return null;
