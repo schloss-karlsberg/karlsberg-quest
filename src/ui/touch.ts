@@ -155,6 +155,7 @@ export class TouchControls {
   /** Gameplay running without a modal (boot decides). */
   private playing = false;
   private touchSeen = false;
+  private photoOpen = false;
   private readonly coarse: boolean;
   private stickId: number | null = null;
   private stickOrigin = { x: 0, y: 0 };
@@ -359,7 +360,11 @@ export class TouchControls {
 
   /** Photo mode: the attack button becomes the shutter, the camera button lights up. */
   private setPhoto(on: boolean, photoBtn: HTMLElement): void {
-    if (on) this.setSurveyMenu(null);
+    this.photoOpen = on;
+    if (on) {
+      this.setSurveyMenu(null);
+      this.surfaceTap = null;
+    }
     photoBtn.classList.toggle('on', on);
     this.attackBtn.classList.toggle('shutter', on);
     this.attackBtn.replaceChildren(svg(on ? TOUCH_ICONS.shutter : TOUCH_ICONS.attack), h('i.kq-t-ring'));
@@ -454,7 +459,7 @@ export class TouchControls {
   }
 
   private surfaceDown(e: PointerEvent): void {
-    if (e.pointerType === 'touch' && e.isPrimary && e.target === this.el) this.surfaceTap = new PointerTap(e);
+    if (!this.photoOpen && e.pointerType === 'touch' && e.isPrimary && e.target === this.el) this.surfaceTap = new PointerTap(e);
     e.preventDefault();
     this.setSurveyMenu(null);
     try {

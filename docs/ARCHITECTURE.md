@@ -1477,6 +1477,7 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   dog bark SFX yet).
 - **Calm** is script-only (`kq.animals.calm`): photo mode does not calm the deer (design decision,
   sneaking is the skill).
+- **Deer tuning** for the tour is recorded in [the tour slice](design/tour/slice-v0.md#deer-photo-and-sneak-tuning-task-017).
 - **Targets**: photo mode's `attachTarget` (`src/systems/photo/index.ts`, kq-mobile) gets
   `reh.ricke` / `reh.kitz` (`at` = body centre, `calm` false only while fleeing, `state` = the core
   state); the cinematic's `registerTarget` (`src/systems/cinematic/targets.ts`) gets `animal:<id>`
@@ -1937,17 +1938,30 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
   lock / dodge / abilities / Q / E / pause from every other reader; the photo system reads them
   with `raw`. Esc is caught in the capture phase (and the pointer-lock loss marked as the game's
   own), so no pause menu opens.
+- The **viewfinder** uses `html[data-kq-photo]` to hide the gameplay HUD, prompts, waymarks, minimap,
+  measuring UI and quest giver glyphs while the phone is up. Touch keeps the phone toggle and
+  shutter visible and accepts movement and look gestures. The measuring scene and surface taps
+  pause with endpoints intact. Scene marker roots follow `photo:open` / `photo:close` alongside
+  the independent `world:quiet` reasons. Tripods still activate, with their banners queued until
+  the phone closes.
 - **Not now** (a toast, an open phone closes): a menu / modal or pause, a conversation
   (`npc:conversation`, `cameraHints.focus`), a fight (`cameraHints.fight` / `boss`), the spirit view,
   `player.frozen`, or the camera taken over (`camera:override` from boot's camera slot, which
   `kq.setCamera` and the coming cinematic use).
+- An inline story choice or a `say` action with `phoneDown: true` lowers the phone and keeps it
+  down until the choice or dialogue ends. Other story captions pause their queue, typing and
+  recorded voice while the viewfinder is up.
 - **Judging** (`core.ts`, pure, `tests/photo.test.ts`): geometric, never pixels. Per target of the
   era: project the bounding sphere; good = centre in the middle third (`centre: 'any'` allowed),
-  diameter ≥ `minFrac` of the frame height, ≥ 2 of 3 sample points (top / left / right of the
-  sphere) with a clear line (terrain, footprint walls when the palace stands, `forest.trunksNear`;
-  the last 0.7 r is the subject itself), distance within `minDist`…`maxDist`, the view's mean
-  angular speed < 0.35 rad/s over the last 0.3 s (`SteadyMeter`), and `calm()` true. `needAll`
-  binds targets (doe and fawn both good in the same shot). **Fallback:** `fallbackDist` counts once
+  diameter ≥ `minFrac` of the frame height, and a majority of sample rays clear. The rays aim at
+  the top, left and right of the sphere. Animals also sample the centre and bottom, so they
+  need three of five clear. Terrain, footprint walls when the palace stands and tree trunks
+  block the rays. The last 0.7 r is skipped for the subject itself. The distance must be within
+  `minDist`…`maxDist`. Subjects beyond the active range limit get one star in frame and skip
+  sight sampling. The view's mean angular speed must be at most 0.35 rad/s over the last
+  0.3 s (`SteadyMeter`), and `calm()` must allow the shot. `needAll`
+  binds targets (doe and fawn both good in the same shot). **Fallback:** `fallbackDist` and the
+  optional lower `fallbackMinFrac` apply once
   the player has spent `fallbackAfterS` unpaused seconds within `fallbackDist` of the target (the
   clock lives in the save slice, stops at the first good shot), with `fallbackStars` (2 or 3 = good;
   1 = never good: one rule, good means ≥ 2 stars everywhere). **Stars**
@@ -1963,7 +1977,7 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
   `{ "type": "photo", "target": … }`, validated against the target list; a good shot taken before
   the objective started counts at once, on accept, on a newly active objective and on load:
   `QuestBook.settleKnown(found, hasPhoto)` reads `systems.photo.good`).
-- **Subject state:** `attachTarget(id, { at, calm, state })` / `registerTarget({ …, state })` take an optional `state()` getter (an opaque string, e.g. the deer's `graze` / `alert` / `flee` / `settled`), read at the shot for each good target and carried as `photo:good { id, stars, state }` (absent without a getter; also on the album entry); story matches `{ "event": "photo:good", "match": { "id": "reh.ricke", "state": "alert" } }`. Stars and verdicts ignore it, and `calm()` false still voids the shot (`?debug`: `kq.photo.deer.state('alert')`).
+- **Subject state:** `attachTarget(id, { at, calm, state })` / `registerTarget({ …, state })` take an optional `state()` getter (an opaque string, e.g. the deer's `graze` / `alert` / `flee` / `settled`), read at the shot for each good target and carried as `photo:good { id, stars, state }` (absent without a getter; also on the album entry). The tour saves the first accepted state with the album entry and finishes the corresponding reaction on Continue. Stars and verdicts ignore the state, and `calm()` false still voids the shot (`?debug`: `kq.photo.deer.state('alert')`).
 - **Targets are data:** `content/photo/targets.json` (kq-story; C3 shape: id, kind, era `today`,
   one anchor `at` / `npc` / `animal`, `r`, `frame`, `grants`, plus `cards[]`), validated by
   `pnpm validate` (`data.ts` `validatePhotoTargets`). A point anchor is static (ground + r without

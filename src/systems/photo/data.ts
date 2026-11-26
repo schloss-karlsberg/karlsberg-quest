@@ -29,7 +29,7 @@ export interface PhotoTargetData {
     minDist?: number;
     needAll?: string[];
     /** stars 2 | 3 = the fallback shot is good; 1 = never good (validator warns). */
-    fallback?: { afterS: number; maxDist: number; stars: 1 | 2 | 3 };
+    fallback?: { afterS: number; maxDist: number; minFrac?: number; stars: 1 | 2 | 3 };
   };
   grants?: PhotoGrants;
   /** Placeholder content shipped by the photo system (kq-story replaces it). */
@@ -89,6 +89,7 @@ export function targetFromData(d: PhotoTargetData, ground: (x: number, z: number
     centre: f.centre,
     needAll: f.needAll,
     fallbackDist: f.fallback?.maxDist,
+    fallbackMinFrac: f.fallback?.minFrac,
     fallbackAfterS: f.fallback?.afterS,
     fallbackStars: f.fallback?.stars,
     grants: d.grants,
@@ -178,7 +179,8 @@ export function validatePhotoTargets(file: string, data: unknown, refs: PhotoRef
       const fb = fr.fallback;
       if (!num(fb.afterS) || fb.afterS <= 0 || !num(fb.maxDist) || fb.maxDist <= 0 || (fb.stars !== 1 && fb.stars !== 2 && fb.stars !== 3)) err(id, 'frame.fallback needs afterS > 0, maxDist > 0 and stars 1, 2 or 3');
       else if (fb.stars === 1) warn(id, 'frame.fallback.stars 1: a fallback shot is then never good (good means ≥ 2 stars), so the fallback unlocks nothing');
-      else if (fb.maxDist <= (fr.maxDist ?? DEFAULT_MAX_DIST)) warn(id, 'frame.fallback.maxDist is not farther than maxDist: the fallback changes nothing');
+      else if (fb.maxDist <= (fr.maxDist ?? DEFAULT_MAX_DIST) && !(fb.minFrac !== undefined && fb.minFrac < fr.minFrac)) warn(id, 'frame.fallback leaves the distance and framing thresholds unchanged');
+      if (fb.minFrac !== undefined && (!num(fb.minFrac) || fb.minFrac < 0.02 || fb.minFrac > fr.minFrac)) err(id, 'frame.fallback.minFrac must lie between 0.02 and frame.minFrac');
     }
     const g = t.grants;
     if (g) {
