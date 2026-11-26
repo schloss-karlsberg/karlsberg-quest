@@ -214,6 +214,18 @@ export interface Ring {
   kind: 'area' | 'landing' | 'rain';
 }
 
+interface EraHazard {
+  group: string;
+  kind: 'fire' | 'stone';
+  x: number;
+  z: number;
+  r: number;
+  t: number;
+  dur: number;
+  ring: number;
+  projectile?: number;
+}
+
 /** One blow of the staff (a swing, an ability): what the hit rules need. */
 export interface Blow {
   /** Damage formula and armour: light (combo) or heavy (charge). */
@@ -622,7 +634,7 @@ export class CombatSim {
   private readonly waveState = new Map<string, { t: number; killed0: number; due: number; x: number; z: number }>();
   private readonly waveDone = new Set<string>();
   /** Hazards on the ground (rings filling up). */
-  readonly hazards: { kind: 'fire' | 'stone'; x: number; z: number; r: number; t: number; dur: number; ring: number }[] = [];
+  readonly hazards: EraHazard[] = [];
   private hazardT = 0;
   private hazardNext: number = HAZARD.every;
 
@@ -734,6 +746,7 @@ export class CombatSim {
       const e = this.enemies[i];
       if (all || e.group === group || e.group === `${group}+adds` || e.group === `${group}+escort`) this.removeEnemy(i);
     }
+    this.clearHazards(all ? undefined : group);
     if (all) {
       for (const k of Object.keys(this.groups)) delete this.groups[k];
       this.clearedAt.clear();
@@ -760,6 +773,7 @@ export class CombatSim {
       this.waveState.clear();
       this.waveDone.clear();
     } else {
+      this.clearHazards(group);
       this.escorted.delete(group);
       this.waveState.delete(group);
       this.waveDone.delete(group);
@@ -770,6 +784,9 @@ export class CombatSim {
     const e = this.enemies[i];
     this.tokens.release(e.id);
     this.dropRings(e);
+    for (let j = this.projectiles.length - 1; j >= 0; j--) {
+      if (this.projectiles[j]!.owner === e.id) this.projectiles.splice(j, 1);
+    }
     this.enemies.splice(i, 1);
   }
 
@@ -2534,17 +2551,29 @@ export class CombatSim {
     }
   }
 
-  /** Is a pack (not a boss) fighting the player right now? */
-  private packFight(inp: SimInput): boolean {
-    let pack = false;
+  /** The first eligible pack fighting the player. Boss fights suppress era hazards. */
+  private fightingPack(inp: SimInput): string | undefined {
+    let group: string | undefined;
     for (const e of this.enemies) {
       if (e.state === 'dissolve' || !e.aggro) continue;
-      if (e.boss) return false;
-      if (Math.hypot(e.x - inp.x, e.z - inp.z) > 25) continue;
+      if (e.boss) return undefined;
+      if (group !== undefined || Math.hypot(e.x - inp.x, e.z - inp.z) > 25) continue;
       const g = this.groups[this.rootOf(e)];
-      if (g && packWorthy(g)) pack = true;
+      if (g && packWorthy(g)) group = g.group;
     }
-    return pack;
+    return group;
+  }
+
+  private clearHazards(group?: string): void {
+    for (let i = this.hazards.length - 1; i >= 0; i--) {
+      const hazard = this.hazards[i]!;
+      if (group !== undefined && hazard.group !== group) continue;
+      this.hazards.splice(i, 1);
+      const ring = this.rings.findIndex((r) => r.id === hazard.ring);
+      if (ring >= 0) this.rings.splice(ring, 1);
+      const projectile = this.projectiles.findIndex((p) => p.id === hazard.projectile);
+      if (projectile >= 0) this.projectiles.splice(projectile, 1);
+    }
   }
 
   /**
@@ -2582,7 +2611,8 @@ export class CombatSim {
       this.out.push({ type: 'hazardHit', kind: h.kind, x: h.x, z: h.z, r: h.r, player: hitP, enemies: n });
     }
     const kind = hazardOf(inp.era);
-    if (!kind || this.p.dead || !this.p.inCombat || this.safe || !this.packFight(inp)) {
+    const group = kind && !this.p.dead && this.p.inCombat && !this.safe ? this.fightingPack(inp) : undefined;
+    if (!kind || group === undefined) {
       this.hazardT = 0;
       return;
     }
@@ -2597,7 +2627,11 @@ export class CombatSim {
     const off = 0.6 + hash01(this.tick * 2.3) * 0.9;
     spots.push({ x: inp.x + Math.cos(a) * off + inp.moveX * 1.2, z: inp.z + Math.sin(a) * off + inp.moveZ * 1.2 });
     if (def.n > 1) {
-      const near = this.enemies.filter((e) => e.aggro && !e.boss && e.state !== 'dissolve' && Math.hypot(e.x - inp.x, e.z - inp.z) > def.r * 1.6 && Math.hypot(e.x - inp.x, e.z - inp.z) < 12);
+      const near = this.enemies.filter((e) => {
+        if (!e.aggro || e.boss || e.state === 'dissolve' || this.rootOf(e) !== group) return false;
+        const distance = Math.hypot(e.x - inp.x, e.z - inp.z);
+        return distance > def.r * 1.6 && distance < 12;
+      });
       const t = near[Math.floor(hash01(this.tick * 5.3) * near.length)];
       if (t) spots.push({ x: t.x, z: t.z });
     }
@@ -2605,12 +2639,14 @@ export class CombatSim {
       const id = ++this.idSeq;
       const dur = def.tele * (this.opt.gentle ? AI.gentleTelegraph : 1);
       this.rings.push({ id, x: sp.x, z: sp.z, r: def.r, t: 0, dur, owner: 'hazard', kind: kind === 'fire' ? 'rain' : 'landing' });
-      this.hazards.push({ kind, x: sp.x, z: sp.z, r: def.r, t: 0, dur, ring: id });
+      const hazard: EraHazard = { group, kind, x: sp.x, z: sp.z, r: def.r, t: 0, dur, ring: id };
+      this.hazards.push(hazard);
       if (kind === 'stone') {
         // a block comes down from the robbed wall (drawn; the hazard does the harm)
         const gy = this.world.heightAt(sp.x, sp.z);
         const h = 0.5 * 9.81 * 0.8 * dur * dur;
-        this.projectiles.push({ id: ++this.idSeq, kind: 'hazard.stein', owner: 'hazard', x: sp.x + 1.2, y: gy + h, z: sp.z - 0.8, vx: -1.2 / dur, vy: 0, vz: 0.8 / dur, t: 0, life: dur, damage: 0, tier: 1, lob: true, tx: sp.x, tz: sp.z, r: def.r, ring: -1 });
+        hazard.projectile = ++this.idSeq;
+        this.projectiles.push({ id: hazard.projectile, kind: 'hazard.stein', owner: 'hazard', x: sp.x + 1.2, y: gy + h, z: sp.z - 0.8, vx: -1.2 / dur, vy: 0, vz: 0.8 / dur, t: 0, life: dur, damage: 0, tier: 1, lob: true, tx: sp.x, tz: sp.z, r: def.r, ring: -1 });
       }
       this.out.push({ type: 'hazard', kind, x: sp.x, z: sp.z, r: def.r, dur });
     }
