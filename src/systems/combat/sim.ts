@@ -433,6 +433,8 @@ export interface SimInput {
   moveZ: number;
   attackDown: boolean;
   attackPressed: boolean;
+  /** Focus loss dropped a held attack without a normal release. */
+  attackCancelled?: boolean;
   bannPressed: boolean;
   dodgePressed: boolean;
   /** Sprinting and moving (Atem drain in combat). */
@@ -963,6 +965,11 @@ export class CombatSim {
     p.bufAtk = Math.max(0, p.bufAtk - dt);
     p.bufDodge = Math.max(0, p.bufDodge - dt);
     p.stumbleCd = Math.max(0, p.stumbleCd - dt);
+    if (inp.attackCancelled) {
+      this.endCharge();
+      p.bufAtk = 0;
+      p.queued = false;
+    }
     if (inp.blocked) {
       p.bufAtk = 0;
       p.bufDodge = 0;

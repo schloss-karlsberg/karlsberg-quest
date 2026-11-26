@@ -187,6 +187,7 @@ export class Input {
   private readonly down = new Set<string>();
   private readonly pressedCodes = new Set<string>();
   private readonly shiftedCodes = new Set<string>();
+  private readonly cancelledActions = new Set<Action>();
   private mdx = 0;
   private mdy = 0;
   /** Accumulated wheel notches since the last `takeWheel()` (+ = towards you / zoom out). */
@@ -216,19 +217,13 @@ export class Input {
       if (['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'F5'].includes(ev.code) && this.enabled) ev.preventDefault();
     });
     on(window, 'keyup', (e) => this.down.delete((e as KeyboardEvent).code));
-    on(window, 'blur', () => {
-      this.down.clear();
-      this.clearPending();
-    });
+    on(window, 'blur', () => this.cancelInput());
     let hadLock = this.locked;
     on(document, 'pointerlockchange', () => {
       const locked = this.locked;
       if (hadLock && !locked) {
         // A release can swallow mouseup. Keyboard and touch holds still belong to their inputs.
-        for (const codes of [this.down, this.pressedCodes, this.shiftedCodes]) {
-          for (const code of codes) if (code.startsWith('Mouse')) codes.delete(code);
-        }
-        this.mdx = this.mdy = this.wheel = 0;
+        this.cancelInput(true);
       }
       hadLock = locked;
     });
@@ -275,8 +270,23 @@ export class Input {
     this.clearPending();
   }
 
+  /** Drops queued edges and mouse deltas. Cancellations stay for the next step: a pause menu opened by a
+   *  pointer-lock loss must not hide a cancelled mouse attack from combat. */
   private clearPending(): void {
-    this.endStep();
+    this.pressedCodes.clear();
+    this.shiftedCodes.clear();
+    this.mdx = this.mdy = this.wheel = 0;
+  }
+
+  private cancelInput(mouseOnly = false): void {
+    const matches = (code: string) => !mouseOnly || code.startsWith('Mouse');
+    for (const action of Object.keys(this.bindings) as Action[]) {
+      const held = [virtualCode(action), ...this.bindings[action]].filter((code) => this.down.has(code));
+      if (held.length > 0 && held.every(matches)) this.cancelledActions.add(action);
+    }
+    for (const codes of [this.down, this.pressedCodes, this.shiftedCodes]) {
+      for (const code of codes) if (matches(code)) codes.delete(code);
+    }
     this.mdx = this.mdy = this.wheel = 0;
   }
 
@@ -342,6 +352,11 @@ export class Input {
     return this.pressedCodes.has(virtualCode(a)) || this.bindings[a].some((c) => this.pressedCodes.has(c));
   }
 
+  /** A focus change dropped the held action before this step could see a normal release. */
+  wasCancelled(a: Action): boolean {
+    return this.cancelledActions.has(a);
+  }
+
   /** Read Shift from the keydown, even if the key was released before the simulation step. */
   wasPressedWithShift(a: Action): boolean {
     return this.wasPressed(a) && this.bindings[a].some((c) => this.shiftedCodes.has(c));
@@ -361,10 +376,11 @@ export class Input {
     return w;
   }
 
-  /** Called by the loop after every fixed update: forget edge presses. */
+  /** Called by the loop after every fixed update: forget edge presses and cancellations. */
   endStep(): void {
     this.pressedCodes.clear();
     this.shiftedCodes.clear();
+    this.cancelledActions.clear();
   }
 
   /** Simulate input (tests, debug hooks). `edge: false` holds a key down without a new press (pilot holds). */

@@ -57,8 +57,30 @@ describe('pointer-lock input', () => {
     expect.soft(input.takeWheel()).toBe(0);
     expect.soft(input.isDown('attack')).toBe(false);
     expect.soft(input.wasPressed('attack')).toBe(false);
+    expect(input.wasCancelled('attack')).toBe(true);
+    expect(input.wasCancelled('forward')).toBe(false);
+    input.endStep();
+    expect(input.wasCancelled('attack')).toBe(false);
     canvas.dispatchEvent(Object.assign(new Event('mousedown'), { button: 0 }));
     expect(input.wasPressed('attack')).toBe(true);
+  });
+
+  it.each(['keyboard', 'touch'] as const)('keeps an overlapping %s attack hold on pointer-lock loss', (source) => {
+    const { canvas, doc, input } = inputSurface();
+    doc.pointerLockElement = canvas;
+    doc.dispatchEvent(new Event('pointerlockchange'));
+    canvas.dispatchEvent(Object.assign(new Event('mousedown'), { button: 0 }));
+    if (source === 'keyboard') input.simulate('KeyK', true);
+    else input.press('attack', true);
+
+    doc.pointerLockElement = null;
+    doc.dispatchEvent(new Event('pointerlockchange'));
+    expect(input.isDown('attack')).toBe(true);
+    expect(input.wasCancelled('attack')).toBe(false);
+    if (source === 'keyboard') input.simulate('KeyK', false);
+    else input.press('attack', false);
+    expect(input.isDown('attack')).toBe(false);
+    expect(input.wasCancelled('attack')).toBe(false);
   });
 
   it('drops held and queued input when the browser loses focus', () => {
