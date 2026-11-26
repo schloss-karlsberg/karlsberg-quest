@@ -170,6 +170,12 @@ export const BENCH_SCENES: BenchScene[] = [
   },
 ];
 
+/** Extra fixed forest views from docs/PERFORMANCE.md §3.1a, selected explicitly by id. */
+const FOREST_BENCH_SCENES: BenchScene[] = [
+  { id: 'today-forest-b', label: 'Heute, dichter Wald B', era: 'today', setup: (k) => k.teleport(1632, -1640, 260, -6) },
+  { id: 'today-forest-c', label: 'Heute, Wald C', era: 'today', setup: (k) => k.teleport(1952, -1010, 260, -6) },
+];
+
 const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
 
 /** Run the route. `setCamera` installs a per-frame camera override in boot's render callback. */
@@ -182,7 +188,10 @@ export async function runBench(
   const ctx = k.ctx;
   const frames = Math.max(2, opts.frames ?? 150);
   const warmup = Math.max(1, opts.warmup ?? 20);
-  const scenes = BENCH_SCENES.filter((s) => !opts.only || opts.only.includes(s.id));
+  const { only } = opts;
+  const scenes = only
+    ? [...BENCH_SCENES, ...FOREST_BENCH_SCENES].filter((s) => only.includes(s.id))
+    : BENCH_SCENES;
   const saved = { era: ctx.era.current, x: ctx.player.position.x, z: ctx.player.position.z, yaw: ctx.player.yaw, pitch: ctx.player.pitch, flying: ctx.player.flying };
   const gpuWas = perf.gpuEnabled;
   perf.enableGpuTimer(true);
