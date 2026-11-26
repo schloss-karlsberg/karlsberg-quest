@@ -1290,3 +1290,9 @@
 .ck-memory-label.show {
   opacity: 1;
 }
+html[data-kq-reduced-motion] :is(.ck-stamp.fresh, .ck-shake, .ck-cx.fresh, .ck-detail-layer, .ck-chip) {
+  animation: none;
+}
+html[data-kq-reduced-motion] .ck-entry .splat {
+  display: none;
+}

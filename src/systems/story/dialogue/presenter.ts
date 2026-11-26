@@ -125,7 +125,7 @@ export class DialoguePresenter {
     this.typedEl = h('span.kqs-typed');
     this.restEl = h('span.kqs-rest');
     this.srcEl = h('span.kqs-src');
-    this.skipEl = h('span.kqs-skip');
+    this.skipEl = h('button.kqs-skip', { type: 'button', 'aria-label': t('story.dialogue.next'), onclick: () => this.skip() });
     this.skipHint();
     this.el = h('div.kqs-dlg', { 'data-testid': 'dialogue', role: 'status' }, [
       this.portraitEl,
@@ -138,6 +138,7 @@ export class DialoguePresenter {
     // a click, and on a phone a tap (its compatibility mousedown), advances
     this.el.addEventListener('mousedown', (e) => {
       e.stopPropagation();
+      if (e.target instanceof Node && this.skipEl.contains(e.target)) return;
       this.skip();
     });
     o.layer.append(this.el);

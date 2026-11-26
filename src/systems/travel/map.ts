@@ -5,6 +5,7 @@
  * Wheel zooms, dragging pans, a click on a point selects it, Enter / the button travels.
  */
 import type { GameContext } from '../../core/context';
+import { motionTime } from '../../core/motion';
 import { drawMapFootprints, drawMapGoal, drawMapPaper, drawMapPlayer, mapImage, type MapView } from './map-art';
 import type { Poi } from './pois';
 import type { SurveyPoint } from './points';
@@ -79,8 +80,9 @@ export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapM
   const toPx = (x: number, z: number): [number, number] => [(x - view.cx) / view.mpp + W / 2, (z - view.cz) / view.mpp + H / 2];
   const toWorld = (px: number, py: number): [number, number] => [(px - W / 2) * view.mpp + view.cx, (py - H / 2) * view.mpp + view.cz];
 
-  function draw(time: number): void {
+  function draw(frameTime: number): void {
     if (!g || !alive) return;
+    const time = motionTime(frameTime, ctx.settings.state.reducedMotion);
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawMapPaper(g, mapImage(ctx.data), view);
     // vignette
@@ -148,7 +150,7 @@ export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapM
         g.strokeStyle = 'rgba(140, 47, 31, 0.9)';
         g.lineWidth = 2;
         g.beginPath();
-        g.arc(0, 0, ctx.settings.state.reducedMotion ? 13 : 13 + Math.sin(time / 200) * 1.5, 0, Math.PI * 2);
+        g.arc(0, 0, 13 + Math.sin(time / 200) * 1.5, 0, Math.PI * 2);
         g.stroke();
       }
       g.fillStyle = '#b58b3d';
@@ -252,6 +254,7 @@ export function renderMap(ctx: GameContext, root: HTMLElement, model: () => MapM
           act.layer(l.id);
           m = model();
           renderSide();
+          side.querySelector<HTMLButtonElement>(`[data-testid="travel-layer-${l.id}"]`)?.focus();
         };
         row.append(b);
       }
@@ -371,9 +374,13 @@ html[data-kq-contrast] .kqt-map-block { background: #fff; color: #000; }
 .kqt-travel-curtain .kqt-to { font-size: 28px; letter-spacing: 0.04em; }
 .kqt-travel-curtain .kqt-sub { font-family: var(--serif, Georgia); font-style: italic; font-size: 16px; opacity: 0.8; }
 html[data-kq-reduced-motion] .kqt-travel-curtain .kqt-cross { animation: none; }
+html[data-kq-reduced-motion] .kqt-travel-curtain { transition-duration: 0.2s; }
 @keyframes kqt-spin { to { transform: rotate(360deg); } }
 .kqt-card { position: fixed; left: 50%; top: max(150px, 22vh); transform: translateX(-50%); z-index: 22; width: min(460px, 88vw); padding: 16px 22px 14px; pointer-events: auto;
   background: #efe4c9; color: #2a2118; border: 1px solid #b9a57c; box-shadow: 0 6px 24px rgba(0,0,0,0.35); font-family: var(--serif, Georgia), serif; animation: kq-in 0.25s ease-out; }
+html[data-kq-reduced-motion] .kqt-card { animation: none; }
+.kqt-card-dismiss { position: absolute; inset: 0; border: 0; background: transparent; cursor: pointer; }
+.kqt-card-dismiss:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
 .kqt-card.kqt-aside { display: none; }
 .kqt-card.kqt-banner { top: 64px; width: min(420px, 70vw); padding: 10px 18px; text-align: center; background: rgba(239, 228, 201, 0.94); }
 .kqt-card.kqt-banner h3 { font-size: 19px; }

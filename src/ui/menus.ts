@@ -221,11 +221,11 @@ export function openPause(deps: MenuDeps, onClose: () => void): ModalHandle {
         h('button.kq-btn.primary', { onclick: () => m.close(), 'data-testid': 'resume' }, t('pause.resume')),
         ...(pauseHooks.extraActions?.() ?? []).map((a) => h('button.kq-btn', { 'data-testid': a.testid, onclick: () => (m.close(), a.run()) }, a.label)),
         destinations(),
-        h('button.kq-btn', { 'data-testid': 'pause-settings', onclick: () => sub(t('settings.title'), settingsForm(deps.settings)) }, t('pause.settings')),
-        h('button.kq-btn', { 'data-testid': 'pause-controls', onclick: () => sub(t('controls.title'), controlsBody(deps.settings)) }, t('pause.controls')),
+        h('button.kq-btn', { 'data-testid': 'pause-settings', onclick: () => sub(t('settings.title'), settingsForm(deps.settings), 'pause-settings') }, t('pause.settings')),
+        h('button.kq-btn', { 'data-testid': 'pause-controls', onclick: () => sub(t('controls.title'), controlsBody(deps.settings), 'pause-controls') }, t('pause.controls')),
         h('button.kq-btn', { 'data-testid': 'pause-save', onclick: () => deps.save() && deps.modals.open({ body: t('pause.saved'), backdrop: 'still', actions: [{ label: t('modal.ok') }] }) }, t('pause.save')),
         ...notesButtons(),
-        h('button.kq-btn', { onclick: () => sub(t('licences.title'), licencesBody(deps.attribution())) }, t('pause.licences')),
+        h('button.kq-btn', { 'data-testid': 'pause-licences', onclick: () => sub(t('licences.title'), licencesBody(deps.attribution()), 'pause-licences') }, t('pause.licences')),
         h('button.kq-link', { onclick: () => { m.close(); deps.toTitle(); } }, t('pause.toTitle')),
       ]),
       t('pause.title'),
@@ -252,8 +252,12 @@ export function openPause(deps: MenuDeps, onClose: () => void): ModalHandle {
         : []),
     ];
   };
-  const sub = (title: string, body: HTMLElement | HTMLElement[]) => {
-    m.setBody([...(Array.isArray(body) ? body : [body]), h('div.actions', h('button.kq-btn', { onclick: main }, t('settings.back')))], title);
+  const sub = (title: string, body: HTMLElement | HTMLElement[], opener: string) => {
+    const back = () => {
+      main();
+      m.el.querySelector<HTMLElement>(`[data-testid="${opener}"]`)?.focus();
+    };
+    m.setBody([...(Array.isArray(body) ? body : [body]), h('div.actions', h('button.kq-btn', { onclick: back }, t('settings.back')))], title);
   };
   main();
   return m;

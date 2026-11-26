@@ -188,6 +188,8 @@ export const de: Record<string, string> = {
   'fly.prompt.touch': 'Landen · Stick: fliegen · Wischen: umsehen · Steigen und Sinken rechts',
 
   'modal.close': 'Schließen',
+  'modal.dialog': 'Dialog',
+  'game.field': 'Spielfeld',
   'modal.ok': 'Gut',
   'common.yes': 'Ja',
   'common.no': 'Nein',

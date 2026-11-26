@@ -436,20 +436,34 @@ Settings rows: `addSettingsRows((settings) => [[label, control, section?, help?]
 `graphics`, `access`, `audio` (default `game`), `help` is a sentence shown under the row. Give
 controls a `data-testid` and an `id` (the label's `for` is set from it).
 
-Accessibility contract for feature systems:
-- **Flashes**: when `settings.reducedFlash` is on, keep full-screen flashes ≤ 25 % (the post pass
-  already scales `uFlash` by 0.2 and the shift's chromatic aberration), no strobing light
-  (interiors stop candle/fire flicker, fx damps collapse and shift flashes, the fireworks echo
-  drops its white-out and spark twinkle, ghosts lose their eerie stutter (`uStutter`), the
-  hounds' ember eyes and horn glow stop flickering).
-- **Motion**: `settings.reducedMotion` → shorter / calmer transitions, no camera shake.
-- **Root attributes** for CSS: `html[data-kq-contrast]`, `[data-kq-reduced-motion]`,
-  `[data-kq-reduced-flash]`, `[data-kq-colorblind]`; `--sub-bg` (subtitle backing opacity),
-  `--sub-scale`. Feature CSS should add a high-contrast rule for its HUD pieces (solid backing,
-  ≥ 4.5 : 1 text).
-- **Colour**: never encode meaning in red vs green alone; with `settings.colorblind` the relief
-  scan uses the Okabe-Ito blue ↔ orange ramp (`terrain.uniforms.uPalette`).
-- **Audio**: speech on the `voice` bus, so players can turn music down and voices up.
+### Accessibility
+
+- Read `settings.reducedMotion` when rendering optional movement. Keep player input, world
+  locomotion, simulation clocks and required combat tells responsive. Cut scripted camera moves
+  to still shots or skip the move. Suppress shake, recoil offsets, title drift and camera bob.
+  Keep decorative particles, rotation, pulsing markers and auto-scrolling still or omit them.
+  Both credits views offer a static list when the in-game setting or the OS preference requests
+  reduced motion. Keep keyboard- and touch-driven scrolling available.
+- Use immediate state changes for gauges and indicators. When opacity is needed to cover a cut
+  or communicate a transition, use a short fade. Story overlays cap reduced-motion fades at
+  200 ms while scene triggers keep their authored timing. The era shift uses its own crossfade.
+- Keep flashing at three flashes per second or fewer. Review overlapping effects and rapid
+  retriggers as a combined view, including CSS, shader emissive terms and full-screen passes.
+  With `settings.reducedFlash`, use steady lights and attenuate full-screen flashes. The post pass
+  scales `uFlash` and shift colour separation by 0.2 with reduced flashes and suppresses both
+  with reduced motion. Feature-local effects also need steady or dim alternatives.
+- Use `html[data-kq-reduced-motion]`, `[data-kq-reduced-flash]`, `[data-kq-contrast]` and
+  `[data-kq-colorblind]` in feature CSS. The OS preference initializes motion and flash
+  settings and covers the loader before startup. High-contrast HUD pieces use a solid backing
+  and text contrast of at least 4.5 to 1. Subtitles share `--sub-bg` and `--sub-scale`.
+- Use native controls with visible German labels. Add a German accessible name to icon-only
+  controls and group radio options under a named radiogroup. Follow DOM order for Tab, show a
+  visible focus ring and keep focus inside the active dialog. Return focus to its opener where
+  available. Focus reading-only panels without scrolling so the first entry is visible on open.
+  Retain focus on an equivalent control after journal content refreshes.
+- Encode information with more than colour. With `settings.colorblind`, relief uses the
+  Okabe-Ito blue ↔ orange ramp (`terrain.uniforms.uPalette`). Route speech through the
+  `voice` bus so players can set its volume independently.
 
 ## 6. Events (core)
 
@@ -607,6 +621,14 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 
 ## 11. Testing
 
+- `tests/interiors-runtime-fixture.ts` runs the interiors system with the shipped room catalogue,
+  terrain, player and event bus. Tests can delay the palace shell, load a pose and step the
+  simulation to check storeys, room events and doors without a renderer.
+
+- `tests/exploration-fixture.ts` supplies a game state store, event bus and in-memory save slots
+  with a fixed clock and seeded randomness. A slot load restores the era before feature listeners
+  run, including the nested `era:change`. Hunt, survey, measurement and collectible tests call
+  the registered systems' update and frame methods to advance game time and rendering independently.
 - `tests/terrain-load.test.ts` uses `serveTerrain()` to serve two compressed grid cells from
   memory. Each layer has distinct values so the test detects swapped eras, incorrect units and
   ground or canopy rasters whose dimensions disagree with the height grid.
@@ -715,8 +737,9 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   each press is reported at most once; `t` = seconds into the act; tapped by wrapping the live
   `CombatSim.step` and reading the player state, buffer included, before / after, nothing in
   combat changes) and `frames`. `kq.pilot.observe({frames?})` is the
-  same without stepping; `kq.pilot.choose(n)` clicks option n (1-based) of the open dialogue /
-  story choice / modal, one at a time: a second `choose()` before the next `act` / `observe` returns
+  same without stepping; `kq.pilot.choose(n)` selects option n (1-based) of the open dialogue,
+  story choice or modal. Inline choices go through `kq.story.choose` and return a label only when
+  the choice was accepted. A second `choose()` before the next `act` / `observe` returns
   null and adds a `chooseRejected` event (the next modal may not be up yet). In bullet time the era
   shift runs on the fixed steps when frames are drawn only on request, and fast travel arrives at
   once (`src/core/bullet.ts`); `kq.pilot.showStrip(true)` shows each act's frames along the bottom of
@@ -929,6 +952,8 @@ Round-4 (polish: set dressing) integration rules:
   (`settings.soundIndicators`), captions (`settings.subtitles`).
 - State `systems.hunt {alert, lantern {oil, lit, seconds}, caught, pack}`: `pack {era, opts}` is the
   active pack configuration; it comes back after a load in the same era (a story re-configure wins).
+  Loading cancels an outgoing capture. The incoming slot supplies the pack's area, composition,
+  mode and most recent intensity, including encounters that changed mode in place.
 - Visuals (`visuals.ts`, `PackVisuals`): bodies of sorted fbm smoke billboards; ember eyes as
   additive sprites with a minimum on-screen size that pierce the fog. Readable in fog at 30–60 m:
   the body keeps most of its dark silhouette out to ~55 m before sinking into the distance fog, a
@@ -956,6 +981,7 @@ Round-4 (polish: set dressing) integration rules:
 - State `systems.menagerie` stores spawns in `animals`, permanently calmed group ids in `calmed`,
   and progress by animal id in the optional `misses` and `flares` maps. A load restores the saved
   counts, with missing entries starting at zero. Three saved misses keep the lead-home action ready.
+  `calmed` also suppresses those bodies when the menagerie rebuilds.
 - Hooks `kq.menagerie.spawn/spawnInView/clear/state/down/setState/place/freeze/events/places`.
 - Example beats (test only, not loaded): `content/test/hunt-menagerie.test.story.json`.
 
@@ -1043,6 +1069,9 @@ Round-4 (polish: set dressing) integration rules:
   story card is open.
 - **Free survey**: without a running story (sandbox, `?notitle` tests) every tool is open;
   `?skills=strict` forces gating, `?skills=all` opens everything. Locked keys leave a toast.
+- Survey checks the active scan and map against the incoming game's skills on its first tick.
+  A relief find starts a four-second game-time countdown. Another find restarts it, and a
+  manual scan selection cancels it. A slot load drops it; Continue from the title keeps the time left.
 - Also owns the extra settings rows (Rauhnacht under "Spiel",
   Geräusch-Untertitel and Richtungspfeile under "Barrierefreiheit") and key-help rows. The
   graphics preset itself belongs to the core (`render/quality.ts`, row "Grafik" under "Bild &
@@ -1065,7 +1094,8 @@ Round-4 (polish: set dressing) integration rules:
   medium #E69F00, low #CC79A7 striped) and shows it as a ghost where the era has none.
 - **Fährtenlinien** (Spurenleser 2): leader route and hound trails while a pack runs, read through
   the duck-typed accessor `window.kq.hunt.sim()` (no import of the hunt system).
-- Shift suspends the plan sheet; `game:start` resets the tools.
+- Shift suspends the plan sheet. An era change or slot load clears the measuring tape.
+  Terrain picking includes the final segment up to the crosshair's 600 m range. `game:start` resets the tools.
 - Hooks `kq.tools.measure.{start,stop,click,at,pick,state}`, `kq.tools.xray(on)`,
   `kq.tools.plans(view)`, `kq.tools.tracks(on)`, `kq.tools.state()`; `kq.survey.map(0|1840|1935)`.
 - On touch the Erkunden menu sends the same tool actions through virtual input.
@@ -1079,7 +1109,8 @@ Round-4 (polish: set dressing) integration rules:
 - Data in `content/story/*.story.json` (schema notes: `content/story/README.md`, checked by
   `pnpm validate`): chapters → beats with conditions, actions, delays, checkpoints. Prologue and
   endings are scripted from the bible; chapters 1–4 are placeholder skeletons.
-- Emits `story:chapter/beat/ending`, `objective:set`, `threat:configure`, `shift:request`,
+- Emits `story:chapter/beat/ending` (`story:chapter/beat` carry `resume: true` when a boot, load
+  or capture re-enters them), `objective:set`, `threat:configure`, `shift:request`,
   `dialogue:say`, `hub:enter/leave`, `story:cue {id,data?}` and `story:credits`. Presents every `dialogue:say` (portrait card, typing,
   voice) and ContentDB dialogue triggers. Voice: a recorded clip when `voice/manifest.json`
   (under the Vite base; contract and FNV-1a `textHash` over the raw `text_de` in
@@ -1578,6 +1609,14 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   re-selected after ≥ 0.5 m of movement or when the built set changes (< 0.05 ms per frame).
 - Emits `room:enter {roomId, building, id, name}` / `room:leave` (contracts.ts), mirrors them in
   `flags['interior.room']` / `flags['interior.building']`; story condition `{ "room": "<id>" }`.
+  A shift reports the room left using its original plan. Loading on foot inside a palace room
+  grounds the player on the saved storey (a room's floor or a doorway's, checked with `floorAt`).
+  While the shell still streams, a plan built from the room catalogue alone (no shell openings,
+  procedural entrances) provides those floors and walls, so the pose an autosave writes keeps the
+  storey and the exterior walls block; the shell's plan replaces it when it arrives.
+- Festsaal choice (K3, cue `festsaal:objects`): shifting away before choosing removes the objects,
+  the E prompt and the card hold; back in the choice's era (nothing in `festsaal.took` yet) they
+  return. A fire that ends or `festsaal:clear` drops the choice; a slot load drops a waiting one.
   Room names as a toast with `skills.baumeister ≥ 1`, `?debug` or `?rooms`.
 - Hooks `kq.interiors.list/enter/doors/room/build/fire/state/floorAt`.
 
@@ -1632,6 +1671,8 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   terrace lamps, winter over the summer night, the climax on the one scaffold, darkness, the
   return. Light via `uGlowColor/uGlowPos`, white flash via `post.uFlash` — off with
   `settings.reducedFlash` or `reducedMotion`; the graphics preset Niedrig halves the sparks.
+  Reduced motion keeps the phase and shell audio schedules, skips moving spark and smoke work,
+  and shows one stationary light during the dark phase.
 - Lit windows (`windows.ts`, the interiors' `extractOpenings`): cue `{do:'cue', id:'scenery:windows',
   data:{building, era?, on?, share?}}` (chapter 2 lights KB-B10); Ehrenhof gate `scenery:gate
   {open}` (closed by default; open adds a pass zone through KB-B39).
@@ -1660,7 +1701,10 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   walks) whenever the npc system shows him in 1793-07 within 160 m; not solid.
 - Westblick (1796): within 260 m of 200/−905 the haze thins to a quarter (`atmosphere.uFogDensity`
   and `uFogHeightDensity` scaled from `world.look`; restored when leaving) so the Hohenburg reads.
-- Runs in `update` (deterministic with `kq.step`). State `systems.scenery {windows, gate}`.
+- When an era drops a set, it also releases the set's collision. Loading a slot restores its
+  windows, gate and coat before the resumed story issues new scenery cues. Changing the lit share
+  rebuilds that building's panes for the requested era.
+- Runs in `update` (deterministic with `kq.step`). State `systems.scenery {windows, gate, coatTaken?}`.
   Hooks `kq.scenery.built/sets/solids/windows/gate/fireworks/hohenburg/passage/convoy/chair/fogLift`.
 
 ### travel (`src/systems/travel/`) – Vermessungspunkte, fast travel, route POIs, Wegweiser
@@ -1840,10 +1884,13 @@ pause the logic.
   killer kind, era and objective (a `caught` within 3 s of a `died` is the same KO), stuck episodes:
   ≥ 180 s of active play (fixed step, not paused) while there is an objective and no
   `quest:progress / objective / ready / completed / accepted`, `story:beat / chapter` or changed
-  `objective:set`; the episode grows until progress ends it. Lists capped at 500.
+  `objective:set`; the episode grows until progress ends it. Lists capped at 500. A beat or chapter
+  the story enters again (`resume: true` after a boot, a load or a capture) and the slot's saved
+  objective set again on resume are not progress.
 - Storage (`store.ts`): IndexedDB `kq-notes` v1, stores `notes` (auto-increment) and `meta`
   (`telemetry`, written at most every 5 s while it changes and when the tab hides); memory fallback
   when IndexedDB is blocked. **No network calls, ever.**
+  Advancing or resetting the stuck clock schedules a write, even before an episode opens.
 - Pause menu (`notesPauseHooks` in `src/ui/menus.ts`): „Notizen exportieren (n)“ downloads
   `karlsberg-notizen-<date>.json` = `{ format: 'kq-notes', version: 1, exportedAt, notes: Note[],
   telemetry: { open, quests, deaths, stuck, sinceProgress, summary } }` (screenshots as data URLs);
@@ -2160,11 +2207,17 @@ Each RPG track adds its own subsection here when it fills its system in.
   `npc:talk`, `room:enter` …), `npc:topics` / `npc:marker` / `npc:follow` to npc, restore on
   `save:loaded` **and on a state replace** (`state.subscribe` reason `new` / `replace`: a new game
   from the title replaces the whole state, and the book must follow the new slice). State
-  `systems.quests` (`QuestSlice` + `bestiary`). A restore never autosaves (at boot it would write
-  an empty save before the title); accept / complete / fail / stance are forced autosaves.
-  Known clues settle one tick after any accept / objective (`settleKnown`). On `story:chapter`,
-  main quests of earlier chapters still running and unaccepted offers of earlier chapters are
-  reset (chapter jumps; the e2e `test` chapter counts as after the campaign); side quests the
+  `systems.quests` (`QuestSlice` + `bestiary`). Restore replays any newly credited progress through
+  the normal quest events and autosaves. Recovered payouts queue their dialogue and reward notice
+  until Continue or until an in-game load finishes. Replacing the state clears the previous save’s
+  pending reward presentation. Accept / complete / fail / stance are forced autosaves.
+  Saved clues, good photos and calms settle on restore and one tick after acceptance or objective
+  completion (`settleKnown`). A newly accepted quest also checks its open calm objectives before
+  the acceptance autosave, including during a paused conversation. Calm objectives match a saved
+  spawn ID or species. „Der Jaguar“ can also recover directly from `k3.jaguar` in the saved calm
+  list after its spawn record was cleared.
+  On `story:chapter`, main quests of earlier chapters still running and unaccepted offers of earlier
+  chapters are reset (chapter jumps; the e2e `test` chapter counts as after the campaign). Side quests the
   player took keep running unless their chapter fails them. The book restores on a state `load`
   too (it fires before `save:loaded`, which reaches the story's resume first).
 - Main quest always visible (playtest round 10, F-30 / F-41, `tests/quests-tracker.test.ts`):

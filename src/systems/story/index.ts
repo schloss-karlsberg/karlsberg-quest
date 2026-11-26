@@ -320,7 +320,7 @@ class StoryRuntime {
         this.gatePending = false;
         // the beat's spoken lines: fetch and decode their clips now (never waits)
         this.clips?.preload(sayLineIds(b).map((id) => ({ id })));
-        ctx.events.emit('story:beat', { chapter: ch, beat: b.id });
+        ctx.events.emit('story:beat', { chapter: ch, beat: b.id, ...(o.resume ? { resume: true as const } : {}) });
         if (!o.resume) this.pendingAutosave = true;
         if (this.storyPrompt) {
           ctx.ui.hud.prompt(null, undefined, 'story');
@@ -374,7 +374,7 @@ class StoryRuntime {
     ctx.events.on('story:cue', ({ id, data }) => {
       if (id.startsWith('bussole:')) this.objectives.cue(id, data ?? {}, ctx.settings.state.reducedMotion);
     });
-    this.overlays = new StoryOverlays(this.layer, ctx.ui.modals, (open) => ctx.events.emit('story:inline-choice', { open }), ctx.ui.hud);
+    this.overlays = new StoryOverlays(this.layer, ctx.ui.modals, (open) => ctx.events.emit('story:inline-choice', { open }), ctx.ui.hud, () => ctx.settings.state.reducedMotion);
 
     addPausePage({
       id: 'chapters',
@@ -436,6 +436,9 @@ class StoryRuntime {
       if (reason === 'load' || reason === 'new') this.cancelCaught();
     });
     ctx.events.on('save:loaded', () => {
+      // a curtain that was down belongs to the outgoing game: no wake teleport, meter reset or
+      // shift home in the loaded one
+      this.cancelCaught();
       this.resync();
       this.presenter.clear();
       // a load during play (the pause menu's „Ende noch einmal wählen“) resumes the beat like a
@@ -611,7 +614,7 @@ class StoryRuntime {
 
   private chapterEntered(f: StoryFile, resume: boolean): void {
     const ctx = this.ctx;
-    ctx.events.emit('story:chapter', { id: f.chapter });
+    ctx.events.emit('story:chapter', { id: f.chapter, ...(resume ? { resume: true as const } : {}) });
     if (resume) {
       restoreTourDeerPhoto(this.slice, ctx.state.mutable.flags);
       if (ctx.era.current === 'today') {
@@ -1462,6 +1465,7 @@ class StoryRuntime {
     this.caughtCombat = by === 'combat';
   }
 
+  /** A load or new game under the curtain: drop the pending wake (teleport, meter reset, shift home, wake lines). */
   private cancelCaught(): void {
     this.wakeLines = [];
     this.caughtAt = null;
@@ -1469,6 +1473,7 @@ class StoryRuntime {
     this.overlays.clearCurtain();
     if (this.caughtBusy) {
       this.caughtBusy = false;
+      this.caughtT = 0;
       this.ctx.player.frozen = false;
       this.ctx.ui.hud.busy('caught', false, 0);
     }

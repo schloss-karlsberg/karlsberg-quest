@@ -3,6 +3,7 @@ import { t } from '../i18n';
 import { type Action, REBINDABLE, bindKey, diffBindings, effectiveBindings } from '../player/input';
 import { GRAPHICS_LEVELS } from '../render/quality';
 import { clear, h } from './dom';
+import { tabStops } from './focus';
 
 /**
  * The settings page (pause menu and title): five sections with a jump bar — Spiel, Steuerung
@@ -131,8 +132,11 @@ export function settingsForm(settings: SettingsStore): HTMLElement {
       const control = input.matches('input') ? input : input.querySelector('input');
       const cid = `kq-set-${formSeq}-c${n++}`;
       if (control && !control.id) control.id = cid;
-      // a radio group is labelled by aria-label; the visible label points at its first option
-      form.append(h('label', { for: control?.id ?? cid }, label), input);
+      // Keep the group caption separate from the individual radio labels.
+      const caption = input.getAttribute('role') === 'radiogroup'
+        ? h('label', label)
+        : h('label', { for: control?.id ?? cid }, label);
+      form.append(caption, input);
       if (help) form.append(h('p.kq-help', help));
     }
     if (sec === 'controls') form.append(keyBindings(settings));
@@ -147,7 +151,7 @@ export function settingsForm(settings: SettingsStore): HTMLElement {
           'data-testid': `set-nav-${sec}`,
           onclick: () => {
             section.scrollIntoView({ block: 'start', behavior: settings.state.reducedMotion ? 'auto' : 'smooth' });
-            (section.querySelector('input, button, summary') as HTMLElement | null)?.focus({ preventScroll: true });
+            tabStops(section)[0]?.focus({ preventScroll: true });
           },
         },
         t(`settings.section.${sec}`),
@@ -213,11 +217,7 @@ export function keyLabel(code: string, layout = layoutMap): string {
 function keyBindings(settings: SettingsStore): HTMLElement {
   const body = h('tbody');
   const table = h('table.kq-bind', body);
-  let capture: ((e: KeyboardEvent) => void) | null = null;
-  const stopCapture = () => {
-    if (capture) window.removeEventListener('keydown', capture, true);
-    capture = null;
-  };
+  let stopCapture: () => void = () => {};
   const save = (o: Record<string, string[]>) => settings.update((d) => (d.bindings = o), 'bindings');
   const render = (focus?: string) => {
     clear(body);
@@ -252,18 +252,31 @@ function keyBindings(settings: SettingsStore): HTMLElement {
     }
     if (focus) (body.querySelector(`[data-testid="${focus}"]`) as HTMLElement | null)?.focus();
   };
-  const listen = (a: Action, btn: HTMLElement) => {
+  const listen = (a: Action, btn: HTMLButtonElement) => {
     stopCapture();
+    btn.focus();
     btn.textContent = t('settings.keys.press');
+    btn.setAttribute('aria-label', t('settings.keys.press'));
+    btn.setAttribute('data-key-capture', '');
     btn.classList.add('wait');
-    capture = (e: KeyboardEvent) => {
+    const capture = (e: KeyboardEvent) => {
       e.preventDefault();
       e.stopImmediatePropagation();
       stopCapture();
       if (e.code !== 'Escape' && e.code) save(bindKey(settings.state.bindings ?? {}, a, e.code));
       render(`bind-${a}`);
     };
-    window.addEventListener('keydown', capture, true);
+    stopCapture = () => {
+      btn.removeEventListener('keydown', capture);
+      btn.removeEventListener('blur', stopCapture);
+      btn.removeAttribute('data-key-capture');
+      btn.classList.remove('wait');
+      btn.textContent = t('settings.keys.add');
+      btn.setAttribute('aria-label', `${t(`action.${a}`)}: ${t('settings.keys.add')}`);
+      stopCapture = () => {};
+    };
+    btn.addEventListener('keydown', capture);
+    btn.addEventListener('blur', stopCapture, { once: true });
   };
   render();
   refreshOnKeyboardLayout(render);

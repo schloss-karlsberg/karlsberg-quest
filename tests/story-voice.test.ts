@@ -31,6 +31,7 @@ class Element extends EventTarget {
     this.children = nodes.map((node) => typeof node === 'string' ? Object.assign(new Element(), { textContent: node }) : node);
   }
   setAttribute() {}
+  contains(node: unknown): boolean { return node === this || this.children.some((child) => child.contains(node)); }
   querySelector(selector: string): Element | null {
     const name = selector.slice(1);
     for (const child of this.children) {

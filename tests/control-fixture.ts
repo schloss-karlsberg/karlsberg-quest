@@ -9,6 +9,7 @@ export function recordControls() {
       value: '', checked: false, textContent: '',
       attributes: new Map<string, string>(),
       setAttribute(key: string, value: string) { this.attributes.set(key, value); },
+      getAttribute(key: string) { return this.attributes.get(key) ?? null; },
       scrollIntoView: vi.fn(),
       append() {}, replaceChildren() {}, setPointerCapture() {},
       matches: () => false, querySelector: () => null, querySelectorAll: () => [],
@@ -23,7 +24,7 @@ export function recordControls() {
         if (key === 'data-testid' || key === 'data-section') controls.set(String(value), el);
         if (key === 'value') el.value = String(value);
         if (key === 'checked') el.checked = Boolean(value);
-        if (key.startsWith('aria-')) el.setAttribute(key, String(value));
+        if (key.startsWith('aria-') || key === 'role') el.setAttribute(key, String(value));
       }
     }
     return el;

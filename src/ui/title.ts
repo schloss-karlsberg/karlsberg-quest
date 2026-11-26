@@ -98,7 +98,9 @@ export class TitleScreen {
     this.saveStatus.classList.toggle('kq-hidden', !unreadable);
     this.settingsBtn.classList.toggle('kq-hidden', !titleHooks.openSettings);
     this.renderExtras(autosave);
-    (canContinue ? this.startBtn : this.newBtn).focus();
+    if (!this.el.inert && (document.activeElement === document.body || this.el.contains(document.activeElement))) {
+      (canContinue ? this.startBtn : this.newBtn).focus();
+    }
   }
 
   private renderExtras(autosave: string | null): void {
@@ -192,11 +194,13 @@ export class TitleScreen {
   }
 
   show(): void {
+    this.el.inert = false;
     this.el.classList.remove('fade-out', 'kq-hidden');
     this.setReady();
   }
 
   hide(instant = false): void {
+    this.el.inert = true;
     if (instant) this.el.classList.add('kq-hidden');
     else {
       this.el.classList.add('fade-out');

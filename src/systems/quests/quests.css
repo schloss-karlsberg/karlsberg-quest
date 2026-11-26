@@ -537,7 +537,6 @@ html[data-kq-reduced-motion] .kqq-to.kqq-folding {
 .kqj-qrow:hover,
 .kqj-qrow:focus-visible {
   background: rgba(42, 33, 24, 0.07);
-  outline: none;
   border-color: rgba(42, 33, 24, 0.35);
 }
 .kqj-qrow.kqj-on {
@@ -749,7 +748,6 @@ html[data-kq-reduced-motion] .kqq-to.kqq-folding {
 }
 .kqj-card:hover,
 .kqj-card:focus-visible {
-  outline: none;
   border-color: var(--ink);
   transform: translateY(-1px) rotate(-0.4deg);
 }
@@ -918,11 +916,15 @@ html[data-kq-reduced-motion] .kqq-to.kqq-folding {
 
 /* ---------- accessibility ---------- */
 html[data-kq-reduced-motion] .kqq-tq,
+html[data-kq-reduced-motion] .kqq-hint,
 html[data-kq-reduced-motion] .kqq-to.kqq-pulse,
 html[data-kq-reduced-motion] .kqq-fi,
 html[data-kq-reduced-motion] .kqq-banner,
 html[data-kq-reduced-motion] .kqq-b-rule {
   animation: none;
+}
+html[data-kq-reduced-motion] .kqq-fi {
+  transition: opacity 0.2s;
 }
 html[data-kq-contrast] .kqq-tq {
   background: rgba(0, 0, 0, 0.88);

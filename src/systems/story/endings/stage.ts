@@ -442,7 +442,7 @@ export class EndingStage {
         const north = -((yaw * -180) / Math.PI);
         const n = this.needle;
         const settle = this.t > 4;
-        const goal = settle ? north : 70 * Math.sin(this.t * 0.9) + 12 * Math.sin(this.t * 3.1);
+        const goal = settle || reduced ? north : 70 * Math.sin(this.t * 0.9) + 12 * Math.sin(this.t * 3.1);
         if (reduced) n.a = goal;
         else {
           const step = Math.min(dt, 0.05);

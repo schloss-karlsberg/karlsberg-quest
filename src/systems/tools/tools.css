@@ -27,6 +27,10 @@
   opacity: 1;
   transform: translateY(0) rotate(0.6deg);
 }
+html[data-kq-reduced-motion] .kqt-sheet {
+  transform: rotate(0.6deg);
+  transition: opacity 0.2s;
+}
 .kqt-sheet-title {
   font-family: var(--sc);
   font-size: 22px;

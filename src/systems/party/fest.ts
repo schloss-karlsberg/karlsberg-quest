@@ -50,6 +50,7 @@ import {
   Vector3,
 } from 'three';
 import type { GraphicsLevel } from '../../core/save';
+import { atmosphere } from '../../world/atmosphere';
 import { SURF } from '../../world/surfaces';
 import { quadInstanced } from '../fx/gl';
 import { Kit, type Hex, rng, tint } from '../scenery/kit';
@@ -335,6 +336,7 @@ export class FestPartySet implements PartySet {
   constructor(
     private readonly heightAt: (x: number, z: number) => number,
     private readonly level: () => GraphicsLevel = () => 'high',
+    private readonly reducedMotion: () => boolean = () => false,
   ) {}
 
   build(scene: Object3D, layout: PartyLayout, variant: PartyVariant): PartySetHandle {
@@ -820,6 +822,9 @@ export class FestPartySet implements PartySet {
     flames.push({ x: teaLight.x, y: teaLight.y + 0.012, z: teaLight.z, w: 0.022, h: 0.04, kind: FLAME.candle, seed: r() });
     const fl = flameMesh(flames);
     const flameMat = fl.material as ShaderMaterial;
+    const visualClock = { value: atmosphere.uTime.value };
+    flameMat.uniforms.uTime = visualClock;
+    gm.uniforms.uTime = visualClock;
 
     const root = new Group();
     root.name = 'party-set';
@@ -847,6 +852,7 @@ export class FestPartySet implements PartySet {
       ];
       for (const l of lanterns.slice(1)) specs.push({ x: l.p.x, z: l.p.z, rx: 1.4, rz: 1.4, color: 0xffb060, intensity: 0.3, flicker: 0.3 });
       pools = new Mesh(drapedPools(specs, ground, q.level === 'high' ? 12 : 8), festPoolMaterial());
+      (pools.material as ShaderMaterial).uniforms.uTime = visualClock;
       pools.name = 'party-pools';
       pools.renderOrder = 7;
       pools.userData.noShadow = true;
@@ -877,8 +883,11 @@ export class FestPartySet implements PartySet {
       s.life = strong ? 2.2 + r() * 1.6 : 1.2 + r();
       s.age = 0;
     };
-    const apply = () => {
-      const f = 0.86 + 0.09 * Math.sin(time * 7.3) * Math.sin(time * 4.1 + 1.3) + 0.05 * Math.sin(time * 13.1);
+    const reducedMotion = this.reducedMotion;
+    const apply = (reduced = reducedMotion()) => {
+      visualClock.value = reduced ? 0 : atmosphere.uTime.value;
+      if (steam) steam.visible = !reduced;
+      const f = reduced ? 0.86 : 0.86 + 0.09 * Math.sin(time * 7.3) * Math.sin(time * 4.1 + 1.3) + 0.05 * Math.sin(time * 13.1);
       pm.pos[0]!.set(F.x, F.y + 0.8 + 0.15 * fireK, F.z, 5.5 + 1.5 * fireK);
       pm.col[0]!.set(2.3, 0.95, 0.3).multiplyScalar(fireK * f);
       flameMat.uniforms.uFire!.value = fireK;
@@ -914,10 +923,19 @@ export class FestPartySet implements PartySet {
         apply();
       },
       burst() {
+        if (reducedMotion()) return;
         for (const s of sparks) if (s.age >= s.life) launch(s, true);
       },
       update(dt) {
         if (disposed || !root.visible) return;
+        const reduced = reducedMotion();
+        if (reduced) {
+          idleSpark = 0;
+          for (const s of sparks) s.age = s.life;
+          apply(reduced);
+          write();
+          return;
+        }
         const d = Number.isFinite(dt) ? Math.max(0, Math.min(dt, 0.1)) : 0;
         time += d;
         idleSpark += d * (2 + 3 * fireK);
@@ -938,7 +956,7 @@ export class FestPartySet implements PartySet {
           s.z += s.vz * d;
         }
         idleSpark = Math.min(idleSpark, 1);
-        apply();
+        apply(reduced);
         write();
       },
       setVisible(v) {
