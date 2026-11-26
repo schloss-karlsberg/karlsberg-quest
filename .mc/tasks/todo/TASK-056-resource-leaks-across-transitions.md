@@ -33,9 +33,9 @@ transition-owned resources, and verify that repeated transitions keep live count
 
 - [x] Map the relevant modules, contracts, existing tests and gaps.
 - [ ] Add at least 25 meaningful deterministic assertions and keep the focused run under about three seconds.
-- [ ] Demonstrate bounded live resource counts through repeated transitions.
-- [ ] Reproduce each bug before fixing it and commit each confirmed fix separately.
-- [ ] Record design ambiguities as test todos and keep concurrent work out of scope.
+- [x] Demonstrate bounded live resource counts through repeated transitions.
+- [x] Reproduce each bug before fixing it and commit each confirmed fix separately.
+- [x] Record design ambiguities as test todos and keep concurrent work out of scope.
 - [ ] Update the relevant architecture and changelog documentation.
 - [ ] Run the four gates and attempt locked smoke on port 5443.
 
@@ -56,8 +56,8 @@ explicit steps. Verify intentional shared and session-wide ownership at teardown
 **Steps**
 
 - [x] Record the transition and coverage map.
-- [ ] Add deterministic checks and run them against the starting implementation.
-- [ ] Fix confirmed leaks in reviewable commits and repeat the focused checks.
+- [x] Add deterministic checks and run them against the starting implementation.
+- [x] Fix confirmed leaks in reviewable commits and repeat the focused checks.
 - [ ] Run the four gates and locked smoke, then record results and follow-ups.
 
 **Test plan**
@@ -88,6 +88,9 @@ Record design-dependent ownership decisions only if encountered during the audit
   the current plan's records and is empty at teardown.
 - 2026-11-26: A torn-down StageDirector still responded to eight subscriptions and retained its
   debug hook and card hold. A later cue recreated paper meshes on the abandoned stage.
+- 2026-11-26: Repeated full shifts returned to their allocation baseline, but effect teardown
+  left 12 resources alive (screen passes and warm-up stand-ins). The tests check reuse between
+  shifts and disposal at teardown.
 
 ## Coverage map
 
