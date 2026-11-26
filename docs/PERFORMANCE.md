@@ -430,6 +430,77 @@ The phone route (Niedrig, 667 × 375, ANGLE Metal) held 59.9–60 fps at all fiv
 0–1 draw calls.
 Hoch transferred 19,837,246 bytes before first input against a 20,971,520-byte budget.
 
+### 3.8 Palace interiors and the Festsaal fire (TASK-021, 2026-11-26)
+
+The frame times in §3.1a are historical. Code inspection identifies several costs to test on the
+same hardware and Hoch preset. The original Palace 1789 row does not specify a camera pose.
+This pass uses the 1789 front and plateau positions from §3.4, the Ehrenhof sweep and a Festsaal
+sweep for comparison.
+
+- **Palace shell and rooms.** Interior walls, floors and procedural furnishings are already
+  merged per building. The shell tested up to 48 room boxes and 24 door boxes per fragment.
+  Both sets now reject fragments outside their combined bounds before checking individual boxes.
+  The shell and the room mesh stop shading in the sun-depth pass after applying their existing
+  cutouts, including open windows, doors, ruined walls and collapsed ceilings. This saves
+  fragment work even if draw calls and triangles stay the same. Niedrig has no sun-depth pass.
+- **Room lighting and materials.** The window light map is already baked. A building uses up to
+  12 shader lights, including up to four flickering fire spots, with zero point-light shadow
+  maps. The existing light budget and falloff are preserved. Fire spots use four reusable
+  selection slots. The shader indexes room state directly and skips empty or out-of-range light
+  slots. Mittel and Hoch skip the procedural parquet calculation that their textured finish
+  replaces. Niedrig keeps the procedural parquet.
+- **Fire and transparency.** The interior submitted the same billboards twice and discarded
+  the wrong blend mode in each fragment shader. Smoke now has a separate batch and keeps its
+  order relative to the additive flames. Cold buildings submit candles only. Ember streams now use
+  nine tightly fitted spark quads, moving their animation and hashes to the vertex shader.
+  At most 2.7% of a stream's original quad area is covered by those quads, before overlap and
+  clipping. Peak triangles may rise while fragment work falls. The spark shape and trajectories
+  are preserved. Sparks that overlap within one stream blend individually, so their combined
+  highlight can differ. Flame tongues, wall fire, the ceiling smoke bank and heat shimmer
+  retain their close-range layers and tuning.
+- **Exterior fire.** The window and roof fire, embers and smoke already use instanced batches
+  or point clouds with preset-dependent counts. The renderer sorts the transparent draw
+  objects, with no per-particle sort. The facade's fire map now evaluates burn and soot once
+  per contributing room and skips the texture upload when its input bytes match. Roof smoke
+  cards, the smoke screen and fullscreen post FX remain potential fill costs.
+
+Run the two labelled builds in the task worktree after the TASK-021 changes are committed.
+The first commit adds the benchmark to the original rendering code. Leave the forest baseline
+toggle off so that both runs use the same forest settings.
+
+```sh
+git switch --detach a1082bb
+pnpm build && PERF_LABEL=before KQ_E2E_PORT=5361 scripts/dev/heavy.sh --max-hold 15 -- pnpm exec playwright test -c playwright.gpu.config.ts e2e/gpu/palace-fire.gpu.ts --workers=1 --reporter=line
+git switch dev/task-021
+pnpm build && PERF_LABEL=after KQ_E2E_PORT=5361 scripts/dev/heavy.sh --max-hold 15 -- pnpm exec playwright test -c playwright.gpu.config.ts e2e/gpu/palace-fire.gpu.ts --workers=1 --reporter=line
+```
+
+The spec uses headed Chromium with ANGLE Metal, uncapped frame timing and a pixel ratio of 1.
+Hoch and Mittel run at 1440 × 900. The 667 × 375 Niedrig profile uses touch and reduced motion.
+The script calls `kq.bench` with 240 measured frames per view after at least 90 frames and eight
+seconds of warm-up. Manual mode freezes the simulation and forces fresh sun shadows. The
+benchmark records a fixed fire clock and camera route for both builds. The default nine-scene
+route is unchanged. The palace front, plateau and 1789 Festsaal are available through `only`.
+
+Compare `test-results/palace-fire-gpu/{before,after}/{high,medium,low}.json` for frame p95 and
+average, CPU p95, GPU time when available, calls and triangles. Compare the paired interior and
+exterior PNGs for fire size, smoke, candle light, surface detail and window or door clipping.
+Repeat the runs on an idle machine if the p95 varies. Use a physical phone to confirm the
+Niedrig result before closing the mobile criterion.
+
+| Hoch scene | Frame p95 before | Frame p95 after |
+|---|---:|---:|
+| `1793-07-festsaal-fire` | pending | pending |
+| `1789-festsaal` | pending | pending |
+| `1789-palace-front` | pending | pending |
+| `1789-palace-plateau` | pending | pending |
+| `1789-ehrenhof` | pending | pending |
+| `1793-07-fire-outside` | pending | pending |
+| `today-forest` (control) | pending | pending |
+
+The target is p95 ≤ 16.7 ms. If the target is missed, isolate the remaining cost by timing
+roof smoke, the interior smoke bank, the sun pass and the post passes independently before
+changing effect density or detail by tier.
 ### 3.8 Minimap (TASK-015)
 
 The minimap draws into a 144 × 144 Canvas 2D backing at about 10 Hz with zero additional 3D draw

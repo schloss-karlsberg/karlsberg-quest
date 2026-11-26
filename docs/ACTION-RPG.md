@@ -1051,6 +1051,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Palace interiors and the Festsaal fire miss 60 fps (TASK-021, 2026-11-26) | The sun-depth pass skips palace surface shading after applying cutouts. Room lights keep their existing budget and Festsaal sparks use smaller quads. Hardware timing and look checks are pending (PERFORMANCE §3.8). |
 | Cache XP raises max HP during a checkpoint (TASK-025, 2026-11-26) | Combat mirrors the live HP after the XP grant and before travel releases the cache's save hold. Reloading preserves the HP from the new level. |
 | Partial consumable or cache saves (TASK-025, 2026-11-26) | Consumable use mirrors the restored resources before it checkpoints. Cache clearing checkpoints the opened flag, seeded pickups and XP together, after any cinematic hold. Both checkpoints bypass the autosave interval; Kalkstaub stays on the regular interval because its stun is not saved. Combat holds autosaves across each step's events, so the last guard's kill and the cache opening share one write. Loading restarts the Bannlicht recharge timer. |
 | Partial consumable or cache saves (TASK-025, 2026-11-26) | Consumable use mirrors the restored resources before it checkpoints. Cache clearing checkpoints the opened flag, seeded pickups and XP together, after any cinematic hold. Both checkpoints bypass the autosave interval. |
