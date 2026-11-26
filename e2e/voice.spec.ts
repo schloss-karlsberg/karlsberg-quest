@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { drainDialogue } from './helpers/dialogue';
 
 /**
  * Recorded voices: a line with a clip in voice/manifest.json plays it (through the speaker's
@@ -111,18 +112,8 @@ test('voice: a recorded line plays through its chain, its subtitle shows and typ
   expect((await stats(page)).lines).toBe(2);
 
   // the presenter idle, the clip decoded ahead (as a beat's preload does)
-  const remaining = await page.evaluate(() => {
-    const k = window.kq!;
-    k.story!.flush();
-    for (let i = 0; i < 60; i++) {
-      const { dialogue, pendingLines } = k.story!.state();
-      if (!dialogue && !pendingLines) break;
-      k.ctx.loop.advance(60);
-    }
-    const { dialogue, pendingLines } = k.story!.state();
-    return { line: dialogue?.id ?? null, pendingLines };
-  });
-  expect(remaining, 'The presenter should be idle within 60 simulated seconds').toEqual({ line: null, pendingLines: 0 });
+  const remaining = await page.evaluate(drainDialogue, { chunks: 60, ticksPerChunk: 60 });
+  expect(remaining, 'The presenter should be idle within 60 simulated seconds').toEqual({ dialogue: null, pendingLines: 0 });
   await page.evaluate((id) => window.kq!.story!.voice.preload([id]), ID);
   await expect.poll(async () => (await stats(page)).cached).toBe(1);
   // Chromium plays Opus ("probably"): one request, the WebM

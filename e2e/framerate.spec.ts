@@ -1,15 +1,24 @@
 import { type Page, expect, test } from '@playwright/test';
 import { warnIfShared } from '../scripts/dev/heavy-env.mjs';
 import { trackErrors } from './helpers/common';
+import { observeRenderFrames } from './helpers/render-pacing';
 
 /**
  * Render pacing (src/core/loop.ts `renderRate` / `FramePacer`, docs/PERFORMANCE.md §5): the
  * pause menu draws at most 15 frames a second (with `?idle`, the policy a player gets: none at
  * all, its last frame is held), bullet time draws only on request while `kq.step`, the pilot and
  * `screenshotReady` still get fresh frames, and the „Bildrate“ / „Energiesparen“ settings exist,
- * persist and act. Check the active policy here and exercise its cadence with synthetic
- * animation-frame timestamps in tests/core.test.ts.
+ * persist and act. Check the active policy and observe held/resumed draws over browser callbacks.
+ * Exercise the cadence with synthetic animation-frame timestamps in tests/core.test.ts.
  */
+
+// Drain the queued requests (normally one or two frames) before measuring unprompted draws.
+const OBSERVATION = { drain: 4, callbacks: 12 };
+
+async function expectHeldFrame(page: Page, state: string): Promise<void> {
+  const { before, after } = await page.evaluate(observeRenderFrames, OBSERVATION);
+  expect(after, `${state} should hold its last frame`).toBe(before);
+}
 
 async function boot(page: Page, query: string): Promise<void> {
   await page.goto(`./?nosave&fresh&${query}`);
@@ -37,6 +46,7 @@ test.describe('render pacing', () => {
         return window.kq!.ctx.perf.frames - f0;
       });
       expect(drawn).toBeGreaterThanOrEqual(3);
+      if (idle) await expectHeldFrame(page, 'Pause');
       await page.keyboard.press('Escape');
       await expect(page.locator('.kq-pause')).toBeHidden();
       // back in play the normal cap applies
@@ -80,14 +90,16 @@ test.describe('render pacing', () => {
     expect(r.afterShot).toBeGreaterThanOrEqual(6);
     expect(r.afterTeleport).toBeGreaterThan(r.afterShot);
     expect(await page.evaluate(() => window.kq!.ctx.loop.pace())).toBe(0);
-    // bullet time off: resume paced rendering without requesting a frame
-    const resumed = await page.evaluate(() => {
+    await expectHeldFrame(page, 'Bullet time');
+    const cap = await page.evaluate(() => {
       const k = window.kq!;
       k.pilot.bulletTime(false);
-      return { cap: k.ctx.loop.pace(), drawn: k.ctx.loop.drawn };
+      return k.ctx.loop.pace();
     });
-    expect(resumed.cap).toBe(60);
-    await page.waitForFunction((drawn) => window.kq!.ctx.loop.drawn > drawn, resumed.drawn, { timeout: 120_000 });
+    expect(cap).toBe(60);
+    // Disabling bullet time requests a badge redraw. Measure additional draws after it drains.
+    const resumed = await page.evaluate(observeRenderFrames, OBSERVATION);
+    expect(resumed.after - resumed.before, 'Normal rendering should continue after the forced frame').toBeGreaterThanOrEqual(2);
     expect(errors).toEqual([]);
   });
 

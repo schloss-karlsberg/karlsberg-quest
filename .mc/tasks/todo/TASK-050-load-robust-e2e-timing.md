@@ -34,7 +34,8 @@ preserving failures for gameplay, rendering and pacing regressions.
 - [x] Compare the empty and populated tour scenes at each quality tier with load-independent work budgets.
 - [x] Audit the other specs for similar wall-clock assertions and convert the relevant normal-suite checks.
 - [x] Unit-test the test logic that changes and document the rule in CONTRIBUTING.md and the PRD changelog.
-- [ ] Pass typecheck, unit tests, content validation and build. Run the changed specs and smoke with the shared lock on port 5438 if the sandbox permits.
+- [x] Pass typecheck, unit tests and build.
+- [ ] Pass content validation and run the changed specs and smoke with the shared lock on port 5438.
 
 ## Plan
 
@@ -64,6 +65,22 @@ fixed simulation. Preserve readiness waits and let the renderer settle before sa
 
 **Open questions:** None.
 
+## Review fix plan
+
+_Status: authorized by the review brief (2026-11-26)_
+
+Preserve the branch's gameplay checks and budgets while tightening the browser assertions that
+can miss regressions or pick up unrelated streaming work.
+
+- [x] Pair the hidden and visible tour-group measurements after all bodies load, at matching
+  camera poses and simulation ticks. Check that all 16 bodies submit geometry in the main view.
+- [x] Measure held pause and bullet time over a fixed number of browser animation callbacks after
+  draining pending renders. Check that paced rendering resumes after the forced wake-up frame.
+- [x] Require the voice presenter to have both a null active dialogue and an empty queue, with
+  the active line's ID or text in the failure output.
+- [x] Add Vitest regressions for all five findings and update the testing docs and PRD.
+- [x] Run the four gate commands and check browser availability with the shared lock.
+
 ## Progress
 
 - Branch `dev/task-050`.
@@ -73,11 +90,19 @@ fixed simulation. Preserve readiness waits and let the renderer settle before sa
 - 2026-11-26. Typecheck, build and MissionControl validation passed. Vitest reported `Tests  1585 passed (1585)`.
 - 2026-11-26. `pnpm validate` was blocked by `listen EPERM` on the TypeScript runner's IPC socket.
   The locked `pol-flow.spec.ts` run was blocked by `listen EPERM` on `127.0.0.1:5438` before the browser launched.
-- 2026-11-26. Git could not create the worktree's `index.lock`. The changes are left in the worktree.
+- 2026-11-26. Review fixes build on `4ed208a`. All five findings were introduced by that commit.
+  Unit regressions cover a scenery change between pairs, missing main-view bodies, redraw requests
+  in held states, a forced frame with broken pacing, and active dialogue without an ID.
+- 2026-11-26. Review round typecheck, build, and `mc validate` passed. Vitest reported
+  `Test Files  121 passed (121)` and `Tests  1591 passed (1591)` with zero failures.
+- 2026-11-26. Review round `pnpm validate` failed to start on the TypeScript runner's IPC socket
+  (`listen EPERM`). The locked `walk.spec.ts` command failed before browser launch because the
+  preview server could not listen on `127.0.0.1:5438` (`listen EPERM`). The other browser runs were
+  skipped after that port failure.
 
 ## Follow-ups
 
 - Run `pnpm validate` where the TypeScript runner can bind its IPC socket.
-- Run `pol-flow`, `walk`, `framerate`, `voice` and `smoke` using the locked port 5438 command above,
-  one spec per command. Check the walk deltas on all three presets.
-- Commit the story and rendering changes from a session that can write the worktree's Git index.
+- Run `walk`, `framerate`, `voice`, and `smoke` using the locked port 5438 command above, one spec
+  per command. Check the walk deltas and body visibility on all three presets.
+- Verify `pol-flow` from the initial implementation round with the same lock.
