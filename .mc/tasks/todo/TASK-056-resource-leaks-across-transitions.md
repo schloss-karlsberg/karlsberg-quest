@@ -35,13 +35,13 @@ transition-owned resources, and verify that repeated transitions keep live count
 - [x] Add at least 25 meaningful deterministic assertions and keep the focused run under about three seconds.
 - [x] Demonstrate bounded live resource counts through repeated transitions.
 - [x] Reproduce each production bug before fixing it.
-- [ ] Commit each confirmed fix separately. The worktree index lock blocked the review commits.
+- [x] Commit each confirmed fix separately (`0003fec` to `d374066`; review fixes in `fa60b81`).
 - [x] Record design ambiguities as test todos and keep concurrent work out of scope.
 - [x] Update the relevant architecture and changelog documentation.
 - [x] Verify that warm-up alone uploads GPU buffers and that effect teardown deletes them all.
 - [x] Verify that returning during the title fade cancels its pending hide.
 - [x] Strengthen the phone and echo lifecycle assertions and use fictional dialogue in the fixture.
-- [ ] Pass all four gates. The validator CLI was blocked by the sandbox.
+- [x] Pass all four gates (see the second review below).
 - [x] Check smoke eligibility on port 5443 and record the spec for a human run when blocked.
 
 ## Plan
@@ -154,3 +154,12 @@ Record design-dependent ownership decisions only if encountered during the audit
   registered samples. Their shared attributes and instance buffers have separate owners.
 - Run `pnpm validate` in an environment that permits the CLI's IPC socket.
 - Verify browser smoke with `KQ_E2E_PORT=5443 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line`.
+
+## Second review (2026-11-26)
+
+- All five first-round findings are confirmed fixed in `fa60b81`. Warm-up stand-ins for the
+  effect borrow its geometries and restore their draw ranges in a `finally`; other stand-ins still
+  share buffers through temporary geometries. No further findings.
+- Gates outside the sandbox: `pnpm typecheck` passed; `pnpm test` reported `Test Files  128 passed (128)`
+  and `Tests  1620 passed | 2 todo (1622)`; `pnpm validate` reported `✓ content valid (1 warning(s))`;
+  `pnpm build` passed. The locked `smoke` spec passed (7 passed).
