@@ -143,6 +143,12 @@ export class AnimalsRuntime {
   private tickRefs = new Map<string, RefSample | null>();
   private dt = 1 / 60;
   private readonly log: (m: string) => void;
+  /** Per-tick crowd scratch: the tour runs every fixed step, so these are reused, not allocated. */
+  private readonly blockers: CrowdCircle[] = [];
+  private readonly playerCircle: CrowdCircle = { x: 0, y: 0, z: 0, radius: PLAYER_RADIUS };
+  private readonly dogBody: CrowdCircle = { x: 0, y: 0, z: 0, radius: DOG_RADIUS };
+  private readonly dogFrom = { x: 0, z: 0 };
+  private readonly dogCircles: CrowdCircle[] = [];
 
   constructor(private readonly deps: AnimalsDeps) {
     this.photo = deps.photo ?? createPhotoBridge();
@@ -449,7 +455,7 @@ export class AnimalsRuntime {
     if (w.walkable) input.walkable = (x, z) => w.walkable!(x, z);
     const evs = this.deer.length ? stepDeerHerd(this.deer, dt, input) : [];
     const visitors = this.dogs.length ? w.tourVisitors?.() : undefined;
-    const blockers = visitors?.length && !p.flying ? [...visitors, { x: p.x, y: p.y ?? w.heightAt(p.x, p.z), z: p.z, radius: PLAYER_RADIUS }] : visitors;
+    const blockers = visitors?.length && !p.flying ? this.withPlayer(visitors, p.x, p.y ?? w.heightAt(p.x, p.z), p.z) : visitors;
     const reachedBlocker = blockers?.length ? (dog: Dog, x: number, z: number): boolean => blockers.some((other) => {
       const clearance = DOG_RADIUS + other.radius;
       return Math.hypot(x - other.x, z - other.z) < clearance &&
@@ -461,8 +467,13 @@ export class AnimalsRuntime {
       const crowded = dog.follow === 'npc:double.jost' && blockers?.length;
       stepDog(dog, dt, this.resolve, evs, reducedMotion, crowded ? reachedBlocker : undefined);
       if (!crowded) continue;
-      const body = { x: dog.x, y: w.heightAt(dog.x, dog.z), z: dog.z, radius: DOG_RADIUS };
-      const from = { x: dog.x + Math.sin(dog.yaw), z: dog.z + Math.cos(dog.yaw) };
+      const body = this.dogBody;
+      body.x = dog.x;
+      body.y = w.heightAt(dog.x, dog.z);
+      body.z = dog.z;
+      const from = this.dogFrom;
+      from.x = dog.x + Math.sin(dog.yaw);
+      from.z = dog.z + Math.cos(dog.yaw);
       separateFromCrowd(body, blockers, from);
       if ((body.x !== dog.x || body.z !== dog.z) && Math.abs(w.heightAt(body.x, body.z) - body.y) < 0.45) {
         dog.x = body.x;
@@ -480,12 +491,36 @@ export class AnimalsRuntime {
     }
   }
 
-  tourDogs(): CrowdCircle[] {
+  /** The visitors plus the player's circle, in a reused array. */
+  private withPlayer(visitors: readonly CrowdCircle[], x: number, y: number, z: number): readonly CrowdCircle[] {
+    const pc = this.playerCircle;
+    pc.x = x;
+    pc.y = y;
+    pc.z = z;
+    const all = this.blockers;
+    all.length = 0;
+    for (const v of visitors) all.push(v);
+    all.push(pc);
+    return all;
+  }
+
+  /** The tour dogs' collision circles. The array and its circles are reused on every call. */
+  tourDogs(): readonly CrowdCircle[] {
     const w = this.deps.world;
-    if (w.era() !== ANIMAL_ERA) return [];
-    return this.dogs
-      .filter((dog) => dog.follow === 'npc:double.jost' && this.slots.get(dog.id)?.body)
-      .map((dog) => ({ x: dog.x, y: w.heightAt(dog.x, dog.z), z: dog.z, radius: DOG_RADIUS }));
+    const out = this.dogCircles;
+    let n = 0;
+    if (w.era() === ANIMAL_ERA) {
+      for (const dog of this.dogs) {
+        if (dog.follow !== 'npc:double.jost' || !this.slots.get(dog.id)?.body) continue;
+        const c = (out[n] ??= { x: 0, y: 0, z: 0, radius: DOG_RADIUS });
+        c.x = dog.x;
+        c.y = w.heightAt(dog.x, dog.z);
+        c.z = dog.z;
+        n++;
+      }
+    }
+    out.length = n;
+    return out;
   }
 
   /** Any self-led deer sees the player (the doe leads; followers mirror her). */

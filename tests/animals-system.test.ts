@@ -133,7 +133,14 @@ describe('animals runtime (C5)', () => {
     Object.assign(player, { x: p.x, z: p.z });
     step(DT);
     expect(Math.hypot(p.x - player.x, p.z - player.z)).toBeGreaterThanOrEqual(0.61);
-    expect(rt.tourDogs()[0]).toMatchObject({ x: p.x, z: p.z });
+    const circles = rt.tourDogs();
+    expect(circles[0]).toMatchObject({ x: p.x, z: p.z });
+    // Called every fixed step by the player: the same array and circles, refreshed in place.
+    const first = circles[0];
+    step(DT);
+    expect(rt.tourDogs()).toBe(circles);
+    expect(circles[0]).toBe(first);
+    expect(circles[0]).toMatchObject({ x: p.x, z: p.z });
   });
 
   it('returns both Wind dogs before the timeout when the player and a visitor occupy waypoints', () => {

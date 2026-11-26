@@ -213,14 +213,22 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   const input = new Input(renderer.domElement);
   input.enabled = false;
   const tourCrowd: TourCrowd = {};
+  // Reused every fixed step: the player reads x / z straight away.
+  const crowdBody = { x: 0, y: 0, z: 0, radius: 0 };
   const player = new Player(
     {
       heightAt: (x, z) => world.heightAt(x, z),
       collide: (x, z, r) => world.collider.resolve(x, z, r),
       separate: (x, z, radius, from) => {
-        const body = { x, y: from.y, z, radius };
-        separateFromCrowd(body, tourCrowd.visitors?.() ?? [], from);
-        separateFromCrowd(body, tourCrowd.dogs?.() ?? [], from);
+        const body = crowdBody;
+        body.x = x;
+        body.y = from.y;
+        body.z = z;
+        body.radius = radius;
+        const visitors = tourCrowd.visitors?.();
+        const dogs = tourCrowd.dogs?.();
+        if (visitors?.length) separateFromCrowd(body, visitors, from);
+        if (dogs?.length) separateFromCrowd(body, dogs, from);
         return body;
       },
       bounds: () => world.bounds(),
