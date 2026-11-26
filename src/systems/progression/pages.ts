@@ -1,4 +1,5 @@
-/** Ausrüstung and Talente renderers. */
+/** Equipment and talent sections of the progression page. */
+import { t } from '../../i18n';
 import { ITEMS } from '../../rpg/items';
 import { BASE_STATS, MAX_LEVEL, TALENTS, type TalentBranch, charmSlots, talentBlock, weaponPower } from '../../rpg/stats';
 import type { DerivedStats, ItemDef } from '../../rpg/types';
@@ -56,7 +57,7 @@ function statRows(s: DerivedStats): [string, string][] {
   ];
 }
 
-function renderGear(el: HTMLElement, api: PageApi): void {
+function renderGear(api: PageApi, talentHeading: HTMLElement): HTMLElement {
   const { core } = api;
   const sl = core.slice();
   const stats = core.stats();
@@ -69,7 +70,7 @@ function renderGear(el: HTMLElement, api: PageApi): void {
   const wdef = wid ? api.item(wid) : undefined;
   const others = owned('weapon').filter((id) => id !== wid).sort((a, b) => weaponPower(b) - weaponPower(a));
   const weapon = h('section.kqp-g-sec', [
-    h('h3', 'Messstab'),
+    h('h4', 'Messstab'),
     wdef
       ? h('div.kqp-g-weapon', { 'data-testid': 'gear-weapon', dataset: { item: wid! } }, [
           icon(wid!),
@@ -107,7 +108,7 @@ function renderGear(el: HTMLElement, api: PageApi): void {
   );
   const loose = owned('charm').filter((id) => !sl.equipped.charms.includes(id));
   const charms = h('section.kqp-g-sec', [
-    h('h3', ['Amulette ', h('span.kqp-g-small', slots === 1 ? '(1 Platz)' : '(2 Plätze)')]),
+    h('h4', ['Amulette ', h('span.kqp-g-small', slots === 1 ? '(1 Platz)' : '(2 Plätze)')]),
     charmSlotsEl,
     ...loose.map((id) =>
       h('div.kqp-g-row.kqp-g-charm', [
@@ -119,12 +120,12 @@ function renderGear(el: HTMLElement, api: PageApi): void {
     !loose.length && !sl.equipped.charms.length ? h('p.kqp-g-empty', 'Noch keins. Die Leute hier geben dir eins, wenn du ihnen hilfst.') : null,
   ]);
 
-  const statsEl = h('section.kqp-g-sec', [h('h3', 'Werte'), h('dl.kqp-g-stats', { 'data-testid': 'gear-stats' }, statRows(stats).flatMap(([k, v]) => [h('dt', k), h('dd', v)]))]);
+  const statsEl = h('section.kqp-g-sec', [h('h4', 'Werte'), h('dl.kqp-g-stats', { 'data-testid': 'gear-stats' }, statRows(stats).flatMap(([k, v]) => [h('dt', k), h('dd', v)]))]);
 
   // ---- supplies
   const quick = core.quickItem();
   const supplies = h('section.kqp-g-sec', [
-    h('h3', 'Vorräte'),
+    h('h4', 'Vorräte'),
     ...CONSUMABLES.map((id) => {
       const def = api.item(id)!;
       const n = inv[id] ?? 0;
@@ -145,7 +146,7 @@ function renderGear(el: HTMLElement, api: PageApi): void {
   // ---- quest items, keys, collectibles, lore
   const found = [...owned('quest'), ...owned('key'), ...owned('collectible')];
   const finds = h('section.kqp-g-sec', [
-    h('h3', 'Fundstücke'),
+    h('h4', 'Fundstücke'),
     ...found.map((id) => {
       const def = api.item(id);
       const count = inv[id] ?? 0;
@@ -158,19 +159,32 @@ function renderGear(el: HTMLElement, api: PageApi): void {
   ]);
   const lore = owned('lore');
   const writings = h('section.kqp-g-sec', [
-    h('h3', 'Schriften'),
+    h('h4', 'Schriften'),
     ...lore.map((id) => {
       const def = api.item(id);
-      const label = def?.fact && def.fiction === false ? `Quelle: Codex ${def.fact}` : 'Fiktion';
+      const label = def?.fact && def.fiction === false ? `Quelle: Codex ${def.fact}` : 'FIKTION';
       return h('details.kqp-g-lore', { 'data-testid': `gear-lore-${id}` }, [h('summary', [icon(id), h('span.kqp-g-name', api.name(id)), h('span.kqp-g-label', label)]), h('p.kqp-g-text', def?.text_de ?? '')]);
     }),
     !lore.length ? h('p.kqp-g-empty', 'Lose Seiten, Marken, Zeichen: was du findest, kannst du hier lesen.') : null,
   ]);
 
-  el.replaceChildren(h('div.kqp-gear', { 'data-testid': 'journal-gear' }, [h('div.kqp-g-col', [weapon, charms, statsEl]), h('div.kqp-g-col', [supplies, finds, writings])]));
+  return h('section', { 'aria-labelledby': 'gear-heading', 'data-testid': 'journal-gear' }, [
+    h('header.kqp-progress-header', [
+      h('h3#gear-heading', 'Ausrüstung'),
+      h('button.kq-btn', {
+        type: 'button',
+        'aria-controls': 'talents',
+        onclick: () => {
+          talentHeading.scrollIntoView({ block: 'start' });
+          talentHeading.focus({ preventScroll: true });
+        },
+      }, 'Zu den Talenten'),
+    ]),
+    h('div.kqp-gear', [h('div.kqp-g-col', [weapon, charms, statsEl]), h('div.kqp-g-col', [supplies, finds, writings])]),
+  ]);
 }
 
-function renderTalents(el: HTMLElement, api: PageApi): void {
+function renderTalents(api: PageApi, heading: HTMLElement): HTMLElement {
   const { core } = api;
   const sl = core.slice();
   const home = api.atHome();
@@ -185,7 +199,7 @@ function renderTalents(el: HTMLElement, api: PageApi): void {
   ]);
   const cols = BRANCHES.map((b) =>
     h(`section.kqp-t-col.kqp-t-${b.id}`, [
-      h('h3', [b.name, h('span.kqp-g-small', ` ${b.sub}`)]),
+      h('h4', [b.name, h('span.kqp-g-small', ` ${b.sub}`)]),
       ...TALENTS.filter((t) => t.branch === b.id).map((t) => {
         const rank = core.talentRank(t.id);
         const block = talentBlock(sl, t.id);
@@ -211,17 +225,20 @@ function renderTalents(el: HTMLElement, api: PageApi): void {
       }),
     ]),
   );
-  el.replaceChildren(h('div.kqp-talents', { 'data-testid': 'journal-talents' }, [head, h('div.kqp-t-cols', cols)]));
+  return h('section#talents.kqp-talents', { 'aria-labelledby': heading.id, 'data-testid': 'journal-talents' }, [heading, head, h('div.kqp-t-cols', cols)]);
 }
 
-/** Register both pages and refresh either one when progression changes. */
+/** Register the combined page and refresh both sections when progression changes. */
 export function installProgressionPages(api: PageApi): { refresh(): void } {
-  addPausePage({ id: 'gear', label: 'Ausrüstung', order: 40, render: (el) => renderGear(el, api) });
-  addPausePage({ id: 'talents', label: 'Talente', order: 50, render: (el) => renderTalents(el, api), badge: () => api.core.slice().points });
-  return {
-    refresh() {
-      refreshPausePage('gear');
-      refreshPausePage('talents');
+  addPausePage({
+    id: 'gear',
+    label: t('action.inventory'),
+    order: 40,
+    badge: () => api.core.slice().points,
+    render: (el) => {
+      const talentHeading = h('h3#talents-heading', { tabindex: -1 }, 'Talente');
+      el.replaceChildren(renderGear(api, talentHeading), renderTalents(api, talentHeading));
     },
-  };
+  });
+  return { refresh: () => refreshPausePage('gear') };
 }

@@ -32,8 +32,8 @@ parts are labelled as fiction in the Codex.
    enter your name, then select „Tour starten“ on the route map to begin with sound. Choose
    „Weiter“ on the title screen to load a saved game.
 2. Click into the game to capture the mouse. Press Esc or tap Pause to open the menu. Choose
-   „Speichern“ to save. Pause also opens Aufgaben, Codex, Sammlungen, Funde, Ausrüstung, Talente,
-   Karte and Album.
+   „Speichern“ to save. Pause also opens Aufgaben, Codex, Sammlungen (including Funde),
+   Ausrüstung & Talente, Karte, Album and Kapitel.
 3. A new game opens with the guided tour: follow the guide, talk to people and take photos. The
    tour has no fighting. Marlene lends you the Messstab at the Weiher. At the
    Karlsbergquelle, touch the water to travel to 1789.
@@ -57,7 +57,7 @@ From the time travel on:
 | Balsam (heal) | H |
 | Era shift (hold to return to the Karlsbergquelle) | Q |
 | Lock on | Tab or middle mouse |
-| Inventory | I |
+| Ausrüstung & Talente | I |
 | Lantern | L |
 
 ### Survey tools

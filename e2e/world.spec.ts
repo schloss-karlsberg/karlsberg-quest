@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { openPause } from './helpers/pause';
 
 /**
  * World track (playtest round 2, "fewer empty walks, more wow"): the survey points (activate,
@@ -132,8 +133,25 @@ test.describe('world', () => {
       window.kq!.teleport(l.x, l.z + 0.5, 0, 0);
       window.kq!.step(4);
     }, lore);
-    await expect(page.getByTestId('travel-card-lore')).toBeVisible();
+    const card = page.getByTestId('travel-card-lore');
+    await expect(card).toBeVisible();
+    await expect(card).toContainText('FIKTION');
+    const title = await card.getByRole('heading').innerText();
     expect(await page.evaluate(() => window.kq!.travel!.state().done)).toContain(lore.id);
+    await openPause(page);
+    const collectionsEntry = page.getByTestId('pause-sets');
+    await collectionsEntry.press('Enter');
+    const collections = page.getByRole('dialog', { name: 'Sammlungen', exact: true });
+    const finds = collections.getByRole('region', { name: 'Funde', exact: true });
+    await expect(finds).toContainText(/1 von \d+ gefunden/);
+    await expect(finds.getByRole('listitem').filter({ hasText: title })).toContainText('FIKTION');
+    await collections.getByRole('button', { name: 'Zurück', exact: true }).click();
+    await expect(collections).toBeHidden();
+    await expect(collectionsEntry).toBeFocused();
+    await page.getByTestId('pause-codex').click();
+    await expect(page.getByTestId('page-codex').getByTestId('collection-finds')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
     // a Wegstein heals out of a fight
     const shrine = (await page.evaluate(() => window.kq!.travel!.nearest('shrine')))!;
     await page.evaluate((s) => {

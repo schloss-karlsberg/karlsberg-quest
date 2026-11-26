@@ -22,6 +22,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-26 | **Combined Pause pages (TASK-007, slice 10).** Sammlungen includes Funde alongside sets, the bestiary and bottles. I and Pause open one „Ausrüstung & Talente“ screen with both sections and the unspent talent-point badge on the Pause entry. Codex stays dedicated to sourced history and its fiction disclosures. |
 | unreleased | 2026-11-26 | **Castle understory (TASK-008, slice 6).** Low shrubs and dry flower seed heads (FIKTION) follow canopy edges and gaps at the present-day Weiher, Quelle and palace plateau. Trails, the spring and the fittings stay clear. Niedrig shows fewer plants with simpler silhouettes. |
 | unreleased | 2026-11-26 | **Spring interaction and Pause chapters (TASK-007, slice 9).** At the Karlsbergquelle, „Wasser berühren“ appears when the story calls for it and the player can reach the water. Pause provides saving and a „Kapitel“ page for replaying unlocked chapters. Sammlungen shows the bottles collected so far. The spring remains the home and wake point. |
 | unreleased | 2026-11-25 | **Palace plateau dressing (TASK-008, slice 5).** Present-day benches, low broken sandstone courses and verge stones follow dry ground beside the track through the former Ehrenhof. The fittings and layout are FIKTION. Niedrig keeps the benches and uses fewer stones. |
@@ -326,6 +327,7 @@ The tour grants Relief-Blick 3 and Kartograf 1. The campaign unlocks the remaini
 - **Plan sheets:** the palace's 30 plan sheets, collected as found.
 - **The wandering stones:** marked blocks traced across eras.
 - **Menagerie animals:** found, not captured.
+- **Sammlungen in Pause:** item sets, bestiary, Fläschchen and a Funde section for fictional route finds.
 
 ### 6.3 Home base: the Karlsbergquelle
 

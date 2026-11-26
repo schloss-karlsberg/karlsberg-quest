@@ -92,10 +92,10 @@ player the Messstab at the Weiher. Combat starts in Chapter 1.
 | **Wuchthieb** (heavy, charged) | **hold LMB / K** ≥ 0.45 s, release | Breaks armour, staggers; slows you while charging |
 | **Ausweichen** (dodge roll, i-frames) | **Space** (+ direction) | Space still stands you up from crouch / prone and climbs while flying |
 | **Bannlicht** (lantern flare) | **RMB** or **G** | Cone; stuns spectral enemies, makes Irrlichter hittable, scatters the pack |
-| **Schnellgegenstand** (quick-use) | **H** | Kräuterbalsam by default. Choose the item in Ausrüstung. |
+| **Schnellgegenstand** (quick-use) | **H** | Kräuterbalsam by default. Choose the item in the Ausrüstung section. |
 | **Fähigkeiten** (abilities, §4.2): Ausfall · Erdstoß · Wirbel | **T** · **Z** (Y on a US layout) · **U** | Unlocked at levels 2 · 4 · 6; one row of free keys; a HUD slot each with a cooldown ring |
 | Talk / examine / pick up / listen (hold) | **E** | Accept / turn in quests in the conversation |
-| **Pause** | **Esc** or tap Pause | Aufgaben, Codex, Sammlungen, Funde, Ausrüstung, Talente, Karte and Album. I opens Ausrüstung directly. |
+| **Pause** | **Esc** or tap Pause | Aufgaben, Codex, Sammlungen (including Funde), Ausrüstung & Talente, Karte, Album and Kapitel. I opens Ausrüstung & Talente directly. |
 | Lantern | L | |
 | Era shift | Q (at an anchor), hold Q to return | Kept |
 | Survey tools | **1** Geisterblick · **2** Relief (Shift+2 backwards, ^ off) · **3** Messen · **4** Röntgenblick · **5** Planblatt · **M** Karte | Open „Erkunden“ on touch. Relief cycles through the modes you’ve unlocked. |
@@ -499,11 +499,12 @@ The tour and quests grant survey skills (`skill:grant`, unlock cards and Laub’
   `loot:drop` → `loot:place` → `item:pickup`.
 - **Quest items**: placed by `collect` objectives (`place`) or dropped (`drop`), declared in the
   chapter's quest file (`items`, ids `item.<chapter>.<name>`).
-- **Collections** (journal tab "Sammlungen", sets in `COLLECTIONS`, members declared by quest files
+- **Collections** (Pause → Sammlungen, sets in `COLLECTIONS`, members declared by quest files
   with `set`): **Seiten der Chronik** (one page per chapter — the narrative spine, now literal
   pickups), **Die Namen der Hunde** (five collars: Diane, Sultan, Fanfare, Rauhreif, Bijou), **Matthes'
   Zeichen** (four marked stones across eras), **Planblätter**, **Mannlichs Festpläne**. A complete set
   gives XP and a line from its owner. Relief patterns (rm.01–08) stay codex cards.
+- **Funde** in Sammlungen shows route discoveries with a count and a FIKTION label on each find.
 - **Fläschchen** (hidden collectibles, docs/IDEAS-ROUND11.md §4; `src/systems/flaschen/`, state
   `systems.flaschen`): 24 small bottles hand-placed at named places in all five eras (today 6, 1789 6,
   Feb 1793 4, Jul 1793 3, 1796 5; the spring holds one in every year), never guarded, no glow, no map
@@ -525,14 +526,13 @@ The tour and quests grant survey skills (`skill:grant`, unlock cards and Laub’
   (`docs/design/tour/slice-v0.md`). Story `loot` actions tag them with `group: tour.kastanien`, and
   the tour's `leave` clears what is still lying. There is no XP, no collection reward and no item
   grant, so the prologue margin holds.
-- **Inventory** in the journal tab "Ausrüstung" shows the weapon, charm slots, consumables (with
-  quick-use selection), quest items, lore and collectible counts under "Fundstücke".
+- **Inventory** in the Ausrüstung section shows the weapon, charm slots, consumables (with
+  quick-use selection), quest items, readable lore and collectible counts under „Fundstücke“.
+  Talente is the second section of the same screen, with a shortcut at the top.
 - **Hidden Bauwagen.** A present-day detour off the forest track below the dam. Looking at the
   trailer door in reach reveals the examine action on E and touch. The fictional surveyor's note
   unlocks „Die letzte Messung“ in Pause → Codex and appears in the discovery feed. The find grants
   no XP and has no objective, marker or campaign prerequisite.
-- **Inventory**: journal tab "Ausrüstung": weapon, charm slots, consumables (set the quick-use item),
-  quest items, lore (read the text). Collectibles are not listed there.
 
 ## 8. Quests, Codex and how history is taught
 
@@ -607,18 +607,18 @@ No stance cards, no answer grids: see §8.6.
 - **Tracker** (HUD top-left column, `hud.stack(el, 35)`): up to three tracked quests (main first),
   title + active objectives with counters ("Irrlichter bannen 2/5"), ticks when done, a soft pulse
   on progress (no flash).
-- **Pause** opens separate pages for **Aufgaben** (active and completed quests, tracking and
-  turn-in history), **Codex** (sources, confidence, fact or fiction labels), **Sammlungen**
-  (collections and bestiary), **Funde**, **Ausrüstung**, **Talente**, **Karte**, **Album** and
-  **Kapitel**. Back or Esc closes the page and returns focus to the Pause entry. Clue cards can
-  also open Codex. Selecting another unlocked chapter asks for confirmation before replay.
+- **Pause** opens **Aufgaben** (quests, tracking and turn-in history), **Codex** (sourced history,
+  confidence labels and fiction disclosures), **Sammlungen** (sets, bestiary, Fläschchen and Funde),
+  **Ausrüstung & Talente**, **Karte**, **Album** and **Kapitel**. Back or Esc closes the page and
+  returns focus to the Pause entry. Clue cards can also open Codex. Selecting another unlocked
+  chapter asks for confirmation before replay.
 
 ### 8.5 How history is taught — without quizzes
 
 1. **Told at turn-in**: 1–4 sourced lines in the giver's voice (Hanne tells what a journeyman earned;
    Soll the debts; Jost the kennel). Each `fact` unlocks its codex card on the spot.
 2. **Codex cards** with source, confidence label and FAKT / STRITTIG / LEGENDE / FIKTION, readable any
-   time in the journal. Contested facts stay contested (flight date, place of death, bear boxes).
+   time in Pause → Codex. Contested facts stay contested (flight date, place of death, bear boxes).
 3. **Echoes** (hold E, kept): voices of what happened here, labelled "Erinnerung (Fiktion)", quotes
    marked.
 4. **Examined documents and objects** (E, kept): the Rechenbrett, the Kaufbrief, the Wachbuch …
@@ -667,9 +667,9 @@ down) and the Festsaal object (`k3.objekt`, which also becomes a charm).
 
 | System | Folder | Owns | State slice |
 | --- | --- | --- | --- |
-| `progression` | `src/systems/progression/` | XP, levels, talents, inventory, equipment, consumables, loot rolls, world pickups, collections, level-up card, XP bar, journal tabs Ausrüstung / Talente | `ProgressionSlice` |
+| `progression` | `src/systems/progression/` | XP, levels, talents, inventory, equipment, consumables, loot rolls, world pickups, collections, level-up card, XP bar, Ausrüstung & Talente page | `ProgressionSlice` |
 | `combat` | `src/systems/combat/` | Lebenskraft / Atem / Bannlicht, the viewmodel (staff + lantern), attacks, dodge, enemies (AI, visuals, audio), groups and spawns, bosses, hit-stop / shake / particles, death → caught, vitals + boss bar | `CombatSlice` |
-| `quests` | `src/systems/quests/` | quest state machine, offers / turn-ins, objective tracking, spawns + pickups for objectives, rewards, codex unlocks, journal modal (Aufgaben / Codex / Sammlungen), tracker, giver markers, beacons, compass markers | `QuestSlice` |
+| `quests` | `src/systems/quests/` | quest state machine, offers / turn-ins, objective tracking, spawns + pickups for objectives, rewards, codex unlocks, Pause pages (Aufgaben / Codex / Sammlungen), tracker, giver markers, beacons, compass markers | `QuestSlice` |
 
 Pure shared modules (no three.js, no DOM): `src/rpg/types.ts` (all shapes), `src/rpg/enemies.ts`
 (roster), `src/rpg/items.ts` (items, loot, collections), `src/rpg/stats.ts` (level curve, talents,
@@ -1048,6 +1048,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Separate collection and progression entries crowd Pause (TASK-007, 2026-11-26) | Sammlungen includes the Funde section. I and Pause open Ausrüstung & Talente, with both sections on one scrollable page. The Pause entry counts unspent talent points. |
 | The spring’s general E menu competes with the water interaction (TASK-007, 2026-11-26) | The water uses E or the touch action when the story calls for it. Pause handles saving, chapter replay and collections. Entering the present-day spring ring still heals, refills oil, resets the hunt and enables respec. Q-hold return and the wake spot stay at the spring. |
 | Following the tour group is dull (TASK-002, 2026-11-25) | 24 chestnuts (`item.kastanie`, kind `collectible`) lie in small clusters along the sections the group walks. Most are 1.5–4 m off the path, a few up to 10 m. None lie near a stop or before the deer. E, walking over one or the touch interact button picks one up, and the feed counts. Gerold, Herr Soll and Gerold again remark on the 1st, 12th and 24th. There is no XP, so collecting never delays the group: Gerold's 25 m wait and the find-the-group help are unchanged. `tests/tour-kastanien.test.ts`, `e2e/kastanien.spec.ts`. |
 | The tour deer are too far to see (TASK-001, 2026-11-25) | Ricke and Kitz graze 36 m below the `reh` stop in haze and cover a few dozen pixels in the normal view. Beat t10 opens with the skippable `reh` shot (fov 40 → 18, Kitz then Ricke). The camera stands 2.5 m ahead of the stop, clear of Gerold and the group, so the shot does not depend on where the player waits. The [C] prompt follows the shot. `e2e/animals.spec.ts` (d) measures the deer's share of the frame. |

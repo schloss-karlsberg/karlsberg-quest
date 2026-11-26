@@ -43,7 +43,7 @@ export type Action =
   | 'dodge'
   /** Quick-use item (Kräuterbalsam …). */
   | 'quickUse'
-  /** Open Ausrüstung. */
+  /** Open Ausrüstung & Talente. */
   | 'inventory'
   /** Abilities (combat variety pass, §4.2): Ausfall (level 2), Erdstoß (4), Wirbel (6). T / Z(Y) / U: one row, free keys. */
   | 'skill1'

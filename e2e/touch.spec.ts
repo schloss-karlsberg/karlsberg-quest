@@ -148,18 +148,18 @@ for (const [name, device] of Object.entries(DEVICES)) {
       await expect(page.getByTestId('touch')).toBeHidden();
       expect(await page.evaluate(() => window.kq!.ctx.pause.paused)).toBe(true);
       await page.screenshot({ path: `${SCREENS}/touch-${name}-pause.png` });
-      for (const id of ['quests', 'codex', 'sets', 'funde', 'gear', 'talents', 'karte', 'album']) {
-        if (id === 'album' && name === 'iphone-13') {
-          const box = (await pause.boundingBox())!;
-          await menuFinger.start(box.x + box.width - 28, box.y + box.height - 55);
-          await menuFinger.move(box.x + box.width - 28, box.y + 75);
-          await menuFinger.end();
-          await expect.poll(() => pause.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
-        }
+      const destinations = ['quests', 'codex', 'sets', 'gear', 'karte', 'album', 'chapters'];
+      await expect(pause.locator('.kq-pause-destinations button')).toHaveCount(destinations.length);
+      for (const id of destinations) {
         await pause.getByTestId(`pause-${id}`).tap();
         const view = page.getByTestId(`page-${id}`);
         await expect(view).toBeVisible();
-        if (id === 'talents') await expect(view.getByRole('heading', { name: 'Wissen Erkundung und Vorrat' })).toBeVisible();
+        if (id === 'sets') await expect(view.getByRole('region', { name: 'Funde', exact: true })).toBeVisible();
+        if (id === 'gear') {
+          await expect(view.getByRole('heading', { name: 'Ausrüstung', exact: true })).toBeVisible();
+          await view.getByRole('button', { name: 'Zu den Talenten', exact: true }).tap();
+          await expect(view.getByRole('heading', { name: 'Talente', exact: true })).toBeInViewport();
+        }
         await expect(view.locator('xpath=..')).toHaveCSS('animation-name', 'none');
         await view.getByRole('button', { name: 'Zurück', exact: true }).tap();
         await expect(view).toBeHidden();
@@ -244,6 +244,13 @@ test.describe('notices on a small landscape phone', () => {
     expect(bounds.x + bounds.width).toBeLessThan(667);
     const topButtons = (await page.locator('.kq-t-top').boundingBox())!;
     expect(bounds.y).toBeGreaterThan(topButtons.y + topButtons.height);
+    const survey = await center(page, 'touch-survey');
+    const handy = await center(page, 'touch-photo');
+    const pause = await center(page, 'touch-pause');
+    expect(survey.y).toBe(handy.y);
+    expect(handy.y).toBe(pause.y);
+    expect(survey.x).toBeLessThan(handy.x);
+    expect(handy.x).toBeLessThan(pause.x);
 
     await finger.tap(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
     await expect(toast).toBeVisible();

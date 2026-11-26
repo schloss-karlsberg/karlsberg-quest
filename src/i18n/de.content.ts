@@ -36,11 +36,11 @@ export const deContent: Record<string, string> = {
   'ui.keys.shift.key': '[Q]',
   'ui.keys.lantern': 'Laterne an / aus. Licht hilft beim Lesen, aber es lockt die Meute.',
   'ui.keys.lantern.key': '[L]',
-  'ui.keys.inventory': 'Ausrüstung öffnen',
+  'ui.keys.inventory': 'Ausrüstung & Talente öffnen',
   'ui.keys.inventory.key': '[I]',
   'ui.keys.measure': 'Messen: Strecke und Höhenprofil (ab Kapitel 2)',
   'ui.keys.measure.key': '[3]',
-  'ui.keys.pause': 'Pause: Aufgaben, Codex, Sammlungen, Funde, Ausrüstung, Talente, Karte und Album',
+  'ui.keys.pause': 'Pause: Aufgaben, Codex, Sammlungen, Ausrüstung & Talente, Karte, Album und Kapitel',
   'ui.keys.pause.key': '[Esc]',
 
   // 4. Tutorial-Einblendungen (Prolog)
