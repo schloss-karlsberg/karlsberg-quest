@@ -61,6 +61,28 @@ _Status: approved 2026-11-26_
 
 **Open questions:** None.
 
+## Review fix round
+
+**Goal:** Resolve the seven review findings on `dev/task-016` while preserving the recorded dialogue and tour flow.
+
+**Acceptance criteria:**
+
+- [x] A player blocking Diane's waypoint cannot stall either dog's return through the crowd.
+- [x] The final outdoor camera sweep pulls in immediately and releases smoothly after a ridge clears.
+- [x] Loading during the departure line replays it. Loading after departure preserves the group's progress.
+- [x] Player and dog collision share visitor circles and resample height only after a visitor moves.
+- [x] A muted recorded line types out without creating audio sources.
+- [x] The departure e2e holds the line beyond the old estimate before asserting that the guide walks.
+- [x] The phone e2e checks the portrait rotate prompt and visible, tappable dialogue in gameplay.
+- [x] Regression tests and all four gate commands were checked. Both Playwright specs were attempted under the lock.
+
+**Plan:**
+
+- [x] Fix dog waypoint progression and share visitor collision data, with runtime regressions.
+- [x] Carry the final camera sweep into release smoothing and extend the ridge test.
+- [x] Persist departure completion, restore unfinished playback and cover mute and saved progress.
+- [x] Strengthen the tour e2e, update the behaviour docs and run the gates and locked specs.
+
 ## Progress
 
 - Branch: `dev/task-016` at `07d3c97`.
@@ -82,9 +104,23 @@ _Status: approved 2026-11-26_
   reported `✓ content valid (1 warning(s))`. The warning is in the example pack.
 - 2026-11-26. Both locked Playwright commands stopped before browser launch. The sandbox rejected
   Vite's bind to `127.0.0.1:5402` with `EPERM`.
-- 2026-11-26. Git could not create the worktree's `index.lock`. The changes are unstaged.
+- 2026-11-26. The original tour changes landed in local commits `69cccb7` and `05b3249`.
 - 2026-11-26. `origin/main` advanced to `d2d1f48` during the task. Its chestnut recordings
   and landscape level-card work do not overlap any edited file.
+- 2026-11-26 review. Both dogs returned before timeout with the player at Diane's waypoint and a
+  visitor at Bijou's. Collision callers share visitor circles and resample moved visitors.
+- 2026-11-26 review. A 0.17° turn past the test ridge releases the final camera sweep gradually.
+- 2026-11-26 review. The saved walk destination distinguishes an unfinished departure from a walk
+  in progress. The walk system restores its saved route before the story reissues walk commands.
+  Muted recorded subtitles create no audio sources while typing.
+- 2026-11-26 review. Tour Playwright now holds the departure line for seven game seconds before
+  advancing it, and checks the portrait rotate prompt and landscape dialogue hit-testing.
+- 2026-11-26 review. `pnpm typecheck` and `pnpm build` passed. `pnpm test` reported
+  `Test Files  119 passed (119)` and `Tests  1587 passed (1587)`, with zero failures. All 45 voiced
+  tour actions match `origin/main`. `mc validate` passed.
+- 2026-11-26 review. The sandbox blocked `pnpm validate` at the tsx IPC socket. The direct validator
+  returned `✓ content valid (1 warning(s))` for the existing example-pack warning. The two locked
+  Playwright commands stopped before browser launch because Vite could not bind `127.0.0.1:5402`.
 
 ## Follow-ups
 
@@ -95,13 +131,4 @@ _Status: approved 2026-11-26_
 pnpm validate
 KQ_E2E_PORT=5402 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/tour-slice.spec.ts --workers=1 --reporter=line
 KQ_E2E_PORT=5402 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line
-```
-
-- Commit the changes from this worktree once Git can create its index lock.
-
-```sh
-git add -- content/routes/p-fuehrung.json content/story/00-tour.story.json src tests ':!src/player/camera.ts' ':!src/systems/story/story.css' ':!tests/camera.test.ts'
-git commit -m 'fix(story): stage the tour group and frame the dogs' -m 'Co-Authored-By: Codex <noreply@openai.com>'
-git add -- .mc/tasks/todo/TASK-016-tour-behaviour-polish.md docs/ACTION-RPG.md docs/NEXT-SESSION.md docs/PRD.md docs/design/tour/systems.md e2e/tour-slice.spec.ts src/player/camera.ts src/systems/story/story.css tests/camera.test.ts
-git commit -m 'fix(camera): keep the felsenpfad view clear' -m 'Co-Authored-By: Codex <noreply@openai.com>'
 ```

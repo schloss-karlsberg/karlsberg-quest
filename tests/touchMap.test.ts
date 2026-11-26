@@ -301,6 +301,10 @@ describe('rotateWanted (M-02)', () => {
     expect(rotateWanted({ ...q, width: 820, height: 1180 })).toBe(false);
     expect(rotateWanted({ ...q, width: 600, height: 960 })).toBe(false);
   });
+  it('resumes gameplay after the tour phone viewport rotates to landscape', () => {
+    expect(rotateWanted({ ...q, width: 390, height: 844 })).toBe(true);
+    expect(rotateWanted({ ...q, width: 844, height: 390 })).toBe(false);
+  });
 });
 
 describe('touchPromptIcon (M-05)', () => {

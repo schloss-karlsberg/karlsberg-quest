@@ -60,7 +60,8 @@ Storage: thumbnails in the save make it heavy; cap at 60 × 30 KB (≈ 1.8 MB) o
 **Wind shot (TASK-016).** Beat t8 starts the skippable shot with the dogs' run cues. The camera
 looks down from a fixed path beside the hillside and aims between the two live dog targets.
 Reduced motion holds the camera still on each side of the cut. The headless tour test simulates
-both dogs over the shipped terrain and checks landscape and portrait framing.
+both dogs over the shipped terrain and checks landscape and portrait framing. If a player or
+visitor occupies a run waypoint, a dog can round it from the edge of the collision circle.
 
 ---
 
@@ -91,11 +92,14 @@ both dogs over the shipped terrain and checks landscape and portrait framing.
 **Stop staging (TASK-016).** Stopped members turn toward Gerold. He faces the player during
 conversation and nearby story dialogue while he is stopped. Reduced motion sets the heading
 immediately. The first departure waits until the line ends, its subtitle has had time to read
-when muted, or the player advances it. At Felsenpfad, fourteen authored slots follow the trail
-and reserve space from scattered boulders. The camera checks the final lens path for terrain
-and solid scenery after framing. Felsenpfad dialogue and radio captions sit in the upper band
-on desktop and phones. Horizontal circles keep the walking player clear of tour visitors and
-dogs and push the dogs clear of visitors.
+when muted, or the player advances it. If a save is loaded before Gerold sets out for the turnoff,
+he starts the line again. Once he has set out, the saved route progress carries over. Muted
+subtitles type silently. At Felsenpfad, fourteen authored slots follow the trail and reserve space
+from scattered boulders. The camera checks the final lens path for terrain and solid scenery after
+framing, pulls in immediately, and eases out again when the path clears. Felsenpfad dialogue and
+radio captions sit in the upper band on desktop and landscape phones. Portrait phones show the
+rotate prompt during gameplay. The player and dogs share the visitors' collision circles. The
+circles' ground heights are refreshed when the visitors move.
 
 ---
 

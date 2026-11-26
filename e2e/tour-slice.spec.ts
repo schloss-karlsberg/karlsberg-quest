@@ -130,15 +130,28 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   expect(await beat(page)).toBe('t2');
   await shot(page, '02-gerold-station1');
   const greeting = await page.evaluate(() => {
-    const n = window.kq!.npc!;
+    const k = window.kq!;
+    const n = k.npc!;
     const ids = [];
     for (let i = 0; i < 6 && n.state().busy; i++) {
       ids.push(n.state().line?.id);
       n.finish();
       n.advance();
     }
+    // Hold this one presentation past the old 5.52 s action estimate. The authored say action
+    // stays unchanged, so the old scheduler would still send Gerold on his way before it ends.
+    const events = k.ctx.events;
+    const emit = events.emit;
+    events.emit = (name, payload) => {
+      const line = payload as { id?: string; ms?: number };
+      if (name === 'dialogue:say' && line.id === 'imhoff.t.los') {
+        events.emit = emit;
+        line.ms = 10_000;
+      }
+      emit.call(events, name, payload);
+    };
     n.close();
-    window.kq!.step(30);
+    k.step(30);
     return ids;
   });
   expect(greeting).toEqual(['imhoff.t.station1', 'imhoff.t.station1a', 'imhoff.t.station1b']);
@@ -146,12 +159,23 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   const departure = await page.evaluate(() => {
     const k = window.kq!;
     const before = k.walk!.walker('imhoff')!;
-    k.step(30);
+    const start = k.ctx.loop.time;
+    k.step(7 * 60);
     const during = k.walk!.walker('imhoff')!;
-    return { line: k.story!.state().dialogue?.id, before: before.s, during: during.s, to: during.to };
+    k.story!.finishTyping();
+    return { line: k.story!.state().dialogue?.id, before: before.s, during: during.s, to: during.to, elapsed: k.ctx.loop.time - start };
   });
   expect(departure).toMatchObject({ line: 'imhoff.t.los', to: 'parkplatz' });
+  expect(departure.elapsed).toBeGreaterThan(5.52);
   expect(departure.during).toBe(departure.before);
+  await page.keyboard.press('Enter');
+  const walking = await page.evaluate(() => {
+    const k = window.kq!;
+    k.step(60);
+    return k.walk!.walker('imhoff')!;
+  });
+  expect(walking.to).toBe('abzweig');
+  expect(walking.s).toBeGreaterThan(departure.before);
   await follow(page, 't4', 120);
   // the fade: Gerold's line, black, the group warped to the Felsenpfad entry, the player behind it
   for (let i = 0; i < 20 && (await beat(page)) === 't4'; i++) await page.evaluate(() => window.kq!.step(30));
@@ -170,13 +194,19 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
     settings.update((s) => (s.touchControls = 'on'), 'touchControls');
     return old ?? 'auto';
   });
-  for (const viewport of [{ width: 844, height: 390 }, { width: 390, height: 844 }]) {
-    await page.setViewportSize(viewport);
-    await expect.poll(async () => {
-      const box = await card.boundingBox();
-      return !!box && box.x >= 0 && box.x + box.width <= viewport.width && box.y + box.height < viewport.height / 2;
-    }).toBe(true);
-  }
+  const rotate = page.getByTestId('rotate');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(rotate).toBeVisible();
+  const landscape = { width: 844, height: 390 };
+  await page.setViewportSize(landscape);
+  await expect(rotate).toBeHidden();
+  await expect(card).toBeVisible();
+  await expect(card).toHaveCSS('opacity', '1');
+  await expect.poll(async () => {
+    const box = await card.boundingBox();
+    return !!box && box.x >= 0 && box.y >= 0 && box.x + box.width <= landscape.width && box.y + box.height < landscape.height / 2;
+  }).toBe(true);
+  await card.locator('.kqs-dlg-body').click({ trial: true });
   await page.setViewportSize(desktop);
   await page.evaluate((mode) => window.kq!.ctx.settings.update((s) => (s.touchControls = mode), 'touchControls'), touch);
   await expect.poll(async () => {
