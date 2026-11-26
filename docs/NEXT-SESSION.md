@@ -398,11 +398,11 @@ Owner of the tour systems (`src/systems/walk/` etc.) and of the mobile/UI follow
 
 - The north-up corner map shares the Karte artwork and shows nearby paths, the heading arrow, the
   current objective and the tour group. It switches between the present-day walk graph and the
-  historic sheet with the era.
+  historical terrain paths over the survey sheet. Story leads into buildings follow the next door.
 - „Minikarte“ under Spiel is on by default. On landscape phones the map fits beside the controls
   and the dialogue band. Reduced motion snaps the arrow to compass headings.
 - Canvas 2D redraws at about 10 Hz with zero additional 3D draw calls. See
-  [the unit-level measurement](PERFORMANCE.md#38-minimap-task-015).
+  [the minimap draw-cost notes](PERFORMANCE.md#38-minimap-task-015).
 
 ### 7.2 Tour playtest findings still open
 

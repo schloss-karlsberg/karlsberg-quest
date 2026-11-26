@@ -19,7 +19,7 @@ html[data-kq-contrast] .kq-minimap {
 }
 
 .kq-minimap[hidden],
-.kq-root:has(> .kq-hud.kq-hidden) > .kq-minimap,
+.kq-root:has(> .kq-hud:is(.kq-hidden, [data-kq-mode='staged'])) > .kq-minimap,
 html:is([data-kq-photo], [data-kq-cinematic], [data-kq-credits], [data-kq-rotate]) .kq-minimap {
   display: none;
 }
@@ -36,6 +36,14 @@ html[data-kq-touch] .kq-minimap {
 
 html[data-kq-touch]:has(.kq-t-btn.survey[aria-expanded='true']) .kq-minimap {
   display: none;
+}
+
+/* The notice shares the action pill's band when the minimap pushes the dock down. */
+html[data-kq-touch]:has(.kq-touch:not(.kq-hidden) .kq-t-btn.interact.lit)
+  .kq-root:has(> .kq-minimap:not([hidden])) .kq-hud .kq-toasts {
+  --kq-minimap-notice-right: calc((var(--kq-safe-r) + var(--kq-t-action-reach) + 8px) / var(--kq-t-hud-zoom) - var(--kq-safe-r));
+  right: var(--kq-minimap-notice-right);
+  max-width: min(320px, 39vw, calc(100% - var(--kq-minimap-notice-right)));
 }
 
 @media (max-height: 500px) {

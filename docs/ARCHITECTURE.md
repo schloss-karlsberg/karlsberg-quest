@@ -1664,14 +1664,17 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
 - A player-centred 180 m square shares the Karte sheet, inked footprints, player arrow and gold
   objective diamond via `travel/map-art.ts`. North stays up to match Karte and keep the paths
   steady while turning. The present day draws the loaded walk graph over a muted sheet. The past
-  uses the survey sheet's path marks and stronger building outlines.
+  overlays the terrain's gravel, cobbles and sand cells on the survey sheet. Both canvases reuse
+  cached footprint bounds to draw only outlines that intersect the view.
 - The arrow follows player yaw and snaps to 45° headings with reduced motion. The diamond uses the
-  active story compass marker or the quest compass's entrance-aware lead. The walk runtime supplies
-  the guide and tour member positions in the present day. Distant markers meet the inset edge
-  along their bearing.
+  active story objective or the quest compass lead. A quest compass lead derived from the active
+  story objective supplies its entrance route, including before the Registratur quest is accepted.
+  The walk runtime supplies the guide and tour member positions in the present day. Distant markers
+  meet the inset edge along their bearing.
 - „Minikarte“ under Spiel is on by default and saved with the other settings. The 144 × 144 Canvas 2D
   backing redraws at about 10 Hz during play. Pause (including Karte and other modals), title,
-  photo mode and cinematics hide it. The touch layout uses the safe-area insets.
+  photo mode, cinematics, staged HUD sequences and the touch survey menu hide it and suspend drawing.
+  The touch layout uses the safe-area insets.
 
 ### walk (`src/systems/walk/`) – the tour group: the guide walks a route, the group follows
 WP-16, design contract C2 (`docs/design/tour/systems.md`). Pure core: `route.ts` (polyline, stops,

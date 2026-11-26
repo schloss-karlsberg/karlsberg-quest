@@ -4,7 +4,7 @@ import { defineSystem } from '../../core/systems';
 import { h } from '../../ui/dom';
 import { drawMapFootprints, drawMapGoal, drawMapPaper, drawMapPlayer, mapImage, type MapView } from '../travel/map-art';
 import { visitTourMembers } from '../walk';
-import { drawModernPaths } from './paths';
+import { drawHistoricPaths, drawModernPaths, paintHistoricPaths } from './paths';
 import { MAP_MPP, MAP_SIZE, mapStyle, playerHeading, projectMarker } from './projection';
 
 const PERIOD = 0.1;
@@ -19,6 +19,7 @@ class Minimap {
   private readonly pixel = { x: 0, y: 0 };
   private readonly offs: (() => void)[];
   private sheet: HTMLImageElement | null = null;
+  private historicPaths: HTMLCanvasElement | null = null;
   private elapsed = PERIOD;
   private cameraTaken = false;
 
@@ -76,21 +77,30 @@ class Minimap {
   frame(dt: number): void {
     if (this.canvas.hidden || (this.elapsed += dt) < PERIOD - 1e-6) return;
     this.elapsed = Math.max(0, this.elapsed - PERIOD) % PERIOD;
-    const root = document.documentElement;
-    if (this.ctx.ui.hud.el.classList.contains('kq-hidden') ||
-        root.hasAttribute('data-kq-cinematic') || root.hasAttribute('data-kq-credits') || root.hasAttribute('data-kq-rotate')) return;
+    // A stage can start before the HUD applies its mode. CSS also hides the canvas under menus.
+    if (this.ctx.ui.hud.staged || !this.canvas.offsetWidth) return;
 
     if (!this.sheet) {
       this.sheet = mapImage(this.ctx.data);
       if (!this.sheet.complete) this.sheet.addEventListener('load', this.refresh, { once: true });
     }
-    const { data, player, era, ui, settings } = this.ctx;
+    const { data, player, era, ui, settings, world } = this.ctx;
     const g = this.g!;
     this.view.cx = player.position.x;
     this.view.cz = player.position.z;
     const style = mapStyle(era.current);
     drawMapPaper(g, this.sheet, this.view, style.sheetAlpha);
     if (style.modernPaths) drawModernPaths(g, data.paths, this.view);
+    else {
+      const grid = world.grid;
+      if (!this.historicPaths) {
+        const layer = h('canvas', { width: grid.cols, height: grid.rows });
+        const paths = layer.getContext('2d');
+        if (paths) paintHistoricPaths(paths, data.ground, grid);
+        this.historicPaths = layer;
+      }
+      drawHistoricPaths(g, this.historicPaths, grid, this.view);
+    }
     drawMapFootprints(g, data.footprints.buildings, this.view, style.footprintAlpha);
     visitTourMembers(this.drawMember);
     const goal = ui.hud.objectiveTarget;

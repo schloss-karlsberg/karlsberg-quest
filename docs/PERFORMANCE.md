@@ -433,11 +433,17 @@ Hoch transferred 19,837,246 bytes before first input against a 20,971,520-byte b
 ### 3.8 Minimap (TASK-015)
 
 The minimap draws into a 144 × 144 Canvas 2D backing at about 10 Hz with zero additional 3D draw
-calls. A local Node 24 run of `pnpm exec vitest run tests/minimap.test.ts --silent=false` measured
-0.012 ms per redraw after 500 warm-up iterations, averaged over 1,000 present-day redraws with the
-shipped 3,161 path edges and building footprints. The counting canvas measures JavaScript path
-filtering, projection and draw submission and excludes browser rasterization and compositing.
+calls. At the tour car park, the unit test asserts 36 submitted path segments and one footprint
+fill and stroke per redraw. The bounds of one of the 103 building footprints intersect the view.
+Bounds are cached and checked before each ring is submitted. The historical terrain layer uses one image
+crop per redraw from a canvas built on the first historical draw, at one pixel per ground cell.
 The sheet image comes from the same cache as Karte. Each tick reuses the view and marker coordinates.
+
+`e2e/minimap.spec.ts` instruments the real context at the tour car park for ten warmed redraws. It
+logs the Canvas 2D calls per redraw and the time between the first paper fill and the north label,
+which covers draw submission and excludes browser compositing. The sandbox blocked the preview
+server, so the browser figure is pending. The unit test also logs time with a stub canvas as an
+informational CPU check.
 
 ## 4. Loading
 

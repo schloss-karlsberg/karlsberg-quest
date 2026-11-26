@@ -41,15 +41,48 @@ export function drawMapPaper(g: CanvasRenderingContext2D, sheet: HTMLImageElemen
   g.fillRect(0, 0, width, height);
 }
 
+interface MapFootprint {
+  ring: Footprint['ring'];
+  minX: number;
+  minZ: number;
+  maxX: number;
+  maxZ: number;
+}
+
+const footprintCache = new WeakMap<readonly Footprint[], MapFootprint[]>();
+
+function mapFootprints(buildings: readonly Footprint[]): MapFootprint[] {
+  let footprints = footprintCache.get(buildings);
+  if (!footprints) {
+    footprints = [];
+    for (const { ring } of buildings) {
+      if (!ring.length) continue;
+      let minX = Infinity, minZ = Infinity, maxX = -Infinity, maxZ = -Infinity;
+      for (const [x, z] of ring) {
+        minX = Math.min(minX, x);
+        minZ = Math.min(minZ, z);
+        maxX = Math.max(maxX, x);
+        maxZ = Math.max(maxZ, z);
+      }
+      footprints.push({ ring, minX, minZ, maxX, maxZ });
+    }
+    footprintCache.set(buildings, footprints);
+  }
+  return footprints;
+}
+
 export function drawMapFootprints(g: CanvasRenderingContext2D, buildings: readonly Footprint[], view: MapView, alpha = 1): void {
   const { cx, cz, mpp, width, height } = view;
+  const reachX = (width / 2 + 1) * mpp;
+  const reachZ = (height / 2 + 1) * mpp;
+  const footprints = mapFootprints(buildings);
   g.lineWidth = 1;
   g.fillStyle = 'rgba(140, 47, 31, 0.16)';
   g.strokeStyle = 'rgba(42, 33, 24, 0.7)';
   g.globalAlpha = alpha;
-  for (let b = 0; b < buildings.length; b++) {
-    const { ring } = buildings[b]!;
-    if (!ring.length) continue;
+  for (let b = 0; b < footprints.length; b++) {
+    const { ring, minX, minZ, maxX, maxZ } = footprints[b]!;
+    if (maxX < cx - reachX || minX > cx + reachX || maxZ < cz - reachZ || minZ > cz + reachZ) continue;
     g.beginPath();
     for (let i = 0; i < ring.length; i++) {
       const point = ring[i]!;

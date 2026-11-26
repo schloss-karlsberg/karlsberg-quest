@@ -36,6 +36,10 @@ Give players a corner map for local orientation and for finding the tour group a
 - [x] The minimap redraws at about 10 Hz with no extra 3D draws or per-frame allocations. Draw cost is measured.
 - [x] Unit tests cover projection, era selection and edge clamping. A browser spec covers visibility, persistence and phone layout.
 - [x] The architecture, backlog, mobile layout, performance note and change logs are updated.
+- [x] The first Registratur lead uses its entrance route from outside, and the historical minimap overlays the in-game paths on the survey.
+- [x] The touch layout reserves space for the lit action label, and staged scenes and the touch survey menu suspend the minimap.
+- [x] Local redraws cull off-screen footprints, with layer-specific unit assertions and Canvas 2D instrumentation in the browser spec.
+- [ ] Capture the Canvas 2D draw-cost figure from a browser run.
 - [ ] Verify the browser specs and run the standard validation wrapper outside the sandbox.
 
 ## Plan
@@ -58,6 +62,13 @@ _Status: approved 2026-11-26_
 
 **Open questions.** None.
 
+### Review fixes (2026-11-26)
+
+- [x] Use the entrance-routed story lead and draw historical path surfaces from the terrain grid.
+- [x] Keep the touch notice dock clear of lit action labels and suspend hidden minimap redraws.
+- [x] Cache footprint bounds, assert the individual drawing layers and count real Canvas 2D calls in Playwright.
+- [x] Update the affected docs, run all four gates and attempt the minimap and smoke specs under separate lock holds.
+
 ## Progress
 
 - Branch `dev/task-015`.
@@ -67,25 +78,27 @@ _Status: approved 2026-11-26_
 - 2026-11-26. `pnpm typecheck`, `pnpm test` (1578 passed, 0 failed) and `pnpm build` passed.
 - 2026-11-26. `pnpm validate` was blocked by the sandbox at the tsx IPC socket. The validator itself passed with `node --import tsx scripts/validate-content.ts`.
 - 2026-11-26. The locked minimap spec was blocked before the browser launched by `listen EPERM 127.0.0.1:5401`. Playwright discovered both minimap tests.
-- 2026-11-26. The sandbox denied the worktree's git index lock. Changes are ready in the worktree.
+- 2026-11-26. The initial implementation is on this branch as `921d6e6` and `601c062`.
+- 2026-11-26. Review fixes reuse the routed objective, add terrain-aligned historical paths, move the notice dock clear of the lit action pill and skip off-screen redraws and footprints. The focused unit suite passed (13 tests). The browser spec now counts Canvas 2D calls at the tour car park and checks the Registratur approach, staged mode, survey menu and phone notices.
+- 2026-11-26. `pnpm typecheck`, `pnpm test` (`Tests  1584 passed (1584)`, 0 failed), `pnpm build` and `mc validate` passed. The `pnpm validate` wrapper hit `listen EPERM` on the tsx IPC socket.
+- 2026-11-26. Playwright discovered all three minimap tests. The locked minimap and smoke runs both stopped before launching the browser because the preview server could not listen on `127.0.0.1:5401`.
+- 2026-11-26. Git could not create the worktree's `index.lock` under the sandbox. The review fixes are in the worktree.
 
 ## Follow-ups
 
-- Run `pnpm validate` outside the sandbox. Run each browser spec in a separate lock hold after building.
+- Run `pnpm validate` in an environment that permits the tsx IPC socket. Run the two browser specs after building, and record the logged Canvas 2D draw-cost figure in the performance notes.
 
   ```sh
   KQ_E2E_PORT=5401 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/minimap.spec.ts --workers=1 --reporter=line
   KQ_E2E_PORT=5401 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line
   ```
 
-- Commit locally.
+- Commit the review changes locally.
 
   ```sh
-  git add -- src/systems/travel/map.ts src/systems/travel/map-art.ts
-  git commit -m 'refactor(ui): share field map artwork' -m 'Refs: TASK-015' -m 'Co-Authored-By: Codex <noreply@openai.com>'
-  git add -- .mc/tasks/todo/TASK-015-minimap.md docs/{ACTION-RPG,ARCHITECTURE,MOBILE-UI-PASS,NEXT-SESSION,PERFORMANCE,PRD}.md \
-    e2e/minimap.spec.ts tests/minimap.test.ts src/core/save.ts src/i18n/de.ts src/systems/index.ts \
-    src/systems/minimap src/systems/quests/index.ts src/systems/story/objectives.ts \
-    src/systems/walk/{index,runtime}.ts src/ui/{hud,settings}.ts
-  git commit -m 'feat(ui): add a north-up minimap' -m 'Refs: TASK-015' -m 'Co-Authored-By: Codex <noreply@openai.com>'
+  git add -- e2e/minimap.spec.ts src/systems/minimap/{index.ts,minimap.css,paths.ts} \
+    src/systems/quests/index.ts src/systems/travel/map-art.ts src/ui/{hud.ts,touch.css} tests/minimap.test.ts
+  git commit -m 'fix(ui): address minimap review findings' -m 'Refs: TASK-015' -m 'Co-Authored-By: Codex <noreply@openai.com>'
+  git add -- .mc/tasks/todo/TASK-015-minimap.md docs/{ACTION-RPG,ARCHITECTURE,MOBILE-UI-PASS,NEXT-SESSION,PERFORMANCE,PRD}.md
+  git commit -m 'docs(ui): record minimap review fixes' -m 'Refs: TASK-015' -m 'Co-Authored-By: Codex <noreply@openai.com>'
   ```

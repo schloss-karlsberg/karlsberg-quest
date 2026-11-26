@@ -533,6 +533,8 @@ Every unit stays under the 15-min hold; the test itself times out at 14 min. All
 
 On short landscape touch screens the 72 px map sits below the compass, left of the top and skill
 rows and above the thumb arc. The dialogue band leaves room for this slot while the map is up.
-The survey pop-up takes the slot while open. On very short screens a long action prompt gets
-priority. `e2e/minimap.spec.ts` checks the 667 × 375 layout against the live touch targets and
-dialogue with the §8.3 safe-area insets. Browser verification is pending.
+The survey pop-up takes the slot while open and suspends map redraws. While the action pill is lit,
+the notice dock sits to its left using the pill's maximum reach and the HUD zoom. On the shortest
+screens the lit pill also hides the map. `e2e/minimap.spec.ts` checks the 667 × 375 layout against
+the live touch targets and dialogue with the §8.3 safe-area insets, including a visible toast beside
+a long action label.
