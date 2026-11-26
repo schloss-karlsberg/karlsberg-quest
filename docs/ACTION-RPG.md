@@ -1070,6 +1070,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| The Wegweiser can draw through a wall or miss a reachable detour (TASK-026, 2026-11-26) | The solver checks grid edges during search and can try more than one approach to a free off-grid goal. It uses player clearance (less a little for a player pressed against a wall) and the wading limit to leave the start, keeps the quick straight route when clear, and stops at a reachable approach when it cannot finish. An enclosed start with no reachable leg hides the trail. |
 | Legacy garden saves can have every required objective credited after Continue without a turn-in topic (TASK-037, 2026-11-26) | After restoring counts, Continue marks the quest ready when its required objectives are complete. Hanne then offers the normal turn-in and pays once. Laub's exit lines queue first. The quests start on entry and queue their offers before the autosave. |
 | A Chapter 3 autosave can strand the player before a mandatory quest starts (TASK-037, 2026-11-26) | „Der Festsaal“ starts on entering „Hinauf“, and „Die Hunde los“ starts on entering „Zum Zwinger“, before each beat autosaves. „Hinaus“ also records the room and choice objectives on entry. Continue repairs missing quest progress proven by the saved beat. Hanne and Jost still handle turn-ins and rewards. |
 | Pointer lock can intercept Abspann after desktop Weiter (TASK-039, 2026-11-26) | Boot requests pointer lock after the startup handlers run and only when the modal stack is empty. |

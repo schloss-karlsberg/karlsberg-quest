@@ -45,7 +45,7 @@ export interface PlayerStats {
 const SLOPE_LIMIT_DEG = 42;
 /** Wading stops this far into a lake (m from the shore line); deeper water blocks like a wall. */
 export const WADE_LIMIT_M = 0.8;
-const RADIUS = 0.35;
+export const PLAYER_RADIUS = 0.35;
 const FLY_SPEED = 28;
 const FLY_FAST = 95;
 const FLY_MIN_AGL = 2.5;
@@ -338,7 +338,7 @@ export class Player {
         nz = this.position.z + (nz - this.position.z) * k;
       }
     }
-    const col = this.world.collide(nx, nz, RADIUS);
+    const col = this.world.collide(nx, nz, PLAYER_RADIUS);
     nx = col.x;
     nz = col.z;
     const b = this.world.bounds();
