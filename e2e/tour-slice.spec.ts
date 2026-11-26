@@ -204,12 +204,23 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   const staffVisible = () => page.evaluate(() => window.kq!.ctx.scene.getObjectByName('player-staff')?.visible === true);
   expect(await staffVisible()).toBe(false);
   await shot(page, '08-damm');
-  const staffPickup = page.getByTestId('feed-line').getByText('+ Messstab', { exact: true });
-  // The grant runs on entry to t13, and the feed expires on wall time even in ?manual.
-  await Promise.all([
-    expect(staffPickup).toBeVisible({ timeout: 120_000 }),
-    follow(page, 't13', 120),
-  ]);
+  // The grant runs on entry to t13, inside a kq.step, and the feed line expires on wall time
+  // (4.2 s, and a fourth line pushes it out): polling the DOM for it raced the steps on a loaded
+  // machine. Record each feed line as it is added, with whether it is visible right then.
+  await page.evaluate(() => {
+    const w = window as unknown as { feedSeen: { text: string; visible: boolean }[] };
+    w.feedSeen = [];
+    const dock = document.querySelector('[data-testid="hud-feed-lines"]')!;
+    new MutationObserver((muts) => {
+      for (const m of muts)
+        for (const n of m.addedNodes)
+          if (n instanceof HTMLElement && n.dataset.testid === 'feed-line')
+            w.feedSeen.push({ text: n.querySelector('.kqp-line-text')?.textContent ?? '', visible: n.checkVisibility() });
+    }).observe(dock, { childList: true });
+  });
+  await follow(page, 't13', 120);
+  const feedSeen = await page.evaluate(() => (window as unknown as { feedSeen: { text: string; visible: boolean }[] }).feedSeen);
+  expect(feedSeen, JSON.stringify(feedSeen)).toContainEqual({ text: '+ Messstab', visible: true });
   expect(await beat(page)).toBe('t13');
   const progression = await page.evaluate(() => window.kq!.progression!.state());
   expect(progression.inventory['item.stab.esche']).toBe(1);

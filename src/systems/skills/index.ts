@@ -50,6 +50,16 @@ declare module '../../debug/hooks' {
 }
 
 let cards: UnlockCards | null = null;
+
+function tickCards(dt: number, ctx: GameContext): void {
+  if (!cards) return;
+  let hold = ctx.pause.reasons.has('title') || ctx.ui.cards.held;
+  // one centre card at a time (src/ui/cards.ts)
+  if (cards.wants && !hold && !ctx.ui.cards.claim('skill')) hold = true;
+  // game time: a card on screen waits while the game is paused (modal, menu) instead of running out unseen
+  cards.frame(ctx.pause.paused ? 0 : Math.min(dt, 0.1), ctx.settings.state.reducedMotion, hold);
+  if (!cards.wants) ctx.ui.cards.release('skill');
+}
 /** window.kq is installed after the systems' init: hooks go in on the first frame. */
 let skillHooks: SkillsHooks | null = null;
 let snapshot: Record<string, number> = {};
@@ -163,15 +173,14 @@ export default defineSystem({
       };
     }
   },
+  // bullet time / `?manual`: the card also runs on `kq.step`, like the story's title cards (a spec
+  // steps through it instead of waiting for rendered frames, slow under software WebGL)
+  update(dt, ctx) {
+    if (ctx.loop.manual) tickCards(dt, ctx);
+  },
   frame(dt, ctx) {
     if (skillHooks && typeof window !== 'undefined' && window.kq && window.kq.skills !== skillHooks) window.kq.skills = skillHooks;
-    if (!cards) return;
-    let hold = ctx.pause.reasons.has('title') || ctx.ui.cards.held;
-    // one centre card at a time (src/ui/cards.ts)
-    if (cards.wants && !hold && !ctx.ui.cards.claim('skill')) hold = true;
-    // game time: a card on screen waits while the game is paused (modal, menu) instead of running out unseen
-    cards.frame(ctx.pause.paused ? 0 : Math.min(dt, 0.1), ctx.settings.state.reducedMotion, hold);
-    if (!cards.wants) ctx.ui.cards.release('skill');
+    tickCards(dt, ctx);
   },
   dispose() {
     cards?.clear();

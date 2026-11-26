@@ -390,12 +390,30 @@ test('integration: round 2 tour (interiors, npc, skills/tools, snow tracks)', as
   expect(await page.evaluate(() => window.kq!.npc!.list())).toEqual([]);
   expect(await page.evaluate(() => window.kq!.state().skills['kartograf'])).toBe(3);
   expect(await payloads(page, 'skill:unlocked')).toContainEqual({ skill: 'kartograf', level: 3 });
-  // the unlock card waits behind the chapter title card, which runs out on rendered frames (slow
-  // under software WebGL on a loaded machine)
-  await page.waitForFunction(() => !document.querySelector('.kqs-card.kqs-show'), null, { timeout: 240_000 });
-  await expect(page.getByTestId('skill-card')).toBeVisible({ timeout: 60_000 });
+  // the unlock card waits behind the chapter title card; in ?manual both run on kq.step (waiting
+  // for rendered frames took ~40 s here at ~2 fps of software WebGL, minutes on a loaded machine)
+  await page.waitForFunction(
+    () => {
+      const k = window.kq!;
+      if (k.skills!.card() !== null && !document.querySelector('.kqs-card.kqs-show')) return true;
+      k.step(10);
+      return false;
+    },
+    null,
+    { timeout: 60_000 },
+  );
+  await expect(page.getByTestId('skill-card')).toBeVisible();
   await expect(page.locator('.kq-toast', { hasText: 'TEST: Messen' })).toHaveCount(0);
-  await page.waitForFunction(() => window.kq!.skills!.card() === null, null, { timeout: 120_000 });
+  await page.waitForFunction(
+    () => {
+      const k = window.kq!;
+      if (k.skills!.card() === null) return true;
+      k.step(30);
+      return false;
+    },
+    null,
+    { timeout: 60_000 },
+  );
 
   // ---- 4. measure the gallery facade (KB-B06) → story beat + the Chronik's measuring clue --------
   const ring = await page.evaluate(() => window.kq!.ctx.data.footprints.buildings.find((b) => b.id === 'KB-B06')!.ring);

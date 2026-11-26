@@ -167,16 +167,23 @@ test('chapter 1: the guard calls out a runner; caught in Teil B → awake at the
   await walk(page, [[1196, -1117]], { sprint: true, tol: 2 });
   expect(await page.evaluate(() => window.kq!.story!.state().sayCount?.['wache.k1.rennen'])).toBe(1);
   expect(await page.evaluate(() => (window as unknown as { __said: string[] }).__said)).toContain('wache.k1.rennen|Langsam! Hier rennt nur das Geld davon.');
-  // show it (lines before it skipped)
-  await page.evaluate(() => {
-    const k = window.kq!;
-    for (let i = 0; i < 24 && k.story!.state().dialogue?.id !== 'wache.k1.rennen'; i++) {
-      k.story!.finishTyping();
-      k.step(30);
+  // show it: skip the lines queued before it with Enter, as a player does (waiting out their
+  // holds on game time raced a fixed budget: Laub's two lines alone hold ~11 s)
+  for (let i = 0; i < 16; i++) {
+    const id = await page.evaluate(() => {
+      window.kq!.step(1);
+      return window.kq!.story!.state().dialogue?.id ?? null;
+    });
+    if (id === 'wache.k1.rennen') break;
+    if (!id) {
+      // nothing on screen yet (a title card holding the lines): let game time pass
+      await page.evaluate(() => window.kq!.step(30));
+      continue;
     }
-    k.step(1);
-    k.story!.finishTyping();
-  });
+    await page.evaluate(() => window.kq!.story!.finishTyping());
+    await page.keyboard.press('Enter');
+  }
+  await page.evaluate(() => window.kq!.story!.finishTyping());
   const cur = await page.evaluate(() => {
     const s = window.kq!.story!.state();
     return { id: s.dialogue?.id ?? null, text: s.dialogue?.text ?? null, pending: s.pendingLines };
