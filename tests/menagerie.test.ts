@@ -228,6 +228,34 @@ describe('animal bodies', () => {
 });
 
 describe('world: animals avoid water', () => {
+  it.each([-1, 1])('separates coincident animals toward the dry side of a bank (side %s)', (side) => {
+    const walkable = (x: number) => x * side >= 0;
+    const sim = new Menagerie({ walkable });
+    const [first] = sim.add({ id: 'first', kind: 'dromedary', x: 0.1 * side, z: 4 });
+    const [second] = sim.add({ id: 'second', kind: 'dromedary', x: 0.1 * side, z: 4 });
+    sim.update(DT, player({ x: 100 }));
+    expect(sim.animals.every((a) => walkable(a.x))).toBe(true);
+    expect(Math.hypot(first!.x - second!.x, first!.z - second!.z)).toBeCloseTo(first!.radius + second!.radius);
+  });
+
+  it.each([0.2, 2])('separates along a narrow path when neither side has room for the full push (width %s)', (width) => {
+    const walkable = (x: number) => x >= 0 && x < width;
+    const sim = new Menagerie({ walkable });
+    const [first] = sim.add({ id: 'first', kind: 'dromedary', x: 0.1, z: 4 });
+    const [second] = sim.add({ id: 'second', kind: 'dromedary', x: 0.1, z: 4 });
+    sim.update(DT, player({ x: 100 }));
+    expect(sim.animals.every((a) => walkable(a.x))).toBe(true);
+    expect(Math.abs(first!.z - second!.z)).toBeCloseTo(first!.radius + second!.radius);
+  });
+
+  it('keeps animals on their spot when the surrounding terrain blocks separation', () => {
+    const sim = new Menagerie({ walkable: (x, z) => x === 0 && z === 4 });
+    sim.add({ id: 'first', kind: 'dromedary', x: 0, z: 4 });
+    sim.add({ id: 'second', kind: 'dromedary', x: 0, z: 4 });
+    sim.update(DT, player({ x: 100 }));
+    expect(sim.animals.map(({ x, z }) => ({ x, z }))).toEqual([{ x: 0, z: 4 }, { x: 0, z: 4 }]);
+  });
+
   it('a charge stops at the bank', () => {
     const m = new Menagerie({ walkable: (_x, z) => z > -8 || z < -12 });
     m.add({ kind: 'cassowary', x: 0, z: -20, id: 'k', heading: Math.PI });

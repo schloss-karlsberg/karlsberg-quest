@@ -52,7 +52,13 @@ describe('campaign NPC encounters', () => {
     expect(hold).toHaveBeenLastCalledWith('talk', true);
     events.emit('player:caught', { by: 'pack' });
     expect(hold).toHaveBeenLastCalledWith('talk', false);
-    state.replace(JSON.parse(state.toJSON()));
+    const snapshot = state.toJSON();
+    events.emit('npc:despawn', { npc: 'soll' });
+    expect(state.state.systems.npc?.placed).toEqual({});
+    npc.update(1 / 60);
+    expect(hold.mock.calls).toEqual([['talk', true], ['talk', false]]);
+
+    state.replace(JSON.parse(snapshot));
     events.emit('save:loaded', { slot: 'auto' });
     npc.update(1 / 60);
     expect(hold.mock.calls).toEqual([['talk', true], ['talk', false], ['talk', true]]);

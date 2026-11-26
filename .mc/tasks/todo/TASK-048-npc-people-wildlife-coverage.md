@@ -100,7 +100,7 @@ Passing-baseline coverage also exercises the first-talk clue/once-greeting acros
 
 ### Follow-ups and intended commits
 
-- **Design todo:** should partial calming progress persist in a save made *after* those flares/misses? Only permanent calming is serialized today. No save-format change in this task.
+- The review round resolved the open question about partial calming progress. See the results below.
 - Rerun the literal validator and locked smoke outside the sandbox; stage the changes as the commits below. HEAD remains `d2d1f48a528e285f15ad843ac80a5a75f7ae7c92` on `dev/task-048`. Nothing pushed.
 
 1. `chore: record npc and wildlife coverage plan`
@@ -115,3 +115,62 @@ Passing-baseline coverage also exercises the first-talk clue/once-greeting acros
 10. `docs: record encounter contracts and sweep results`
 
 Each message ends with a blank line and `Co-Authored-By: Codex <noreply@openai.com>`.
+
+## Review fix round (2026-11-26)
+
+**Goal:** Resolve the five review findings on `dev/task-048`. Changes on `origin/main` since the
+branch point do not touch the reviewed code. The unbounded trail loop and unchecked collision
+movement also existed there and are small fixes within the sweep. The counter reset, incomplete
+deer leader validation, and NPC test gap concern changes made on this branch.
+
+### Acceptance criteria and plan
+
+- [x] Bound trail samples per segment, with a regression for a tiny finite stride that still covers the segment.
+- [x] Save misses and flares by encounter, restore progress before and after thresholds, and cover older saves.
+- [x] Separate animals on walkable ground, with bank and constrained-terrain regressions.
+- [x] Resolve saved deer follow chains to a departing leader with a destination, with chain and cycle regressions.
+- [x] Reload Soll after despawning him and verify the conversation opens without duplicate rewards or greetings.
+- [x] Update the encounter contracts, changelogs, and task record.
+- [ ] Pass all four literal gate commands and run locked smoke where permitted.
+- [ ] Commit the review fixes locally.
+
+Add focused regression assertions before each gameplay fix. Use the existing simulation and system
+test harnesses. Keep the existing branch and leave publishing and voice content untouched.
+
+### Progress
+
+- Started from `a736ae1` on `dev/task-048`.
+- Reproduced the unbounded sampling, save rewind, terrain, and deer regressions on the branch before the
+  fixes. Removing the NPC load handler temporarily also failed the new conversation assertion.
+- Fixed all five findings and documented the resulting contracts in the architecture, action-RPG,
+  and PRD docs. No voiced lines or assets changed.
+- `pnpm typecheck` passed (`tsc --noEmit`). `pnpm test` reported `Test Files  121 passed (121)`
+  and `Tests  1604 passed (1604)`, with 0 failures. `pnpm build` reported `✓ built in 799ms`.
+- `pnpm validate` hit `listen EPERM` opening tsx's IPC socket. The content validator passed when
+  invoked with `node --import tsx scripts/validate-content.ts`: `✓ content valid (1 warning(s))`.
+  The example pack warning is the same as in the initial sweep.
+- Locked smoke was skipped after `127.0.0.1:5436` returned `listen EPERM`. No browser spec was edited.
+- Git staging failed with `Operation not permitted` on this worktree's `index.lock`. Review fixes
+  remain in the worktree, with HEAD at `a736ae113383e647960096688052749a5e5446ab`.
+
+### Follow-ups
+
+- All five reviewer findings are fixed. Rerun the literal `pnpm validate` and the locked smoke spec
+  in an environment with local socket access.
+
+  ```sh
+  KQ_E2E_PORT=5436 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line
+  ```
+
+- Commit locally with write access to the worktree index. The intended review commits are:
+
+  | Commit | Paths to stage |
+  | --- | --- |
+  | `fix: bound scripted snow trail sampling` | `src/systems/hunt/tracks.ts`, `tests/snow-track-edges.test.ts` |
+  | `fix: persist menagerie calming progress in saves` | `src/systems/menagerie/index.ts`, `tests/menagerie-encounter.test.ts` |
+  | `fix: keep separating menagerie animals on walkable ground` | `src/systems/menagerie/logic.ts`, `tests/menagerie.test.ts` |
+  | `fix: validate saved deer departure chains` | `src/systems/animals/deer.ts`, `tests/animals-deer.test.ts` |
+  | `test: require Soll's placement to rebuild after loading` | `tests/npc-encounter.test.ts` |
+  | `docs: record campaign encounter review fixes` | `docs/ACTION-RPG.md`, `docs/ARCHITECTURE.md`, `docs/PRD.md`, and this task file |
+
+  Use `git add -- <paths>` and `git commit -m "<commit>" -m 'Refs: TASK-048' -m 'Co-Authored-By: Codex <noreply@openai.com>'` for each row.

@@ -2,7 +2,7 @@ import { Scene } from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { GameContext } from '../src/core/context';
 import { EventBus } from '../src/core/events';
-import { createInitialState, GameStateStore } from '../src/core/state';
+import { createInitialState, deserializeState, GameStateStore } from '../src/core/state';
 import menagerie from '../src/systems/menagerie';
 
 afterEach(() => { menagerie.dispose(); vi.unstubAllGlobals(); });
@@ -30,7 +30,11 @@ function pen() {
   events.on('menagerie:calmed', calmed);
   const flare = (yaw = 0, range = 12) => events.emit('combat:bann', { x: 0, z: 0, yaw, range, angle: 60 });
   const miss = () => { hooks.setState('bird', 'charge'); step(); };
-  return { events, state, era, position, calmed, flare, hooks, step, miss, interact };
+  const load = (snapshot: string) => {
+    state.replace(deserializeState(snapshot));
+    events.emit('save:loaded', { slot: 'manual' });
+  };
+  return { events, state, era, position, calmed, flare, hooks, step, miss, interact, load };
 }
 
 describe('menagerie encounters', () => {
@@ -62,12 +66,11 @@ describe('menagerie encounters', () => {
   });
 
   it('does not carry flares from the discarded timeline into a save made before the encounter', () => {
-    const { events, state, calmed, flare } = pen();
+    const { events, state, calmed, flare, load } = pen();
     events.emit('menagerie:spawn', { animal: 'jaguar', id: 'cat', x: 0, z: -8 });
     const before = state.toJSON();
     flare(); flare();
-    state.replace(JSON.parse(before));
-    events.emit('save:loaded', { slot: 'manual' });
+    load(before);
     flare();
     expect(calmed).not.toHaveBeenCalled();
     flare(); flare();
@@ -75,12 +78,11 @@ describe('menagerie encounters', () => {
   });
 
   it('only leads the cassowary home nearby, after three misses in this timeline', () => {
-    const { events, state, position, calmed, miss, step, interact } = pen();
+    const { events, state, position, calmed, miss, step, interact, load } = pen();
     events.emit('menagerie:spawn', { animal: 'cassowary', id: 'bird', x: 0, z: -3 });
     const before = state.toJSON();
     miss(); miss();
-    state.replace(JSON.parse(before));
-    events.emit('save:loaded', { slot: 'manual' });
+    load(before);
     miss();
     interact.mockReturnValue(true);
     step();
@@ -98,5 +100,41 @@ describe('menagerie encounters', () => {
     expect(state.state.systems.menagerie?.calmed).toEqual(['bird']);
   });
 
-  it.todo('Design: should a save made after one or two flares/misses remember partial calming progress?');
+  it('restores two saved flares even after the jaguar was calmed in discarded play', () => {
+    const { events, state, calmed, flare, hooks, load } = pen();
+    events.emit('menagerie:spawn', { animal: 'jaguar', id: 'cat', x: 0, z: -8 });
+    flare(); flare();
+    expect(calmed).not.toHaveBeenCalled();
+    const afterTwo = state.toJSON();
+    flare();
+    expect(hooks.state()).toEqual([]);
+
+    load(afterTwo);
+    expect(hooks.state().map((a) => a.id)).toEqual(['cat']);
+    flare();
+    expect(calmed).toHaveBeenCalledTimes(2);
+    expect(calmed).toHaveBeenLastCalledWith({ animal: 'jaguar', id: 'cat' });
+    expect(hooks.state()).toEqual([]);
+  });
+
+  it('restores partial misses and an earned lead-home action from separate snapshots', () => {
+    const { events, state, calmed, miss, step, interact, load } = pen();
+    events.emit('menagerie:spawn', { animal: 'cassowary', id: 'bird', x: 0, z: -3 });
+    miss(); miss();
+    const afterTwo = state.toJSON();
+    miss();
+    const afterThree = state.toJSON();
+
+    load(afterTwo);
+    interact.mockReturnValue(true);
+    step();
+    expect(calmed).not.toHaveBeenCalled();
+    miss(); step();
+    expect(calmed).toHaveBeenCalledExactlyOnceWith({ animal: 'cassowary', id: 'bird' });
+
+    load(afterThree);
+    step(); step();
+    expect(calmed).toHaveBeenCalledTimes(2);
+    expect(calmed).toHaveBeenLastCalledWith({ animal: 'cassowary', id: 'bird' });
+  });
 });

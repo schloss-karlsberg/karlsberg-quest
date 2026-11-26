@@ -19,6 +19,7 @@ export type PrintKind = 'boot' | 'paw' | 'hoof';
 export type TrailBreak = 'water' | 'stone' | 'road' | 'rock' | null;
 
 const TRAIL_STRIDE = 1.4;
+const MAX_TRAIL_SAMPLES = 1800;
 
 export interface Print {
   x: number;
@@ -114,7 +115,8 @@ export class TrackField {
 
   /**
    * Someone else's boot prints (Ch. 2: the Warner's trail): a line through `path`, one print per
-   * `step` m, alternating feet. Not part of the player's trail (agent −2): the pack never tracks
+   * `step` m, alternating feet, with at most 1800 samples spread across each segment.
+   * Not part of the player's trail (agent −2): the pack never tracks
    * them. `hold` s are added to their life (t in the future keeps them fresh that much longer).
    */
   addTrail(path: readonly { x: number; z: number }[], t: number, step = TRAIL_STRIDE, depth = 1, hold = 0, ok: (x: number, z: number) => boolean = () => true): number {
@@ -129,7 +131,8 @@ export class TrackField {
       const h = Math.atan2(-(b.x - a.x), -(b.z - a.z));
       const rx = Math.cos(h);
       const rz = -Math.sin(h);
-      const k = Math.max(1, Math.floor(d / stride));
+      // Leave room for the first segment's starting point.
+      const k = Math.min(MAX_TRAIL_SAMPLES - 1, Math.max(1, Math.floor(d / stride)));
       for (let j = i === 1 ? 0 : 1; j <= k; j++) {
         const f = j / k;
         // a runner's stride wanders a little; deterministic (no RNG in the field)

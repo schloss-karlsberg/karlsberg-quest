@@ -263,4 +263,26 @@ describe('deer: save', () => {
     expect(resumed.map(serializeDeer)).toEqual(pair.map(serializeDeer));
     expect(startleDeer(resumed[1]!, watcher())).toEqual([]);
   });
+
+  it('restores a departing follow chain only if it ends at a deer with a destination', () => {
+    const pair = herd();
+    const tail = createDeer({ op: 'spawn', id: 'tail', kind: 'reh', look: 'kitz', follow: 'animal:kitz' });
+    const chain = [tail, pair[1]!, pair[0]!];
+    const watcher = () => ({ x: 0, z: 10, speed: 0, stance: 'stand' as const });
+    leaveDeer(pair[0]!);
+    run(chain, 1, watcher);
+    const saved = serializeAnimals(chain, []);
+    const resumed = restoreAnimals(saved).deer;
+    expect(resumed.map((deer) => deer.state)).toEqual(['leave', 'leave', 'leave']);
+    run(resumed, 30, watcher);
+    expect(resumed.map((deer) => deer.state)).toEqual(['gone', 'gone', 'gone']);
+
+    delete saved.deer[2]!.away;
+    expect(restoreAnimals(saved).deer.map((deer) => deer.state)).toEqual(['gone', 'gone', 'gone']);
+    saved.deer[2]!.follow = 'animal:kitz';
+    const cycle = restoreAnimals(saved).deer;
+    expect(cycle.map((deer) => deer.state)).toEqual(['gone', 'gone', 'gone']);
+    run(cycle, 1, watcher);
+    expect(cycle.map((deer) => deer.state)).toEqual(['gone', 'gone', 'gone']);
+  });
 });

@@ -44,6 +44,18 @@ describe('snow tracks at the margins', () => {
     expect(field.prints).toEqual(reference.prints);
   });
 
+  it('bounds sampling across the full segment for a tiny finite cue stride, even when terrain rejects prints', () => {
+    const field = new TrackField({ max: 2 });
+    let sampled = 0;
+    const count = field.addTrail(path, 0, 1e-308, 1, 0, (_x, z) => {
+      if (++sampled > 1800) throw new Error('exceeded the segment sample limit');
+      return z === 0 || z === -7;
+    });
+    expect(sampled).toBeGreaterThan(2);
+    expect(count).toBe(2);
+    expect(field.prints.map((print) => print.z)).toEqual([0, -7]);
+  });
+
   it('evicts in insertion order, respects the radius edge and clears segment ownership', () => {
     const field = new TrackField({ max: 2 });
     const first = field.addPlayer(0, 0, 0, 0, 1, 1, null)!;

@@ -297,21 +297,38 @@ export class Menagerie {
     // animals don't walk through each other
     for (let i = 0; i < this.animals.length; i++)
       for (let j = i + 1; j < this.animals.length; j++) {
-        const a = this.animals[i]!;
-        const b = this.animals[j]!;
-        const d = Math.hypot(a.x - b.x, a.z - b.z);
-        const min = a.radius + b.radius;
-        if (d < min) {
-          const push = (min - d) / 2;
-          const dx = d === 0 ? push : ((a.x - b.x) / d) * push;
-          const dz = d === 0 ? 0 : ((a.z - b.z) / d) * push;
-          a.x += dx;
-          a.z += dz;
-          b.x -= dx;
-          b.z -= dz;
-        }
+        this.separate(this.animals[i]!, this.animals[j]!);
       }
     return ev;
+  }
+
+  private separate(a: Animal, b: Animal): void {
+    const d = Math.hypot(a.x - b.x, a.z - b.z);
+    const min = a.radius + b.radius;
+    if (!(d < min)) return;
+    const nx = d === 0 ? 1 : (a.x - b.x) / d;
+    const nz = d === 0 ? 0 : (a.z - b.z) / d;
+    const push = (min - d) / 2;
+    if (this.separateAlong(a, b, nx * push, nz * push)) return;
+    // If the direct push is blocked, try separating at right angles along the available ground.
+    const slide = Math.sqrt(min * min - d * d) / 2;
+    this.separateAlong(a, b, -nz * slide, nx * slide);
+  }
+
+  private separateAlong(a: Animal, b: Animal, dx: number, dz: number): boolean {
+    const canMoveA = this.world.walkable?.(a.x + dx, a.z + dz) !== false;
+    const canMoveB = this.world.walkable?.(b.x - dx, b.z - dz) !== false;
+    // Split the displacement on open ground. At a bank one animal may take the whole step.
+    const scaleA = canMoveA ? (canMoveB ? 1 : 2) : 0;
+    const scaleB = canMoveB ? (canMoveA ? 1 : 2) : 0;
+    if (!scaleA && !scaleB) return false;
+    if (scaleA === 2 && this.world.walkable?.(a.x + 2 * dx, a.z + 2 * dz) === false) return false;
+    if (scaleB === 2 && this.world.walkable?.(b.x - 2 * dx, b.z - 2 * dz) === false) return false;
+    a.x += scaleA * dx;
+    a.z += scaleA * dz;
+    b.x -= scaleB * dx;
+    b.z -= scaleB * dz;
+    return true;
   }
 
   /**
