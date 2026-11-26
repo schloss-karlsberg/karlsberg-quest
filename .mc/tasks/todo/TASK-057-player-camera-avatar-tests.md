@@ -35,13 +35,12 @@ defects in the player, camera and animation lifecycle.
 - [x] Record behaviours, existing tests and important gaps for each player module.
 - [x] Add at least 25 deterministic Vitest assertions across the requested areas, under about three seconds.
 - [x] Reproduce each bug before changing behaviour. Record design questions as test todos.
-- [ ] Commit each fix separately. The flight, combat and camera review fixes are committed. Git
-  denied the worktree index lock while staging the avatar fix.
+- [x] Commit the fixes. Review fixes: `3361b92` (flight), `f7aad5b` (combat input), `e3175f9`
+  (camera). The avatar fix, its regression tests and the docs landed together in `270a721`.
 - [x] Keep changes in scope and update the affected documentation and PRD changelog.
 - [x] Run typecheck, Vitest and the production build with zero unit failures.
-- [ ] Pass `pnpm validate` as written. The launcher hit an IPC permission error. The validator
-  itself passed through Node's loader.
-- [x] Run locked smoke on port 5444 or document the sandbox blocker and exact command.
+- [x] Pass `pnpm validate` as written (rerun outside the sandbox, 2026-11-26).
+- [x] Run the locked camera, touch and smoke specs on port 5444.
 
 ## Plan
 
@@ -156,30 +155,20 @@ The goal is to close the five review findings on `dev/task-057` with a regressio
 
 - Decide whether touch look should coast after release and how reduced motion should affect that.
   The current drag behavior stays in use and `tests/player-touch.test.ts` records the design todo.
-- Run `pnpm validate` and the smoke spec where local sockets are available.
 
-```sh
-KQ_E2E_PORT=5444 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line
-```
+### Final verification (2026-11-26)
 
-### Intended commits
+All five review findings were checked against the code and are fixed: frozen flight velocity in
+`3361b92`, the cancelled attack hold in `f7aad5b`, the pivot shoulder sweep in `e3175f9`, and the
+placement-event avatar reset and chest-bone hit-stop test in `270a721`.
 
-Run these commands from this worktree with a writable index. At the patch prompt, split or edit
-the first hunk to stage the event bus argument, frame timing and zero-time arrival test. Leave
-the chest fixture and hit-stop assertions for the next commit.
-
-```sh
-task_commit() {
-  git commit -m "$1" -m 'Refs: TASK-057' -m 'Co-Authored-By: Codex <noreply@openai.com>'
-}
-
-git add src/boot.ts src/player/avatar.ts
-git add -p tests/player-avatar.test.ts
-task_commit 'fix: snap avatar facing on player placement'
-
-git add tests/player-avatar.test.ts
-task_commit 'test: verify the upper-body hit pose during hit-stop'
-
-git add .mc/tasks/todo/TASK-057-player-camera-avatar-tests.md docs/ARCHITECTURE.md docs/ACTION-RPG.md docs/PRD.md
-task_commit 'docs(camera): record the TASK-057 review fixes'
+```text
+pnpm typecheck   ok
+pnpm test        Test Files 130 passed (130) · Tests 1641 passed | 2 todo (1643)
+pnpm validate    ✓ content valid (1 warning(s))
+pnpm build       ✓ built in 288ms
+e2e (locked, port 5444, one worker)
+  camera.spec.ts   4 passed (13.0m)
+  touch.spec.ts    8 passed (4.0m)
+  smoke.spec.ts    7 passed (1.8m)
 ```
