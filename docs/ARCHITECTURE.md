@@ -65,7 +65,7 @@ Code: `scripts/voice/moss.ts` (config, guard, batching, lock), `providers.ts` `m
   resolve inside `KQ_MOSS_VOICES` and never under `/casting/clips/` (ElevenLabs clips); the runner
   checks every reference before the model loads. Reference WAVs and clips are never committed.
 - **Lock:** at most 6 lines per runner process (one model load, 25–37 GB peak), each process wrapped in
-  `KQ_HEAVY_OWNER=kq-voice-moss scripts/dev/heavy.sh --check-load --strict --max-hold 10 -- <venv>/bin/python -I scripts/voice/moss/runner.py <job>`
+  `KQ_HEAVY_OWNER=kq-voice-moss scripts/dev/heavy.sh --exclusive --check-load --strict --max-hold 10 -- <venv>/bin/python -I scripts/voice/moss/runner.py <job>`
   (a `KQ_HEAVY_OWNER` in the env relabels the owner, e.g. `kq-voice-gate` for a gate run).
   No batch starts while `/tmp/kq-quiet-window` exists (the runner also exits 76 if it appears inside the
   lock, and the batch is retried); `--strict` refusing (exit 75) stops the run. WAVs are post-processed
