@@ -1,15 +1,39 @@
 #!/bin/bash
 # Tests for scripts/dev/heavy.sh. Run: bash scripts/dev/heavy.test.sh [--stress].
 # Uses a private lock path (KQ_HEAVY_LOCK) in a temp dir, so it never touches
-# /tmp/kq-heavy.lock and is safe while a real heavy job holds the real lock.
+# /tmp/kq-heavy.lock (or its slots) and is safe while real heavy jobs hold the real lock.
+# Sections 1-15 run with KQ_HEAVY_SLOTS=1 (the single-lock behaviour); 16-25 with 3 slots.
 
 set -u
 HEAVY="$(cd "$(dirname "$0")" && pwd)/heavy.sh"
 T=$(mktemp -d "${TMPDIR:-/tmp}/kq-heavy-test.XXXXXX")
 export KQ_HEAVY_LOCK="$T/lock"
-unset KQ_HEAVY_HELD KQ_HEAVY_TIMEOUT KQ_HEAVY_OWNER
-real_lock_before=0; [ -e /tmp/kq-heavy.lock ] && real_lock_before=1
+unset KQ_HEAVY_HELD KQ_HEAVY_TIMEOUT KQ_HEAVY_OWNER KQ_HEAVY_SLOTS KQ_HEAVY_POLL KQ_HEAVY_STALE_AGE
+# Existence checks only: the real lock may be held by live jobs right now.
+real_before=""
+for f in /tmp/kq-heavy.lock /tmp/kq-heavy.lock.slot1 /tmp/kq-heavy.lock.slot2 /tmp/kq-heavy.lock.slots.guard; do
+  [ -e "$f" ] || real_before="$real_before $f"
+done
 bgpids=""
+L=$KQ_HEAVY_LOCK
+
+# Reproduce restricted visibility across agent sessions: kill -0 $STRESS_HOLDER reports
+# EPERM (even for a dead pid), ps is unavailable. All other PID probes are real.
+shim="$T/sandbox.bash"
+cat >"$shim" <<'EOF'
+kill() {
+  if [ "$#" = 2 ] && [ "$1" = -0 ] && [ "$2" = "$STRESS_HOLDER" ]; then
+    printf 'kill: (%s) - Operation not permitted\n' "$2" >&2
+    return 1
+  fi
+  builtin kill "$@"
+}
+ps() { return 126; }
+sleep() {
+  if [ -n "${STRESS_READY:-}" ] && [ "$1" = "$KQ_HEAVY_POLL" ]; then : >"$STRESS_READY"; fi
+  command sleep "$@"
+}
+EOF
 
 cleanup() {
   for p in $bgpids; do kill "$p" 2>/dev/null; done
@@ -35,25 +59,11 @@ wait_for_file() {
 }
 
 stress() {
-  local log="$T/stress.log" shim="$T/sandbox.bash" gate="$T/stress.gate"
+  local log="$T/stress.log" gate="$T/stress.gate"
   local holder p i pids="" failures=0 order status stress_job ready
-  # Reproduce restricted visibility across agent sessions, even when the test's
-  # wrapper processes actually share a sandbox. All other PID probes are real.
-  cat >"$shim" <<'EOF'
-kill() {
-  if [ "$#" = 2 ] && [ "$1" = -0 ] && [ "$2" = "$STRESS_HOLDER" ]; then
-    printf 'kill: (%s) - Operation not permitted\n' "$2" >&2
-    return 1
-  fi
-  builtin kill "$@"
-}
-ps() { return 126; }
-sleep() {
-  if [ -n "${STRESS_READY:-}" ] && [ "$1" = "$KQ_HEAVY_POLL" ]; then : >"$STRESS_READY"; fi
-  command sleep "$@"
-}
-EOF
-  export KQ_HEAVY_STALE_AGE=1 KQ_HEAVY_POLL=0.05 KQ_HEAVY_TIMEOUT=15
+  # The restricted-visibility shim applies to the contenders, even when the test's
+  # wrapper processes actually share a sandbox.
+  export KQ_HEAVY_SLOTS=1 KQ_HEAVY_STALE_AGE=1 KQ_HEAVY_POLL=0.05 KQ_HEAVY_TIMEOUT=15
   stress_job='
     printf "S\n" >>"$1"
     [ "${KQ_HEAVY_HELD:-}" = 1 ] || exit 1
@@ -90,6 +100,7 @@ EOF
 
 orphaned_child() {
   local wrapper child rc status
+  export KQ_HEAVY_SLOTS=1
   "$HEAVY" -- /bin/sh -c '
     echo $$ >"$1"
     while [ ! -f "$2" ]; do sleep 0.02; done
@@ -113,13 +124,85 @@ orphaned_child() {
   check "orphan: lock released" no_lock
 }
 
+slot_dirs() { ls -d "$KQ_HEAVY_LOCK" "$KQ_HEAVY_LOCK".slot[0-9]* 2>/dev/null; }
+no_slots() { [ -z "$(slot_dirs)" ]; }
+# Jobs log "S"/"XS" when they start and "E"/"XE" before they end (an exclusive job: X).
+max_running() { awk '$1 == "S" || $1 == "XS" { n++; if (n > m) m = n } $1 == "E" || $1 == "XE" { n-- } END { print m + 0 }' "$1"; }
+# Fails if anything else runs while an exclusive job runs.
+alone_exclusive() {
+  awk '$1 == "XS" { if (n) bad = 1; x = 1 } $1 == "S" { if (x) bad = 1; n++ } $1 == "E" { n-- } $1 == "XE" { x = 0 }
+       END { exit bad }' "$1"
+}
+
+starts() { grep -c '^S$' "$1"; }
+wait_starts() {  # wait_starts <log> <n>: until n normal jobs have started (10 s at most)
+  local i=0
+  until [ "$(starts "$1")" -ge "$2" ]; do [ "$i" -lt 200 ] || return 1; sleep 0.05; i=$((i + 1)); done
+}
+
+# 3 slots: a holder visible to the others only as EPERM, 4 normal jobs racing for the
+# other 2 slots, then an exclusive job and 4 more normal jobs queued behind it. Normal
+# jobs block on a gate once started, so exactly 3 run until it opens.
+slot_stress() {
+  local log="$T/sstress.log" gate="$T/sstress.gate" job holder p i pids="" failures=0 m after
+  export KQ_HEAVY_SLOTS=3 KQ_HEAVY_STALE_AGE=1 KQ_HEAVY_POLL=0.05 KQ_HEAVY_TIMEOUT=40
+  : >"$log"
+  # sh -c "$job" s <start mark> <log> <seconds> <gate or ""> <end mark> <started file or "">
+  job='[ -z "$6" ] || : >"$6"
+    printf "%s\n" "$1" >>"$2"
+    [ "${KQ_HEAVY_HELD:-}" = 1 ] || exit 1
+    if [ -n "$4" ]; then while [ ! -f "$4" ]; do sleep 0.02; done; fi
+    sleep "$3"; printf "%s\n" "$5" >>"$2"'
+  sjob() {  # sjob [heavy.sh options] -- <job args>; STRESS_READY marks its first poll
+    BASH_ENV="$shim" STRESS_HOLDER="$holder" "$HEAVY" "$@" 2>>"$T/sstress.err" &
+    pids="$pids $!"; bgpids="$bgpids $!"
+  }
+  polling() {  # polling <ready file>: the waiter holds its final ticket and polls (10 s at most)
+    local n=0
+    until [ -f "$1" ]; do [ "$n" -lt 200 ] || return 1; sleep 0.05; n=$((n + 1)); done
+  }
+  "$HEAVY" -- /bin/sh -c "$job" s S "$log" 0.1 "$gate" E "" 2>"$T/sstress-holder.err" &
+  holder=$!; bgpids="$bgpids $holder"
+  check "slot stress: holder started" wait_starts "$log" 1
+  for i in 1 2 3 4; do
+    STRESS_READY="$T/ss-ready-$i" sjob -- /bin/sh -c "$job" s S "$log" 0.1 "$gate" E "$T/ss-started-$i"
+  done
+  check "slot stress: 2 racing jobs started beside the EPERM holder" wait_starts "$log" 3
+  check "slot stress: EPERM holder reported in its slot" sh -c "BASH_ENV='$shim' STRESS_HOLDER=$holder '$HEAVY' --status | grep -q '^slot 1: held by .*(pid $holder)'"
+  # Arrivals at the same instant re-draw clashing tickets after a random pause: wait until
+  # the 2 racers without a slot poll with their final tickets, so the exclusive one is later.
+  m=0
+  for i in 1 2 3 4; do [ -f "$T/ss-started-$i" ] || { polling "$T/ss-ready-$i" && m=$((m + 1)); }; done
+  check "slot stress: the other 2 racers are queued ($m)" test "$m" = 2
+  KQ_HEAVY_OWNER=sx STRESS_READY="$T/ss-ready-x" sjob --exclusive -- /bin/sh -c "$job" s XS "$log" 0.2 "" XE ""
+  check "slot stress: exclusive job queued" polling "$T/ss-ready-x"
+  for i in 5 6 7 8; do sjob -- /bin/sh -c "$job" s S "$log" 0.1 "$gate" E ""; done
+  sleep 0.6
+  check "slot stress: no 4th job while 3 slots are busy ($(starts "$log") started)" test "$(starts "$log")" = 3
+  : >"$gate"
+  for p in "$holder" $pids; do wait "$p" || failures=$((failures + 1)); done
+  m=$(max_running "$log")
+  after=$(awk '$1 == "XE" { x = 1 } x && $1 == "S" { n++ } END { print n + 0 }' "$log")
+  check "slot stress: 10 jobs finished with KQ_HEAVY_HELD=1" test "$failures" = 0
+  check "slot stress: 10 jobs logged a start and an end" test "$(grep -c . "$log")" = 20
+  check "slot stress: at most 3 at once (max $m)" test "$m" = 3
+  check "slot stress: the exclusive job ran alone ($(tr '\n' ' ' <"$log"))" alone_exclusive "$log"
+  check "slot stress: the 4 jobs queued behind it started after it ($after)" test "$after" = 4
+  check "slot stress: slots released, queue empty" sh -c "[ -z \"\$(ls -d '$L' '$L'.slot[0-9]* 2>/dev/null)\" ] && [ -z \"\$(ls -A '$L.queue')\" ]"
+  unset KQ_HEAVY_STALE_AGE KQ_HEAVY_POLL KQ_HEAVY_TIMEOUT
+}
+
 if [ "${1:-}" = --stress ]; then
   stress
   orphaned_child
+  slot_stress
   echo "$pass passed, $fail failed"
   [ "$fail" = 0 ]
   exit $?
 fi
+
+# Sections 1-15: one slot. KQ_HEAVY_SLOTS=1 must keep the behaviour from before slots.
+export KQ_HEAVY_SLOTS=1
 
 # 1. two concurrent `heavy.sh sleep 3` serialise
 log="$T/serial.log"
@@ -343,10 +426,217 @@ check "TERM: priority holder marked in status" sh -c "'$HEAVY' --status | grep -
 kill -TERM $w; wait $w; rc=$?
 check "TERM while holding: exit 143 (rc=$rc), lock released" sh -c "[ $rc = 143 ] && [ ! -e '$KQ_HEAVY_LOCK' ]"
 
+# 15b. one slot: --exclusive is an ordinary hold, bad slot counts
+out=$("$HEAVY" --exclusive echo ran 2>/dev/null); rc=$?
+check "1 slot: --exclusive runs like a normal hold (rc=$rc)" [ "$rc:$out" = "0:ran" ]
+check "1 slot: no slot dirs besides the lock were left" sh -c "[ -z \"\$(ls -d '$L'.slot[0-9]* 2>/dev/null)\" ]"
+KQ_HEAVY_SLOTS=two "$HEAVY" true 2>"$T/slots.err"; rc=$?
+check "KQ_HEAVY_SLOTS=two: usage error (rc=$rc)" sh -c "[ $rc = 64 ] && grep -q 'KQ_HEAVY_SLOTS must be a whole number' '$T/slots.err'"
+out=$(KQ_HEAVY_SLOTS=0 "$HEAVY" echo ran 2>/dev/null); rc=$?
+check "KQ_HEAVY_SLOTS=0: treated as 1 (rc=$rc)" [ "$rc:$out" = "0:ran" ]
+
+# ---------- slots: KQ_HEAVY_SLOTS=3 ----------
+export KQ_HEAVY_SLOTS=3 KQ_HEAVY_POLL=0.1
+glog="$T/slots.log"
+# gjob <owner> <gate> [heavy.sh options]: logs "S <owner>", touches $T/<owner>.started, waits
+# for <gate>, logs "E <owner>". GJ_HEAVY picks another heavy.sh copy. Appends its pid to $gp.
+gjob() {
+  local o=$1 g=$2; shift 2
+  KQ_HEAVY_OWNER=$o KQ_HEAVY_TIMEOUT=60 "${GJ_HEAVY:-$HEAVY}" "$@" -- sh -c '
+    echo "S $1" >>"$2"; : >"$3"
+    while [ ! -f "$4" ]; do sleep 0.05; done
+    echo "E $1" >>"$2"' gjob "$o" "$glog" "$T/$o.started" "$g" 2>"$T/$o.err" &
+  gp="$gp $!"; bgpids="$bgpids $!"
+}
+started() { [ -f "$T/$1.started" ]; }
+not_started() { [ ! -f "$T/$1.started" ]; }
+wait_started() { wait_for_file "$T/$1.started"; }
+wait_all() { local p f=0; for p in $gp; do wait "$p" || f=$((f + 1)); done; gp=""; return "$f"; }
+log_line() { tr '\n' ' ' <"$glog" | sed 's/ $//'; }
+fake_holder() {  # fake_holder <dir> <pid> <cmd> [mode]: a holder's metadata (no mode = older heavy.sh)
+  mkdir "$1"; echo "$3" >"$1/cmd"; echo tester >"$1/owner"; date +%s >"$1/epoch"
+  [ -z "${4:-}" ] || echo "$4" >"$1/mode"
+  echo "$2" >"$1/pid"
+}
+
+# 16. three normal jobs run at once, the fourth waits for a free slot
+: >"$glog"; gp=""
+gjob a16 "$T/g16"; wait_started a16
+gjob b16 "$T/g16"; wait_started b16
+gjob c16 "$T/g16"; wait_started c16
+gjob d16 "$T/g16"; sleep 0.8
+check "slots: 3 jobs run at once" sh -c "[ -f '$T/a16.started' ] && [ -f '$T/b16.started' ] && [ -f '$T/c16.started' ]"
+check "slots: the 4th waits while 3 run" not_started d16
+check "slots: slots 1 and 2 first, slot 0 last" test "$(cat "$L.slot1/owner")$(cat "$L.slot2/owner")$(cat "$L/owner")" = a16b16c16
+"$HEAVY" --status >"$T/st16"; src=$?
+check "status: held, 3 of 3 slots busy (rc=$src)" sh -c "[ $src = 1 ] && grep -q '^held: 3 of 3 slots busy$' '$T/st16'"
+check "status: one holder line per slot" sh -c "grep -q '^slot 0: held by c16 ' '$T/st16' && grep -q '^slot 1: held by a16 ' '$T/st16' && grep -q '^slot 2: held by b16 ' '$T/st16'"
+check "status: the 4th is queued and next" sh -c "grep -Eq '^ +1\. +d16 \(pid [0-9]+\)' '$T/st16' && grep -Eq '^next: d16 \(pid [0-9]+\)$' '$T/st16'"
+: >"$T/g16"
+wait_all; rc=$?
+check "slots: all 4 finished (failures=$rc)" test "$rc" = 0
+check "slots: the 4th ran once a slot was free" started d16
+check "slots: at most 3 at once ($(max_running "$glog"))" test "$(max_running "$glog")" = 3
+check "slots: all released" no_slots
+check "status: free, all 3 slots" sh -c "[ \"\$('$HEAVY' --status | head -1)\" = 'free: all 3 slots' ]"
+
+# 17. an exclusive job waits for every slot and holds back normal jobs queued after it
+: >"$glog"; gp=""
+gjob a17 "$T/g17a"; wait_started a17
+gjob b17 "$T/g17b"; wait_started b17
+gjob x17 "$T/g17x" --exclusive; sleep 0.4
+gjob c17 "$T/g17c"; sleep 0.8
+check "exclusive: waits while 2 of 3 slots are busy" not_started x17
+check "exclusive: a normal job behind it leaves the free slot alone" sh -c "[ ! -f '$T/c17.started' ] && [ ! -e '$L' ]"
+"$HEAVY" --status >"$T/st17"
+check "status: exclusive ticket marked X and next" sh -c "grep -Eq '^ +1\. +X x17 \(pid [0-9]+\)' '$T/st17' && grep -Eq '^next: x17 \(pid [0-9]+\) \[exclusive\]$' '$T/st17'"
+check "status: normal ticket behind it unmarked" grep -Eq '^ +2\. +c17 \(pid [0-9]+\)' "$T/st17"
+: >"$T/g17a"; sleep 0.6
+check "exclusive: still waits while one slot is busy" sh -c "[ ! -f '$T/x17.started' ] && [ ! -f '$T/c17.started' ]"
+: >"$T/g17b"
+check "exclusive: starts once every slot is free" wait_started x17
+check "exclusive: holds all 3 slots with one pid" sh -c "[ \"\$(cat '$L/mode' '$L.slot1/mode' '$L.slot2/mode' | tr -d '\n')\" = XXX ] && [ \"\$(cat '$L/pid')\" = \"\$(cat '$L.slot2/pid')\" ]"
+"$HEAVY" --status >"$T/st17b"
+check "status: exclusive holder marked in every slot" test "$(grep -c '^slot [0-2]: held by x17 .*\[exclusive\]' "$T/st17b")" = 3
+sleep 0.4
+check "exclusive: normal job waits while it runs" not_started c17
+: >"$T/g17x"
+check "exclusive: the normal job runs after it" wait_started c17
+: >"$T/g17c"
+wait_all; rc=$?
+check "exclusive: all finished (failures=$rc)" test "$rc" = 0
+check "exclusive: order ($(log_line))" test "$(log_line)" = "S a17 S b17 E a17 E b17 S x17 E x17 S c17 E c17"
+check "exclusive: all slots released" no_slots
+
+# 18. an old-format holder in $LOCK (metadata of a heavy.sh without slots): slots 1-2 stay
+#     usable, an exclusive job waits
+sleep 60 & op=$!; sleep 60 & oc=$!; bgpids="$bgpids $op $oc"
+fake_holder "$L" "$op" "old job"; echo "$oc" >"$L/child_pid"; echo N >"$L/lane"; pwd >"$L/cwd"
+KQ_HEAVY_TIMEOUT=1 "$HEAVY" --exclusive true 2>/dev/null; rc=$?
+check "old holder: exclusive job times out (rc=$rc)" [ "$rc" = 75 ]
+: >"$glog"; gp=""
+gjob a18 "$T/g18"; gjob b18 "$T/g18"
+check "old holder: slot 1 usable" wait_started a18
+check "old holder: slot 2 usable" wait_started b18
+KQ_HEAVY_TIMEOUT=1 "$HEAVY" true 2>/dev/null; rc=$?
+check "old holder: a 4th job waits (rc=$rc)" [ "$rc" = 75 ]
+check "old holder: status marks it" sh -c "'$HEAVY' --status | grep -Eq '^slot 0: held by tester \(pid $op\) .*\[old heavy.sh\]: old job'"
+check "old holder: left untouched" [ "$(cat "$L/pid")" = "$op" ]
+: >"$T/g18"
+wait_all; rc=$?
+check "old holder: slot jobs finished (failures=$rc)" test "$rc" = 0
+kill "$op" "$oc"; wait "$op" "$oc" 2>/dev/null
+out=$(KQ_HEAVY_TIMEOUT=10 "$HEAVY" --exclusive echo ran 2>"$T/err18"); rc=$?
+check "old holder gone: exclusive job clears slot 0 and runs (rc=$rc)" sh -c "[ '$rc:$out' = 0:ran ] && grep -q 'cleared stale lock slot 0 (pid $op: old job)' '$T/err18'"
+check "old holder gone: all released" no_slots
+
+# 19. mixed with the real heavy.sh from before slots (#68): it holds slot 0 and its guard
+OLD68="$T/heavy-68.sh"
+if git -C "$(dirname "$HEAVY")" show 3dafa0e:scripts/dev/heavy.sh >"$OLD68" 2>/dev/null && [ -s "$OLD68" ]; then
+  chmod +x "$OLD68"
+  : >"$glog"; gp=""
+  GJ_HEAVY=$OLD68 gjob o19 "$T/g19o"
+  check "#68 holder: started in slot 0" sh -c "i=0; until [ -f '$T/o19.started' ] && [ -f '$L/pid' ]; do [ \$i -lt 100 ] || exit 1; sleep 0.05; i=\$((i+1)); done; [ ! -e '$L/mode' ]"
+  gjob a19 "$T/g19"; gjob b19 "$T/g19"
+  check "#68 holder: new jobs use slot 1" wait_started a19
+  check "#68 holder: and slot 2" wait_started b19
+  KQ_HEAVY_TIMEOUT=1 "$HEAVY" --exclusive true 2>/dev/null; rc=$?
+  check "#68 holder: exclusive job waits (rc=$rc)" [ "$rc" = 75 ]
+  : >"$T/g19"; sleep 0.3
+  # A #68 waiter at the head keeps its claim on slot 0; new tickets behind it use slots 1-2 only.
+  GJ_HEAVY=$OLD68 gjob p19 "$T/g19p"; sleep 0.5
+  gjob c19 "$T/g19c"; gjob d19 "$T/g19c"
+  check "#68 waiter: new jobs behind it take slot 1" wait_started c19
+  check "#68 waiter: and slot 2" wait_started d19
+  gjob e19 "$T/g19c"; sleep 0.5
+  "$HEAVY" --status >"$T/st19"
+  check "status: #68 ticket shown as slot 0 only" grep -Eq '^ +1\. +p19 \(pid [0-9]+\) waiting [0-9]+s \[old heavy.sh: slot 0 only\]' "$T/st19"
+  : >"$T/g19o"
+  check "#68 waiter: takes slot 0 when the #68 holder leaves" wait_started p19
+  check "#68 waiter: the new job behind it did not take slot 0" not_started e19
+  : >"$T/g19c"; : >"$T/g19p"
+  wait_all; rc=$?
+  check "#68 mix: all finished (failures=$rc)" test "$rc" = 0
+  check "#68 mix: the last new job ran" started e19
+  check "#68 mix: all released, queue empty" sh -c "[ -z \"\$(ls -d '$L' '$L'.slot[0-9]* 2>/dev/null)\" ] && [ -z \"\$(ls -A '$Q')\" ]"
+else
+  echo "skip #68 mix: git history not available"
+fi
+
+# 20. stale slots are cleared one by one; a slot whose wrapper died but whose child lives is kept
+sleep 60 & lp=$!; bgpids="$bgpids $lp"
+fake_holder "$L" "$lp" live0 S
+fake_holder "$L.slot1" "$(dead_pid)" ghost1 S
+fake_holder "$L.slot2" "$(dead_pid)" orphan2 S; echo "$lp" >"$L.slot2/child_pid"
+"$HEAVY" --status >"$T/st20"
+check "status: dead slot shown stale, orphan's slot held" sh -c "grep -q '^slot 1: stale (held by' '$T/st20' && grep -q '^slot 2: held by' '$T/st20'"
+out=$(KQ_HEAVY_TIMEOUT=10 "$HEAVY" echo ran 2>"$T/err20"); rc=$?
+check "stale slot: cleared and used (rc=$rc)" sh -c "[ '$rc:$out' = 0:ran ] && grep -q 'cleared stale lock slot 1 (pid [0-9]*: ghost1)' '$T/err20'"
+check "stale slot: the live slots are untouched" sh -c "[ \"\$(cat '$L/cmd')\" = live0 ] && [ \"\$(cat '$L.slot2/cmd')\" = orphan2 ] && [ ! -e '$L.slot1' ]"
+kill "$lp"; wait "$lp" 2>/dev/null
+out=$(KQ_HEAVY_TIMEOUT=10 "$HEAVY" echo ran 2>"$T/err20b"); rc=$?
+check "stale slots: both cleared once the pids are gone (rc=$rc)" sh -c "[ '$rc:$out' = 0:ran ] && grep -q 'cleared stale lock slot 0 ' '$T/err20b' && grep -q 'cleared stale lock slot 2 ' '$T/err20b'"
+check "stale slots: all released" no_slots
+
+# 21. EPERM means alive, per slot: a sandboxed peer that cannot probe a holder keeps out
+sleep 60 & lp=$!; bgpids="$bgpids $lp"; dp=$(dead_pid)
+fake_holder "$L" "$lp" live0 S; fake_holder "$L.slot1" "$lp" live1 S; fake_holder "$L.slot2" "$dp" eperm2 S
+BASH_ENV="$shim" STRESS_HOLDER=$dp KQ_HEAVY_TIMEOUT=1 "$HEAVY" true 2>/dev/null; rc=$?
+check "EPERM slot: contender times out (rc=$rc)" [ "$rc" = 75 ]
+check "EPERM slot: not cleared" [ "$(cat "$L.slot2/pid" 2>/dev/null)" = "$dp" ]
+check "EPERM slot: status says held" sh -c "BASH_ENV='$shim' STRESS_HOLDER=$dp '$HEAVY' --status | grep -q '^slot 2: held by tester (pid $dp)'"
+out=$(KQ_HEAVY_TIMEOUT=10 "$HEAVY" echo ran 2>"$T/err21"); rc=$?
+check "ESRCH slot: cleared and used without the sandbox (rc=$rc)" sh -c "[ '$rc:$out' = 0:ran ] && grep -q 'cleared stale lock slot 2 ' '$T/err21'"
+kill "$lp"; wait "$lp" 2>/dev/null; rm -rf "$L" "$L.slot1"
+
+# 22. a live exclusive holder blocks new jobs; slots above KQ_HEAVY_SLOTS count for --exclusive
+sleep 60 & lp=$!; bgpids="$bgpids $lp"
+fake_holder "$L.slot1" "$lp" excl X
+KQ_HEAVY_TIMEOUT=1 "$HEAVY" true 2>/dev/null; rc=$?
+check "exclusive holder: blocks a normal job although slots are free (rc=$rc)" [ "$rc" = 75 ]
+rm -rf "$L.slot1"
+fake_holder "$L.slot4" "$lp" wide S   # a run with KQ_HEAVY_SLOTS=5
+KQ_HEAVY_TIMEOUT=1 "$HEAVY" --exclusive true 2>/dev/null; rc=$?
+check "extra slot: exclusive job waits for slot 4 (rc=$rc)" [ "$rc" = 75 ]
+check "extra slot: listed in status" sh -c "'$HEAVY' --status | grep -q '^slot 4: held by tester'"
+out=$(KQ_HEAVY_TIMEOUT=5 "$HEAVY" echo ran 2>/dev/null); rc=$?
+check "extra slot: normal job runs (rc=$rc)" [ "$rc:$out" = "0:ran" ]
+kill "$lp"; wait "$lp" 2>/dev/null; rm -rf "$L.slot4"
+
+# 23. the priority lane still decides each acquisition: the first freed slot goes to kq-integrate
+sleep 60 & b0=$!; sleep 60 & b1=$!; sleep 60 & b2=$!; bgpids="$bgpids $b0 $b1 $b2"
+fake_holder "$L" "$b0" blocker0 S; fake_holder "$L.slot1" "$b1" blocker1 S; fake_holder "$L.slot2" "$b2" blocker2 S
+rm -f "$PS"; plog="$T/prio-slots.log"; pp=""
+for o in A B kq-integrate; do pjob $o "$plog"; sleep 0.4; done
+kill "$b1"; wait "$b1" 2>/dev/null
+wait_for_file "$plog"; sleep 0.1
+check "priority: the freed slot went to kq-integrate ($(run_order "$plog"))" [ "$(head -1 "$plog")" = kq-integrate ]
+kill "$b0" "$b2"; wait "$b0" "$b2" 2>/dev/null
+for p in $pp; do wait "$p"; done
+check "priority: A and B ran after ($(run_order "$plog"))" sh -c "case '$(run_order "$plog")' in 'kq-integrate A B'|'kq-integrate B A') exit 0 ;; esac; exit 1"
+check "priority: all released" no_slots
+
+# 24. SIGTERM on an exclusive holder: forwarded to the child, every slot released
+"$HEAVY" --exclusive sh -c "echo \$\$ >'$T/xchild'; exec sleep 60" & w=$!; bgpids="$bgpids $w"
+wait_for_file "$L.slot2/child_pid"; wait_for_file "$L/child_pid"; sleep 0.2
+kill -TERM $w; wait $w; rc=$?
+check "TERM exclusive: wrapper exit 143 (rc=$rc)" [ "$rc" = 143 ]
+check "TERM exclusive: child killed" sh -c "! kill -0 $(cat "$T/xchild") 2>/dev/null"
+check "TERM exclusive: all slots released" no_slots
+
+# 25. nesting: an inner --exclusive heavy.sh runs directly
+out=$(KQ_HEAVY_TIMEOUT=5 "$HEAVY" -- "$HEAVY" --exclusive -- sh -c 'echo nested:$KQ_HEAVY_HELD' 2>/dev/null); rc=$?
+check "nesting: inner --exclusive ran (rc=$rc, out=$out)" [ "$rc:$out" = "0:nested:1" ]
+out=$("$HEAVY" sh -c 'echo $KQ_HEAVY_SLOT' 2>/dev/null; "$HEAVY" --exclusive sh -c 'echo $KQ_HEAVY_SLOT' 2>/dev/null; KQ_HEAVY_SLOTS=1 "$HEAVY" sh -c 'echo $KQ_HEAVY_SLOT' 2>/dev/null)
+check "KQ_HEAVY_SLOT: 1 for the first normal job, 0 when exclusive or with 1 slot ($(echo $out))" [ "$(echo $out)" = "1 0 0" ]
+check "slots: no tickets left" no_tickets
+unset KQ_HEAVY_POLL
+
 # never leave the real lock behind
 stress
 orphaned_child
-if [ "$real_lock_before" = 0 ]; then check "real /tmp/kq-heavy.lock untouched" [ ! -e /tmp/kq-heavy.lock ]; fi
+slot_stress
+for f in $real_before; do check "real $f untouched" [ ! -e "$f" ]; done
 
 echo "$pass passed, $fail failed"
 [ "$fail" = 0 ]
