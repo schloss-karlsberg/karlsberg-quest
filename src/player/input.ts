@@ -359,6 +359,7 @@ export class Input {
   /** Release every touch-held action (modal opened, touch cancelled, tab hidden). */
   releaseVirtual(): void {
     for (const c of [...this.down]) if (c.startsWith('@')) this.down.delete(c);
+    this.touchStickActive = false;
   }
 
   /**
@@ -366,6 +367,8 @@ export class Input {
    * `addLook`, and the pause menu from its button.
    */
   touchMode = false;
+  /** A finger owns the floating movement stick, including while it is in the dead zone. */
+  touchStickActive = false;
 
   /** Inject mouse-look movement (pixels) as if it came from `movementX/Y` under pointer lock (bullet-time pilot). */
   addLook(dx: number, dy: number): void {

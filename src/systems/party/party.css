@@ -136,10 +136,14 @@ html[data-kq-touch] :is(.kq-party-strip, .kq-party-bar) {
 html[data-kq-touch] .kq-party-hint {
   display: none;
 }
-/* Phones give the credits the full safe width, including the scrollable list in reduced motion. */
+/* Phones hide the controls while keeping the play surface available for drags. The strip
+   and Skip sit above that surface so a gesture starting there belongs to the credits. */
 @media (max-height: 500px), (orientation: portrait) and (max-width: 600px) {
-  html[data-kq-touch][data-kq-credits] .kq-touch {
+  html[data-kq-touch][data-kq-credits] .kq-touch > * {
     display: none;
+  }
+  html[data-kq-touch][data-kq-credits] .kq-party-strip {
+    pointer-events: auto;
   }
   html[data-kq-touch][data-kq-credits] :is(.kq-party-strip, .kq-party-bar) {
     right: calc(12px + var(--kq-safe-r));

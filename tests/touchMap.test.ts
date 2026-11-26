@@ -164,10 +164,12 @@ describe('Input.press (virtual touch actions)', () => {
   });
   it('releaseVirtual lets go of every touch hold, not of real keys', () => {
     const inp = make();
+    inp.touchStickActive = true;
     inp.press('forward', true);
     inp.simulate('KeyD', true);
     inp.releaseVirtual();
     expect(inp.isDown('forward')).toBe(false);
+    expect(inp.touchStickActive).toBe(false);
     expect(inp.isDown('right')).toBe(true);
     expect(virtualCode('map')).toBe('@map');
   });
