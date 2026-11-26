@@ -23,6 +23,22 @@ const time = (page: Page) => page.evaluate(() => window.kq!.ctx.loop.time);
 const shown = (page: Page, pattern: string) =>
   page.evaluate((prefix) => window.kq!.story!.shown().filter((id) => id.startsWith(prefix)), pattern);
 
+type Caption = { text: string; t: number; wall: number };
+/**
+ * Sound captions stay up for a wall-clock 3.5 s while the test advances game time in bursts, so a
+ * loaded software renderer can outlast them. The test records each line added to the subtitle
+ * live region and checks that record.
+ */
+async function captionShown(page: Page, text: string): Promise<void> {
+  const seen = await page.evaluate((want) => {
+    const caps = (window as unknown as { tourCaptions: Caption[] }).tourCaptions;
+    const c = caps.find((x) => x.text === want);
+    return c ? { ...c, ageMs: Math.round(performance.now() - c.wall), visible: [...document.querySelectorAll('.kq-subtitles > div')].some((e) => e.textContent === want) } : null;
+  }, text);
+  console.log(`[tour] caption ${text}: ${JSON.stringify(seen)}`);
+  expect(seen, `caption ${text} shown`).not.toBeNull();
+}
+
 async function shot(page: Page, name: string): Promise<void> {
   await page.evaluate(() => window.kq!.screenshotReady());
   await page.screenshot({ path: `${OUT}/tour-${name}.png` });
@@ -94,6 +110,11 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
     const w = window as unknown as { tourRec: { n: string; p: unknown; t: number }[] };
     w.tourRec = [];
     const k = window.kq!;
+    const caps: Caption[] = [];
+    (window as unknown as { tourCaptions: Caption[] }).tourCaptions = caps;
+    new MutationObserver((records) => {
+      for (const r of records) for (const n of r.addedNodes) caps.push({ text: n.textContent ?? '', t: k.ctx.loop.time, wall: performance.now() });
+    }).observe(document.querySelector('.kq-subtitles')!, { childList: true });
     k.ctx.events.onAny((n, p) => {
       if (n === 'story:beat' || n.startsWith('animal:') || n === 'photo:good' || n === 'npc:arrived' || n === 'cinematic:end' || n === 'walk:bark' || n.startsWith('group:') || n.startsWith('shift:') || n.startsWith('quelle:'))
         w.tourRec.push({ n, p: JSON.parse(JSON.stringify(p ?? null)), t: k.ctx.loop.time });
@@ -225,7 +246,7 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   await follow(page, 't8', 200);
   expect(await shown(page, 'imhoff.t.station2')).toEqual(['imhoff.t.station2', 'imhoff.t.station2a', 'imhoff.t.station2b', 'imhoff.t.station2c']);
   await page.evaluate(() => window.kq!.step(150));
-  await expect(page.locator('.kq-subtitles').getByText('[Diane und Bijou bellen]')).toBeVisible();
+  await captionShown(page, '[Diane und Bijou bellen]');
   const framed = await page.evaluate(() => {
     const k = window.kq!;
     const { camera, world } = k.ctx;
@@ -240,7 +261,7 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   await follow(page, 't10', 240);
   const tDeer0 = await time(page);
   expect(await page.evaluate(() => window.kq!.cinematic!.playing())).toBe('tour.reh');
-  await expect(page.locator('.kq-subtitles').getByText('[Leises Rascheln im Laub]')).toBeVisible();
+  await captionShown(page, '[Leises Rascheln im Laub]');
   await page.evaluate(() => window.kq!.step(180));
   await shot(page, '06-reh-sicht');
   await page.evaluate(() => window.kq!.step(181));
@@ -439,7 +460,7 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   });
   for (let i = 0; i < 40 && (await beat(page)) !== 't17'; i++) await page.evaluate(() => window.kq!.step(60));
   expect(await beat(page)).toBe('t17');
-  await expect(page.locator('.kq-subtitles').getByText('[Messing klirrt auf Stein]')).toBeVisible();
+  await captionShown(page, '[Messing klirrt auf Stein]');
   const uphill = await page.evaluate(() => {
     const k = window.kq!;
     const start = k.walk!.walker('imhoff')!.s;
