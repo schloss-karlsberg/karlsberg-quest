@@ -183,12 +183,47 @@ describe('jaguar: the edge of the light', () => {
     expect(minD).toBeGreaterThan(JAGUAR.gentleCreepTo - 0.5);
   });
 
+  it('switching to gentle mode during a pounce prevents the pending knockdown', () => {
+    const sim = new Menagerie();
+    const [cat] = sim.add({ kind: 'jaguar', x: 0, z: -1, id: 'cat' });
+    run(sim, 1, player(), [], () => cat!.state === 'pounce');
+    expect(cat!.state).toBe('pounce');
+    sim.gentle = true;
+    expect(types(run(sim, 3, player()))).not.toContain('knockdown');
+    expect(cat!.state).not.toBe('pounce');
+  });
+
   it('far from its spot it only prowls there', () => {
     const m = new Menagerie();
     m.add({ kind: 'jaguar', x: 0, z: 0, id: 'jag' });
     const log = run(m, 30, player({ x: 200, z: 0 }));
     expect(log.some((e) => e.type === 'seen')).toBe(false);
     expect(Math.hypot(m.animals[0]!.x, m.animals[0]!.z)).toBeLessThan(10);
+  });
+});
+
+describe('animal bodies', () => {
+  it.each([0, 0.01, 0.8])('separates overlapping animals without throwing either across the path (gap %s)', (gap) => {
+    const sim = new Menagerie();
+    const [first] = sim.add({ id: 'left', kind: 'dromedary', x: 0, z: 4 });
+    const [second] = sim.add({ id: 'right', kind: 'dromedary', x: gap, z: 4 });
+    sim.update(DT, player({ x: 100 }));
+    expect(Math.hypot(first!.x - second!.x, first!.z - second!.z)).toBeCloseTo(first!.radius + second!.radius);
+    expect((first!.x + second!.x) / 2).toBeCloseTo(gap / 2);
+    expect((first!.z + second!.z) / 2).toBeCloseTo(4);
+  });
+
+  it('replaces a group at the cap, leaves other species alone and clears an empty pen safely', () => {
+    const sim = new Menagerie();
+    const spec = { id: 'dam', kind: 'dromedary', x: 10, z: 20 } as const;
+    expect(sim.add(spec, 99).map((animal) => animal.id)).toEqual(['dam#0', 'dam#1', 'dam#2', 'dam#3']);
+    sim.add({ ...spec, kind: 'cassowary', id: 'bird' }, 4);
+    sim.add(spec, 0);
+    expect(sim.animals.map((animal) => animal.id)).toEqual(['bird', 'dam']);
+    sim.remove('dam');
+    expect(sim.animals.map((animal) => animal.id)).toEqual(['bird']);
+    sim.remove();
+    expect(sim.collide(10, 20, 0.35)).toEqual({ x: 10, z: 20, hit: null });
   });
 });
 

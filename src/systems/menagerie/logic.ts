@@ -301,12 +301,14 @@ export class Menagerie {
         const b = this.animals[j]!;
         const d = Math.hypot(a.x - b.x, a.z - b.z);
         const min = a.radius + b.radius;
-        if (d > 1e-4 && d < min) {
-          const k = (min - d) / 2 / d;
-          a.x += (a.x - b.x) * k;
-          a.z += (a.z - b.z) * k;
-          b.x -= (a.x - b.x) * k;
-          b.z -= (a.z - b.z) * k;
+        if (d < min) {
+          const push = (min - d) / 2;
+          const dx = d === 0 ? push : ((a.x - b.x) / d) * push;
+          const dz = d === 0 ? 0 : ((a.z - b.z) / d) * push;
+          a.x += dx;
+          a.z += dz;
+          b.x -= dx;
+          b.z -= dz;
         }
       }
     return ev;
@@ -598,6 +600,10 @@ export class Menagerie {
         break;
       }
       case 'pounce':
+        if (this.gentle) {
+          this.set(a, 'retreat');
+          break;
+        }
         this.turnTo(a, toP, 4, dt);
         this.forward(a, J.runSpeed, dt);
         if (p.lanternLit) {

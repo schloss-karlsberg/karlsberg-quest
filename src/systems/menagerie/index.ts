@@ -176,6 +176,8 @@ class MenagerieSystem {
     });
     ev.on('save:loaded', () => {
       this.endDown();
+      this.misses.clear();
+      this.flares.clear();
       this.rebuild();
     });
     this.rebuild();

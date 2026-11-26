@@ -495,7 +495,7 @@ export function serializeDeer(d: Deer): DeerSave {
 
 const DEER_STATES: readonly DeerState[] = ['graze', 'alert', 'flee', 'settled', 'leave', 'gone'];
 
-export function restoreDeer(s: DeerSave): Deer {
+export function restoreDeer(s: DeerSave, herd: readonly DeerSave[] = []): Deer {
   const d = createDeer({ op: 'spawn', id: s.id, kind: 'reh', look: s.look, x: s.x, z: s.z, follow: s.follow, spacing: s.spacing, shy: s.shy });
   d.yaw = s.yaw;
   d.state = DEER_STATES.includes(s.state as DeerState) ? (s.state as DeerState) : 'graze';
@@ -505,7 +505,10 @@ export function restoreDeer(s: DeerSave): Deer {
   d.flee = s.flee ? { ...s.flee } : null;
   d.away = s.away ? { ...s.away } : null;
   if (d.state === 'flee' && !d.flee) d.state = 'settled';
-  if (d.state === 'leave' && !d.away) d.state = 'gone';
+  if (d.state === 'leave' && !d.away) {
+    const leader = leaderId(d);
+    if (leader === d.id || !herd.some((other) => other.id === leader && other.state === 'leave')) d.state = 'gone';
+  }
   d.motion.yaw = d.yaw;
   return d;
 }
