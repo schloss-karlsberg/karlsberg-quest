@@ -30,15 +30,27 @@ Goal: pin down untested player-visible UI behaviour, and fix only demonstrated b
 - [x] Map UI modules and journal/page renderers to player contracts and existing unit tests.
 - [x] Add at least 25 meaningful deterministic assertions for uncovered contracts; run the new set in about three seconds or less.
 - [x] Reproduce bugs in failing tests first and fix only the observed behaviour. Record design questions as TODOs rather than changing behaviour.
-- [ ] Commit the fixes separately (sandbox denied `index.lock`; handoff below).
+- [x] Record the original sweep in `cba6c46`.
 - [x] Update the PRD changelog and document the test helper in the architecture testing section.
 - [ ] Pass all four gates (`pnpm validate` blocked before its script started).
 - [x] Check smoke feasibility on port 5435; record results and follow-ups.
 
+## Review fix plan and acceptance criteria
+
+- [x] Reset quest selection with an empty render and verify unread marks on completed quests, including on a repeated run.
+- [x] Use the quest engine's objective target for journal ticks and progress counts. Verify a skipped subsecond bonus and earned progress.
+- [x] Verify the open-modal callback reports `1, 2, 1, 0` across Pause and save confirmation.
+- [x] Verify tapping a blocked map point selects its row and Enter requests no travel.
+- [x] Update the journal documentation and add a PRD changelog row.
+- [x] Pass typecheck, the full unit suite with zero failures, and the production build.
+- [ ] Pass `pnpm validate` in an environment that allows the validator to open its IPC socket.
+- [x] Check smoke feasibility and record the sandbox result.
+- [ ] Commit the review fixes locally. The sandbox denied `index.lock`.
+
 ## Progress
 
 - Branch: `dev/task-047`, based on `d2d1f48`. No changes to other tasks, dialogue or audio planned.
-- Git refused the initial `git add` (`index.lock`: operation not permitted); leave the intended changes and commit subjects for the maintainer.
+- Review round, 2026-11-26. The unread test reproduced the stale selection with `--repeats=1`. The optional 0.4 s survival case also failed before using `need()`. All three reviewed test files now pass with `--repeats=1` (`13 passed | 1 todo`).
 
 ## Coverage map (before this sweep)
 
@@ -69,25 +81,26 @@ Goal: pin down untested player-visible UI behaviour, and fix only demonstrated b
 - Gates (Node 24): `pnpm typecheck` passed; `pnpm test`: `Test Files  122 passed (122)`, `Tests  1587 passed | 1 todo (1588)`, 0 failed. `pnpm validate`: `listen EPERM` creating the tsx IPC socket. `pnpm build` run separately: `✓ built in 1.21s`. `mc validate` passed.
 - No e2e specs changed. Binding `127.0.0.1:5435` returned `EPERM`, so smoke was skipped rather than taking the machine-wide lock. No voiced lines need new text.
 
+## Review verification
+
+- Fixed 1. The unread test resets selection through an empty render and checks unread marks on completed quests.
+- Fixed 2. The duplicated target calculation exists on `origin/main`. The journal now uses `need()` for ticks and progress counts, with regression coverage for a skipped 0.4 s objective and a 2.6 s objective rounded to 3 s.
+- Fixed 3. The Pause test asserts `onChange` calls `[1, 2, 1, 0]`. It fails if closing the save confirmation reports zero open modals.
+- Fixed 4. The map test asserts that tapping a blocked destination selects it and pressing Enter requests no travel. It fails if the map ignores the tap.
+- Gates (Node 24). `pnpm typecheck` passed. `pnpm test` reported `Test Files  122 passed (122)` and `Tests  1589 passed | 1 todo (1590)`, with zero failures. `pnpm validate` stopped at `listen EPERM` in the `tsx` launcher. `pnpm build` reported `✓ built in 728ms`.
+- Smoke remains unverified. The review round also hit `EPERM` binding `127.0.0.1:5435`. No e2e specs changed, and no voiced lines need new text.
+- `git add` was denied when creating the current worktree's `index.lock`. The review changes are in the worktree, and `HEAD` is `cba6c46`.
+
 ## Follow-ups
 
 - Run `pnpm validate` and `KQ_E2E_PORT=5435 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line` on a machine that permits local sockets.
-- Design TODO: should changing Codex filters clear an open detail if it is no longer in the grid? The current behaviour is unchanged.
-- No commits or push. To preserve separate fixes in a writable checkout, use the following staging order (select only the indicated hunk for the first journal fix):
+- Decide whether changing Codex filters should clear an open detail that falls outside the new filter.
+- Commit the review changes from a session that can write the worktree index.
 
 ```sh
 credit='Co-Authored-By: Codex <noreply@openai.com>'
-git add .mc/tasks/todo/TASK-047-ui-pages-and-hud-coverage.md
-git commit -m 'docs(ui): plan the pause page coverage sweep' -m "$credit"
-git add tests/{cards,journal-pages,pause-controls,progression-page,field-map-page}.test.ts tests/ui-fixture.ts
-git commit -m 'test(ui): cover pause pages and journal state transitions' -m "$credit"
-git add -p src/systems/quests/pages.ts  # only the optional objective check
-git add docs/ACTION-RPG.md
-git commit -m 'fix(ui): keep unearned quest bonuses unchecked' -m "$credit"
-git add src/systems/quests/pages.ts
-git commit -m 'fix(ui): clear the displayed quest unread mark immediately' -m "$credit"
-git add src/systems/travel/map.ts
-git commit -m 'fix(ui): enforce map travel distance for keyboard input' -m "$credit"
-git add docs/ARCHITECTURE.md docs/PRD.md
-git commit -m 'docs(ui): record pause page behaviour and test coverage' -m "$credit"
+git add -- src/systems/quests/pages.ts tests/journal-pages.test.ts docs/ACTION-RPG.md docs/ARCHITECTURE.md docs/PRD.md
+git commit -m 'fix(ui): align journal progress with quest targets' -m "$credit"
+git add -- tests/pause-controls.test.ts tests/field-map-page.test.ts .mc/tasks/todo/TASK-047-ui-pages-and-hud-coverage.md
+git commit -m 'test(ui): verify pause depth and blocked map selection' -m "$credit"
 ```

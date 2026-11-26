@@ -8,7 +8,7 @@ import type { ItemDef, QuestDef, QuestProgress } from '../../rpg/types';
 import { ENEMIES } from '../../rpg/enemies';
 import { COLLECTIONS } from '../../rpg/items';
 import type { Era } from '../../core/era';
-import { journalRunning } from './logic';
+import { journalRunning, need } from './logic';
 
 export interface PageData {
   ctx: GameContext;
@@ -121,12 +121,12 @@ export function renderQuests(el: HTMLElement, d: PageData): void {
         'ul.kqj-objs',
         objs.map((o) => {
           const n = d.count(q.id, o.id);
-          const need = o.type === 'survive' ? Math.round(o.seconds ?? o.count ?? 1) : (o.count ?? 1);
-          const ok = n >= need || (s === 'done' && !o.optional);
+          const target = need(o);
+          const ok = n >= target || (s === 'done' && !o.optional);
           return h(`li${ok ? '.kqj-ok' : ''}${o.optional ? '.kqj-opt' : ''}`, [
             h('span.kqq-box', { 'aria-hidden': 'true' }, ok ? '✓' : ''),
             o.text_de,
-            need > 1 ? h('span.kqj-n', ` ${Math.min(n, need)}/${need}`) : null,
+            target > 1 ? h('span.kqj-n', ` ${Math.min(n, target)}/${target}`) : null,
             o.optional ? h('span.kqj-tag', o.bonus_xp ? `${t('quest.bonus')} +${o.bonus_xp} EP` : t('quest.optional')) : null,
           ]);
         }),

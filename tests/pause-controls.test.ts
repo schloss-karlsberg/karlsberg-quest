@@ -12,11 +12,12 @@ afterEach(() => vi.unstubAllGlobals());
 function pause() {
   const root = installPageDom();
   const modals = new ModalManager(root.element);
+  const onChange = vi.spyOn(modals, 'onChange');
   const onClose = vi.fn();
   const settings = new SettingsStore(new MemoryStorage());
   const save = vi.fn(() => false);
   const menu = openPause({ modals, settings, save, attribution: () => [], toTitle: vi.fn() }, onClose);
-  return { root, modals, save, menu, onClose };
+  return { root, modals, save, menu, onChange, onClose };
 }
 
 function escape(repeat = false) {
@@ -24,7 +25,7 @@ function escape(repeat = false) {
 }
 
 it('keeps the game paused until the final close and only acknowledges a successful manual save', () => {
-  const { root, modals, menu, save, onClose } = pause();
+  const { root, modals, menu, save, onChange, onClose } = pause();
   root.byId('pause-save').click();
   expect(save).toHaveBeenCalledOnce();
   expect(modals.count).toBe(1);
@@ -41,6 +42,7 @@ it('keeps the game paused until the final close and only acknowledges a successf
   root.byId('resume').click();
   expect(modals.backdrop).toBe('none');
   expect(onClose).toHaveBeenCalledOnce();
+  expect(onChange.mock.calls.map(([open]) => open)).toEqual([1, 2, 1, 0]);
 });
 
 it('opens a destination once, preserves scroll on refresh and updates the menu badge on return', () => {

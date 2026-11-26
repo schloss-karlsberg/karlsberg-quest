@@ -59,7 +59,10 @@ it('allows Enter at exactly 25 m only after selection, and detaches input and re
 
 it('keeps blocked destinations selectable for inspection but not travel', () => {
   const page = mapPage(25, 'Im Kampf');
+  const destinationRow = () => page.root.byId('travel-go-near').parentElement;
+  expect(destinationRow()).not.toHaveProperty('className', 'sel');
   page.pick();
+  expect(destinationRow()).toHaveProperty('className', 'sel');
   expect(page.root.byId('travel-block').textContent).toBe('Im Kampf');
   expect(page.root.byId('travel-go-near').disabled).toBe(true);
   page.enter();

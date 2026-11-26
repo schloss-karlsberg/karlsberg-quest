@@ -2090,6 +2090,8 @@ Each RPG track adds its own subsection here when it fills its system in.
   leading to the giver). The „Laufend“ view in Aufgaben is `journalRunning()`: running quests plus main
   quests on offer; with no main quest in it, the story's objective shows as „Hauptweg: …“.
   Displaying a quest's detail clears its unread mark on that render, including the initial selection.
+  Objective ticks and progress counts use the quest engine's `need()` target, including the
+  one-second minimum for survival objectives.
 - `hud.ts`: tracker (`hud.stack`, max 3, main first, `n/N`, "Zurück zu …" when ready; a done
   goal is struck through, then folds away), feed (`hud.dock('feed')`), banner (waits for the payout
   and the chapter title) and payout notice (earned EP, items, skills and a Codex count). The

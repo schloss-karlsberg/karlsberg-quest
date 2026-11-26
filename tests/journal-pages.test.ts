@@ -46,8 +46,10 @@ it('checks only earned optional objectives in the completed quest history', () =
 
 it('marks the displayed quest as read without clearing unread siblings', () => {
   const { root, data, progress, unread } = journal();
+  renderQuests(root.element, { ...data, quests: () => [] });
+  progress['q.test.lohnzettel'] = { state: 'done', t: 1, counts: { briefe: 3, zettel: 1 } };
+  progress['q.test.irrlichter'] = { state: 'done', t: 1, counts: { lichter: 2 } };
   for (const id of ['q.test.lohnzettel', 'q.test.irrlichter']) {
-    progress[id] = { state: 'active', t: 1, counts: {} };
     unread.add(`q:${id}`);
   }
   renderQuests(root.element, data);
@@ -61,6 +63,31 @@ it('marks the displayed quest as read without clearing unread siblings', () => {
   expect(root.byId('journal-quest-detail').dataset.quest).toBe('q.test.irrlichter');
   expect(unread.size).toBe(0);
   expect(fresh('q.test.irrlichter')).toBe(0);
+});
+
+it.each([
+  { seconds: 0.4, savedCount: 0, earnedCount: 1, progressText: [], earnedText: [] },
+  { seconds: 2.6, savedCount: 2, earnedCount: 4, progressText: ['2/3'], earnedText: ['3/3'] },
+])('uses the gameplay target for a $seconds-second survival bonus after turn-in', ({ seconds, savedCount, earnedCount, progressText, earnedText }) => {
+  const { root, data, progress } = journal();
+  const quest = data.quests()[0]!;
+  const saved = { state: 'done' as const, t: 5, counts: { briefe: 3, zettel: 1, hold: savedCount } };
+  progress[quest.id] = saved;
+  const quests: PageData['quests'] = () => [{
+    ...quest,
+    objectives: [...quest.objectives, { id: 'hold', type: 'survive', text_de: 'Am Bauplatz ausharren', optional: true, seconds }],
+  }];
+  const render = () => renderQuests(root.element, { ...data, quests });
+  const objective = () => root.byId('journal-quest-detail').all(node => node.tag === 'li').at(-1)!;
+  const count = () => objective().all(node => node.className === 'kqj-n').map(node => node.textContent.trim());
+
+  render();
+  expect(objective().textContent).not.toMatch(/^✓/);
+  expect(count()).toEqual(progressText);
+  saved.counts.hold = earnedCount;
+  render();
+  expect(objective().textContent).toMatch(/^✓/);
+  expect(count()).toEqual(earnedText);
 });
 
 it('keeps locked facts anonymous and removes a read card from Neu, not from the collection', () => {
