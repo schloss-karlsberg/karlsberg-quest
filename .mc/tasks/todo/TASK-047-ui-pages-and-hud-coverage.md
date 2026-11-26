@@ -30,9 +30,9 @@ Goal: pin down untested player-visible UI behaviour, and fix only demonstrated b
 - [x] Map UI modules and journal/page renderers to player contracts and existing unit tests.
 - [x] Add at least 25 meaningful deterministic assertions for uncovered contracts; run the new set in about three seconds or less.
 - [x] Reproduce bugs in failing tests first and fix only the observed behaviour. Record design questions as TODOs rather than changing behaviour.
-- [x] Record the original sweep in `cba6c46`.
+- [x] Record the original sweep (committed as `ca4d7a1`).
 - [x] Update the PRD changelog and document the test helper in the architecture testing section.
-- [ ] Pass all four gates (`pnpm validate` blocked before its script started).
+- [x] Pass all four gates (see the second review below).
 - [x] Check smoke feasibility on port 5435; record results and follow-ups.
 
 ## Review fix plan and acceptance criteria
@@ -43,9 +43,9 @@ Goal: pin down untested player-visible UI behaviour, and fix only demonstrated b
 - [x] Verify tapping a blocked map point selects its row and Enter requests no travel.
 - [x] Update the journal documentation and add a PRD changelog row.
 - [x] Pass typecheck, the full unit suite with zero failures, and the production build.
-- [ ] Pass `pnpm validate` in an environment that allows the validator to open its IPC socket.
+- [x] Pass `pnpm validate` in an environment that allows the validator to open its IPC socket.
 - [x] Check smoke feasibility and record the sandbox result.
-- [ ] Commit the review fixes locally. The sandbox denied `index.lock`.
+- [x] Commit the review fixes locally (`177d4db`).
 
 ## Progress
 
@@ -104,3 +104,14 @@ git commit -m 'fix(ui): align journal progress with quest targets' -m "$credit"
 git add -- tests/pause-controls.test.ts tests/field-map-page.test.ts .mc/tasks/todo/TASK-047-ui-pages-and-hud-coverage.md
 git commit -m 'test(ui): verify pause depth and blocked map selection' -m "$credit"
 ```
+
+## Second review (2026-11-26)
+
+- The sweep and the review fixes are committed as `ca4d7a1` and `177d4db`; the commit commands
+  above are superseded.
+- All four first-round findings are confirmed fixed. The second review removed a duplicated travel
+  map fragment from `docs/ARCHITECTURE.md` and made the 24.9 m map test assert the selection, so it
+  fails without the Enter distance check.
+- Gates outside the sandbox: `pnpm typecheck` passed; `pnpm test` reported `Test Files  129 passed (129)`
+  and `Tests  1634 passed | 2 todo (1636)`; `pnpm validate` reported `✓ content valid (1 warning(s))`;
+  `pnpm build` passed. The locked e2e specs `smoke` and `progression` passed on the branch.
