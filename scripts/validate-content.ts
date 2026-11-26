@@ -16,10 +16,9 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 export function findPacks(dir: string): string[] {
   if (!existsSync(dir)) return [];
-  return readdirSync(dir, { recursive: true, withFileTypes: false })
-    .map(String)
-    .filter((f) => f.endsWith('.pack.json'))
-    .map((f) => join(dir, f))
+  return readdirSync(dir, { recursive: true, withFileTypes: true })
+    .filter((entry) => !entry.isDirectory() && entry.name.endsWith('.pack.json'))
+    .map((entry) => join(entry.parentPath, entry.name))
     .sort();
 }
 

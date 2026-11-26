@@ -222,6 +222,7 @@ export function whereOf(c: Condition): { x: number; z: number; r: number } | nul
 export function eventMatches(ev: EventCond, name: string, payload: unknown): boolean {
   if (ev.event !== name) return false;
   const p = (payload ?? {}) as Record<string, unknown>;
+  if (name === 'echo:end' && p.aborted === true) return false;
   for (const [k, v] of Object.entries(ev.match ?? {})) if (p[k] !== v) return false;
   for (const [k, v] of Object.entries(ev.gte ?? {})) if (!(typeof p[k] === 'number' && (p[k] as number) >= v)) return false;
   for (const [k, v] of Object.entries(ev.lte ?? {})) if (!(typeof p[k] === 'number' && (p[k] as number) <= v)) return false;
@@ -376,6 +377,8 @@ export class StoryEngine {
     s.active = true;
     s.chapter = chapterId;
     s.chapterTime = 0;
+    this.edges.clear();
+    this.lastFired.clear();
     for (const k of Object.keys(s.latched)) delete s.latched[k];
     s.fired = [];
     if (!s.unlocked.includes(chapterId)) s.unlocked.push(chapterId);

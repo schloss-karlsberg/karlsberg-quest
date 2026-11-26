@@ -95,8 +95,9 @@ export class LineQueue<T extends QueuedLine> {
       else this.items.splice(at, 0, item);
     } else this.items.push(item);
     while (this.items.length > MAX_QUEUE) {
-      let i = this.items.findIndex((q) => q.priority === 'low' && q !== item);
+      let i = this.items.findIndex((q) => q.priority === 'low' && !this.started(q));
       if (i < 0) i = this.items.findIndex((q) => !this.started(q) && q !== item);
+      if (i < 0 && !this.started(item)) i = this.items.indexOf(item);
       this.items.splice(Math.max(0, i), 1);
       this.dropped++;
     }

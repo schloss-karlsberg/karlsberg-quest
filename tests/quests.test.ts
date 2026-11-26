@@ -140,6 +140,56 @@ const chain = (over: Partial<QuestDef> = {}): QuestDef => ({
 });
 
 describe('objectives', () => {
+  it('still earns an optional bonus while ready, with no progress or payout after turn-in', () => {
+    const q = chain({
+      objectives: [
+        { id: 'required', type: 'manual', text_de: 'Aufgabe' },
+        { id: 'bonus', type: 'manual', text_de: 'Zusatz', count: 2, optional: true, bonus_xp: 30 },
+      ],
+    });
+    const { b, of } = book([q]);
+    b.accept(q.id);
+    b.progress(q.id, 'required');
+    expect(b.state(q.id)).toBe('ready');
+    expect(b.progress(q.id, 'bonus', 0)).toBe(false);
+    expect(b.progress(q.id, 'bonus', -1)).toBe(false);
+    expect(b.count(q.id, 'bonus')).toBe(0);
+    expect(b.progress(q.id, 'bonus', 5)).toBe(true);
+    expect(b.count(q.id, 'bonus')).toBe(2);
+    expect(b.progress(q.id, 'bonus')).toBe(false);
+    expect(b.complete(q.id)?.xp).toBe(100);
+    expect(b.complete(q.id, true)).toBeNull();
+    expect(b.progress(q.id, 'bonus')).toBe(false);
+    expect(of('xp:grant').map((p) => p.amount)).toEqual([30, 100]);
+    expect(of('quest:ready')).toEqual([{ id: q.id }]);
+  });
+
+  it('restores completed seconds of a survive objective and resumes counting in its era and room', () => {
+    const here = { x: 10, z: 10, era: '1789', room: 'KB-B06/B06.1.bildergalerie' } as const;
+    const q = chain({
+      objectives: [{ id: 'wait', type: 'survive', text_de: 'Warten', seconds: 3, where: { ...here, room: 'B06.1.bildergalerie' } }],
+    });
+    const { b } = book([q]);
+    b.accept(q.id);
+    b.tick(1.5, here);
+    const restoredEnv = env();
+    const restored = new QuestBook(b.defs, JSON.parse(JSON.stringify(b.slice)), restoredEnv);
+    restored.mirror();
+    expect(restored.state(q.id)).toBe('active');
+    expect(restoredEnv.flags[`quest.${q.id}.wait`]).toBe(1);
+    restored.tick(4, { ...here, era: 'today' });
+    restored.tick(4, { ...here, room: '' });
+    expect(restored.count(q.id, 'wait')).toBe(1);
+    restored.tick(1.5, here);
+    expect(restored.count(q.id, 'wait')).toBe(2);
+    expect(restored.state(q.id)).toBe('active');
+    restored.tick(1, here);
+    expect(restored.count(q.id, 'wait')).toBe(3);
+    expect(restored.state(q.id)).toBe('ready');
+  });
+
+  it.todo('decide whether a partial second of survival should also persist across a reload');
+
   it('honour `after`: later objectives neither count nor spawn early', () => {
     const { b, of } = book([chain()]);
     b.accept('q.test.kette');
@@ -236,6 +286,25 @@ describe('objectives', () => {
     expect(b.count('q.test.alles', 'peter')).toBe(0);
     b.tick(0.1, { x: 1, z: 1, era: 'today' }, () => 2);
     expect(b.state('q.test.alles')).toBe('done');
+  });
+
+  it('counts a heard echo and ignores an interrupted one for both objective forms', () => {
+    const q = chain({
+      objectives: [
+        { id: 'listen', type: 'echo', text_de: 'Zuhören', clue: 'clue.test.echo' },
+        { id: 'event', type: 'event', text_de: 'Erinnerung', event: 'echo:end', match: { id: 'clue.test.echo' } },
+      ],
+    });
+    const { b, of } = book([q]);
+    b.accept(q.id);
+    expect(b.handle('echo:end', { id: 'clue.test.echo', aborted: true })).toBe(false);
+    expect(of('quest:progress')).toEqual([]);
+    expect(b.state(q.id)).toBe('active');
+    expect(b.handle('echo:end', { id: 'clue.test.other' })).toBe(false);
+    expect(b.handle('echo:end', { id: 'clue.test.echo' })).toBe(true);
+    expect(b.count(q.id, 'listen')).toBe(1);
+    expect(b.count(q.id, 'event')).toBe(1);
+    expect(b.state(q.id)).toBe('ready');
   });
 
   it('rolls drops deterministically with a seeded rng and places them at the kill', () => {

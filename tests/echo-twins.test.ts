@@ -2,6 +2,7 @@ import { Scene, Vector3 } from 'three';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { DialogueLine } from '../src/content/types';
 import type { GameContext } from '../src/core/context';
+import { EventBus } from '../src/core/events';
 import { EchoDirector } from '../src/systems/chronik/echo';
 import { stageEcho } from '../src/systems/chronik/staging';
 import type { ChronikClue } from '../src/systems/chronik/types';
@@ -31,7 +32,8 @@ function fakeCtx(scene: Scene): GameContext {
     t: (k: string) => k,
     ui: { hud: { subtitle() {}, prompt() {} } },
     audio: { ctx: null, bus: () => null, createSource3D: () => null, noise: () => null },
-    events: { emit() {} },
+    events: new EventBus(),
+    content: { speakers: new Map() },
     settings: { state: { reducedMotion: false, reducedFlash: false } },
   } as unknown as GameContext;
 }
@@ -71,5 +73,38 @@ describe('echo director: the twin hook is a no-op until the twin models land', (
     // the player's storey is y = 2 (fake); marks stand on it, the seated one 0.42 lower
     expect(duke.ghost.object.position.y).toBeCloseTo(2 - 0.42, 5);
     expect(figs.find((f) => !f.mark?.sit)!.ghost.object.position.y).toBeCloseTo(2, 5);
+  });
+});
+
+describe('echo lifecycle', () => {
+  it.each(['finish', 'skip', 'abort'] as const)('%s releases the scene and reports whether the memory was heard', (mode) => {
+    const scene = new Scene();
+    const ctx = fakeCtx(scene);
+    const id = 'test.echo.lifecycle';
+    const memory = clue(id, 0, -6);
+    const heard: unknown[] = [];
+    const ends: unknown[] = [];
+    ctx.events.on('echo:end', (event) => ends.push(event));
+    ctx.post.uniforms.uDesaturate!.value = 0.1;
+    const d = new EchoDirector(
+      ctx,
+      () => [line('test.echo.line', 'mannlich', 'Ein Satz.', id)],
+      fakeEl() as HTMLElement,
+      (completed, transcript) => heard.push({ id: completed.id, transcript }),
+    );
+    d.start(memory);
+    expect(d.clue).toBe(memory);
+    d.update(0.5);
+    expect(ctx.post.uniforms.uDesaturate!.value).toBeGreaterThan(0.1);
+    expect(ends).toEqual([]);
+    if (mode === 'finish') d.update(d.progress.total);
+    else if (mode === 'skip') d.skip();
+    else d.finish(true);
+    expect(d.clue).toBeNull();
+    expect(ctx.post.uniforms.uDesaturate!.value).toBe(0.1);
+    expect(scene.getObjectByName('chronik-echo')).toBeUndefined();
+    d.dispose();
+    expect(ends).toEqual([mode === 'abort' ? { id, aborted: true } : { id }]);
+    expect(heard).toEqual(mode === 'abort' ? [] : [{ id, transcript: [{ speaker: 'mannlich', text: 'Ein Satz.' }] }]);
   });
 });
