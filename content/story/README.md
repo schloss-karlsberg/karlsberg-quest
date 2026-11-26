@@ -26,6 +26,34 @@ and their generators define the shipped beats and dialogue. Placeholders carry `
 }
 ```
 
+## Static progression checks
+
+Run `pnpm validate` after editing beats, quests or packs. Each progression finding gives the
+file and the chapter/beat, reaction, or quest/objective id.
+
+- A chapter starts at `start`. The check follows `next`, fallthrough and forward checkpoints.
+  A delayed exit cue arrives in the following beat. An immediate exit cue belongs to the
+  outgoing beat. A timer that completes the beat also cuts off reactions that would fire later.
+- An `npc:arrived` wait must match a reachable walk's NPC, route and destination. Pickup waits
+  count matching events, including quantity and bounds, and spend the placements they use.
+  A repeatable event reaction needs a new matching emission after its latch resets.
+- Flags must have a reachable writer with the required value. Writers include story actions,
+  runtime interactions such as court admission and shift anchors, choice options, quest payouts,
+  item deeds and clue rewards. Chronik confirmation gates require legacy-save or debug progress.
+- Inline choices check each option's `when` before applying its effects. A positive timeout can
+  select the fallback while the choice stays open. Reusing a choice id overwrites its saved answer.
+  The diagnostic identifies an authored choice path that leaves a later prerequisite unset.
+  Optional reactions from earlier beats and unreachable alternatives can produce warnings.
+- Every occurrence of a `say` id must resolve to the same text, including pack references,
+  era overrides and ordered variants. Conflicts identify both definitions. Keep the recorded
+  text intact when correcting a trigger.
+- World movement, combat and the timing of independent reactions are approximated. The search
+  warns when it reaches its limit of 64 paths in one chapter. Debug chapters also warn about
+  beats intended for direct entry with `goto`.
+
+The small authoring fixtures and the campaign regression run in
+`pnpm exec vitest run tests/content-progression.test.ts`.
+
 ## Chapter file
 
 | Key | Meaning |

@@ -30,7 +30,7 @@ import { Feed, RewardNotice, showBanner, Tracker, type RewardView, type TrackerQ
 import { Waymark } from '../../ui/waymark';
 import { hideWhileQuiet } from '../../core/quiet';
 import { renderCodex, renderQuests, renderSets, type PageData } from './pages';
-import { type QuestDefIn, type QuestPayout, QuestBook, createQuestSlice, giverId, historyAtTurnin, need, normaliseSlice, turninOf } from './logic';
+import { type QuestDefIn, type QuestPayout, QuestBook, createQuestSlice, giverId, historyAtTurnin, need, objectiveEvents, normaliseSlice, recordItemDeed, turninOf } from './logic';
 
 declare module '../../core/state' {
   interface SystemStates {
@@ -84,18 +84,6 @@ const SIDE_MARK_RANGE = 90;
 
 /** Rough reading time of a spoken line (game seconds). */
 const lineSeconds = (s: string) => 1.6 + s.length * 0.055;
-
-/**
- * The deed contract for physical choices (docs/ACTION-RPG.md §8.6): taking one of these things in
- * the world (`item:pickup`) sets the flag the epilogue reads. The Festsaal (Ch. 3): whichever of the
- * three objects is carried out first is `flag.k3_objekt`; leaving with none is the story's
- * `nichts`. Quest-file items add theirs with `deed`.
- */
-export const DEED_ITEMS: Readonly<Record<string, { flag: string; value: string }>> = {
-  'item.charm.tuergriff': { flag: 'flag.k3_objekt', value: 'tuergriff' },
-  'item.charm.dukat': { flag: 'flag.k3_objekt', value: 'dukat' },
-  'item.charm.uhr': { flag: 'flag.k3_objekt', value: 'uhr' },
-};
 
 const SKILL_NAME: Record<string, string> = { relief: 'Relief-Blick', kartograf: 'Kartograf', baumeister: 'Baumeister', roentgen: 'Röntgenblick', spurenleser: 'Spurenleser' };
 
@@ -222,7 +210,7 @@ class QuestRuntime {
       ev.on('quest:turnin', ({ id }) => this.book.complete(id)),
       ev.on('story:chapter', ({ id }) => {
         this.availIn = 0;
-        this.dropEarlier(id);
+        this.book.dropEarlier(id);
         // the main quest on offer is the chapter's (renderTracker)
         this.dirty = true;
       }),
@@ -249,11 +237,8 @@ class QuestRuntime {
       ev.on('discovery:found', ({ title }) => this.feed.push(t('quest.discovery.feed', { title }), 'done')),
       // deeds: a thing taken in the world sets its flag (first taken wins)
       ev.on('item:pickup', ({ item }) => {
-        const d = DEED_ITEMS[item] ?? this.items.get(item)?.deed;
+        const d = recordItemDeed(item, this.items.get(item), ctx.state.mutable.flags);
         if (!d) return;
-        const flags = ctx.state.mutable.flags;
-        if (flags[d.flag] !== undefined && flags[d.flag] !== '' && flags[d.flag] !== 'nichts') return;
-        flags[d.flag] = d.value;
         ctx.events.emit('quest:deed', { flag: d.flag, value: d.value, item });
       }),
       ev.on('enemy:killed', ({ kind }) => {
@@ -279,35 +264,6 @@ class QuestRuntime {
     );
     this.book.onPayout = (p) => this.onPayout(p);
     this.restore();
-  }
-
-  /**
-   * A new chapter: main quests of earlier chapters still running and unaccepted offers leave the
-   * log (a chapter select or story jump skipped them; in a straight run they are all done); side
-   * quests of a past era of an earlier chapter end (ready → paid, active → failed).
-   */
-  private dropEarlier(chapter: string): void {
-    const order = ['tour', 'k1', 'k2', 'k3', 'k4', 'enden'];
-    // a chapter outside the campaign (the e2e `test` chapter) comes after all of it
-    const at = order.includes(chapter) ? order.indexOf(chapter) : order.length;
-    for (const q of this.defs.values()) {
-      const i = order.indexOf(q.chapter ?? '');
-      if (i < 0 || i >= at) continue;
-      const st = this.book.state(q.id);
-      // main quests of a skipped chapter, and offers whose (chapter-bound) giver is gone
-      if (st === 'offered' || (q.kind === 'main' && (st === 'active' || st === 'ready'))) this.book.reset(q.id);
-      // side quests bound to a past era of that chapter cannot be finished any more: a finished one
-      // pays out (its giver is gone), an open one fails. Present-day side quests carry over.
-      else if (q.kind === 'side' && q.era && q.era !== 'today') {
-        if (st === 'ready') this.book.complete(q.id, true);
-        else if (st === 'active') this.book.fail(q.id, 'chapter');
-      }
-      // Two chapters on, a present-day side quest ends too.
-      else if (q.kind === 'side' && at - i >= 2) {
-        if (st === 'ready') this.book.complete(q.id, true);
-        else if (st === 'active') this.book.fail(q.id, 'chapter');
-      }
-    }
   }
 
   /** A good photo of this target exists (the photo system's save slice `systems.photo.good`). */
@@ -349,12 +305,7 @@ class QuestRuntime {
   private computeInterest(): Set<string> {
     const s = new Set<string>();
     for (const q of this.book.running())
-      for (const o of this.book.openObjectives(q)) {
-        const ev: Record<string, string> = { kill: 'enemy:killed', collect: 'item:pickup', use: 'item:use', talk: 'npc:talk', room: 'room:enter', examine: 'clue:found', echo: 'echo:end', calm: 'menagerie:calmed', photo: 'photo:good' };
-        if (ev[o.type]) s.add(ev[o.type]!);
-        if (o.type === 'event' && o.event) s.add(o.event);
-        if (o.type === 'collect' && o.drop) s.add('enemy:killed');
-      }
+      for (const o of this.book.openObjectives(q)) for (const name of objectiveEvents(o)) s.add(name);
     return s;
   }
 

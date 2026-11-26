@@ -598,3 +598,24 @@ describe('objectives, home, endings', () => {
     }
   });
 });
+
+describe('chapter-three basket cue', () => {
+  it('fires at four kills before pickup and stays silent after resuming a post-pickup save', () => {
+    const { story } = loadStoryFiles(ROOT).files.find(f => f.story.chapter === 'k3')!;
+    const flags = { 'quest.q.k3.nachmittag.schatten': 4, 'quest.q.k3.nachmittag.korb': 0 };
+    const fired = 'k3/c:korb';
+    const current = harness([story]);
+    current.engine.goto('k3', 'k3_1');
+    current.engine.tick(0.1, env({ flags: { ...flags, 'quest.q.k3.nachmittag.schatten': 3 }, era: '1793-07' }));
+    expect(current.rec.runs.map(r => r.source)).not.toContain(fired);
+    current.engine.tick(0.1, env({ flags, era: '1793-07' }));
+    expect(current.rec.runs.map(r => r.source)).toContain(fired);
+
+    const older = harness([story]);
+    older.engine.goto('k3', 'k3_5');
+    older.reload();
+    older.engine.resume();
+    older.engine.tick(0.1, env({ flags: { ...flags, 'quest.q.k3.nachmittag.korb': 1 }, era: '1793-07' }));
+    expect(older.rec.runs.map(r => r.source)).not.toContain(fired);
+  });
+});
