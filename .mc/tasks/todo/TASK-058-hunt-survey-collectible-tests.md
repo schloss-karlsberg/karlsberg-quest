@@ -34,10 +34,10 @@ bottles and collectible persistence. Fix defects demonstrated by those tests.
 - [x] Map the modules, the player contracts, existing unit coverage and gaps.
 - [x] Add at least 25 meaningful deterministic assertions across the area, running in about three seconds or less.
 - [x] Reproduce each confirmed defect before its minimal fix and record design questions as test todos.
-- [ ] Commit fixes individually. Git could not create the worktree index lock.
+- [x] Commit fixes individually. The review fix round committed each finding group separately.
 - [x] Document changes, test helpers and the PRD changelog.
 - [x] Run all four gates, record the exact results and verify zero unit failures.
-- [ ] Pass all four gates as written. The validator CLI could not open its IPC socket.
+- [x] Pass all four gates as written (review fix round, 2026-11-26).
 - [x] Run the locked smoke spec on port 5445 if possible or record the command for a human.
 
 ## Plan
@@ -58,13 +58,39 @@ keeping per-frame bottle visibility checks cheap.
 
 ### Acceptance criteria and plan
 
-- [ ] Cover loading both sides of the capture handoff and clear outgoing staged or fading hounds.
-- [ ] Exercise Notes through Story replay and retain the saved inactivity clock until real progress.
-- [ ] Preserve the relief countdown through Continue and recheck survey skill access.
-- [ ] Restore phase-two bottle restrictions and use Hunt's effective bounds for pack coverage.
-- [ ] Recompute bottle coverage on arena changes and assert frame updates reuse it.
-- [ ] Record the findings against `origin/main`, update the docs and run the four gates and locked smoke spec.
-- [ ] Commit the fixes in reviewable groups.
+- [x] Cover loading both sides of the capture handoff and clear outgoing staged or fading hounds.
+- [x] Exercise Notes through Story replay and retain the saved inactivity clock until real progress.
+- [x] Preserve the relief countdown through Continue and recheck survey skill access.
+- [x] Restore phase-two bottle restrictions and use Hunt's effective bounds for pack coverage.
+- [x] Recompute bottle coverage on arena changes and assert frame updates reuse it.
+- [x] Record the findings against `origin/main`, update the docs and run the four gates and locked smoke spec.
+- [x] Commit the fixes in reviewable groups.
+
+### Review fix results
+
+| Finding | Resolution |
+| --- | --- |
+| 1 Capture curtain survives a load after the handoff | Story drops the pending wake on `save:loaded` (no checkpoint teleport, meter reset or shift home). The capture test now mocks the story modules in the test file, where `vi.mock` is hoisted, and covers both sides of the handoff. |
+| 2 Story replay resets the stuck clock | `story:beat` / `story:chapter` carry `resume: true` when re-entered; Notes ignores those and seeds the known objective from the loaded slot. Tested with the real Story runtime on boot and load: 179 s stays, one more second opens the episode. |
+| 3 Continue clears the relief countdown | Only `save:loaded` drops it; `game:start` rechecks skills and keeps the time left. |
+| 4 Phase-two boss reload shows bottles | `enemy:spawned` of a boss whose saved group is past phase 1 sets the hold. |
+| 5 Pack radius differs before and after a load | `hunt:start` / `hunt:end` are the only source of the pack arena; `threat:configure` for the pack is ignored. |
+| 6 Staged or fading hounds survive a load | Hunt clears the tableau, the fading pack and the visuals on `save:loaded` (before the story replays its cues). |
+| 7 Per-step threat iteration | The held spot set is cached and rebuilt only when memorials, arenas or the era change; a test counts the per-step work. |
+
+### Review fix verification
+
+```text
+pnpm typecheck   tsc --noEmit (exit 0)
+pnpm test        Test Files  131 passed (131)
+                 Tests  1653 passed | 2 todo (1655)
+pnpm validate    ✓ content valid (1 warning(s)) (exit 0)
+pnpm build       exit 0
+e2e (port 5445, heavy.sh, one worker)
+  hunt           3 passed
+  flaschen       2 passed
+  smoke          7 passed
+```
 
 ## Coverage inventory
 
