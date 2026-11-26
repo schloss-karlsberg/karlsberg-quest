@@ -145,6 +145,7 @@ export class QuaderPiece implements Piece {
 
   dispose(): void {
     this.mesh.removeFromParent();
+    this.mesh.dispose();
     this.mesh.geometry.dispose();
     this.mat.dispose();
     this.dust.dispose();
