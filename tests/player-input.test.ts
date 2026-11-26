@@ -65,6 +65,23 @@ describe('pointer-lock input', () => {
     expect(input.wasPressed('attack')).toBe(true);
   });
 
+  it('keeps a cancelled mouse attack through the pause menu that the lock loss opens', () => {
+    const { canvas, doc, input } = inputSurface();
+    doc.pointerLockElement = canvas;
+    doc.dispatchEvent(new Event('pointerlockchange'));
+    canvas.dispatchEvent(Object.assign(new Event('mousedown'), { button: 0 }));
+    input.endStep();
+
+    doc.pointerLockElement = null;
+    doc.dispatchEvent(new Event('pointerlockchange'));
+    input.enabled = false;
+    input.enabled = true;
+    expect(input.wasCancelled('attack')).toBe(true);
+    expect(input.wasPressed('attack')).toBe(false);
+    input.endStep();
+    expect(input.wasCancelled('attack')).toBe(false);
+  });
+
   it.each(['keyboard', 'touch'] as const)('keeps an overlapping %s attack hold on pointer-lock loss', (source) => {
     const { canvas, doc, input } = inputSurface();
     doc.pointerLockElement = canvas;
