@@ -34,7 +34,7 @@ Make the skill-card checks reliable on a loaded machine while preserving what pl
 - [x] Audit e2e specs and helpers for similar waits and fix the obvious cases.
 - [x] Preserve normal duration, touch and reduced-motion behaviour.
 - [x] Document the testing aid and add a PRD changelog row.
-- [ ] Pass the four gates and run the affected specs plus smoke under the lock where supported.
+- [x] Pass the four gates and run the affected specs plus smoke under the lock where supported.
 
 ## Plan
 
@@ -52,33 +52,40 @@ Skill and level cards now count fixed game ticks. The shared slot still uses pre
 
 Audited the specs and helpers for card, toast, reward and banner assertions. Replaced passive waits in skills, progression, integration, quests and the chapter 3 helper, and rAF polling for the payout and queued clue in pacing. The phone screenshot tour in `e2e/mobile/tour.pw.ts` measures live banner exposure and captures actual touch interactions. Toast input assertions exercise real dismissal. These checks retain their presentation timing.
 
+## Review round (2026-11-26)
+
+- The behaviour change is sound: in normal play both cards tick at 60 Hz, a held or paused card
+  stops, and the hold now covers every pause reason (title, modal, travel), which the slot's own
+  holds already covered for modals. Touch dismissal and reduced motion are unchanged.
+- `clearCards` in `e2e/helpers/k3.ts` dismissed the payout notice only before stepping the level
+  card out, so a payout queued behind it could reach the screenshot. It now dismisses it again.
+- The `pol-flow` comment still said unlock cards settle on rendered frames. Corrected.
+- Note for the PR title: `42f5a7c` changes runtime card timing under a `test` type. Squash with
+  `fix(ui): advance skill and level cards on game time` so release-please lists it.
+
 ## Verification
 
-- `pnpm typecheck` passed.
-- `pnpm test` passed with 0 failed. `Test Files  125 passed (125)`. `Tests  1608 passed | 1 todo (1609)`.
-- `pnpm validate` stopped at `listen EPERM` when tsx opened its IPC socket. Running the same validator with `node --import tsx scripts/validate-content.ts` returned `✓ content valid (1 warning(s))`.
-- `pnpm build` passed.
-- The sandbox denied binding `127.0.0.1:5449` with `EPERM`. Browser execution was skipped.
-- Git could not create the worktree's `index.lock`. All edits remain in the worktree.
-- Voiced lines requiring new text — none.
+```text
+pnpm typecheck    exit 0
+pnpm test         Test Files  125 passed (125)
+                  Tests  1608 passed | 1 todo (1609)
+pnpm validate     ✓ content valid (1 warning(s))
+pnpm build        ✓ built
+e2e skills        7 passed (3.0m)
+e2e chapter-k3    2 passed (32.2m, load average about 40)
+e2e smoke         7 passed (1.8m)
+```
+
+The unit run had 0 failed. No voiced lines require new text.
+
+## Commits
+
+- `42f5a7c test(main): deterministic waits for the skill card in e2e` (runtime clock change, helper,
+  specs, unit test and docs)
+- `1beaae1 test(ui): dismiss a payout that waited behind the level card in k3 shots`
+- the commit that adds this report
 
 ## Follow-ups
 
-Run `pnpm validate` and the browser specs outside the sandbox. The chapter 3 and 4 specs and the campaign use the changed chapter helper. Each iteration below takes its own machine-wide lock.
-
-```sh
-for spec in skills chapter-k3 integration progression quests pacing chapter-k4 campaign smoke; do
-  KQ_E2E_PORT=5449 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test "e2e/$spec.spec.ts" --workers=1 --reporter=line
-done
-```
-
-Playwright discovered 31 tests across these nine files. MissionControl validation passed.
-
-Commit the two changes from this worktree once its Git index is writable.
-
-```sh
-git add src/systems/skills/{card,index}.ts src/systems/progression/index.ts tests/skill-card-clock.test.ts
-git commit -m 'fix(ui): advance skill and level cards on game time' -m 'Co-Authored-By: Codex <noreply@openai.com>'
-git add e2e/helpers/{cards,k3}.ts e2e/{integration,pacing,progression,quests,skills}.spec.ts CONTRIBUTING.md docs/{ACTION-RPG,PRD}.md .mc/tasks/todo/TASK-062-deterministic-card-waits.md
-git commit -m 'test(ui): step through timed card waits' -m 'Co-Authored-By: Codex <noreply@openai.com>'
-```
+The other specs that use the changed helpers were not run in this round: `integration`,
+`progression`, `quests`, `pacing`, `chapter-k4` and `campaign`. Run them under the lock before release.
