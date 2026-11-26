@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { trackErrors } from './helpers/common';
 import { boot, endEcho, listen, payloads, settle, story } from './helpers/k2';
+import { setupPikeurCredit } from './helpers/pikeur-credit';
 import { qn, qs } from './helpers/prolog';
 
 test('chapter 2 credits the Pikeur after a late echo and repairs a stalled save', async ({ page }) => {
@@ -8,16 +9,7 @@ test('chapter 2 credits the Pikeur after a late echo and repairs a stalled save'
   const quest = 'q.k2.parforce';
   const group = 'k2.pikeur';
   await boot(page);
-  await page.evaluate((quest) => {
-    const k = window.kq!;
-    k.quests!.offer(quest);
-    k.quests!.accept(quest);
-    k.ctx.state.mutable.inventory.clues.push('clue.k2.fackeln');
-    k.setEra('1793-02');
-    k.teleport(842, -878, 270, 0);
-    k.story!.goto('k2', 'k2_11'); // straight to the dam, as if the player bypassed the parterre
-    k.combat!.god(true);
-  }, quest);
+  await page.evaluate(setupPikeurCredit, quest);
   await settle(page, 8);
   expect(await page.evaluate((group) => window.kq!.combat!.kill(group), group)).toBe(1);
   await settle(page, 8);

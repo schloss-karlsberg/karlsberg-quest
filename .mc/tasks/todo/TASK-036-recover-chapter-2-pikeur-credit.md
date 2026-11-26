@@ -60,6 +60,18 @@ ordering and normal combat reward handling.
 
 **Open questions:** None.
 
+### Review fix round (2026-11-26)
+
+The regression spec must spawn the Pikeur at the dam and start Landremont's echo with E after the
+early fight. Both findings concern the fixture added by this branch.
+
+- [x] Enter `k2_11` before setting the era and teleporting to the dam. Add a unit assertion for the
+  setup call order.
+- [x] Seed the earlier Orangerie and Fackeln echoes as heard. Add unit assertions for the Orangerie
+  and Landremont clue states and keep the browser assertion for the exact echo E starts.
+- [x] Update the action-RPG guide and PRD. Attempt all four gates and the locked browser checks,
+  and record any sandbox blockers.
+
 ## Progress
 
 - Branch `dev/task-036`.
@@ -74,7 +86,17 @@ ordering and normal combat reward handling.
   `listen EPERM` on the `tsx` IPC socket. The locked Pikeur browser run was blocked by `listen EPERM`
   on `127.0.0.1:5424`, so the smoke spec could not start on that port either.
 - 2026-11-26 — `mc validate` passed. Git staging was blocked by the sandbox at the worktree's
-  `index.lock`. The implementation, tests, docs and task record are in the worktree.
+  `index.lock` during the original implementation. Commit `90ed430` subsequently recorded that work.
+- 2026-11-26 — Review findings 1 and 2 fixed in the browser fixture. Both new unit tests failed
+  against the original setup and passed after the fixes. The fixture and quest tests passed together
+  with `Tests  24 passed (24)`.
+- 2026-11-26 — Updated the action-RPG guide and PRD. Review-round `pnpm typecheck` and `pnpm build`
+  passed. `pnpm test` reported `Test Files  119 passed (119)` and `Tests  1580 passed (1580)`, with
+  zero failures. `pnpm validate` was blocked by `listen EPERM` on the `tsx` IPC socket. The locked
+  Pikeur spec was blocked by `listen EPERM` on `127.0.0.1:5424`. The smoke spec was skipped because
+  it needs the same preview server.
+- 2026-11-26 — `mc validate` passed. Git staging was blocked by `Operation not permitted` when
+  creating the worktree's `index.lock`. The review changes are in the worktree.
 
 ## Follow-ups
 
@@ -86,11 +108,9 @@ ordering and normal combat reward handling.
   KQ_E2E_PORT=5424 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line
   ```
 
-- Create the local commits with write access to the worktree index.
+- Commit the review changes with write access to the worktree index.
 
   ```sh
-  git add -- src/systems/quests/index.ts src/systems/quests/logic.ts tests/quests.test.ts e2e/pikeur-credit.spec.ts
-  git commit -m 'fix(story): restore chapter 2 pikeur quest credit' -m 'Refs: TASK-036' -m 'Co-Authored-By: Codex <noreply@openai.com>'
-  git add -- docs/ACTION-RPG.md docs/PRD.md .mc/tasks/todo/TASK-036-recover-chapter-2-pikeur-credit.md
-  git commit -m 'docs(story): record chapter 2 pikeur recovery' -m 'Refs: TASK-036' -m 'Co-Authored-By: Codex <noreply@openai.com>'
+  git add -- .mc/tasks/todo/TASK-036-recover-chapter-2-pikeur-credit.md docs/ACTION-RPG.md docs/PRD.md e2e/helpers/pikeur-credit.ts e2e/pikeur-credit.spec.ts tests/pikeur-credit-fixture.test.ts
+  git commit -m 'test(story): fix chapter 2 pikeur recovery fixture' -m 'Co-Authored-By: Codex <noreply@openai.com>'
   ```
