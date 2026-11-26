@@ -413,6 +413,23 @@ every frame from the request until 1 s after `shift:done`). Before = `01c3eef`.
     there in `9b7972d`.
 - Raw data: the scratchpad `era-shift/` folder (`before.json`, `after7.json`, `registry1.json`).
 
+### 3.7 TASK-008 landscape pass, before/after (2026-11-26)
+
+Before is the pre-epic baseline (`6d288275`, before PR #26). After is `main` after PR #50 (slice 7).
+All captures used a real GPU with ANGLE Metal. Desktop used Hoch at 1280 × 720. Phone used Niedrig
+at a 667 × 375 landscape viewport, DPR 3, with reduced motion.
+
+| View | Before | After | Changes |
+|---|---|---|---|
+| Felsenpfad | ![Felsenpfad before](images/task-008/felsenpfad-before.jpg) | ![Felsenpfad after](images/task-008/felsenpfad-after.jpg) | Rock outcrops, a trail sign and 1 m near-field LiDAR terrain. |
+| Palace plateau | ![Palace plateau before](images/task-008/palace-plateau-before.jpg) | ![Palace plateau after](images/task-008/palace-plateau-after.jpg) | Benches, sandstone courses, understory and groundcover. |
+| Weiher (phone) | ![Weiher on phone before](images/task-008/phone-weiher-before.jpg) | ![Weiher on phone after](images/task-008/phone-weiher-after.jpg) | Shore and reed groundcover on the phone tier. |
+
+The phone route (Niedrig, 667 × 375, ANGLE Metal) held 59.9–60 fps at all five stops. Desktop held
+60 fps on Hoch and Mittel. On Hoch, slice 7 increased the triangle count by about 1% and added
+0–1 draw calls.
+Hoch transferred 19,837,246 bytes before first input against a 20,971,520-byte budget.
+
 ## 4. Loading
 
 On the fresh present-day title, the historic palace mesh and the architecture pairs for ashlar,
