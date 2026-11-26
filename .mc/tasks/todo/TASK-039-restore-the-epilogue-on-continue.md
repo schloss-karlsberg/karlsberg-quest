@@ -57,7 +57,7 @@ button and party handoff. Restrict restoration to an unfinished `e2` with the pa
 - [x] 1. Trace the save and resume flow and reproduce the bug in a failing unit test.
 - [x] 2. Restore the epilogue and verify the party handoff and pre-choice save.
 - [x] 3. Document the behaviour and run typecheck, tests, validation and build.
-- [ ] 4. Run the touched spec and smoke spec separately using the heavy lock on port 5427.
+- [x] 4. Run the touched spec and smoke spec separately using the heavy lock on port 5427.
 
 **Test plan**
 
@@ -100,12 +100,18 @@ queue files outside the change.
   with `✓ content valid (1 warning(s))`.
 - 2026-11-26 review. Both locked Playwright commands again hit `EPERM` on `127.0.0.1:5427`
   before the browser launched.
-- 2026-11-26 review. Git could not create the worktree's `index.lock`. The review patch is in the
-  worktree.
+- 2026-11-26 review. The review patch is recorded in `b3d410a`.
+- 2026-11-26 merge review. The four gates passed: `Tests  1591 passed (1591)`, content valid.
+  Locked e2e on port 5427, one spec at a time: `epilogue-resume` 3 passed, `party` 5 passed,
+  `smoke` 7 passed.
 
 ## Follow-ups
 
-- Run `e2e/epilogue-resume.spec.ts` and `e2e/smoke.spec.ts` with the heavy lock on port 5427
-  in an environment that permits the preview server. Run `pnpm validate` where the `tsx` launcher
-  can create its socket.
-- Commit the review patch once Git can write the worktree index.
+These predate this branch and are outside its scope.
+
+- A reload during the ending scene or its closing card resumes `e2` at the epilogue, so the closing
+  card is not shown again. Restoring it needs a saved marker for the card.
+- An `e3` autosave is written before the delayed plateau teleport. A reload during the celebration
+  resumes at the Quelle while the party stands on the plateau.
+- Saves from v0.5.0 and earlier can hold a finished `e2` (credits closed before the beat exited).
+  They now wait for `story.party` with combat disabled.
