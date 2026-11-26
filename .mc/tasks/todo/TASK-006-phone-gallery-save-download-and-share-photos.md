@@ -172,6 +172,9 @@ _Status: approved 2026-11-26_
     - `touch` „ipad-pro-11“ and „notices on a small landscape phone“: fail on `main` too (tap timing under SwiftShader).
     - `touch` „survey tools“: failed once here and passed on `main`. Re-run twice on this branch: green both times, so flaky; it never touches the photo code.
   - Gates green except these pre-existing local failures; expected green on CI (Linux, Node 24), not verified there.
+- 2026-11-26: rebased onto `main` `4add03a` (80 commits; only the PRD / ACTION-RPG §14 top rows conflicted, both kept, TASK-006 on top).
+  - `main` now hides the gameplay HUD behind the viewfinder (`showViewfinder`), and with it the toasts. So a full gallery or a failed write is now also a note on the shot's card (`photo-card-note`), which stays visible; the toast follows once the phone is down.
+  - Checked in the dev build (browser pane, real GPU): 100 shots via `kq.photo.shoot()` in about 5 s, then the 101st is not stored (count stays 100); the card reads „Galerie voll (100 Fotos). Lösche Fotos, um neue zu behalten.“; the gallery shows „100 von 100 Fotos“ and the cap note. The test photos were deleted afterwards.
 
 ## Notes
 - Update `docs/ACTION-RPG.md` §14 and the `docs/PRD.md` changelog (CONTRIBUTING.md).

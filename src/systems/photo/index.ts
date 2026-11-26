@@ -338,7 +338,12 @@ class Photo {
       if (!b) return;
       const lib = await this.library;
       const out = await lib.save({ ...meta, width: b.width, height: b.height }, b.full, b.thumb);
-      if (!out.ok) ctx.ui.toast(out.reason === 'full' ? t('photo.gallery.full', { cap: lib.cap }) : t('photo.gallery.fail'));
+      if (!out.ok) {
+        const msg = out.reason === 'full' ? t('photo.gallery.full', { cap: lib.cap }) : t('photo.gallery.fail');
+        // the HUD (and its toasts) is hidden behind the viewfinder: the card says it now, the toast once the phone is down
+        this.cardNote(msg);
+        ctx.ui.toast(msg);
+      }
       else if (!this.persistAsked && lib.kind === 'idb') {
         this.persistAsked = true;
         void requestPersist();
@@ -667,6 +672,12 @@ class Photo {
     c.style.animation = '';
     window.clearTimeout(this.cardTimer);
     this.cardTimer = window.setTimeout(() => c.classList.add('kq-hidden'), 3200);
+  }
+
+  /** A line under the shot's card (it stays visible in the viewfinder), e.g. a full gallery. */
+  private cardNote(text: string): void {
+    this.card.querySelector('.kq-photo-note')?.remove();
+    this.card.append(h('div.kq-photo-note', { 'data-testid': 'photo-card-note' }, text));
   }
 
   album(): PhotoAlbumRow[] {

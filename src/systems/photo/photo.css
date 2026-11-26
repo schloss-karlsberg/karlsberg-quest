@@ -277,6 +277,11 @@ html[data-kq-reduced-motion] .kq-photo-card {
   font-size: 13px;
   opacity: 0.8;
 }
+.kq-photo-note {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #ffd27a;
+}
 
 /* album tab */
 .kq-album-grid {
