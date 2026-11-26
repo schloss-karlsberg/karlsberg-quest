@@ -4,7 +4,7 @@ aliases:
 - TASK-010
 title: 'More tour audio: a real, historically accurate guided tour'
 slug: more-tour-audio-a-real-historically-accurate-guided-tour
-status: in-progress
+status: done
 priority: 2
 owner: ''
 projects: []
@@ -301,5 +301,7 @@ The mix levels need an in-browser listening pass.
 - 2026-11-26 — Gravel caption review. Typecheck passed, and Vitest passed all 1,581 tests across 118 files. The checks used `--config.verify-deps-before-run=false` for pnpm and `--configLoader runner` for Vitest to avoid writes through the shared dependency symlink.
 - Browser playback and listening are unverified under the port and Playwright constraints. After `pnpm build`, run `scripts/dev/heavy.sh -- pnpm exec playwright test "$spec" --workers=1` separately for `e2e/tour-slice.spec.ts`, `e2e/animals.spec.ts`, `e2e/cinematic.spec.ts`, `e2e/voice.spec.ts`, `e2e/walk.spec.ts`, `e2e/quelle.spec.ts`, `e2e/touch.spec.ts`, `e2e/skills.spec.ts`, `e2e/pol-flow.spec.ts`, `e2e/court.spec.ts` and `e2e/chronik.spec.ts`. Listen for the dog timing, deer rustle and gravel footsteps. Check that the guide's subtitles stay visible while walking on gravel and that the caption toggle applies to scene cues and ambient captions.
 - The worktree is ready for the local commit `feat(tour): complete guided tour audio cues` with `Refs: TASK-010`. The coordinator requested a command handoff because the worktree cannot create `index.lock`.
+
+- 2026-11-26 — All acceptance criteria met (slices 1–4: #24, #29, #46, #53, #60). Task closed.
 
 %% mc-links: [[SPR-001]] %%
