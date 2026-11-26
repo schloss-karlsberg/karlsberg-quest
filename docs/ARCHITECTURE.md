@@ -235,8 +235,9 @@ off screen or outside the shadow box are culled (round 9: Ehrenhof 1789 ≈ 100 
 playtest round 10, F-03 / F-07 / F-08 / F-15 / F-21 / F-31 / F-35; tests/camera.test.ts,
 tests/camera-palace.test.ts, e2e/camera.spec.ts). Per drawn frame: the pivot (head) → the preset
 (outdoors; a fight pulls the boom back and up; **indoors** — a ceiling over the character — a
-boom ≤ 2.3 m, 0.32 m higher, 0.5 m shoulder) → the shoulder offset (shrunk by a wall at the
-shoulder and on a short boom) → the **sweep** from the shoulder back along the view in 0.25 m
+boom ≤ 2.3 m, 0.32 m higher, 0.5 m shoulder) → the shoulder sweep from the pivot, which clamps both
+the current and requested offsets at the first side wall → the **sweep** from the shoulder back
+along the view in 0.25 m
 steps: `blocked` (footprints, solids and interior walls from the knee to 3.4 m over the feet, via
 the allocation-free `FootprintCollider.hits` / `PlanQuery.hits`) and `space` (`world.spaceAt`:
 −1 outdoors, a room index, −2 a door reveal / wall mass; the boom never leaves the character's
@@ -278,6 +279,14 @@ named `avatar-<costume>-<piece>` show only in their costume, everything else (`a
 `avatar-glasses`) always (`costumeHides` in costume.ts; built by `scripts/chars/mpfb/kqchar/court.py`).
 Gear on that rig is placed from the mesh: the staff grip from the finger bones, the lantern off the
 hip per costume (it moves out over the coat skirts), the staff on the back off the jacket.
+On `player:teleport`, the avatar takes the placement yaw and clears its sampled movement at the
+destination, including arrivals rendered with zero elapsed time under the travel curtain. Hiding
+the avatar clears sampled movement too, and reappearing aligns its facing with the current view.
+
+**Player placement.** Teleports clamp the destination to the map bounds, resample ground height,
+reset falling velocity, cancel any active push, and restart footstep distance and walking bob. Loading uses
+the same placement path and starts on foot. A movement freeze clears spirit flight velocity and
+holds the automatic climb timer until flight resumes. Look stays available unless `lookLocked` is set.
 
 Pause is a stack of reasons (`ctx.pause.push('menu')`); while any reason is active fixed updates
 stop and rendering follows the pacing above. `?manual` stops the real-time simulation entirely;
@@ -654,6 +663,8 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 - `tests/terrain-load.test.ts` uses `serveTerrain()` to serve two compressed grid cells from
   memory. Each layer has distinct values so the test detects swapped eras, incorrect units and
   ground or canopy rasters whose dimensions disagree with the height grid.
+- `tests/player-fixture.ts` supplies a flat `PlayerWorld`, the real `Input` on event targets, and
+  an explicit 60 Hz `step()` for the player, touch and avatar tests.
 - `tests/audio-fixture.ts` provides a fake Web Audio context for mixer and story playback tests.
   Set `currentTime` and call `end()` on a source to drive playback without an audio device.
 - `tests/travel-fixture.ts` runs the registered travel system on flat ground with a real game state
@@ -2401,6 +2412,10 @@ Rules that came out of it:
   from `effectiveBindings` (defaults plus the player's remaps). Mouse look comes from pointer-locked
   `movementX/Y`, `addLook(dx, dy)` (the pilot and touch) and ← / → (`keyTurn.ts`).
   Changing modal input ownership or losing window focus clears pending presses, look and wheel movement.
+- **Focus changes.** Losing a held pointer lock clears queued mouse movement, wheel motion and
+  mouse buttons. Browser blur clears all held and queued input. `input.wasCancelled(action)`
+  reports a held action dropped by either event. Combat uses it to discard the pending attack
+  before it can interpret the cleared hold as a release.
 - **Virtual presses.** `input.press(action, down, edge?)` holds a binding-independent code `@<action>`.
   Remaps and the shared-key pairs (LMB = attack + interact, Space = dodge + up) stay untouched, and
   the touch layer says per button which actions it means. `releaseVirtual()` clears virtual holds

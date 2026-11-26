@@ -156,6 +156,7 @@ Abilities cost Atem too: Ausfall 15 · Erdstoß 25 · Wirbel 28.
 - **Wuchthieb**: hold 0.45–1.0 s (move speed ×0.5, `player.moveScale`), release: ×2.2 damage (talents
   more), breaks frontal armour (Steinfresser, Strohmann's bundles), big stagger. The Steinbrecher's
   front stays hard even to a Wuchthieb (×0.35): its joints are at the sides and the back.
+  Losing pointer lock or browser focus cancels a dropped attack hold without spending Atem.
 - **Cleave** (2026-11-16, playtest): a swing hits the nearest enemy in its arc fully and the next
   ones at 50 %, at most 2 (Hieb) / 3 (Wuchthieb) / 4 (Laubs Lot sweep) targets (`CLEAVE`, rules.ts).
 - **Bosses** never skip a phase: one hit stops just under the next phase line, and a boss rising into
@@ -1104,6 +1105,8 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | A load during a hunt or while collecting can carry an encounter or reward across slots (TASK-058, 2026-11-26) | The incoming slot restores the pack configuration, bottle count, lantern glass and codex receipt. Tests cover partial pickups, a bottle saved mid-fall, and loading a peaceful slot during a capture. |
 | Very large headings in shared links can freeze horizontal look (TASK-060, 2026-11-26) | Wrap the starting heading within one turn before converting it to radians so look input can adjust it. |
 | Invalid shared positions and interrupted gameplay events (TASK-060, 2026-11-26) | Both URL coordinates must be finite before teleporting. Each event observer can fail independently, so later listeners still receive the era change, reward or pause event. |
+| Player transitions can leave a pending attack, a blocked lens or stale motion (TASK-057 review, 2026-11-26) | Cancel the pending charge when focus drops the held attack, sweep the shoulder from the pivot, clear frozen flight velocity, and snap the avatar to the placement yaw under the travel curtain. |
+| Camera and movement state can carry across focus and placement changes (TASK-057, 2026-11-26) | Drop stale input on pointer-lock loss or blur. Clamp the shoulder offset against a wall on contact. Reset stride and avatar motion at placement boundaries and hold spirit flight during a movement freeze. |
 | Capture and audio work carry across a session change (TASK-054 review, 2026-11-26) | Replacing the session cancels the capture curtain, deferred dialogue and wake teleport. A new idle-bark countdown starts after any load or new game. Voice requests made during playback take priority over background preloads, including during manifest loading. |
 | Dialogue and bark state after load (TASK-054, 2026-11-26) | Loading ends the previous session's clip and clears its waiting subtitles and bark requests. Saved bark cooldowns resume with the loaded clock. When a recording is unavailable at playback time, the subtitle and murmur start immediately and the recording moves to the head of the preload queue. |
 | Fast travel can save the departure pose or leave a curtain on a newly opened game (TASK-030, 2026-11-26) | The autosave captures the arrival pose before the travel pause is released. Loading a slot or starting a game clears the curtain during its fade. |

@@ -151,6 +151,8 @@ export class Player {
     if (yaw !== undefined) this.yaw = yaw;
     this.vy = 0;
     this.push.t = 0;
+    this.strideAcc = 0;
+    this.bob = 0;
     this.renderPos.copy(this.position);
     this.rig.reset();
     this.events.emit('player:teleport', { x, z });
@@ -368,6 +370,10 @@ export class Player {
   }
 
   private updateFly(dt: number, wx: number, wz: number, fz: number): void {
+    if (this.frozen) {
+      this.flyVel.set(0, 0, 0);
+      return;
+    }
     const fast = this.input.isDown('sprint');
     const sp = fast ? FLY_FAST : FLY_SPEED;
     // forward/back follow the view pitch, strafing stays level
