@@ -34,8 +34,9 @@ the in-scope defects that the tests demonstrate.
 
 - [x] Record player-facing behaviour, existing unit coverage and gaps by module.
 - [x] Add at least 25 meaningful assertions across the area in about three seconds or less.
-- [ ] Reproduce each confirmed bug before editing production code, commit each fix separately,
-  and record unresolved design choices as test todos.
+- [x] Reproduce each confirmed bug before editing production code and record unresolved design
+  choices as test todos.
+- [ ] Commit the two production fixes separately. Git staging was blocked by the worktree index lock.
 - [x] Document behaviour changes, add a PRD changelog row and document any new test helper.
 - [x] Run typecheck, unit tests with zero failures, content validation and the production build.
   The validator entry point passed with Node's loader after the package command was sandbox-blocked.
@@ -68,9 +69,43 @@ owners. Exercise their boundaries through the in-scope systems.
 
 **Open questions:** Record ambiguous player behaviour during the sweep.
 
+### Review fix round
+
+Ensure that time travel takes over movement cleanly from a court escort, a save
+flushed during cinematic disposal can complete the interrupted shot on load, and
+the inspection reload test exercises the load handler with active timers.
+
+- [x] Reproduce the escort freeze through the real reduced-motion shift and test
+  that the player can walk after `shift:done`.
+- [x] Reproduce the missing cinematic completion with a fresh runtime on the same
+  storage and verify the saved shot completes once as skipped.
+- [x] Load while the inspection ring or hold timer is active and verify each clears.
+- [x] Update the behaviour docs and PRD changelog.
+- [x] Run the four gate commands and check browser availability. Record any sandbox blockers.
+- [ ] Record review commits after Git can write the worktree index.
+
 ## Progress
 
 - Branch: `dev/task-055`.
+- 2026-11-26 review: The focused tests reproduced the frozen player after `shift:done`
+  and the missing `cinematic:end` after reloading the flushed autosave. The two
+  inspection cases each failed with a 0.7 s timer when the court load reset was
+  temporarily removed. Both timer cases passed with the original load handler.
+- 2026-11-26 review: The court releases escorts before the shift captures movement and
+  suspends court checks until `shift:done`. Cinematic disposal preserves the interrupted
+  ID in the flushed save. The focused run passed 46 tests with two existing design todos.
+- 2026-11-26 review: `pnpm typecheck` and `pnpm build` passed. `pnpm test` reported
+  `Test Files  125 passed (125)` and `Tests  1627 passed | 3 todo (1630)` with zero failures.
+  The `pnpm validate` wrapper failed at the `tsx` IPC socket with `listen EPERM`.
+  `node --import tsx scripts/validate-content.ts` reported `✓ content valid (1 warning(s))`.
+- 2026-11-26 review: The preview bind on `127.0.0.1:5442` failed with `listen EPERM`.
+  Playwright listed all 13 tests in the court, cinematic and smoke specs. Browser verification
+  is pending in an environment that permits the preview server.
+- 2026-11-26 review: Git denied creating the worktree `index.lock` after the first staging
+  operation. The full changes remain in the worktree and the court changes are partly staged.
+- 2026-11-26 review dispositions: **Fixed** the pre-existing escort freeze with the
+  shift handoff. **Fixed** the branch's cinematic disposal regression by preserving the
+  interrupted ID. **Fixed** the branch's reload test by exercising both active timers.
 - 2026-11-26: The initial cinematic, court, Bleiche and disguise suites passed (61 tests).
   The inventory below identifies gaps in the player-facing integrations.
 - 2026-11-26: The focused run against unchanged production code had 105 passing tests,
@@ -96,23 +131,22 @@ owners. Exercise their boundaries through the in-scope systems.
   Recorded as a todo in `cinematic-system.test.ts`.
 - Decide which set piece takes precedence when a court escort overlaps a cinematic.
   Recorded as a todo in `court-system.test.ts`.
-- Run each listed browser spec separately with
+- Run `court.spec.ts`, `cinematic.spec.ts` and `smoke.spec.ts` separately with
   `KQ_E2E_PORT=5442 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/<spec>.spec.ts --workers=1 --reporter=line`.
+- Rerun `pnpm validate` in an environment that permits the `tsx` IPC socket.
 
-### Intended commits
+### Intended review commits
 
-Use `Co-Authored-By: Codex <noreply@openai.com>` as the trailer on each commit.
+```sh
+git add -- e2e/court.spec.ts src/systems/contracts.ts src/systems/court/index.ts src/systems/fx/shift/shift.ts tests/court-system.test.ts tests/shift-lifecycle.test.ts &&
+  git commit -m 'fix(story): release court escorts before an era shift' -m 'Co-Authored-By: Codex <noreply@openai.com>'
 
-1. `test(story): cover cinematic and court set piece contracts` for the passing-on-main coverage,
-   including Bleiche geometry, and its DOM fixture.
-2. `fix(camera): restore gameplay field of view after consecutive cinematics` for
-   `takeover.ts`, its focused regression and the cinematic browser extension.
-3. `fix(story): clear the cinematic marker before releasing the autosave hold` for
-   `cinematic/index.ts` and its disposal regression.
-4. `fix(story): release interrupted court escorts` for `court/index.ts`, the interrupted escort
-   regressions and the court browser extension.
-5. `docs(story): document cinematic and court set piece regressions` for the task inventory and
-   the architecture, design and changelog updates.
+git add -- src/systems/cinematic/index.ts tests/cinematic-system.test.ts &&
+  git commit -m 'fix(story): preserve cinematic completion across disposal' -m 'Co-Authored-By: Codex <noreply@openai.com>'
+
+git add -- .mc/tasks/todo/TASK-055-cinematics-set-pieces-tests.md docs/ACTION-RPG.md docs/ARCHITECTURE.md docs/IDEAS-ROUND11.md docs/PRD.md &&
+  git commit -m 'docs(story): record TASK-055 review fixes' -m 'Co-Authored-By: Codex <noreply@openai.com>'
+```
 
 ## Coverage inventory
 

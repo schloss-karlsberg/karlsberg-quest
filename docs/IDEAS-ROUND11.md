@@ -331,7 +331,9 @@ pass within 4 m.
 
 **Saves and other systems:** flags `disguise.coat`, `disguise.letter`, `court.admitted` and
 `court.ejected` persist. Loading a save or changing eras cancels an in-progress escort and
-releases its movement lock. The escort count records only relocations that have occurred.
+releases its movement lock. A Q return releases the escort's lock before the transition freezes
+movement and suspends court checks until the shift ends. Loading also clears the gate inspection
+ring and the letter hold timer. The escort count records only relocations that have occurred.
 Fast travel to the `ehrenhof` survey point while not admitted lands you at
 1180/−1112 (outside), with a toast.
 

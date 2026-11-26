@@ -27,12 +27,13 @@ function setup(opts: {
   title?: () => boolean;
   files?: Record<string, CinematicFile>;
   heightAt?: () => number;
+  storage?: ReturnType<typeof memStorage>;
 } = {}) {
   const events = new EventBus();
   const log: [string, unknown][] = [];
   events.onAny((n, p) => log.push([n, p]));
   const state = new GameStateStore(createInitialState());
-  const save = new SaveManager(state, memStorage(), events, () => 100_000);
+  const save = new SaveManager(state, opts.storage ?? memStorage(), events, () => 100_000);
   const camera = new PerspectiveCamera(70, 1, 0.2, 7000);
   const player = { position: new Vector3(100, 10, 200), renderPos: new Vector3(100, 10, 200), yaw: 0.4, pitch: -0.2, eyeHeight: 1.6, frozen: false, lookLocked: false };
   let now = 0;
@@ -552,11 +553,13 @@ describe('cinematic system', () => {
     expect(s.player).toMatchObject({ frozen: false, lookLocked: false });
   });
 
-  it('clears the playing marker before flushing a held autosave on disposal', () => {
+  it('flushes a held autosave on disposal and completes the interrupted shot once on reload', () => {
     const dom = stubSetPieceDom();
-    const s = setup();
+    const storage = memStorage();
+    const s = setup({ storage });
     s.rt.play(ORBIT);
-    s.save.autosave('hidden', true);
+    expect(s.save.autosave('hidden', true)).toBe(false);
+    expect(s.save.has()).toBe(false);
     s.rt.dispose();
     expect(s.rt.playing).toBeNull();
     expect(s.player).toMatchObject({ frozen: false, lookLocked: false });
@@ -564,7 +567,15 @@ describe('cinematic system', () => {
     expect(s.save.held).toBe(false);
     expect(s.holds.size).toBe(0);
     expect(dom.root.attributes.has('data-kq-cinematic')).toBe(false);
-    expect(s.save.peek()?.systems.cinematic?.playing).toBeNull();
+    expect(s.named('cinematic:end')).toEqual([]);
+
+    const resumed = setup({ storage });
+    expect(resumed.save.load()).toBe(true);
+    resumed.events.emit('game:start', { resumed: true });
+    expect(resumed.named('cinematic:end')).toEqual([{ id: 'ring', skipped: true }]);
+    expect(resumed.named('cinematic:start')).toEqual([]);
+    expect(resumed.rt.playing).toBeNull();
+    expect(resumed.state.state.systems.cinematic?.playing).toBeNull();
   });
 
   it('plays the bundled deer shot on live targets and holds aim after a lost target', () => {

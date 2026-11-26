@@ -27,15 +27,17 @@ function trackErrors(page: Page): string[] {
 
 type Rec = { n: string; p: unknown }[];
 
-async function boot(page: Page): Promise<void> {
-  await page.goto('./?notitle&nosave&fresh&manual');
+async function boot(page: Page, { idle = false } = {}): Promise<void> {
+  await page.goto(`./?notitle&nosave&fresh&manual${idle ? '&idle' : ''}`);
   await page.waitForFunction(() => !!window.kq?.court && !!window.kq?.npc && !!window.kq?.travel, null, { timeout: 180_000 });
   await page.evaluate(() => {
     const k = window.kq!;
     const w = window as unknown as { rec: Rec };
     w.rec = [];
     k.ctx.events.onAny((n, p) => {
-      if (n.startsWith('court:') || n === 'npc:yaw' || n === 'player:costume' || n === 'story:cue') w.rec.push({ n, p: JSON.parse(JSON.stringify(p ?? null)) });
+      if (n.startsWith('court:') || n === 'npc:yaw' || n === 'player:costume' || n === 'story:cue' || n === 'shift:done') {
+        w.rec.push({ n, p: JSON.parse(JSON.stringify(p ?? null)) });
+      }
     });
     k.story?.look('day');
     if (k.ctx.era.current !== '1789') k.setEra('1789');
@@ -104,30 +106,37 @@ async function lossless(page: Page): Promise<string> {
   });
 }
 
-test('court: leaving the era during the escort fade gives control back', async ({ page }) => {
-  await boot(page);
+test('court: holding Q through the escort fade lets the player walk after the reduced-motion shift', async ({ page }) => {
+  await boot(page, { idle: true }); // Advance the shift on fixed steps under WebDriver.
   await setFlags(page, { 'disguise.coat': true });
   await spawn(page, COURT_WATCHER);
   await place(page, 1212, -1116, 0);
   await page.evaluate(() => {
     const k = window.kq!;
+    k.ctx.settings.update((s) => (s.reducedMotion = true), 'reducedMotion');
+    k.ctx.input.simulate('KeyQ', true);
+    k.step(60);
     k.ctx.events.emit('court:take', {});
     k.step(1);
   });
   expect((await court(page)).ejecting).toBe(true);
-  const afterShift = await page.evaluate(() => {
+  const duringShift = await page.evaluate(() => {
     const k = window.kq!;
-    k.setEra('today');
-    const { x, z } = k.ctx.player.position;
-    return [x, z];
+    k.step(24);
+    k.ctx.input.simulate('KeyQ', false);
+    return { escorting: k.court!.state().ejecting, frozen: k.ctx.player.frozen, era: k.ctx.era.current };
   });
-  await step(page, 75);
-  expect(await page.evaluate(() => window.kq!.ctx.player.frozen)).toBe(false);
-  expect(await page.evaluate(() => {
-    const { x, z } = window.kq!.ctx.player.position;
-    return [x, z];
-  })).toEqual(afterShift);
+  expect(duringShift).toEqual({ escorting: false, frozen: true, era: '1789' });
+  await step(page, 90);
+  expect(await events(page, 'shift:done')).toEqual([{ from: '1789', to: 'today', reason: 'return' }]);
   expect(await events(page, 'court:ejected')).toEqual([]);
+  const walked = await page.evaluate(() => {
+    const k = window.kq!;
+    const { x, z } = k.ctx.player.position;
+    k.press('KeyS', 30); // Walk away from the trough the player faces after returning.
+    return Math.hypot(k.ctx.player.position.x - x, k.ctx.player.position.z - z);
+  });
+  expect(walked).toBeGreaterThan(0.5);
 });
 
 test('court: a watcher sees the hi-vis vest — meter, caption, lossless ejection with the first-time hint', async ({ page }) => {

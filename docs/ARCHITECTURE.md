@@ -942,7 +942,9 @@ Round-4 (polish: set dressing) integration rules:
 ### fx (`src/systems/fx/`) – era shift, scan pulse, ambience, fire, Steinfraß
 - `shift:request {to, instant?}` → 3.5 s LiDAR transition (1.4 s crossfade in reduced motion,
   none when instant) → `shift:begin`, era switched + `shift:midpoint`, `shift:done`. Both paths
-  increment `meta.shifts` unless the reason is `caught`. `scan:mode` 1–3 → scan pulse. Era particles always.
+  increment `meta.shifts` unless the reason is `caught`. The transition emits `shift:begin` before
+  it captures and freezes movement, so the court can release an active escort. The transition
+  restores movement before `shift:done`. `scan:mode` 1–3 → scan pulse. Era particles always.
 - `threat:configure {kind:'fire'|'oblivion'}` → fire schedule over the real rooms (`fire:room`,
   `fire:progress`, smoke meter, `flags['fire.hold']` pauses it) / Steinfraß (`oblivion:progress`,
   pushed back by `clue:found`, `echo:start`, `oblivion:remember {amount?}`); full meter →
@@ -1844,10 +1846,11 @@ pitch / yaw; fov and the look keys fade / fog / sun / dark; smooth or linear eas
 carry over. The timeline runs on fixed steps (Esc / modals stop it); `cinematic:stop {id}` ends that cinematic at once (no grace, also
 when not skippable; for features that route the input themselves, e.g. the party); skip after 0.5 s by any key
 (not Esc / P / F-keys), click or touch; the HUD steps back except subtitles (`html[data-kq-cinematic]`),
-centre cards wait, autosaves are held (`save.hold`) and written after; a save that holds a playing
-cinematic ends it skipped after the load. Disposal clears the playing marker before releasing the
-autosave hold. When a new shot starts during hand-back, the final hand-back restores the gameplay
-field of view from before the first shot. Reduced motion: 'stills' = first and last key with a dip
+centre cards wait, and autosaves are held (`save.hold`) until playback ends. If the system is
+disposed during a shot, the deferred autosave retains the shot ID. On load or startup the runtime
+consumes the saved ID and emits one skipped end event. When a new shot starts during hand-back,
+the final hand-back restores the gameplay field of view from before the first shot.
+Reduced motion: 'stills' = first and last key with a dip
 through black (≤ 3 s), 'skip' = start + end skipped. Debug `kq.cinematic.play(id | spec)`, `skip()`,
 `at(id, t)`, `list()`, `playing()`. Tests: `tests/cinematic-keys.test.ts`,
 `tests/cinematic-system.test.ts`, `e2e/cinematic.spec.ts` (`cinematic-*.png`).
