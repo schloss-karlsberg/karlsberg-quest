@@ -1,6 +1,6 @@
 import { t } from '../i18n';
 import { clear, h } from './dom';
-import { tabStops, wrapTab } from './focus';
+import { containsFocus, tabStops, wrapTab } from './focus';
 import { PointerTap } from './pointerTap';
 
 export interface ModalAction {
@@ -105,7 +105,7 @@ export class ModalManager {
         return closed;
       },
       setBody: (body, title) => {
-        const refocus = bodyEl.contains(document.activeElement);
+        const refocus = containsFocus(bodyEl);
         if (title !== undefined) titleEl.textContent = title;
         const named = Boolean(titleEl.textContent);
         titleEl.hidden = !named;
@@ -173,7 +173,7 @@ export class ModalManager {
     this.stack.push(handle);
     this.onChange(this.stack.length);
     queueMicrotask(() => {
-      if (this.stack.at(-1) === handle && !page.contains(document.activeElement)) focusPage();
+      if (this.stack.at(-1) === handle && !containsFocus(page)) focusPage();
     });
     return handle;
   }

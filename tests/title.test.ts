@@ -21,6 +21,7 @@ vi.mock('../src/ui/dom', () => ({
         remove(...names: string[]) { for (const name of names) classes.delete(name); },
       },
       focus() {},
+      contains() { return false; },
       replaceChildren() {},
     };
     const id = props?.['data-testid'];
@@ -36,6 +37,8 @@ const stored = readFileSync(new URL('./fixtures/saves/v0.8.0.json', import.meta.
 const futureSave = JSON.stringify({ ...createInitialState(), version: STATE_VERSION + 1 }, null, 2) + '\n';
 
 function setup(enabled: boolean, raw: string | null = stored) {
+  const body = {};
+  vi.stubGlobal('document', { body, activeElement: body });
   const storage = new MemoryStorage();
   if (raw !== null) storage.setItem(SAVE_KEY('auto'), raw);
   const state = new GameStateStore(createInitialState());
@@ -62,6 +65,7 @@ function setupReplay(enabled = true) {
 }
 
 afterEach(() => {
+  vi.unstubAllGlobals();
   delete titleHooks.beforeNewGame;
   delete titleHooks.extraActions;
   clicks.clear();

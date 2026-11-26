@@ -133,7 +133,7 @@ describe('accessible UI', () => {
   it('applies the chapter-two inline branch through the story choice API before timeout', () => {
     vi.useFakeTimers();
     const { root, window, modals } = dom();
-    const overlays = new StoryOverlays(root, modals);
+    const overlays = new StoryOverlays(root, modals, () => {});
     const chapter = chapterTwo as StoryFile;
     const action = chapter.beats.find((b) => b.id === 'k2_8')?.on?.flatMap((r) => r.do).find((a): a is ChoiceAction => a.do === 'choice');
     expect(action).toBeDefined();
