@@ -724,10 +724,11 @@ open dialog, visible focus outlines.
 | Gesamtlautstärke, Musik, Geräusche, Stimmen, Umgebung | voices (dialogue, echo whispers) on their own bus; the music slider now also drives the dread drone |
 
 Pause → Steuerung reads the effective bindings each time it opens. It shares the settings
-editor's layout-aware labels and shows alternate keys and unbound actions, including the
-survey tools. Movement and keyboard look retain their direction groups, and relief cycling
-shows the Umschalt shortcut for each currently bound key. Resetting the editor restores the
-current defaults in the reference.
+editor's layout-aware labels for printable keys and localized names for control keys. It shows
+alternate keys and unbound actions, including the survey tools. Movement and keyboard look
+retain their direction groups. Relief cycling lists Umschalt chords and marks a bound Shift key
+as a standalone reverse shortcut. Escape is the fixed Pause key. Resetting the editor restores
+the current defaults in the reference.
 
 ## 7. Known gaps
 

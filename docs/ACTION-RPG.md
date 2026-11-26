@@ -83,7 +83,7 @@ player the Messstab at the Weiher. Combat starts in Chapter 1.
 
 | Verb | Desktop (default, remappable) | Notes |
 | --- | --- | --- |
-| **Smartphone camera** (photo mode) | **N** | Present only („Kein Netz“ in the past); good photos unlock codex cards; no XP |
+| **Smartphone camera** (photo mode) | **N** | The viewfinder opens in any era and shows „Kein Netz“ in the past. Good photos taken in the present unlock codex cards. Photos give no XP. |
 | Move / run / crouch / lie flat | WASD, Shift, C, X | Running costs **Atem** only while in combat |
 | Look | Mouse; keyboard `,` `.` Bild↑ Bild↓ | |
 | **Camera** | **Mouse wheel** zooms (1.8–8 m, kept in the save); **F5** switches over-the-shoulder ↔ first person (also in Einstellungen → Steuerung) | Third person is the default; the spirit view is always first person |
@@ -1072,6 +1072,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | A finished quest can look as if it paid every optional bonus (TASK-047) | In Aufgaben, a bonus objective is checked only if its saved count reached the target, even after turn-in. The journal does not award XP. |
 | Campaign encounter reloads and terrain edges (TASK-048 review, 2026-11-26) | The selected save restores cassowary misses and jaguar flares. Overlapping animals separate on walkable ground. A saved deer follows a valid departure chain, with invalid chains restored as gone. Scripted trails cap sampling along each segment. The Soll reload test rebuilds his placement and verifies single rewards. |
 | Encounters contradict the player's save or tracks (TASK-048, 2026-11-26) | Loading restores permanent calming, not misses/flares from later play. A departing fawn stays with its doe. Overlapping animals split the displacement. Hounds track the player's boots, not the Warner's; a held trail does not extend other prints' lifetimes. |
+| The controls reference can misstate fixed shortcuts and modifier-only bindings (TASK-027 review, 2026-11-26) | Pause shows Escape. A bound Shift key cycles Relief-Blick backward on its own. Printable keys use the keyboard layout when available. The phone row describes the toggle in any era. |
 | The controls reference can become stale after keyboard remapping (TASK-027, 2026-11-26) | Pause → Steuerung shows the current keys, including alternates, unbound actions and feature-added survey tools. It uses the same keyboard-layout labels as the settings editor. |
 | Separate collection and progression entries crowd Pause (TASK-007, 2026-11-26) | Sammlungen includes the Funde section. I and Pause open Ausrüstung & Talente, with both sections on one scrollable page. The Pause entry counts unspent talent points. |
 | The spring’s general E menu competes with the water interaction (TASK-007, 2026-11-26) | The water uses E or the touch action when the story calls for it. Pause handles saving, chapter replay and collections. Entering the present-day spring ring still heals, refills oil, resets the hunt and enables respec. Q-hold return and the wake spot stay at the spring. |

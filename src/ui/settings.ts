@@ -183,30 +183,30 @@ const KEY_NAMES: Record<string, string> = {
   Tab: 'Tab',
   Escape: 'Esc',
   Enter: 'Enter',
-  Backquote: '^',
   ArrowUp: '↑',
   ArrowDown: '↓',
   ArrowLeft: '←',
   ArrowRight: '→',
   PageUp: 'Bild↑',
   PageDown: 'Bild↓',
-  Comma: ',',
-  Period: '.',
   Mouse0: 'Maus links',
   Mouse1: 'Mausrad-Klick',
   Mouse2: 'Maus rechts',
 };
 
+const PUNCTUATION_FALLBACK: Record<string, string> = { Backquote: '^', Comma: ',', Period: '.' };
+
 /** Format a physical key code using the Keyboard Map API where available ('KeyW' → 'Z' on AZERTY). */
 export function keyLabel(code: string, layout = layoutMap): string {
+  const name = KEY_NAMES[code];
+  if (name) return name;
   const fromLayout = layout?.get(code);
-  if (fromLayout && fromLayout.trim() && !KEY_NAMES[code]) return fromLayout.length === 1 ? fromLayout.toUpperCase() : fromLayout;
-  if (KEY_NAMES[code]) return KEY_NAMES[code]!;
+  if (fromLayout?.trim()) return fromLayout.length === 1 ? fromLayout.toUpperCase() : fromLayout;
   const m = /^(Key|Digit)(.)$/.exec(code);
   if (m) return m[2]!;
   const np = /^Numpad(.+)$/.exec(code);
   if (np) return `Num ${np[1]}`;
-  return code;
+  return PUNCTUATION_FALLBACK[code] ?? code;
 }
 
 /** Key remapping table: every rebindable action with its keys (× removes), "+ Taste" captures one. */

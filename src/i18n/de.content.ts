@@ -6,7 +6,7 @@
  *  - Placeholders are ASCII identifiers so t() can fill them: {chapter} {date} {source} {page}
  *    {word} {words} {title} {name} {n} {p} {chapterTitle} {time} {team} {year}.
  *  - Key names in square brackets ([Q], [W][A][S][D]) are replaced from the key bindings by the UI.
- *  - ui.keys.<id> is the controls description; key labels come from the bindings.
+ *  - ui.keys.<id> is the controls description; fixed shortcuts use ui.keys.<id>.key.
  *  - ui.horn.<call> is the plain subtitle, ui.horn.<call>.tracker the one shown with skill Spurenleser 1.
  */
 export const deContent: Record<string, string> = {
@@ -21,6 +21,7 @@ export const deContent: Record<string, string> = {
   'ui.keys.spirit': 'Geisterblick: freier Flug über das Land (nur im Heute)',
   'ui.keys.scan': 'Relief-Blick wechseln: Schummerung / Lokales Relief / VAT. Mit Umschalt rückwärts.',
   'ui.keys.scan.reverse': 'Umschalt+{key}',
+  'ui.keys.scan.reverseOnly': '[{key}] (rückwärts)',
   'ui.keys.map': 'Karte vergleichen: 1840 oder 1935 über das Gelände legen',
   'ui.keys.listen': 'Sprechen oder untersuchen. Zum Lauschen gedrückt halten.',
   'ui.keys.examine': 'Untersuchen',
@@ -29,6 +30,7 @@ export const deContent: Record<string, string> = {
   'ui.keys.inventory': 'Ausrüstung & Talente öffnen',
   'ui.keys.measure': 'Messen: Strecke und Höhenprofil (ab Kapitel 2)',
   'ui.keys.pause': 'Pause: Aufgaben, Codex, Sammlungen, Ausrüstung & Talente, Karte, Album und Kapitel',
+  'ui.keys.pause.key': '[Esc]',
 
   // 4. Tutorial-Einblendungen (Prolog)
   'ui.tut.move': 'Gehe mit [W][A][S][D]. Schau mit der Maus.',

@@ -56,7 +56,7 @@ The owner's answers to the open questions, plus the earlier rulings:
 - **Q-hold** teleports to the Quelle.
 - **Old saves** are migrated without XP loss.
 - **The tour is skippable on replay**, starting at the break at the Quelle.
-- **Photo mode** is present-only („Kein Netz“ in the past), key N, no XP; good photos unlock codex cards.
+- **Photo mode:** N toggles the viewfinder in every era. It shows „Kein Netz“ in the past. Good photos in the present unlock codex cards. Photos give no XP.
 - **Storyboard:** 66–68 shots accepted; the budget is raised.
 - **Party drinks (Q12):** mulled wine plus children's punch, nobody drunk, no brands, no fireworks; fairy lights; a fire bowl in the burn ending.
 - **Jacket (Q13):** a bright outdoor jacket (orange or red), so „Feuersalamander“ and `laub.k1.orange` survive; costume by kq-characters (WP-13).

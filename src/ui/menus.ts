@@ -38,7 +38,7 @@ const CONTROL_ROWS: ControlRow[] = [
   { id: 'lantern', actions: ['lantern'] },
   { id: 'inventory', actions: ['inventory'] },
   { id: 'measure', actions: ['measure'] },
-  { id: 'pause', actions: ['pause'] },
+  { id: 'pause' },
 ];
 
 /** Feature rows register `ui.keys.<id>` and use `.key` for fixed shortcuts outside Input. */
@@ -46,13 +46,30 @@ export function addControlKeys(...rows: ControlRow[]): void {
   for (const row of rows) if (!CONTROL_ROWS.some(({ id }) => id === row.id)) CONTROL_ROWS.push(row);
 }
 
+function scanKeyLabels(codes: readonly string[], layout?: ReadonlyMap<string, string>): string[] {
+  const forward: string[] = [];
+  const reverse: string[] = [];
+  for (const code of codes) {
+    const key = keyLabel(code, layout);
+    if (code === 'ShiftLeft' || code === 'ShiftRight') {
+      reverse.push(t('ui.keys.scan.reverseOnly', { key }));
+    } else {
+      forward.push(`[${key}]`);
+      reverse.push(`[${t('ui.keys.scan.reverse', { key })}]`);
+    }
+  }
+  return [...forward, ...reverse];
+}
+
 export function controlKeyRows(overrides: Record<string, string[]>, layout?: ReadonlyMap<string, string>) {
   const bindings = effectiveBindings(overrides);
   return CONTROL_ROWS.map(({ id, actions }) => {
     const keys = actions?.map((action) => {
-      const labels = bindings[action].map((code) => keyLabel(code, layout));
-      if (action === 'scan') labels.push(...labels.map((key) => t('ui.keys.scan.reverse', { key })));
-      return labels.length ? labels.map((label) => `[${label}]`).join(' / ') : t('settings.keys.none');
+      const codes = bindings[action];
+      const labels = action === 'scan'
+        ? scanKeyLabels(codes, layout)
+        : codes.map((code) => `[${keyLabel(code, layout)}]`);
+      return labels.length ? labels.join(' / ') : t('settings.keys.none');
     }).join(' · ') ?? t(`ui.keys.${id}.key`);
     return { id, keys, description: t(`ui.keys.${id}`) };
   });

@@ -19,7 +19,7 @@ describe('Steuerung key help', () => {
       listen: '[E]',
       examine: '[Maus links]',
       scan: '[2] / [Umschalt+2]',
-      pause: '[Esc] / [P]',
+      pause: '[Esc]',
       spirit: '[1]',
       measure: '[3]',
       relief_off: '[^]',
@@ -59,6 +59,16 @@ describe('Steuerung key help', () => {
     expect(rowValues(new SettingsStore(storage).state.bindings)).toEqual(rowValues());
   });
 
+  it('keeps Escape fixed even with a saved pause override', () => {
+    expect(rowValues({ pause: ['KeyP'] }).pause).toBe('[Esc]');
+  });
+
+  it('shows either bound Shift key as a standalone reverse scan shortcut', () => {
+    expect(rowValues({ scan: ['ShiftLeft'] }).scan).toBe('[Umschalt] (rückwärts)');
+    expect(rowValues({ scan: ['ShiftRight', 'Digit2'] }).scan)
+      .toBe('[2] / [Umschalt r.] (rückwärts) / [Umschalt+2]');
+  });
+
   it('uses supplied layout labels while preserving localized special keys', () => {
     const layout = new Map([['KeyW', 'z'], ['KeyY', 'ü'], ['ArrowUp', 'up']]);
     const rows = rowValues({ listen: ['KeyY'], scan: ['KeyY'], plans: ['KeyY'] }, layout);
@@ -67,6 +77,18 @@ describe('Steuerung key help', () => {
       listen: '[Ü]',
       scan: '[Ü] / [Umschalt+Ü]',
       plans: '[Ü]',
+    });
+  });
+
+  it('prefers supplied punctuation and digit-key labels', () => {
+    const layout = new Map([
+      ['Backquote', '`'], ['Comma', ';'], ['Period', ':'], ['Digit2', 'é'], ['Digit4', "'"],
+    ]);
+    expect(rowValues({}, layout)).toMatchObject({
+      turn: '[←] / [;] / [Num 4] · [→] / [:] / [Num 6] · [Bild↑] / [Num 8] · [Bild↓] / [Num 2]',
+      scan: '[É] / [Umschalt+É]',
+      relief_off: '[`]',
+      xray: "[']",
     });
   });
 });

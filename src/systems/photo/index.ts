@@ -52,7 +52,7 @@ addStrings('de', {
   'photo.album.session': 'Bilder dieser Sitzung; nach dem Neuladen bleibt die Karte.',
   'photo.album.cards': 'Fotokarten',
   'photo.stars': '{n} von 3 Sternen',
-  'ui.keys.photo': 'Handy-Kamera öffnen oder wegstecken (nur in der Gegenwart)',
+  'ui.keys.photo': 'Handy-Kamera öffnen oder wegstecken',
 });
 
 declare module '../../core/events' {
