@@ -4,8 +4,8 @@
  * page), then the party with the credits strip over it (bible 06-enden §8, `deps.party`); the
  * scrolling credits page with sources and data licences stays for `kq.story.credits()`.
  */
+import { creditsReducedMotion } from '../../../core/motion';
 import type { AttributionItem } from '../../../data/types';
-import { prefersReducedMotion } from '../../../core/save';
 import { t } from '../../../i18n';
 import { h, svg } from '../../../ui/dom';
 import type { ModalHandle, ModalManager } from '../../../ui/modal';
@@ -82,10 +82,7 @@ export class EndingScreen {
 
   /** Opens the choice (or `ending` directly at the scene, for debugging). */
   show(ending?: EndingId, staged = false): void {
-    if (!this.open) {
-      this.m = this.d.modals.open({ closable: false, className: 'kqs-ending', wide: true });
-      this.m.el.dataset.testid = 'ending';
-    }
+    this.ensureModal();
     if (ending) {
       this.ending = ending;
       if (staged) this.play();
@@ -96,6 +93,12 @@ export class EndingScreen {
   close(): void {
     this.m?.close();
     this.m = null;
+  }
+
+  private ensureModal(): void {
+    if (this.open) return;
+    this.m = this.d.modals.open({ closable: false, className: 'kqs-ending', wide: true });
+    this.m.el.dataset.testid = 'ending';
   }
 
   private page(stage: string, cls: string, body: HTMLElement[]): void {
@@ -161,12 +164,14 @@ export class EndingScreen {
       line('Marlene', 'radio', [s.marlene.replace('{Name}', this.d.name())]),
       h('p.kqs-end-picture', s.picture),
       h('p.kqs-fic-note', t('story.tag.fiction')),
-      h('div.actions', [h('button.kq-btn.primary', { 'data-testid': 'ending-next', onclick: () => this.epilogue() }, t('story.end.next'))]),
+      h('div.actions', [h('button.kq-btn.primary', { 'data-testid': 'ending-next', onclick: () => this.showEpilogue(id) }, t('story.end.next'))]),
     ]);
   }
 
-  private epilogue(): void {
-    const id = this.ending!;
+  /** Opens the epilogue after the ending scene or when resuming its save. */
+  showEpilogue(id: EndingId): void {
+    this.ensureModal();
+    this.ending = id;
     const e = this.d.epilogue(id);
     this.page('epilogue', `kqs-end-${id}`, [
       h('div.kqs-epilogue', { 'data-testid': 'epilogue' }, [
@@ -185,6 +190,7 @@ export class EndingScreen {
 
   /** The epilogue's last button: the modal closes and the party takes over (else the credits page). */
   private party(): void {
+    if (!this.open || this.stage !== 'epilogue') return;
     const id = this.ending;
     if (!id || !this.d.party) return this.credits();
     this.close();
@@ -215,7 +221,7 @@ export class EndingScreen {
         h('ul', creditData(this.d.attribution()).map(({ label, text, licence }) => h('li', [h('b', `${label}: `), text, ` — ${licence}`]))),
       ] : []),
     ])));
-    const reduced = this.d.reducedMotion() || prefersReducedMotion();
+    const reduced = creditsReducedMotion(this.d.reducedMotion());
     const viewport = h('div.kqs-cr-view', { 'data-testid': 'credits', tabindex: 0, 'aria-label': 'Abspann', role: 'region' }, roll);
     if (reduced) viewport.classList.add('kqs-static');
     const scrub = (s: number) => {

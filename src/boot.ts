@@ -6,11 +6,13 @@ import type { EraController, GameContext, PauseController } from './core/context
 import { ERA_INFO, type Era, isEra } from './core/era';
 import { EventBus } from './core/events';
 import { FixedStepLoop, frameCap, renderRate } from './core/loop';
+import { motionTime, screenFlashScale } from './core/motion';
 import { SaveManager, SettingsStore, defaultStorage } from './core/save';
 import { DEFAULT_SPAWN, GameStateStore, createInitialState } from './core/state';
 import { SystemRegistry } from './core/systems';
 import { loadGameData } from './data/loader';
 import { installDebug } from './debug/hooks';
+import { spawnFromParams } from './debug/spawn';
 import { t } from './i18n';
 import { AVATAR_MODELS, Avatar, type AvatarModelId, avatarModelParam } from './player/avatar';
 import { cameraHints } from './player/camera';
@@ -61,6 +63,8 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.toneMapping = NoToneMapping;
   renderer.domElement.tabIndex = 0;
+  renderer.domElement.inert = true;
+  renderer.domElement.setAttribute('aria-label', t('game.field'));
   container.append(renderer.domElement);
   const scene = new Scene();
   const camera = new PerspectiveCamera(70, 1, 0.2, 7000);
@@ -129,7 +133,11 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   // ---- title screen (shown immediately while data loads)
   let ctxRef: GameContext | null = null;
   const title = new TitleScreen({
-    onStart: (fresh) => startGame(fresh),
+    save,
+    onStart: (mode) => {
+      if (mode === 'continue') applyStartOverrides();
+      startGame(mode === 'new' ? 'new' : 'restore');
+    },
     onLicences: () => openLicences({ modals: ui.modals, attribution: () => ctxRef?.data.attribution.items ?? [] }),
     onNews: () => openNews(ui.modals, () => title.refreshNews()),
     confirm: (text) => ui.modals.confirm(text),
@@ -206,6 +214,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
 
   // ---- input + player
   const input = new Input(renderer.domElement);
+  input.enabled = false;
   const player = new Player(
     {
       heightAt: (x, z) => world.heightAt(x, z),
@@ -286,7 +295,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     root.toggleAttribute('data-kq-reduced-flash', s.reducedFlash === true);
     root.toggleAttribute('data-kq-colorblind', s.colorblind === true);
     root.style.setProperty('--sub-bg', String(Math.max(0, Math.min(1, s.subtitleBg ?? 0.62))));
-    post.uniforms.uFlashScale!.value = s.reducedFlash ? 0.2 : 1;
+    post.uniforms.uFlashScale!.value = screenFlashScale(s.reducedMotion, s.reducedFlash);
     world.terrain.uniforms.uPalette!.value = s.colorblind ? 1 : 0;
   };
   settings.subscribe((_, key) => {
@@ -335,15 +344,19 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   };
   if (!params.has('fresh') && save.has()) save.load();
   restore();
-  // any later load (e.g. the title's "Ende noch einmal wählen") puts the world where the state is
+  // Loads from the title or during play put the world where the loaded state is.
   events.on('save:loaded', () => {
     ui.cards.clearToasts();
     restore();
   });
   // URL overrides (debug / e2e / sharing a spot)
-  const qEra = params.get('era');
-  if (isEra(qEra)) era.set(qEra);
-  if (params.has('x') && params.has('z')) player.teleport(Number(params.get('x')), Number(params.get('z')), params.has('yaw') ? (Number(params.get('yaw')) * Math.PI) / 180 : undefined);
+  function applyStartOverrides(): void {
+    const qEra = params.get('era');
+    if (isEra(qEra)) era.set(qEra);
+    const spawn = spawnFromParams(params);
+    if (spawn) player.teleport(spawn.x, spawn.z, spawn.yaw);
+  }
+  applyStartOverrides();
   ui.hud.setEraLabel(t(ERA_INFO[world.currentEra].labelKey));
   if (skipTitle) void loadPalace();
   updateSurfaceQuality();
@@ -357,43 +370,25 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
       systems.update(dt, ctx);
       player.writeState(state.mutable.player);
       state.mutable.meta.playSeconds += dt;
+      if (started) save.retryAutosave();
       input.endStep();
     },
-    render: (frameDt, alpha) => {
+    render: (frameDt, alpha, pass) => {
       // the first frame after a held view (menu, bullet time), or a bullet-time frame long after
       // the last one: the idle gap is no frame time
-      const now = performance.now();
-      if (loop.resumed || (loop.manual && holdIdle && now - lastRenderAt > 250)) perf.resetClock();
-      lastRenderAt = now;
-      perf.begin();
-      if (!pause.paused) player.look();
-      player.applyCamera(camera, alpha, frameDt);
-      cameraOverride.fn?.(camera);
-      if (reasons.has('title')) {
-        // title backdrop: slow drift of the view
-        const tt = performance.now() / 1000;
-        camera.rotation.y += Math.sin(tt * 0.07) * 0.08;
-        camera.rotation.x = -0.02 + Math.sin(tt * 0.05) * 0.02;
+      if (pass !== 'prepare') {
+        const now = performance.now();
+        if (loop.resumed || (loop.manual && holdIdle && now - lastRenderAt > 250)) perf.resetClock();
+        lastRenderAt = now;
+        perf.begin();
       }
-      systems.frame(frameDt, ctx);
-      // the character (after the systems: combat's pose of this frame, cut-scene cameras known);
-      // a cinematic's takeover keeps it in the picture (showAvatar), the debug camera hides it
-      avatar.frame({ dt: pause.paused && !reasons.has('title') ? 0 : frameDt, time: loop.time, camera, hidden: cameraOverride.fn !== null && !takeover.showsAvatar(cameraOverride.fn), reducedMotion: settings.state.reducedMotion, reducedFlash: settings.state.reducedFlash === true });
-      // see-through (round 10): trunks, ferns, rocks in front of the character / the target / the
-      // speaker, or at the lens, dither away (src/player/seeThrough.ts, SEE_GLSL)
-      updateSee();
-      // the zoom the player chose stays (saved a moment after the wheel stops)
-      if (Math.abs(player.rig.zoom - zoomSaved) > 0.05 && !zoomTimer) zoomTimer = window.setTimeout(() => {
-        zoomTimer = 0;
-        zoomSaved = player.rig.zoom;
-        settings.update((d) => (d.cameraZoom = Math.round(player.rig.zoom * 100) / 100), 'cameraZoom');
-      }, 1500);
-      // the HUD calm counts real play time (frames), so a fight's linger also ends in ?manual
-      if (!pause.paused) ui.hud.tickCalm(frameDt);
-      ui.cards.tick(frameDt);
-      world.frame(camera, frameDt, loop.time + (reasons.has('title') ? performance.now() / 1000 : 0));
-      audio.updateListener(camera);
-      ui.hud.setHeading(((-player.yaw * 180) / Math.PI + 360) % 360);
+      if (pass !== 'paint') prepareFrame(frameDt, alpha);
+      if (pass === 'prepare') {
+        // Keep the transforms that the renderer normally updates for the next interaction.
+        scene.updateMatrixWorld();
+        camera.updateMatrixWorld();
+        return;
+      }
       // sun shadows around the player (box pushed ahead along the view) and the era sky IBL
       camera.getWorldDirection(camFwd);
       camFwd.y = 0;
@@ -414,6 +409,38 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
       frames++;
     },
   });
+
+  function prepareFrame(frameDt: number, alpha: number): void {
+    if (!pause.paused) player.look();
+    player.applyCamera(camera, alpha, frameDt);
+    cameraOverride.fn?.(camera);
+    const titleActive = reasons.has('title');
+    const titleTime = titleActive ? motionTime(performance.now() / 1000, settings.state.reducedMotion) : 0;
+    if (titleActive) {
+      // title backdrop: slow drift of the view
+      camera.rotation.y += Math.sin(titleTime * 0.07) * 0.08;
+      camera.rotation.x = -0.02 + Math.sin(titleTime * 0.05) * 0.02;
+    }
+    systems.frame(frameDt, ctx);
+    // the character (after the systems: combat's pose of this frame, cut-scene cameras known);
+    // a cinematic's takeover keeps it in the picture (showAvatar), the debug camera hides it
+    avatar.frame({ dt: pause.paused && !reasons.has('title') ? 0 : frameDt, time: loop.time, camera, hidden: cameraOverride.fn !== null && !takeover.showsAvatar(cameraOverride.fn), reducedMotion: settings.state.reducedMotion, reducedFlash: settings.state.reducedFlash === true });
+    // see-through (round 10): trunks, ferns, rocks in front of the character / the target / the
+    // speaker, or at the lens, dither away (src/player/seeThrough.ts, SEE_GLSL)
+    updateSee();
+    // the zoom the player chose stays (saved a moment after the wheel stops)
+    if (Math.abs(player.rig.zoom - zoomSaved) > 0.05 && !zoomTimer) zoomTimer = window.setTimeout(() => {
+      zoomTimer = 0;
+      zoomSaved = player.rig.zoom;
+      settings.update((d) => (d.cameraZoom = Math.round(player.rig.zoom * 100) / 100), 'cameraZoom');
+    }, 1500);
+    // the HUD calm counts real play time (frames), so a fight's linger also ends in ?manual
+    if (!pause.paused) ui.hud.tickCalm(frameDt);
+    ui.cards.tick(frameDt);
+    world.frame(camera, frameDt, loop.time + titleTime);
+    audio.updateListener(camera);
+    ui.hud.setHeading(((-player.yaw * 180) / Math.PI + 360) % 360);
+  }
   loopRef = loop;
   // Render pacing (core/loop.ts `renderRate`, docs/ARCHITECTURE.md §3): the player's cap while
   // playing, ≤ 30 fps on the title, menus at 15 fps or holding their last frame, bullet time only
@@ -433,6 +460,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     });
   sync();
   if (params.has('manual')) loop.manual = true;
+  loop.holdVisualTime = params.has('holdvisuals');
   let frames = 0;
   let lastRenderAt = 0;
   let zoomTimer = 0;
@@ -546,6 +574,8 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   // ---- modals pause the game and free the mouse
   ui.modals.onChange = (n) => {
     modalOpen = n;
+    renderer.domElement.inert = n > 0 || !started;
+    if (!started) title.el.inert = n > 0;
     modalChanged = performance.now();
     loop.requestRender();
     input.enabled = n === 0 && started;
@@ -641,7 +671,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     }
   });
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden && started) save.autosave('hidden', true);
+    if (document.hidden && started) save.flushAutosave('hidden');
     perf.resetClock();
     quality.hold();
     // a hidden tab draws nothing (rAF stops anyway) and its sound stops too (HRTF, wind, drones)
@@ -670,9 +700,9 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   for (const ev of ['mousemove', 'mousedown', 'keydown', 'wheel', 'pointerdown', 'pointermove', 'pointerup'] as const) window.addEventListener(ev, () => loop.manual && loop.requestRender(), { passive: true });
   window.setInterval(() => started && !pause.paused && save.autosave('interval'), 60_000);
 
-  function startGame(fresh: boolean): void {
+  function startGame(mode: 'new' | 'restore' | 'direct'): void {
     audio.unlock();
-    if (fresh) {
+    if (mode === 'new') {
       save.delete();
       state.replace(createInitialState(), 'new');
       restore();
@@ -683,6 +713,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
       events.emit('save:loaded', { slot: 'new' });
     }
     started = true;
+    renderer.domElement.inert = modalOpen > 0;
     title.hide(settings.state.reducedMotion);
     ui.loading.setEnabled(!shifting);
     ui.hud.show(true);
@@ -692,27 +723,28 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     updateSurfaceQuality();
     touch.setPlaying(modalOpen === 0);
     pause.pop('title');
-    input.requestLock();
+    // Title restores have already loaded a slot, including old saves without a timestamp.
+    startPlay(ctx, mode === 'restore' || (mode === 'direct' && state.state.meta.savedAt !== null));
     // the first click into the picture takes the mouse (pointer lock): say so until it has it
     // (playtest 2026-11-19: the view did not turn and nothing said why)
     window.setTimeout(() => ui.hud.showClickToPlay(started && !input.locked && modalOpen === 0), 900);
-    events.emit('game:start', { resumed: !fresh && state.state.meta.savedAt !== null });
     save.autosave('start', true);
   }
 
   function toTitle(): void {
-    save.autosave('title', true);
+    pause.push('title');
+    events.emit('game:title', {});
+    save.flushAutosave('title');
     started = false;
+    renderer.domElement.inert = true;
     ui.loading.setEnabled(false);
     input.enabled = false;
     touch.setPlaying(false);
     input.releaseLock();
     ui.cards.clearToasts();
     ui.hud.show(false);
-    pause.push('title');
     if (!title.el.isConnected) ui.add(title.el);
     title.show();
-    title.setReady(save.has());
   }
 
   // ---- feature systems
@@ -769,11 +801,11 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   }
   if (skipTitle) {
     await loadPalace();
-    startGame(false);
+    startGame('direct');
     loader.hide();
   } else {
     // The present-day title needs only the opening assets. The palace streams once play starts.
-    title.setReady(save.has());
+    title.setReady();
   }
   mark('ready');
   // Compile the current scene in parallel (KHR_parallel_shader_compile). The shift's own warmer
@@ -796,6 +828,12 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     );
   }
   return ctx;
+}
+
+export function startPlay({ events, ui, input }: Pick<GameContext, 'events' | 'ui' | 'input'>, resumed: boolean): void {
+  // A resume handler can restore a modal synchronously while pointer lock is granted asynchronously.
+  events.emit('game:start', { resumed });
+  if (ui.modals.count === 0) input.requestLock();
 }
 
 /** `?kapitel=N`: jump a freshly started game to chapter N (see boot). */

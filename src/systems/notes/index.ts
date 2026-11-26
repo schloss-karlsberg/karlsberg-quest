@@ -159,6 +159,10 @@ class Notes {
       }
     });
     const ev = ctx.events;
+    // the story repeats the slot's saved objective when it resumes: that is no progress either
+    const savedObjective = () => (this.storyObjective = ctx.state.state.systems.story?.objective?.text ?? null);
+    savedObjective();
+    this.offs.push(ctx.state.subscribe((_s, reason) => (reason === 'load' || reason === 'new' || reason === 'replace') && savedObjective()));
     this.offs.push(ev.onAny((name, payload) => this.ring.push(now(), name, payload)));
     const play = () => ctx.state.state.meta.playSeconds;
     this.offs.push(
@@ -170,8 +174,9 @@ class Notes {
       ev.on('quest:progress', () => this.tele.progress()),
       ev.on('quest:objective', () => this.tele.progress()),
       ev.on('quest:ready', () => this.tele.progress()),
-      ev.on('story:beat', () => this.tele.progress()),
-      ev.on('story:chapter', () => this.tele.progress()),
+      // a beat or chapter entered again (a load, a boot, a wake) is no progress
+      ev.on('story:beat', ({ resume }) => !resume && this.tele.progress()),
+      ev.on('story:chapter', ({ resume }) => !resume && this.tele.progress()),
       ev.on('objective:set', ({ text }) => {
         if (text !== this.storyObjective) this.tele.progress();
         this.storyObjective = text;
@@ -203,7 +208,7 @@ class Notes {
     notesPauseHooks.count = () => this.n;
     notesPauseHooks.exportAll = () => void this.download();
     notesPauseHooks.clearAll = () => this.clear();
-    addControlKeys('notes');
+    addControlKeys({ id: 'notes' });
   }
 
   /** The quest the HUD leads to (null without the quests system). */
@@ -298,7 +303,7 @@ class Notes {
     if (this.ctx.pause.reasons.has('title')) return false;
     // the moment is taken when F8 is pressed, not when the note is done
     const snap = this.snapshot(this.screenshot());
-    const area = h('textarea.kq-notes-text', { 'data-testid': 'notes-text', rows: '4', maxlength: '4000', placeholder: t('notes.placeholder'), style: 'width:100%;box-sizing:border-box;font:inherit;resize:vertical;min-height:6em' });
+    const area = h('textarea.kq-notes-text', { 'aria-label': t('notes.title'), 'data-testid': 'notes-text', rows: '4', maxlength: '4000', placeholder: t('notes.placeholder'), style: 'width:100%;box-sizing:border-box;font:inherit;resize:vertical;min-height:6em' });
     const status = h('p.kq-notes-status', { style: 'min-height:1.2em;margin:0.3em 0 0;opacity:0.8' });
     const body = [
       area,
@@ -332,8 +337,6 @@ class Notes {
       }
       // F8 in the field: nothing (no second field)
     });
-    // after the modal's own focus (first button)
-    queueMicrotask(() => area.focus());
     return true;
   }
 

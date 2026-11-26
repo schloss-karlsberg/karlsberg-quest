@@ -87,6 +87,8 @@ declare module '../core/events' {
       id?: string;
       /** 'now': a tutorial for the action at hand cuts in (default: the line queues). */
       priority?: 'now' | 'normal' | 'low';
+      /** Put the phone away and keep it down until this line finishes. */
+      phoneDown?: boolean;
       /** A story Condition (story/types.ts): once it holds, the line is no longer worth saying. */
       until?: unknown;
       /** Not bound to the current beat (quest turn-ins teach history: a beat change never drops them). */
@@ -97,8 +99,9 @@ declare module '../core/events' {
        */
       lore?: boolean;
     };
-    'story:chapter': { id: string };
-    'story:beat': { chapter: string; beat: string };
+    /** `resume`: the chapter / beat is entered again after a load or a capture, not reached anew. */
+    'story:chapter': { id: string; resume?: true };
+    'story:beat': { chapter: string; beat: string; resume?: true };
     'story:ending': { id: 'museum' | 'burn' | 'keep' };
     'hub:enter': Record<string, never>;
     'hub:leave': Record<string, never>;
@@ -106,6 +109,7 @@ declare module '../core/events' {
     'chronik:open': { caseId?: string };
 
     // ---- fx (owner: fx) -------------------------------------------------------------------
+    /** A shift has started, before the effect takes over player movement. */
     'shift:begin': { from: Era; to: Era };
     /** Era has just been switched under cover of the effect. */
     'shift:midpoint': { from: Era; to: Era };
@@ -151,7 +155,8 @@ declare module '../core/events' {
     'clue:found': { id: string; kind: string };
     'noun:learned': { id: string };
     'echo:start': { id: string };
-    'echo:end': { id: string };
+    /** Releases the echo scene. `aborted` distinguishes interruptions from heard or skipped echoes. */
+    'echo:end': { id: string; aborted?: true };
     /** A memory's line comes up (subtitle shown): set pieces stage what the line is about. */
     'echo:line': { id: string; line: string; i: number; dur: number };
     'chronik:batch': { caseId: string; correct: boolean; confirmed: string[] };
@@ -188,8 +193,8 @@ declare module '../core/events' {
     'clue:grant': { id: string; card?: boolean };
     /** story → barks: a memorial place where nobody jokes (bible: Rondell 1785, Festsaal W5). */
     'memorial:set': { id: string; active: boolean; x?: number; z?: number; r?: number; era?: string; room?: string };
-    /** story → hunt: light / douse the lantern (oil timer meters), optionally refilled first. */
-    'lantern:request': { lit: boolean; refill?: boolean };
+    /** Light / douse the lantern. `refill: true` fills it, a number adds that fraction of a tank. */
+    'lantern:request': { lit: boolean; refill?: boolean | number };
 
     // ---- interiors (owner: interiors) -----------------------------------------------------
     /**

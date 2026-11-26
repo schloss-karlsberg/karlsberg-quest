@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 import { openPause, waitForHooks } from './helpers/pause';
+import { SCREENS } from './helpers/common';
 
 /**
  * Action-RPG quests (docs/ACTION-RPG.md §8): Hanne gives a task (! over her head) → accept in the
@@ -11,7 +12,6 @@ import { openPause, waitForHooks } from './helpers/pause';
  * Test chapter content/story/99-test.story.json + content/quests/99-test.quests.json (?storytest).
  * Screenshots: test-results/screens/qst-*.png
  */
-const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 test.describe.configure({ timeout: 300_000 });
 

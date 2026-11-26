@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { SCREENS } from './helpers/common';
 
 /**
  * scenery system: set dressing per era (the 1796 quarry at the Baumagazin, the 1789 building site,
@@ -7,7 +8,6 @@ import { type Page, expect, test } from '@playwright/test';
  * fireworks echo, Mannlich's lit windows, the passage out of the Tempelzimmer, no snow in the
  * rooms, and the dawn look. Screenshots: test-results/screens/pol-set-*.png.
  */
-const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];

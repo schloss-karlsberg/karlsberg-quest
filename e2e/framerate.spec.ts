@@ -1,4 +1,5 @@
 import { type Page, expect, test } from '@playwright/test';
+import { warnIfShared } from '../scripts/dev/heavy-env.mjs';
 import { trackErrors } from './helpers/common';
 
 /**
@@ -27,6 +28,7 @@ async function boot(page: Page, query: string): Promise<void> {
 
 test.describe('render pacing', () => {
   test.describe.configure({ timeout: 300_000 });
+  test.beforeAll(() => warnIfShared('framerate.spec.ts')); // frame rates need heavy.sh --exclusive
 
   test('pause menu: at most 15 fps, and with ?idle its frame is held', async ({ page }) => {
     const errors = trackErrors(page);

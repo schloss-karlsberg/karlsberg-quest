@@ -3,12 +3,12 @@ import { type Page, expect, test } from '@playwright/test';
 import { SAVE_KEY } from '../src/core/save';
 import { throughTour } from './helpers/tour';
 import { openPause, waitForHooks } from './helpers/pause';
+import { SCREENS } from './helpers/common';
 
 /**
  * Story feature: new-game flow, dialogue presenter, home at the Quelle (day/night), Pause chapters,
  * objectives + Bussole, being caught, endings and credits. Screenshots: test-results/screens/story-*.png
  */
-const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 // software WebGL on a busy machine can be slow: generous budgets
 test.describe.configure({ timeout: 300_000 });
@@ -134,6 +134,46 @@ test('story: save from Pause, cancel overwrite, then continue', async ({ page })
     return { pause: flags['test.pauseSaved'], balsam: k.progression!.state().inventory['item.balsam'] };
   })).toEqual({ pause: true, balsam: 1 });
 });
+
+for (const transition of ['hide the tab', 'return to the title'] as const) {
+  test(`story: saves the final era during storage backoff when players ${transition}`, async ({ page }) => {
+    await page.goto('./?notitle&fresh&manual&q=low');
+    await waitForHooks(page, ['story']);
+    if (transition === 'return to the title') await openPause(page);
+    const titleButton = transition === 'return to the title'
+      ? await page.getByRole('button', { name: 'Zum Titelbild', exact: true }).elementHandle()
+      : null;
+    const result = await page.evaluate(({ key, titleButton }) => {
+      const { save, state } = window.kq!.ctx;
+      const savedEra = () => JSON.parse(localStorage.getItem(key)!).era;
+      const setItem = Storage.prototype.setItem;
+      let attempts = 0;
+      Storage.prototype.setItem = function (saveKey, value) {
+        if (saveKey === key && ++attempts <= 2) throw new DOMException('Storage unavailable', 'QuotaExceededError');
+        setItem.call(this, saveKey, value);
+      };
+      try {
+        save.autosave('era', true);
+        save.autosave('story', true);
+        save.hold('cinematic', true);
+        state.mutable.era = '1789';
+        save.autosave('ending', true);
+        save.hold('cinematic', false);
+        const before = savedEra();
+        if (titleButton instanceof HTMLElement) titleButton.click();
+        else {
+          Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+          document.dispatchEvent(new Event('visibilitychange'));
+        }
+        return { before, after: savedEra(), attempts };
+      } finally {
+        Storage.prototype.setItem = setItem;
+        if (!titleButton) Reflect.deleteProperty(document, 'hidden');
+      }
+    }, { key: SAVE_KEY('auto'), titleButton });
+    expect(result).toEqual({ before: 'today', after: '1789', attempts: 3 });
+  });
+}
 
 test('story: home at the Quelle by day and night, dialogue portraits', async ({ page }) => {
   const errors = trackErrors(page);
@@ -341,6 +381,16 @@ test('story: ending, epilogue and credits', async ({ page }) => {
   const fallback = page.getByTestId('credits');
   await expect(fallback).toContainText('Sebastian Heußer');
   await expect(fallback).toContainText('Testautor A, Testautor B');
+  await page.keyboard.press('Escape');
+  await expect(fallback).toHaveCount(0);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.ctx.settings.update((settings) => { settings.reducedMotion = false; });
+    k.story!.credits();
+  });
+  await expect(fallback).toHaveClass(/\bkqs-static\b/);
+  expect(await fallback.evaluate((el) => el.scrollTop)).toBe(0);
   await page.keyboard.press('Escape');
   await expect(fallback).toHaveCount(0);
   expect(errors).toEqual([]);

@@ -199,6 +199,8 @@ export class ShiftEffect {
     this.t = 0;
     this.midDone = false;
     this.veilMode = 'none';
+    // Interrupted set pieces can give up their movement lock before the shift takes over.
+    ctx.events.emit('shift:begin', { from: this.from, to });
     this.center.copy(ctx.player.position);
     this.wasFrozen = ctx.player.frozen;
     ctx.player.frozen = true;
@@ -214,7 +216,6 @@ export class ShiftEffect {
       shiftSweep(am, am.bus('sfx'), dur, this.reduced ? SHIFT_MID_REDUCED : SHIFT_MID);
     }
     this.ui.caption('fx.cap.shift', 3, 3000);
-    ctx.events.emit('shift:begin', { from: this.from, to });
     return new Promise((res) => this.onDone.push(res));
   }
 
@@ -430,7 +431,7 @@ export class ShiftEffect {
       am.bus('music')?.gain.setTargetAtTime(am.volumes.music, t, 0.6);
       this.savedVol = null;
     }
-    ctx.state.mutable.meta.shifts++;
+    if (this.reason !== 'caught') ctx.state.mutable.meta.shifts++;
     ctx.events.emit('shift:done', { from: this.from, to: this.to, reason: this.reason });
     for (const fn of this.onDone.splice(0)) fn();
   }

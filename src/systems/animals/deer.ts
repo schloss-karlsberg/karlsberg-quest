@@ -9,16 +9,17 @@
  *
  * The notice meter (0..1) rises with the player's stance noise and visibility (`STANCES`) inside
  * the notice radius and in line of sight. A crouched (or prone) player at crouch speed or slower
- * shrinks the radius to `notice × SNEAK_SCALE` (30 → 10.5 m), so a sneak reaches the 14 m photo
- * range without a rise. Upright and moving inside `flee`, running or sprinting fills the meter.
- * Freezing or backing off lets it decay; upright and frozen inside `flee` only holds it (crouch or
- * back off to calm the deer). There is no fail state: fleeing deer stop again and graze.
+ * shrinks the radius to `notice × SNEAK_SCALE` (30 → 15 m), so a sneak reaches the 20–25 m photo
+ * range without a rise. The meter fills faster when running, sprinting or walking upright within
+ * `flee`. Standing still inside `flee` still builds suspicion. Freezing farther out, holding
+ * still in a low stance or backing away lets it decay. Fleeing deer stop again and graze.
  *
  * A fawn (`follow: 'animal:<doe>'`) mirrors the doe's state and keeps a slot behind her, never
  * farther than FAWN_MAX. `stepDeerHerd` steps doe(s) first, then followers.
  *
  * Yaw: heading, `atan2(-dx, -dz)` (0 faces −z), the player / people / fauna convention.
  */
+import { allOf, finiteOr, isRecord } from '../../core/saved';
 import { STANCES, type Stance } from '../../player/stance';
 import type { AnimalEvent, AnimalLook, AnimalMotion, AnimalSpawnOp, DeerSave, ShyRadii } from './types';
 
@@ -29,7 +30,7 @@ export const DEER = {
   FLEE: 20,
   SETTLE: 25,
   /** A crouched, slow player scales the notice radius by this (C5). */
-  SNEAK_SCALE: 0.35,
+  SNEAK_SCALE: 0.5,
   /** "Crouch speed": sneaking means crouch / prone at or below this ground speed. */
   SNEAK_MAX_SPEED: STANCES.crouch.speed + 0.1,
   /** Above the upright walk (3.2) = running; above this = sprinting. */
@@ -46,8 +47,10 @@ export const DEER = {
   /** Rise rate for a perceived, moving player: RISE × stance (noise + visibility) / 2 × (0.5 + closeness). */
   RISE: 0.6,
   /** Upright + moving inside `flee`, or running. */
-  FILL: 1.0,
-  SPRINT_FILL: 2.0,
+  FILL: 1.5,
+  SPRINT_FILL: 2.5,
+  /** Standing still inside the flee radius. */
+  STAND_FILL: 0.75,
   /** Freezing / backing off. */
   DECAY: 0.5,
   /** Out of range or out of sight. */
@@ -68,8 +71,6 @@ export const DEER = {
   /** Fawn: default slot distance behind the doe and the hard limit (C5: within 2 m). */
   FAWN_SPACING: 1.5,
   FAWN_MAX: 2,
-  /** Photo range for the t6 target (C3 example maxDist). */
-  PHOTO_RANGE: 14,
   /** leave(): walk this far calmly, then gone. */
   LEAVE_DIST: 30,
 } as const;
@@ -152,13 +153,19 @@ export function createDeer(op: AnimalSpawnOp, at?: { x: number; z: number; yaw?:
     calm: 0,
     follow,
     spacing: op.spacing ?? DEER.FAWN_SPACING,
-    shy: { ...(op.shy ?? { notice: DEER.NOTICE, flee: DEER.FLEE, settle: DEER.SETTLE }) },
+    shy: shyRadii(op.shy),
     flee: null,
     away: null,
     lastDist: NaN,
     motion: { tx: x, tz: z, speed: 0, yaw, clip: 'graze' },
   };
   return d;
+}
+
+/** Radii from a spawn op or a save: each missing or non-positive radius takes its default. */
+function shyRadii(shy: Partial<ShyRadii> | undefined): ShyRadii {
+  const r = (v: unknown, fallback: number) => (finiteOr(v, 0) > 0 ? (v as number) : fallback);
+  return { notice: r(shy?.notice, DEER.NOTICE), flee: r(shy?.flee, DEER.FLEE), settle: r(shy?.settle, DEER.SETTLE) };
 }
 
 /** Whether the player counts as sneaking (crouched or prone, at crouch speed or slower). */
@@ -177,8 +184,8 @@ export function meterRate(shy: ShyRadii, dist: number, radial: number, input: De
   const r = noticeRadius(shy, p);
   if (dist > r || input.los === false) return -DEER.IDLE_DECAY;
   if (radial > DEER.BACKOFF_SPEED) return -DEER.DECAY;
-  if (p.speed < DEER.FREEZE_SPEED) return p.stance === 'stand' && dist <= shy.flee ? 0 : -DEER.DECAY;
   const m = 1 - DEER.MASK_GAIN * clamp01(input.mask ?? 0);
+  if (p.speed < DEER.FREEZE_SPEED) return p.stance === 'stand' && dist <= shy.flee ? DEER.STAND_FILL * m : -DEER.DECAY;
   if (p.speed > DEER.SPRINT_SPEED) return DEER.SPRINT_FILL * m;
   if (p.speed > DEER.RUN_SPEED) return DEER.FILL * m;
   if (p.stance === 'stand' && dist <= shy.flee) return DEER.FILL * m;
@@ -426,8 +433,9 @@ export function stepFollower(f: Deer, leader: Deer, dt: number, input: DeerInput
 }
 
 /** The leader id of a follower ('animal:ricke' → 'ricke'), or '' for a self-led deer. */
-export function leaderId(d: Deer): string {
-  return d.follow.startsWith('animal:') ? d.follow.slice(7) : '';
+export function leaderId(d: Pick<Deer, 'follow'>): string {
+  // (a saved herd is read before restore: `follow` may be anything there)
+  return typeof d.follow === 'string' && d.follow.startsWith('animal:') ? d.follow.slice(7) : '';
 }
 
 /** Step all deer: self-led first, then followers whose leader has been stepped (chains allowed). */
@@ -493,19 +501,37 @@ export function serializeDeer(d: Deer): DeerSave {
   return s;
 }
 
-const DEER_STATES: readonly DeerState[] = ['graze', 'alert', 'flee', 'settled', 'leave', 'gone'];
+const DEER_STATES = allOf<DeerState>()(['graze', 'alert', 'flee', 'settled', 'leave', 'gone']);
 
-export function restoreDeer(s: DeerSave): Deer {
-  const d = createDeer({ op: 'spawn', id: s.id, kind: 'reh', look: s.look, x: s.x, z: s.z, follow: s.follow, spacing: s.spacing, shy: s.shy });
-  d.yaw = s.yaw;
+function hasDeparture(deer: DeerSave, herd: readonly DeerSave[]): boolean {
+  const seen = new Set<string>();
+  let current = deer;
+  while (current.state === 'leave' && !seen.has(current.id)) {
+    seen.add(current.id);
+    const id = leaderId(current);
+    const leader = id && id !== current.id ? herd.find((other) => other.id === id) : undefined;
+    if (!leader) return Boolean(current.away);
+    current = leader;
+  }
+  return false;
+}
+
+export function restoreDeer(s: DeerSave, herd: readonly DeerSave[] = []): Deer {
+  const d = createDeer({
+    op: 'spawn', id: s.id, kind: 'reh', look: s.look, x: finiteOr(s.x, 0), z: finiteOr(s.z, 0),
+    follow: typeof s.follow === 'string' ? s.follow : undefined, spacing: finiteOr(s.spacing, DEER.FAWN_SPACING),
+    shy: isRecord(s.shy) ? s.shy : undefined,
+  });
+  d.yaw = finiteOr(s.yaw, 0);
   d.state = DEER_STATES.includes(s.state as DeerState) ? (s.state as DeerState) : 'graze';
-  d.t = s.t;
-  d.meter = s.meter;
-  d.calm = s.calm;
-  d.flee = s.flee ? { ...s.flee } : null;
-  d.away = s.away ? { ...s.away } : null;
+  d.t = finiteOr(s.t, 0);
+  d.meter = finiteOr(s.meter, 0);
+  d.calm = finiteOr(s.calm, 0);
+  const f = s.flee;
+  d.flee = isRecord(f) && [f.fx, f.fz, f.tx, f.tz].every(Number.isFinite) && (f.dist === undefined || Number.isFinite(f.dist)) ? { ...f, by: f.by === 'cue' ? 'cue' : 'player' } : null;
+  d.away = isRecord(s.away) && Number.isFinite(s.away.x) && Number.isFinite(s.away.z) ? { x: s.away.x, z: s.away.z } : null;
   if (d.state === 'flee' && !d.flee) d.state = 'settled';
-  if (d.state === 'leave' && !d.away) d.state = 'gone';
+  if (d.state === 'leave' && !hasDeparture(s, herd)) d.state = 'gone';
   d.motion.yaw = d.yaw;
   return d;
 }

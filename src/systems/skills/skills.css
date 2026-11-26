@@ -149,6 +149,10 @@ body:has(.kq-dock-boss > :not(.kq-court-off):not([style*='display: none'])) .kqk
   background: radial-gradient(circle, var(--accent) 0 70%, var(--accent) 71%);
   animation: kqk-blot 0.6s ease-out 1.35s backwards;
 }
+.kqk-in.kqk-reduced .kqk-pip.new {
+  animation: none;
+  transition: none;
+}
 @keyframes kqk-blot {
   from {
     transform: scale(1.6);

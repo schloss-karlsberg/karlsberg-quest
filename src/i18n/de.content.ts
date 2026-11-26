@@ -6,7 +6,7 @@
  *  - Placeholders are ASCII identifiers so t() can fill them: {chapter} {date} {source} {page}
  *    {word} {words} {title} {name} {n} {p} {chapterTitle} {time} {team} {year}.
  *  - Key names in square brackets ([Q], [W][A][S][D]) are replaced from the key bindings by the UI.
- *  - ui.keys.<action> is the description, ui.keys.<action>.key the default key label.
+ *  - ui.keys.<id> is the controls description; fixed shortcuts use ui.keys.<id>.key.
  *  - ui.horn.<call> is the plain subtitle, ui.horn.<call>.tracker the one shown with skill Spurenleser 1.
  */
 export const deContent: Record<string, string> = {
@@ -15,31 +15,20 @@ export const deContent: Record<string, string> = {
 
   // 3. Steuerung
   'ui.keys.move': 'Gehen',
-  'ui.keys.move.key': '[W][A][S][D]',
   'ui.keys.run': 'Rennen (laut)',
-  'ui.keys.run.key': '[Shift]',
   'ui.keys.sneak': 'Schleichen (leise, langsam)',
-  'ui.keys.sneak.key': '[C]',
   'ui.keys.prone': 'Hinlegen / Aufstehen. Wer flach liegt, wird von der Meute kaum gesehen und nicht gehört.',
-  'ui.keys.prone.key': '[X]',
   'ui.keys.spirit': 'Geisterblick: freier Flug über das Land (nur im Heute)',
-  'ui.keys.spirit.key': '[1]',
   'ui.keys.scan': 'Relief-Blick wechseln: Schummerung / Lokales Relief / VAT. Mit Umschalt rückwärts.',
-  'ui.keys.scan.key': '[2] / [Umschalt+2]',
+  'ui.keys.scan.reverse': 'Umschalt+{key}',
+  'ui.keys.scan.reverseOnly': '[{key}] (rückwärts)',
   'ui.keys.map': 'Karte vergleichen: 1840 oder 1935 über das Gelände legen',
-  'ui.keys.map.key': '[M]',
-  'ui.keys.listen': 'Lauschen: Erinnerungen an diesem Ort hören',
-  'ui.keys.listen.key': '[E] halten',
+  'ui.keys.listen': 'Sprechen oder untersuchen. Zum Lauschen gedrückt halten.',
   'ui.keys.examine': 'Untersuchen',
-  'ui.keys.examine.key': 'Klick',
-  'ui.keys.shift': 'Zeitwechsel an einem Ankerpunkt. [Q] 3 s halten: zurück zur Quelle (nicht, solange die Meute dich sieht)',
-  'ui.keys.shift.key': '[Q]',
+  'ui.keys.shift': 'Zeitwechsel an einem Ankerpunkt. 3 s gedrückt halten für die Rückkehr zur Quelle (nicht, solange die Meute dich sieht).',
   'ui.keys.lantern': 'Laterne an / aus. Licht hilft beim Lesen, aber es lockt die Meute.',
-  'ui.keys.lantern.key': '[L]',
   'ui.keys.inventory': 'Ausrüstung & Talente öffnen',
-  'ui.keys.inventory.key': '[I]',
   'ui.keys.measure': 'Messen: Strecke und Höhenprofil (ab Kapitel 2)',
-  'ui.keys.measure.key': '[3]',
   'ui.keys.pause': 'Pause: Aufgaben, Codex, Sammlungen, Ausrüstung & Talente, Karte, Album und Kapitel',
   'ui.keys.pause.key': '[Esc]',
 

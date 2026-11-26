@@ -44,6 +44,7 @@ export const SYSTEM_LOADERS: SystemLoader[] = [
   () => import('./party'),
   // smartphone photo mode (N): present-day photo targets, the album (docs/ARCHITECTURE.md "Fotomodus")
   () => import('./photo'),
+  () => import('./minimap'),
   // "Unauffällig": the court's watchers, suspicion, the gate inspection (after npc / scenery / story)
   () => import('./court'),
   // chapter 1's lines for the court (content strings only; after court so they override its placeholders)

@@ -489,21 +489,15 @@ describe('the Wegweiser follows the paths (playtest round 10, B2)', () => {
     expect(r.expanded).toBe(0);
   });
 
-  it('real data: from the Damm towards the hohe Stufe the route takes the Waldweg round the Weiher, in a few ms', { timeout: 30_000 }, () => {
+  it('real data: the route from the Damm to the hohe Stufe follows the Waldweg within the search budget', { timeout: 30_000 }, () => {
     const w = loadWorldData();
     const water = w.water;
     const cost = pathGroundCost(w.pathAt);
-    // warm-up (JIT), then the measured run
-    findRoute(816, -884, 1237, -966, water, { maxExpand: 40000, cost, minCost: PATH_COST });
-    const t0 = performance.now();
-    const runs = 5;
-    let r = findRoute(816, -884, 1237, -966, water, { maxExpand: 40000, cost, minCost: PATH_COST });
-    for (let k = 1; k < runs; k++) r = findRoute(816, -884, 1237, -966, water, { maxExpand: 40000, cost, minCost: PATH_COST });
-    const ms = (performance.now() - t0) / runs;
+    const r = findRoute(816, -884, 1237, -966, water, { maxExpand: 40000, cost, minCost: PATH_COST });
     const plain = findRoute(816, -884, 1237, -966, water, { maxExpand: 40000 });
-    console.info(`[B2] Damm -> hohe Stufe: ${ms.toFixed(1)} ms per route, ${r.expanded} cells expanded (plain ${plain.expanded}); on path: first 70 m ${(onPathShare(r.points, w.pathAt, 70) * 100).toFixed(0)} %, all ${(onPathShare(r.points, w.pathAt) * 100).toFixed(0)} % (plain ${(onPathShare(plain.points, w.pathAt) * 100).toFixed(0)} %)`);
     expect(r.straight).toBe(false);
-    expect(r.expanded).toBeLessThan(40000);
+    // The shipped raster needs 8,915 expansions. Bound search work independently of CPU load.
+    expect(r.expanded).toBeLessThan(10_000);
     // the motes show the first 70 m: all of it on the north-shore path
     expect(onPathShare(r.points, w.pathAt, 70)).toBeGreaterThan(0.9);
     expect(onPathShare(r.points, w.pathAt)).toBeGreaterThan(0.6);
@@ -511,8 +505,6 @@ describe('the Wegweiser follows the paths (playtest round 10, B2)', () => {
     // it goes round the north shore, never into the water
     for (let i = 0; i + 1 < r.points.length; i++) expect(lineFree(r.points[i]![0], r.points[i]![1], r.points[i + 1]![0], r.points[i + 1]![1], water, 0.5)).toBe(true);
     expect(r.points.some(([x, z]) => x > 840 && x < 940 && z < -900)).toBe(true);
-    // performance budget (measured ~10 ms on a laptop; generous for CI)
-    expect(ms).toBeLessThan(150);
   });
 });
 

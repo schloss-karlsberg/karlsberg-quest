@@ -65,7 +65,7 @@ Code: `scripts/voice/moss.ts` (config, guard, batching, lock), `providers.ts` `m
   resolve inside `KQ_MOSS_VOICES` and never under `/casting/clips/` (ElevenLabs clips); the runner
   checks every reference before the model loads. Reference WAVs and clips are never committed.
 - **Lock:** at most 6 lines per runner process (one model load, 25–37 GB peak), each process wrapped in
-  `KQ_HEAVY_OWNER=kq-voice-moss scripts/dev/heavy.sh --check-load --strict --max-hold 10 -- <venv>/bin/python -I scripts/voice/moss/runner.py <job>`
+  `KQ_HEAVY_OWNER=kq-voice-moss scripts/dev/heavy.sh --exclusive --check-load --strict --max-hold 10 -- <venv>/bin/python -I scripts/voice/moss/runner.py <job>`
   (a `KQ_HEAVY_OWNER` in the env relabels the owner, e.g. `kq-voice-gate` for a gate run).
   No batch starts while `/tmp/kq-quiet-window` exists (the runner also exits 76 if it appears inside the
   lock, and the batch is retried); `--strict` refusing (exit 75) stops the run. WAVs are post-processed
@@ -206,8 +206,11 @@ and 30 fps every 4th (every frame / every 2nd at 60 Hz).
 hooks that change the view ask (`teleport`, `setEra`, `setScanMode`, `setMapMix`, `spawnAsset`,
 `perfHud`, the bench camera), so do modal / pause / settings changes, resize, the tab becoming
 visible and, in bullet time, a real mouse move / key / wheel. `kq.step(n)`, `loop.renderOnce` and
-the pilot's `act` / `observe` render synchronously as before. With nothing to simulate (paused /
-manual) and nothing to draw the rAF loop parks (no callbacks at the display rate) until a
+the pilot's `act` / `observe` normally render synchronously. With `?manual&faststep`, the step
+and press hooks prepare presentation synchronously and queue a paint. A frame woken solely for
+that paint draws the prepared scene without running the camera, HUD or frame systems again.
+A synchronous full draw satisfies the queued paint. Explicit frame requests still run.
+With nothing to simulate (paused / manual) and nothing to draw the rAF loop parks until a
 request or a `paused` / `manual` change wakes it; the first frame after a held phase advances the
 visuals by one fixed step and restarts the perf clock (`loop.resumed`). Under WebDriver bullet
 time keeps drawing every frame and still menus draw at 15 fps, exactly as before, unless `?idle`
@@ -312,8 +315,16 @@ Rules
 - A system that throws in `init/update/frame` is disabled and logged; the game keeps running.
 - Talk to other features through `ctx.events` and `ctx.state`, not by importing each other.
 - Persist everything that must survive a reload in your slice (`ctx.state.slice(id, init)`),
+  JSON-serialisable only. Call `ctx.save.autosave('reason')` at meaningful moments. Passing
+  `true` bypasses the five-second success cooldown and queues a retry if storage is in backoff.
+  `true` bypasses the five-second success cooldown. All autosaves respect storage failure backoff.
   JSON-serialisable only. Call `ctx.save.autosave('reason')` at meaningful moments (throttled 5 s;
-  `autosave(reason, true)` forces).
+  `autosave(reason, true)` bypasses the interval and respects active save holds).
+- Persist everything that must survive a reload in your slice (`ctx.state.slice(id, init)`). Slices
+  are JSON-serialisable objects. The shared save decoder rejects malformed slice containers and
+  invalid story data used during restore. Missing legacy story fields receive defaults. Call
+  `ctx.save.autosave('reason')` at meaningful moments (throttled 5 s, with
+  `autosave(reason, true)` to force a write).
 - UI: `ctx.ui.layer('hunt')` gives you an absolutely positioned DOM layer; `ctx.ui.modals.open({...})`
   pauses the game and frees the mouse; `ctx.ui.hud` has the shared slots (below). Strings via
   `ctx.t('key')`; register them with `addStrings('de', {...})` from `src/i18n`.
@@ -321,8 +332,9 @@ Rules
   `ATMOS_GLSL` (`kqLight`, `kqFog`, noise) so they match lighting, fog, lantern and fire glow.
 - Gameplay input: `ctx.input.wasPressed('listen')`, `isDown('sprint')` (actions in
   `DEFAULT_BINDINGS`: forward/back/left/right, sprint, crouch, prone, fly, up/down, interact,
-  listen E, lantern L, map M, measure 3, shift Q, scan 2, scan0 ^, pause Esc/P, keyboard
+  listen E, lantern L, map M, measure 3, shift Q, scan 2, scan0 Backquote, keyboard
   look lookLeft/lookRight/lookUp/lookDown on Comma/Period/PageUp/PageDown and Numpad 4/6/8/2).
+  The Pause menu handles Escape in `boot.ts`. The photo system also reads the `pause` action (Esc/P).
   Bindings are physical `KeyboardEvent.code`s (layout-independent; AZERTY "forward" is on Z).
   Players remap the actions in `REBINDABLE` (settings → Steuerung → Tastenbelegung);
   `settings.bindings` stores overrides. `effectiveBindings(overrides)` merges them, `bindKey` takes a
@@ -345,7 +357,8 @@ Rules
 | `perf` | `PerfMonitor`: `summary()` (frame/CPU/GPU ms percentiles, calls, triangles), `recentFrameMs`, `onFrame`; `renderer.info.autoReset` is off, counts cover the whole frame |
 | `quality` | `QualityManager`: `level` (= `override` ?? `settings.graphics` ?? `fallback`), `preset`, `apply()`, `listeners` (called with the preset after each apply), `hold(seconds)` (pause the auto-downgrade around loads / shifts), `capFps` (the render cap; the slow threshold follows it). `override` comes from `?q=` or a software renderer and is cleared when the player picks a level |
 | `assets` | `AssetLoader` (docs/ART-DIRECTION.md §8): `instance(id)` (model clone, PBR patched to the world light), `model(id)`, `texture(id)`, `loadArea(area, onProgress)`, `prefetchEra(era)` (boot calls it on `era:change`), `peek(id)`, `list(area?, era?)`, `licences()` |
-| `save` | `save(slot)`, `autosave(reason, force?)`, `load(slot)`, `has`, `peek(slot)` (read a slot without loading it), `delete`; keys `kq.save.v1.<slot>`. `save:loaded` re-runs every system's `restore()` (boot.ts), so a load from the title (e.g. "Ende noch einmal wählen") rebuilds the running game |
+| `save` | `save(slot)`, `autosave(reason, force?)`, `load(slot)`, `has`, `peek(slot)` (read a slot without loading it), `delete`. Boot calls `retryAutosave()` during play and `flushAutosave(reason)` on tab hide and return to title. Keys are `kq.save.v1.<slot>`. `save:loaded` re-runs every system's `restore()` (boot.ts), so a load from the title (e.g. "Ende noch einmal wählen") rebuilds the running game |
+| `save` | `save(slot)`, `autosave(reason, force?)`, `load(slot)`, `has(slot)` (key presence), `availability(slot)` (empty, readable, or unreadable), `peek(slot)` (read a decoded slot without loading it), `readRaw(slot)` (exact stored bytes), `delete`. Keys are `kq.save.v1.<slot>`. `save:loaded` restores the world and system state. The title offers „Weiter“ when decoding and migration succeed, then loads the autosave again before `game:start` resumes its story beat. „Neues Spiel“ checks the bytes of an occupied writable slot before and after tour setup. Cancelling setup refreshes the title's save actions. „Ende noch einmal wählen“ checks the autosave against the bytes seen when the menu was drawn before loading the ending slot. Changed bytes in an occupied slot require fresh confirmation, including writes during a prompt. `?nosave` disables writes and deletion. |
 | `events` | `on/once/off/emit/onAny` |
 | `audio` | `bus('sfx'|'music'|'voice'|'ambience')` (spoken lines and whispers on `voice`, drones/score on `music`), `createSource3D(bus, opts)` (HRTF `PannerNode`, null until unlocked), `noise()`, `onUnlock(fn)`, `ctx` (AudioContext or null) |
 | `ui` | `hud`, `modals`, `cards` (shared card and notice slot, below), `toast(text)`, `layer(id)`, `add(el)` |
@@ -423,20 +436,34 @@ Settings rows: `addSettingsRows((settings) => [[label, control, section?, help?]
 `graphics`, `access`, `audio` (default `game`), `help` is a sentence shown under the row. Give
 controls a `data-testid` and an `id` (the label's `for` is set from it).
 
-Accessibility contract for feature systems:
-- **Flashes**: when `settings.reducedFlash` is on, keep full-screen flashes ≤ 25 % (the post pass
-  already scales `uFlash` by 0.2 and the shift's chromatic aberration), no strobing light
-  (interiors stop candle/fire flicker, fx damps collapse and shift flashes, the fireworks echo
-  drops its white-out and spark twinkle, ghosts lose their eerie stutter (`uStutter`), the
-  hounds' ember eyes and horn glow stop flickering).
-- **Motion**: `settings.reducedMotion` → shorter / calmer transitions, no camera shake.
-- **Root attributes** for CSS: `html[data-kq-contrast]`, `[data-kq-reduced-motion]`,
-  `[data-kq-reduced-flash]`, `[data-kq-colorblind]`; `--sub-bg` (subtitle backing opacity),
-  `--sub-scale`. Feature CSS should add a high-contrast rule for its HUD pieces (solid backing,
-  ≥ 4.5 : 1 text).
-- **Colour**: never encode meaning in red vs green alone; with `settings.colorblind` the relief
-  scan uses the Okabe-Ito blue ↔ orange ramp (`terrain.uniforms.uPalette`).
-- **Audio**: speech on the `voice` bus, so players can turn music down and voices up.
+### Accessibility
+
+- Read `settings.reducedMotion` when rendering optional movement. Keep player input, world
+  locomotion, simulation clocks and required combat tells responsive. Cut scripted camera moves
+  to still shots or skip the move. Suppress shake, recoil offsets, title drift and camera bob.
+  Keep decorative particles, rotation, pulsing markers and auto-scrolling still or omit them.
+  Both credits views offer a static list when the in-game setting or the OS preference requests
+  reduced motion. Keep keyboard- and touch-driven scrolling available.
+- Use immediate state changes for gauges and indicators. When opacity is needed to cover a cut
+  or communicate a transition, use a short fade. Story overlays cap reduced-motion fades at
+  200 ms while scene triggers keep their authored timing. The era shift uses its own crossfade.
+- Keep flashing at three flashes per second or fewer. Review overlapping effects and rapid
+  retriggers as a combined view, including CSS, shader emissive terms and full-screen passes.
+  With `settings.reducedFlash`, use steady lights and attenuate full-screen flashes. The post pass
+  scales `uFlash` and shift colour separation by 0.2 with reduced flashes and suppresses both
+  with reduced motion. Feature-local effects also need steady or dim alternatives.
+- Use `html[data-kq-reduced-motion]`, `[data-kq-reduced-flash]`, `[data-kq-contrast]` and
+  `[data-kq-colorblind]` in feature CSS. The OS preference initializes motion and flash
+  settings and covers the loader before startup. High-contrast HUD pieces use a solid backing
+  and text contrast of at least 4.5 to 1. Subtitles share `--sub-bg` and `--sub-scale`.
+- Use native controls with visible German labels. Add a German accessible name to icon-only
+  controls and group radio options under a named radiogroup. Follow DOM order for Tab, show a
+  visible focus ring and keep focus inside the active dialog. Return focus to its opener where
+  available. Focus reading-only panels without scrolling so the first entry is visible on open.
+  Retain focus on an equivalent control after journal content refreshes.
+- Encode information with more than colour. With `settings.colorblind`, relief uses the
+  Okabe-Ito blue ↔ orange ramp (`terrain.uniforms.uPalette`). Route speech through the
+  `voice` bus so players can set its volume independently.
 
 ## 6. Events (core)
 
@@ -445,6 +472,8 @@ Accessibility contract for feature systems:
 `player:step {x,z,surface,running}`, `player:teleport {x,z}`, `save:written {slot,reason}`,
 `save:loaded {slot}`, `settings:change {key}`, `ui:toast {text,ms?}`.
 Features add their own via declaration merging (see §4). Naming `<domain>:<what>`.
+Named listeners run in registration order, followed by all-event observers. The bus logs a
+listener's exception and continues delivery so that other systems can process the same event.
 
 ## 7. Game state (`src/core/state.ts`)
 
@@ -462,6 +491,31 @@ Loading merges onto defaults (new fields appear automatically, extra keys are ke
 are rejected). Bump `STATE_VERSION` and add a migration in `deserializeState` for structural changes.
 Surveyor saves resume at the Chapter 1 checkpoint. The migration uses the archived quest history
 and reward data in `src/core/legacy-prologue-quests.ts` to retain deeds and settle pending payouts.
+Successful writes record wall-clock time in `meta.savedAt`. The five-second autosave cooldown
+and failure backoff use a monotonic clock. The first storage failure permits an immediate retry.
+After two consecutive failures, autosaves back off for one second between attempts. The game loop
+retries pending forced checkpoints with the current state after backoff and any cinematic holds end.
+Tab hide and return to title each get one immediate attempt while no hold is active. A successful
+autosave clears the failure streak. Manual saves can still be attempted.
+
+Save invariants (enforced by the seeded fuzz in `tests/save-fuzz.test.ts`, TASK-053):
+- **Round trip.** Every registered slice survives save → JSON → load → save byte for byte, and the
+  owner's restore code gives back the generated state (200 seeded cases per slice).
+- **Legacy and sparse slices.** A v0 save, a missing field and unknown fields or systems load; known
+  progress and unknown data are kept.
+- **Unreadable.** Bad JSON, a non-object state, `systems` or slice, a newer version and malformed
+  story fields (`readStorySlice`) make the slot unreadable: it is never loaded, the running state and
+  the stored bytes stay untouched.
+- **Owner restore is total.** Any other corrupt field still loads; the owner falls back per field
+  (default, or the entry is dropped) instead of throwing or restoring NaN or a wrong type. The
+  helpers live in `src/core/saved.ts`. Owners that restore without a scene are fuzzed directly:
+  animals, combat resources, bottles, photo, progression, quests and walkers.
+- **Value lists follow their unions.** A list of allowed saved values (look times, endings, quest
+  states, deer and dog states, party variant and credits) is built with `allOf<Union>()`, so adding
+  a union value without the list fails the typecheck instead of rejecting or resetting new saves.
+- **Real saves.** The release fixtures in `tests/fixtures/saves/` load, restore without losing
+  entries and re-save. `KQ_SAVE_DIRS=<dir>[:<dir>…]` adds more slot directories (for example the
+  campaign's `test-results/campaign-saves`); `KQ_FUZZ_CASES` raises the corrupt-slot count.
 
 ## 8. Eras and world look
 
@@ -512,6 +566,11 @@ before the main render) draws a half-resolution planar reflection of the nearest
 in the frustum within `reflectDist` (150 m, fading to the tree-line band over the last 30 %;
 `reflectionDistance`), re-rendered off-phase with the shadow map (`ReflectionSchedule`: never on
 the same frame, a cut forces a fresh one; `reflectionSkip` hides the near layers). Stats: `nature.cover.stats`, `nature.props.stats`, `water.stats`.
+
+For wading, `depthInside` takes the greatest signed shore distance where pond shore bands overlap.
+This keeps the upper pond of a cascade wet right beside the lower pond. Frozen water is walkable.
+For scenery obstacles, `FootprintCollider.hits` and `solidAt` use the distance to the nearest
+face or corner of a box, so a circular probe has the same clearance as a moving body.
 
 Relief scan (`world.setScanMode`): 0 normal, 1 multi-directional hillshade, 2 diverging local
 relief (red high / blue low, ±1.2 m), 3 VAT-like (hillshade + slope + openness) with contours.
@@ -581,9 +640,38 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 
 ## 11. Testing
 
+- `tests/set-piece-dom.ts` stubs the element operations and window input events used by the
+  cinematic and court unit tests. Drive the simulation and camera with explicit steps. Use
+  Playwright to verify browser event propagation and rendered styling.
+- `tests/interiors-runtime-fixture.ts` runs the interiors system with the shipped room catalogue,
+  terrain, player and event bus. Tests can delay the palace shell, load a pose and step the
+  simulation to check storeys, room events and doors without a renderer.
+
+- `tests/exploration-fixture.ts` supplies a game state store, event bus and in-memory save slots
+  with a fixed clock and seeded randomness. A slot load restores the era before feature listeners
+  run, including the nested `era:change`. Hunt, survey, measurement and collectible tests call
+  the registered systems' update and frame methods to advance game time and rendering independently.
+- `tests/terrain-load.test.ts` uses `serveTerrain()` to serve two compressed grid cells from
+  memory. Each layer has distinct values so the test detects swapped eras, incorrect units and
+  ground or canopy rasters whose dimensions disagree with the height grid.
+- `tests/travel-fixture.ts` runs the registered travel system on flat ground with a real game state
+  store and event bus. Use `step()` for a simulation tick and Vitest's fake timers for a timed journey.
+- Pause and journal page tests use `tests/ui-fixture.ts` to run the real renderers and handlers on a
+  small in-memory element tree. Assert control state and text there; use Playwright for layout,
+  browser focus behaviour and canvas drawing. The fixture does not run timers or animation frames.
 - Unit (`tests/`): event bus, loop determinism, state/save round trip and throttling, settings,
   system ordering + error isolation, heightfield sampling, decoders (incl. real data), collision,
   forest determinism, validator (good + each failure class), ContentDB.
+- `tests/control-fixture.ts` records the controls that the settings form and touch overlay build.
+  Node tests dispatch events to their handlers by test ID. Playwright covers layout, focus and native pointer capture.
+- Quest, story and Chronik units reuse the existing headless fixtures for quest reloads, chapter
+  reactions, dialogue queues and the echo director. `content-validation-cli.test.ts` verifies pack
+  discovery and terrain bounds with temporary files.
+- Campaign encounters: `encounter()` in `tests/npc-encounter.test.ts` and `pen()` in
+  `tests/menagerie-encounter.test.ts` drive real systems with an `EventBus`, a `GameStateStore`
+  and explicit ticks. Replace the store with a JSON snapshot and emit `save:loaded` to test a
+  rewind in the same running game. Despawn the NPC before loading to exercise placement rebuilds.
+  Neither fixture needs a renderer, audio device or real timers.
 - Art polish (`e2e/polish-art.spec.ts`): ghost costumes by day / night, forest LOD stats and the
   eras' seasons, the Festsaal on arrival (heat) and burning, hounds in fog at 30–60 m; screenshots
   `pol-art-*.png`.
@@ -604,7 +692,7 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   `skill` action (Kartograf 3 card) → measuring the gallery in 1793-07 (`measure:done`, the
   Chronik's measuring clue) → the story's pack in 1793-02 leaving snow tracks
   (`int-r2-*.png`). Unit rules of the integration: `tests/integration-round2.test.ts`.
-  `KQ_E2E_PORT` picks the preview port (default 5281; an existing server on it is reused).
+  `KQ_E2E_PORT` picks the preview port (default 5281, or 5281 + k inside `scripts/dev/heavy.sh` slot k; an existing server on it is reused).
 - E2E (`e2e/smoke.spec.ts`, Chromium + SwiftShader WebGL): title → content note → name → paper map → "Tour starten" → game
   starts; every era and scan mode render with no console errors / failed requests; walking,
   crouch, spirit view rules and a save round trip.
@@ -618,6 +706,9 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   WebDriver), `warm` (shader warm-up also under WebDriver), `idle` (the full idle-render policy
   also under WebDriver: bullet time draws on request only, still menus hold their frame; §3).
   `screenshotReady()` asks the loop for its frames, so it works in held views too.
+  A shared starting position requires finite, nonblank `x` and `z` values. Missing or invalid
+  coordinates preserve the current pose. An invalid optional `yaw` preserves the current heading.
+  Finite `yaw` values wrap modulo 360 degrees before conversion to radians so look input stays responsive.
 - Bullet-time pilot (`kq.pilot`, `src/debug/pilot.ts`; docs/NEXT-SESSION.md §3.1): an agent plays
   in slices while the game stands still (`?manual`, or `kq.pilot.bulletTime(true)` at runtime; the
   HUD then shows a "⏸ Bullet-Time" chip in place of the pointer-lock chip).
@@ -666,8 +757,9 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   each press is reported at most once; `t` = seconds into the act; tapped by wrapping the live
   `CombatSim.step` and reading the player state, buffer included, before / after, nothing in
   combat changes) and `frames`. `kq.pilot.observe({frames?})` is the
-  same without stepping; `kq.pilot.choose(n)` clicks option n (1-based) of the open dialogue /
-  story choice / modal, one at a time: a second `choose()` before the next `act` / `observe` returns
+  same without stepping; `kq.pilot.choose(n)` selects option n (1-based) of the open dialogue,
+  story choice or modal. Inline choices go through `kq.story.choose` and return a label only when
+  the choice was accepted. A second `choose()` before the next `act` / `observe` returns
   null and adds a `chooseRejected` event (the next modal may not be up yet). In bullet time the era
   shift runs on the fixed steps when frames are drawn only on request, and fast travel arrives at
   once (`src/core/bullet.ts`); `kq.pilot.showStrip(true)` shows each act's frames along the bottom of
@@ -824,6 +916,8 @@ Round-4 (polish: set dressing) integration rules:
   (also refills oil), `era:change` and a par force escape. Gentle mode / Rauhnacht
   (`settings.rauhnacht` or `flags.rauhnacht`) retune it. Re-configuring the same area with another
   `mode` switches the running pack in place (drive → finale at the kennel: they stay where they are).
+- `lantern:request` applies the refill before setting the light. `refill: true` fills the tank for
+  story requests and Wegsteine. A numeric refill adds that fraction of a tank up to capacity.
 - **Modes** (`modes.ts`, pure): `patrol` (default); `drive` (Ch. 4: arc of hounds 12–20 m behind and
   beside the player, horn from behind / a flank, they give 5 m when you turn back, pushing through
   = soft catch `player:caught {by:'pack', soft:true}`, story curtain "Die Meute hat dich
@@ -868,6 +962,9 @@ Round-4 (polish: set dressing) integration rules:
   pack follows it print by print (`hunt:tracking {on, why?}`, horn found / lost) but never across a
   break. Crouching / standing over the pack's prints reads them (Spurenleser: kind, number,
   rider, age, direction; tier 2 highlights their routes) → caption + `hunt:read`.
+  The Warner's scripted boot trail is for the player to follow, not the hounds. Its hold extends
+  only its own lifetime. A cue with no valid positive stride uses the usual 1.4 m spacing.
+  Each segment uses at most 1800 terrain samples, spread across its full length.
 - Emits `hunt:alert`, `hunt:horn {signal, x, z, mode}`, `hunt:finale`, `hunt:start`, `hunt:end {reason}`,
   `hunt:tracking`, `hunt:goal`, `hunt:rest`, `hunt:read`, `lantern:toggle/oil/empty`,
   `player:caught {by:'pack', soft?}` (2.0 s into the caught sequence). Writes `flags.lanternLit`
@@ -875,6 +972,8 @@ Round-4 (polish: set dressing) integration rules:
   (`settings.soundIndicators`), captions (`settings.subtitles`).
 - State `systems.hunt {alert, lantern {oil, lit, seconds}, caught, pack}`: `pack {era, opts}` is the
   active pack configuration; it comes back after a load in the same era (a story re-configure wins).
+  Loading cancels an outgoing capture. The incoming slot supplies the pack's area, composition,
+  mode and most recent intensity, including encounters that changed mode in place.
 - Visuals (`visuals.ts`, `PackVisuals`): bodies of sorted fbm smoke billboards; ember eyes as
   additive sprites with a minimum on-screen size that pierce the fog. Readable in fog at 30–60 m:
   the body keeps most of its dark silhouette out to ~55 m before sinking into the distance fog, a
@@ -895,16 +994,23 @@ Round-4 (polish: set dressing) integration rules:
   path (solid), grumble when shoved, amble aside after ~14 s of calm waiting (`menagerie:yield`).
   Jaguar circles outside the lantern light, creeps in when it's dark, shoves you over, retreats;
   light drives it off. No catching: a knockdown freezes you prone for 1.8–3.2 s (view tips to the
-  sky; reduced motion: no roll) → `menagerie:knockdown`. Gentle: slower, shorter, the jaguar never shoves.
+  sky; reduced motion: no roll) → `menagerie:knockdown`. Gentle: slower, shorter; the jaguar never
+  shoves, even if gentle mode is enabled during its pounce. Overlapping animals move apart on
+  walkable ground, using the available side or sliding along the bank when the direct push is blocked.
 - Procedural low-poly rigs (`models.ts`, kqLight / kqFog), eyeshine sprites, Web Audio calls with captions.
-- State `systems.menagerie {animals: [{animal, x, z, id, heading?, count?, era}]}`.
+- State `systems.menagerie` stores spawns in `animals`, permanently calmed group ids in `calmed`,
+  and progress by animal id in the optional `misses` and `flares` maps. A load restores the saved
+  counts, with missing entries starting at zero. Three saved misses keep the lead-home action ready.
+  `calmed` also suppresses those bodies when the menagerie rebuilds.
 - Hooks `kq.menagerie.spawn/spawnInView/clear/state/down/setState/place/freeze/events/places`.
 - Example beats (test only, not loaded): `content/test/hunt-menagerie.test.story.json`.
 
 ### fx (`src/systems/fx/`) – era shift, scan pulse, ambience, fire, Steinfraß
 - `shift:request {to, instant?}` → 3.5 s LiDAR transition (1.4 s crossfade in reduced motion,
-  none when instant) → `shift:begin`, era switched + `shift:midpoint`, `shift:done`; counts
-  `meta.shifts`. `scan:mode` 1–3 → scan pulse. Era particles always.
+  none when instant) → `shift:begin`, era switched + `shift:midpoint`, `shift:done`. Both paths
+  increment `meta.shifts` unless the reason is `caught`. The transition emits `shift:begin` before
+  it captures and freezes movement, so the court can release an active escort. The transition
+  restores movement before `shift:done`. `scan:mode` 1–3 → scan pulse. Era particles always.
 - `threat:configure {kind:'fire'|'oblivion'}` → fire schedule over the real rooms (`fire:room`,
   `fire:progress`, smoke meter, `flags['fire.hold']` pauses it) / Steinfraß (`oblivion:progress`,
   pushed back by `clue:found`, `echo:start`, `oblivion:remember {amount?}`); full meter →
@@ -954,6 +1060,9 @@ Round-4 (polish: set dressing) integration rules:
   (`kq.chronik.echo()` → `walking`). While it whispers on, E and the prompts are free for other
   clues; starting another echo ends the walking one as heard. Clue cards go through `ctx.ui.cards`
   (one at a time).
+- An interrupted memory emits `echo:end {id, aborted: true}` to release scene and HUD holds.
+  Quest objectives and default story event conditions count completed and skipped memories.
+  Chapter 2 also listens for the interrupted departure to let the lantern choice resolve.
 - Pause and `chronik:open` open the Codex page. `check()` re-evaluates case state for older saves
   (`state.chronik` stays readable). `player:caught` finishes a running echo and preserves progress.
 - Uses real packs; placeholder packs (`content/test/chronik-test.pack.json`, `ct.*`) only when no
@@ -982,6 +1091,9 @@ Round-4 (polish: set dressing) integration rules:
   story card is open.
 - **Free survey**: without a running story (sandbox, `?notitle` tests) every tool is open;
   `?skills=strict` forces gating, `?skills=all` opens everything. Locked keys leave a toast.
+- Survey checks the active scan and map against the incoming game's skills on its first tick.
+  A relief find starts a four-second game-time countdown. Another find restarts it, and a
+  manual scan selection cancels it. A slot load drops it; Continue from the title keeps the time left.
 - Also owns the extra settings rows (Rauhnacht under "Spiel",
   Geräusch-Untertitel and Richtungspfeile under "Barrierefreiheit") and key-help rows. The
   graphics preset itself belongs to the core (`render/quality.ts`, row "Grafik" under "Bild &
@@ -1004,7 +1116,8 @@ Round-4 (polish: set dressing) integration rules:
   medium #E69F00, low #CC79A7 striped) and shows it as a ghost where the era has none.
 - **Fährtenlinien** (Spurenleser 2): leader route and hound trails while a pack runs, read through
   the duck-typed accessor `window.kq.hunt.sim()` (no import of the hunt system).
-- Shift suspends the plan sheet; `game:start` resets the tools.
+- Shift suspends the plan sheet. An era change or slot load clears the measuring tape.
+  Terrain picking includes the final segment up to the crosshair's 600 m range. `game:start` resets the tools.
 - Hooks `kq.tools.measure.{start,stop,click,at,pick,state}`, `kq.tools.xray(on)`,
   `kq.tools.plans(view)`, `kq.tools.tracks(on)`, `kq.tools.state()`; `kq.survey.map(0|1840|1935)`.
 - On touch the Erkunden menu sends the same tool actions through virtual input.
@@ -1018,7 +1131,8 @@ Round-4 (polish: set dressing) integration rules:
 - Data in `content/story/*.story.json` (schema notes: `content/story/README.md`, checked by
   `pnpm validate`): chapters → beats with conditions, actions, delays, checkpoints. Prologue and
   endings are scripted from the bible; chapters 1–4 are placeholder skeletons.
-- Emits `story:chapter/beat/ending`, `objective:set`, `threat:configure`, `shift:request`,
+- Emits `story:chapter/beat/ending` (`story:chapter/beat` carry `resume: true` when a boot, load
+  or capture re-enters them), `objective:set`, `threat:configure`, `shift:request`,
   `dialogue:say`, `hub:enter/leave`, `story:cue {id,data?}` and `story:credits`. Presents every `dialogue:say` (portrait card, typing,
   voice) and ContentDB dialogue triggers. Voice: a recorded clip when `voice/manifest.json`
   (under the Vite base; contract and FNV-1a `textHash` over the raw `text_de` in
@@ -1062,15 +1176,20 @@ Round-4 (polish: set dressing) integration rules:
   delayed actions of other beats retire: presentation (`say`, `toast`, `sound`, `card`, `prompt`,
   `echo`, `choice`) is dropped, state changes run at once. A line that will not be spoken (said
   once already) costs no reading time in a run. The dialogue queue (`dialogue/queue.ts`, pure)
-  caps waiting lines at 6 (barks / skill remarks first), drops barks after 14 s, gives lines of an
-  ended beat or a left place `STALE_GRACE` = 3 s, beat lines `NORMAL_TTL` = 20 s and lore
+  caps waiting lines at 6. It evicts unplayed barks / skill remarks first and ordinary lines ahead
+  of queued `now` lines. A playable `now` line can interrupt ordinary dialogue directly, without
+  taking a waiting slot. Further urgent lines can queue while an urgent line is showing. An
+  interrupted sequence keeps its queue protection until it resumes. The queue drops barks after
+  14 s, gives lines of an ended beat or a left place `STALE_GRACE` = 3 s, beat lines
+  `NORMAL_TTL` = 20 s and lore
   (`dialogue:say {lore}`, sourced lines) `LORE_TTL` = 50 s, never cuts a playing sequence; while
   `hud.acting('combat')` lore and lines over 120 chars are held (`take(held)`), barks pass; while
   `hud.acting('reveal')` (a boss's reveal, combat) every line but `now` is held; a beat's own
   non-lore line is queued ahead of waiting lore that has not started (quest history at a turn-in
   never pushes the beat's line past its moment). Lines a
   trigger fires on `story:ending` are assembled by the ending card, not spoken; the presenter is
-  cleared at the credits. Reactions take `cooldown` (s, with `repeat`); the `speed {gte, lte}` condition reads the
+  cleared at the credits. Reactions take `cooldown` (s, with `repeat`). Starting or replaying a
+  chapter resets reaction cooldowns and rising-edge state. The `speed {gte, lte}` condition reads the
   player's speed; `say.variants` is a running joke (n-th run → n-th text, counted in
   `slice.sayCount`). Beats take `wake {x, z, yaw, era:'today', text}`: being caught / an empty
   meter brings you to the present there instead of the home at the Quelle. Ending choice: the field
@@ -1433,6 +1552,7 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   dog bark SFX yet).
 - **Calm** is script-only (`kq.animals.calm`): photo mode does not calm the deer (design decision,
   sneaking is the skill).
+- **Deer tuning** for the tour is recorded in [the tour slice](design/tour/slice-v0.md#deer-photo-and-sneak-tuning-task-017).
 - **Targets**: photo mode's `attachTarget` (`src/systems/photo/index.ts`, kq-mobile) gets
   `reh.ricke` / `reh.kitz` (`at` = body centre, `calm` false only while fleeing, `state` = the core
   state); the cinematic's `registerTarget` (`src/systems/cinematic/targets.ts`) gets `animal:<id>`
@@ -1440,6 +1560,8 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   absent, active once it lands. `kq.animals.stats()` reports which.
 - State `systems.animals` (`AnimalSave {v: 1, deer, dogs}`), written at 4 Hz and after every
   request. Restore (init, `save:loaded`) re-spawns the bodies and emits nothing.
+  A saved `leave` follows the chain to a departing leader with a saved destination. Cycles and
+  chains without such a leader restore as `gone`.
 - Hooks `kq.animals`: `ready` (true once the `animal:request` listener is attached; kq-story's
   temporary stand-in checks it), `spawn(op)`, `request(a)`, `list()` → `{id, kind, state, x, z,
   dist}`, `state(id)`, `startle(id)`, `calm(id, s)`, `leave(id)`, `clear()`, `demo()` (the deer pair
@@ -1483,6 +1605,7 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   smoke creeping in slowly — the Festsaal already threatens on arrival. The player's room drives
   the post heat shimmer (`ctx.post.uniforms.uHeat`). Per-room uniforms `uRoomFire/Smoke/Heat/Floor`.
   `collapsed` → ceiling gone, debris, doors blocked once the player is out (caption for the sound).
+  A shared door reopens when both adjoining rooms are clear.
   A room near the player that catches fire or collapses drops charred beams out of its ceiling
   (`beams.ts`: they tip at one end, swing, fall and lie glowing; no collider; reduced motion: just
   there). The Festsaal choice (K3, `festsaal.ts`): story cue `festsaal:objects {room}` places four
@@ -1499,6 +1622,14 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   re-selected after ≥ 0.5 m of movement or when the built set changes (< 0.05 ms per frame).
 - Emits `room:enter {roomId, building, id, name}` / `room:leave` (contracts.ts), mirrors them in
   `flags['interior.room']` / `flags['interior.building']`; story condition `{ "room": "<id>" }`.
+  A shift reports the room left using its original plan. Loading on foot inside a palace room
+  grounds the player on the saved storey (a room's floor or a doorway's, checked with `floorAt`).
+  While the shell still streams, a plan built from the room catalogue alone (no shell openings,
+  procedural entrances) provides those floors and walls, so the pose an autosave writes keeps the
+  storey and the exterior walls block; the shell's plan replaces it when it arrives.
+- Festsaal choice (K3, cue `festsaal:objects`): shifting away before choosing removes the objects,
+  the E prompt and the card hold; back in the choice's era (nothing in `festsaal.took` yet) they
+  return. A fire that ends or `festsaal:clear` drops the choice; a slot load drops a waiting one.
   Room names as a toast with `skills.baumeister ≥ 1`, `?debug` or `?rooms`.
 - Hooks `kq.interiors.list/enter/doors/room/build/fire/state/floorAt`.
 
@@ -1553,6 +1684,8 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   terrace lamps, winter over the summer night, the climax on the one scaffold, darkness, the
   return. Light via `uGlowColor/uGlowPos`, white flash via `post.uFlash` — off with
   `settings.reducedFlash` or `reducedMotion`; the graphics preset Niedrig halves the sparks.
+  Reduced motion keeps the phase and shell audio schedules, skips moving spark and smoke work,
+  and shows one stationary light during the dark phase.
 - Lit windows (`windows.ts`, the interiors' `extractOpenings`): cue `{do:'cue', id:'scenery:windows',
   data:{building, era?, on?, share?}}` (chapter 2 lights KB-B10); Ehrenhof gate `scenery:gate
   {open}` (closed by default; open adds a pass zone through KB-B39).
@@ -1581,7 +1714,10 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   walks) whenever the npc system shows him in 1793-07 within 160 m; not solid.
 - Westblick (1796): within 260 m of 200/−905 the haze thins to a quarter (`atmosphere.uFogDensity`
   and `uFogHeightDensity` scaled from `world.look`; restored when leaving) so the Hohenburg reads.
-- Runs in `update` (deterministic with `kq.step`). State `systems.scenery {windows, gate}`.
+- When an era drops a set, it also releases the set's collision. Loading a slot restores its
+  windows, gate and coat before the resumed story issues new scenery cues. Changing the lit share
+  rebuilds that building's panes for the requested era.
+- Runs in `update` (deterministic with `kq.step`). State `systems.scenery {windows, gate, coatTaken?}`.
   Hooks `kq.scenery.built/sets/solids/windows/gate/fireworks/hohenburg/passage/convoy/chair/fogLift`.
 
 ### travel (`src/systems/travel/`) – Vermessungspunkte, fast travel, route POIs, Wegweiser
@@ -1600,12 +1736,24 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
 - Map (`map.ts`): M (no modal open) or Pause → „Karte“ — the 1836–41 sheet with inked
   footprints, seen POIs, the goal, known / unknown points, the player; "Hinreisen" per point
   (`travel-go-<id>`), keys 1–9 / Enter, wheel zoom, drag; layer buttons for the terrain overlay
-  (`survey:show-map`). Travel: a curtain, pause `travel`, teleport beside the tripod facing the
-  goal, `travel:arrived`, autosave (synchronous under `?manual`).
+  (`survey:show-map`). During fast travel, a curtain covers the scene and `travel` pauses the
+  loop. The player teleports beside the tripod facing the goal, `travel:arrived` fires, and the
+  arrival pose is written into the store before autosaving. The walk system saves its pending
+  tour-group snap with the arrival and runs it on the first simulation tick, including after a
+  reload. Arrival is synchronous under `?manual`. Returning to the title, loading another save,
+  starting a game or disposing the travel system cancels a pending arrival, releases the travel
+  pause and removes any curtain immediately, including during its fade. The title autosave runs
+  after this cleanup. Both Enter and the travel button require an unblocked point at least 25 m away.
 - Route POIs (`pois.ts`, deterministic): along 18 chapter routes every ~120 m a cache (2–4 era
-  guards via `enemy:spawn`, group `poi:<id>`, only with a weapon in hand; `enemy:cleared` opens it:
-  `loot:place` + EP), a Fundstück (`lore.ts`, 26 fictional letters / notes / tokens / coins, card +
+  guards via `enemy:spawn`, only with a weapon in hand; `enemy:cleared` opens it), a Fundstück
+  (`lore.ts`, 26 fictional letters / notes / tokens / coins, card +
   Pause → Sammlungen → Funde) or a Wegstein (full heal + lantern refill, 120 s cooldown, out of combat).
+  A cache holds autosaves while it records the opening, places every seeded pickup and grants XP.
+  Combat mirrors its live resources on `travel:poi` after the cache grants XP and before travel
+  releases the hold. The checkpoint includes any HP gained when the player levels up, bypasses the
+  autosave interval and waits for any cinematic hold. Combat also holds autosaves while it handles
+  one simulation step's events, so the last guard's kill (its XP request) and the cache opening on
+  `enemy:cleared` land in one write: no save has the guards cleared and the cache still shut.
   Kept clear of buildings, content places (`KEEP_CLEAR`) and each other. Ids are `poi.<route>.<n>` and
   sit in saves (`done`): a new route goes LAST in `ROUTES` (the per-era spacing and Fundstück pools
   are shared, so an earlier insert would move later routes' POIs). `p-weiher` (round 10) follows
@@ -1628,6 +1776,17 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   objective or tracked quest's goal, 48 glow motes flow along the first 70 m when a goal is new
   (14 s), after 12 s without progress, or when the straight line within 30 m is blocked (round the
   wings, through doors and gates instead of into corners). While that straight line is blocked the compass
+  `moveScale`, never compounds). Releasing sprint eases the boost away even after a long run.
+  Entering combat, a hunt or an interior clears the boost and its run-up.
+- Wegweiser (`trail.ts` + `src/world/route.ts`): A* on a 2 m grid over the collider (footprints +
+  set solids + the interiors' walls, no corner cutting, the midpoint of every move tested on a
+  cached half-cell grid so a thin wall is never stepped through, string-pulled at 0.3 m; a 1 m
+  grid for goals within 170 m, else 2 m; probe radius 0.38; each probe sets the feet to the
+  ground-floor height there because the interiors' walls are height-aware — so the Durchfahrten
+  and vestibules with a step up read open) from the player to the story objective or the tracked
+  quest's goal; 48 glow motes flow along the first 70 m when a goal is new (14 s), after
+  12 s without progress, or when the straight line within 30 m is blocked (round the wings, through
+  doors and gates instead of into corners). While that straight line is blocked the compass
   carries a chalk-blue "Weg" marker (`hud.setMarker('wegweiser')`) at the route's next bend
   (> 4 m ahead) beside the gold objective marker; hook `kq.travel.way()`.
   The straight route checks both endpoints and skips the search when the segment is clear. A*
@@ -1651,6 +1810,23 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
 - State `systems.travel {activated, announced, seen, done, shrineT, tips}`. Events
   `travel:activated`, `travel:arrived`, `travel:poi`, `survey:show-map`. Hooks
   `kq.travel.state/points/activate/go/map/pois/nearest/trail/route/way`.
+
+### minimap (`src/systems/minimap/`) – local navigation
+
+- A player-centred 180 m square shares the Karte sheet, inked footprints, player arrow and gold
+  objective diamond via `travel/map-art.ts`. North stays up to match Karte and keep the paths
+  steady while turning. The present day draws the loaded walk graph over a muted sheet. The past
+  overlays the terrain's gravel, cobbles and sand cells on the survey sheet. Both canvases reuse
+  cached footprint bounds to draw only outlines that intersect the view.
+- The arrow follows player yaw and snaps to 45° headings with reduced motion. The diamond uses the
+  active story objective or the quest compass lead. A quest compass lead derived from the active
+  story objective supplies its entrance route, including before the Registratur quest is accepted.
+  The walk runtime supplies the guide and tour member positions in the present day. Distant markers
+  meet the inset edge along their bearing.
+- „Minikarte“ under Spiel is on by default and saved with the other settings. The 144 × 144 Canvas 2D
+  backing redraws at about 10 Hz during play. Pause (including Karte and other modals), title,
+  photo mode, cinematics, staged HUD sequences and the touch survey menu hide it and suspend drawing.
+  The touch layout uses the safe-area insets.
 
 ### walk (`src/systems/walk/`) – the tour group: the guide walks a route, the group follows
 WP-16, design contract C2 (`docs/design/tour/systems.md`). Pure core: `route.ts` (polyline, stops,
@@ -1739,10 +1915,13 @@ pause the logic.
   killer kind, era and objective (a `caught` within 3 s of a `died` is the same KO), stuck episodes:
   ≥ 180 s of active play (fixed step, not paused) while there is an objective and no
   `quest:progress / objective / ready / completed / accepted`, `story:beat / chapter` or changed
-  `objective:set`; the episode grows until progress ends it. Lists capped at 500.
+  `objective:set`; the episode grows until progress ends it. Lists capped at 500. A beat or chapter
+  the story enters again (`resume: true` after a boot, a load or a capture) and the slot's saved
+  objective set again on resume are not progress.
 - Storage (`store.ts`): IndexedDB `kq-notes` v1, stores `notes` (auto-increment) and `meta`
   (`telemetry`, written at most every 5 s while it changes and when the tab hides); memory fallback
   when IndexedDB is blocked. **No network calls, ever.**
+  Advancing or resetting the stuck clock schedules a write, even before an episode opens.
 - Pause menu (`notesPauseHooks` in `src/ui/menus.ts`): „Notizen exportieren (n)“ downloads
   `karlsberg-notizen-<date>.json` = `{ format: 'kq-notes', version: 1, exportedAt, notes: Note[],
   telemetry: { open, quests, deaths, stuck, sinceProgress, summary } }` (screenshots as data URLs);
@@ -1773,8 +1952,11 @@ pitch / yaw; fov and the look keys fade / fog / sun / dark; smooth or linear eas
 carry over. The timeline runs on fixed steps (Esc / modals stop it); `cinematic:stop {id}` ends that cinematic at once (no grace, also
 when not skippable; for features that route the input themselves, e.g. the party); skip after 0.5 s by any key
 (not Esc / P / F-keys), click or touch; the HUD steps back except subtitles (`html[data-kq-cinematic]`),
-centre cards wait, autosaves are held (`save.hold`) and written after; a save that holds a playing
-cinematic ends it skipped after the load. Reduced motion: 'stills' = first and last key with a dip
+centre cards wait, and autosaves are held (`save.hold`) until playback ends. If the system is
+disposed during a shot, the deferred autosave retains the shot ID. On load or startup the runtime
+consumes the saved ID and emits one skipped end event. When a new shot starts during hand-back,
+the final hand-back restores the gameplay field of view from before the first shot.
+Reduced motion: 'stills' = first and last key with a dip
 through black (≤ 3 s), 'skip' = start + end skipped. Debug `kq.cinematic.play(id | spec)`, `skip()`,
 `at(id, t)`, `list()`, `playing()`. Tests: `tests/cinematic-keys.test.ts`,
 `tests/cinematic-system.test.ts`, `e2e/cinematic.spec.ts` (`cinematic-*.png`).
@@ -1868,32 +2050,46 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
   lock / dodge / abilities / Q / E / pause from every other reader; the photo system reads them
   with `raw`. Esc is caught in the capture phase (and the pointer-lock loss marked as the game's
   own), so no pause menu opens.
+- The **viewfinder** uses `html[data-kq-photo]` to hide the gameplay HUD, prompts, waymarks, minimap,
+  measuring UI and quest giver glyphs while the phone is up. Touch keeps the phone toggle and
+  shutter visible and accepts movement and look gestures. The measuring scene and surface taps
+  pause with endpoints intact. Scene marker roots follow `photo:open` / `photo:close` alongside
+  the independent `world:quiet` reasons. Tripods still activate, with their banners queued until
+  the phone closes.
 - **Not now** (a toast, an open phone closes): a menu / modal or pause, a conversation
   (`npc:conversation`, `cameraHints.focus`), a fight (`cameraHints.fight` / `boss`), the spirit view,
   `player.frozen`, or the camera taken over (`camera:override` from boot's camera slot, which
   `kq.setCamera` and the coming cinematic use).
+- An inline story choice or a `say` action with `phoneDown: true` lowers the phone and keeps it
+  down until the choice or dialogue ends. Other story captions pause their queue, typing and
+  recorded voice while the viewfinder is up.
 - **Judging** (`core.ts`, pure, `tests/photo.test.ts`): geometric, never pixels. Per target of the
   era: project the bounding sphere; good = centre in the middle third (`centre: 'any'` allowed),
-  diameter ≥ `minFrac` of the frame height, ≥ 2 of 3 sample points (top / left / right of the
-  sphere) with a clear line (terrain, footprint walls when the palace stands, `forest.trunksNear`;
-  the last 0.7 r is the subject itself), distance within `minDist`…`maxDist`, the view's mean
-  angular speed < 0.35 rad/s over the last 0.3 s (`SteadyMeter`), and `calm()` true. `needAll`
-  binds targets (doe and fawn both good in the same shot). **Fallback:** `fallbackDist` counts once
+  diameter ≥ `minFrac` of the frame height, and a majority of sample rays clear. The rays aim at
+  the top, left and right of the sphere. Animals also sample the centre and bottom, so they
+  need three of five clear. Terrain, footprint walls when the palace stands and tree trunks
+  block the rays. The last 0.7 r is skipped for the subject itself. The distance must be within
+  `minDist`…`maxDist`. Subjects beyond the active range limit get one star in frame and skip
+  sight sampling. The view's mean angular speed must be at most 0.35 rad/s over the last
+  0.3 s (`SteadyMeter`), and `calm()` must allow the shot. `needAll`
+  binds targets (doe and fawn both good in the same shot). **Fallback:** `fallbackDist` and the
+  optional lower `fallbackMinFrac` apply once
   the player has spent `fallbackAfterS` unpaused seconds within `fallbackDist` of the target (the
   clock lives in the save slice, stops at the first good shot), with `fallbackStars` (2 or 3 = good;
   1 = never good: one rule, good means ≥ 2 stars everywhere). **Stars**
   (contract C3): 0 nothing in the frame, 1 in the frame but not good, 2 good, 3 good and closer than
   0.6 × `maxDist`. German verdicts („Perfekt!“, „Gutes Foto“, „Nicht mittig“, „Verdeckt“, „Zu weit
   weg“, „Zu klein im Bild“, „Unscharf“, „Aufgeschreckt“, „Nicht alle im Bild“ …).
-- **Past eras:** „Kein Netz“ in the frame and as a toast, the picture comes out white, nothing is
-  judged or booked: `photo:shot { targets: [], good: [], stars: 0, noSignal: true }`.
+- **Past eras:** the phone still opens and the viewfinder shows „Kein Netz“. The shutter produces
+  a white picture and a toast. The shot is recorded as
+  `photo:shot { targets: [], good: [], stars: 0, noSignal: true }` and stays out of the album.
 - **Events:** `photo:open`, `photo:close`, `photo:shot { targets, good, stars, noSignal }`, and one
   `photo:good { id, stars }` per good target (scalar: the story waits with
   `{ "event": "photo:good", "match": { "id": … } }`; quests count it with the objective
   `{ "type": "photo", "target": … }`, validated against the target list; a good shot taken before
   the objective started counts at once, on accept, on a newly active objective and on load:
   `QuestBook.settleKnown(found, hasPhoto)` reads `systems.photo.good`).
-- **Subject state:** `attachTarget(id, { at, calm, state })` / `registerTarget({ …, state })` take an optional `state()` getter (an opaque string, e.g. the deer's `graze` / `alert` / `flee` / `settled`), read at the shot for each good target and carried as `photo:good { id, stars, state }` (absent without a getter; also on the album entry); story matches `{ "event": "photo:good", "match": { "id": "reh.ricke", "state": "alert" } }`. Stars and verdicts ignore it, and `calm()` false still voids the shot (`?debug`: `kq.photo.deer.state('alert')`).
+- **Subject state:** `attachTarget(id, { at, calm, state })` / `registerTarget({ …, state })` take an optional `state()` getter (an opaque string, e.g. the deer's `graze` / `alert` / `flee` / `settled`), read at the shot for each good target and carried as `photo:good { id, stars, state }` (absent without a getter; also on the album entry). The tour saves the first accepted state with the album entry and finishes the corresponding reaction on Continue. Stars and verdicts ignore the state, and `calm()` false still voids the shot (`?debug`: `kq.photo.deer.state('alert')`).
 - **Targets are data:** `content/photo/targets.json` (kq-story; C3 shape: id, kind, era `today`,
   one anchor `at` / `npc` / `animal`, `r`, `frame`, `grants`, plus `cards[]`), validated by
   `pnpm validate` (`data.ts` `validatePhotoTargets`). A point anchor is static (ground + r without
@@ -1968,7 +2164,7 @@ card, sound, toast, cue, chronik, ending, echo, grant):
 `npc:talk {npc, topic}`, `measure:done {building, room}`, `skill:unlocked {skill, level}`,
 `hunt:goal {mode}`, `hunt:finale {outcome}`, `hunt:tracking {on, why}`, `hunt:read`,
 `player:caught {by, soft}`, `menagerie:seen / knockdown / yield {id}`, `clue:found {id}`,
-`echo:end {id}`, `chronik:batch`, `chronik:case-complete {caseId}`, `fire:room {roomId, state}`,
+`echo:end {id, aborted?}`, `chronik:batch`, `chronik:case-complete {caseId}`, `fire:room {roomId, state}`,
 `story:choice {id, option}`, `story:meter-full {id}`, `bark:idle`.
 
 **Recipes**
@@ -2045,11 +2241,17 @@ Each RPG track adds its own subsection here when it fills its system in.
   `npc:talk`, `room:enter` …), `npc:topics` / `npc:marker` / `npc:follow` to npc, restore on
   `save:loaded` **and on a state replace** (`state.subscribe` reason `new` / `replace`: a new game
   from the title replaces the whole state, and the book must follow the new slice). State
-  `systems.quests` (`QuestSlice` + `bestiary`). A restore never autosaves (at boot it would write
-  an empty save before the title); accept / complete / fail / stance are forced autosaves.
-  Known clues settle one tick after any accept / objective (`settleKnown`). On `story:chapter`,
-  main quests of earlier chapters still running and unaccepted offers of earlier chapters are
-  reset (chapter jumps; the e2e `test` chapter counts as after the campaign); side quests the
+  `systems.quests` (`QuestSlice` + `bestiary`). Restore replays any newly credited progress through
+  the normal quest events and autosaves. Recovered payouts queue their dialogue and reward notice
+  until Continue or until an in-game load finishes. Replacing the state clears the previous save’s
+  pending reward presentation. Accept / complete / fail / stance are forced autosaves.
+  Saved clues, good photos and calms settle on restore and one tick after acceptance or objective
+  completion (`settleKnown`). A newly accepted quest also checks its open calm objectives before
+  the acceptance autosave, including during a paused conversation. Calm objectives match a saved
+  spawn ID or species. „Der Jaguar“ can also recover directly from `k3.jaguar` in the saved calm
+  list after its spawn record was cleared.
+  On `story:chapter`, main quests of earlier chapters still running and unaccepted offers of earlier
+  chapters are reset (chapter jumps; the e2e `test` chapter counts as after the campaign). Side quests the
   player took keep running unless their chapter fails them. The book restores on a state `load`
   too (it fires before `save:loaded`, which reaches the story's resume first).
 - Main quest always visible (playtest round 10, F-30 / F-41, `tests/quests-tracker.test.ts`):
@@ -2059,6 +2261,9 @@ Each RPG track adds its own subsection here when it fills its system in.
   (`.kqq-offer`, „Bei <Geber> annehmen“; deliberately not `.kqq-main`, so the story's line keeps
   leading to the giver). The „Laufend“ view in Aufgaben is `journalRunning()`: running quests plus main
   quests on offer; with no main quest in it, the story's objective shows as „Hauptweg: …“.
+  Displaying a quest's detail clears its unread mark on that render, including the initial selection.
+  Objective ticks and progress counts use the quest engine's `need()` target, including the
+  one-second minimum for survival objectives.
 - `hud.ts`: tracker (`hud.stack`, max 3, main first, `n/N`, "Zurück zu …" when ready; a done
   goal is struck through, then folds away), feed (`hud.dock('feed')`), banner (waits for the payout
   and the chapter title) and payout notice (earned EP, items, skills and a Codex count). The
@@ -2117,7 +2322,8 @@ Each RPG track adds its own subsection here when it fills its system in.
   `lanternPose {side, lift}` — combat holds the lantern on the left and lifts it during a flare.
 - **Menagerie**: attacks pass through animals (combat never targets them). A cassowary that
   charged past three times can be led home with E → `menagerie:calmed`; three Bannlicht flares
-  drive a jaguar off for good → `menagerie:calmed`; calmed ids persist in `MenagerieSlice.calmed`.
+  drive a jaguar off for good → `menagerie:calmed`. The save records the counted misses and flares
+  as well as completed calming.
 - **Debug** `window.kq.combat`: `state() spawn(kind, opts) kill(groupOrId?) hit(n) bann() dodge()
   god(on) groups() enemies() place() windup() freeze() skill(id) hurt() heal() events() shake() sim()`.
 - **e2e** `e2e/combat.spec.ts` (screenshots `test-results/screens/rpg-combat-*.png`),
@@ -2127,7 +2333,7 @@ Each RPG track adds its own subsection here when it fills its system in.
 
 | Module | What |
 |---|---|
-| `logic.ts` | **pure** `ProgressionCore` over the slice + an emitter (tested in `tests/progression.test.ts`): XP × `stats.xp` capped at level 12, one `level:up` + one talent point per level, `flags['rpg.level']` via `setLevelFlag`; stack limits (consumables `stack`, weapons / charms / lore / keys 1, quest items 99, unknown quest ids 99); weapon auto-equip only when `weaponPower` is higher; charms fill `charmSlots(level)`; `use` → `item:use` (+ `lantern:request {lit, refill}` for oil / bann items); talents (`talentBlock`, respec); collections; codex +10 XP once per fact; seeded loot (`mulberry32(hash(enemy id) ^ drop counter)`, chance + `stats.loot` + bad-luck protection +6 % per empty roll ≤ 30 %); world pickups (place idempotent, taken ids never return, ≤ 40 drops kept) |
+| `logic.ts` | **pure** `ProgressionCore` over the slice + an emitter (tested in `tests/progression.test.ts`): XP × `stats.xp` capped at level 12, one `level:up` + one talent point per level, `flags['rpg.level']` via `setLevelFlag`; stack limits (consumables `stack`, weapons / charms / lore / keys 1, quest items 99, unknown quest ids 99); weapon auto-equip only when `weaponPower` is higher; charms fill `charmSlots(level)`; `use` → `item:use` (+ `lantern:request` with the item's oil amount); talents (`talentBlock`, respec); collections; codex +10 XP once per fact; seeded loot (`mulberry32(hash(enemy id) ^ drop counter)`, chance + `stats.loot` + bad-luck protection +6 % per empty roll ≤ 30 %); world pickups (place idempotent, taken ids never return, ≤ 40 drops kept) |
 | `pickups.ts` | three.js pickups: billboard core with a glint (no fog, min. on-screen size, fades past 40 m), spinning token, rising motes, ground pool, light column for quest / lore / weapon / charm items; era tint; pop-in bounce, drops drift towards a player within 3.4 m, take = fly to the bottom of the view + burst (reduced motion: fade only) |
 | `hud.ts` | `hud.dock('vitals', xp, 30)` (level medallion + brass bar with ghost gain, "+50" pop, brass ring pulse on level-up — no flash), `dock('vitals', quick, 40)` (key, glyph, name, count), `dock('feed', lines, 10)` (max 3 lines, fade after 4.2 s), floating "+N EP" at the `xp:grant` x/z |
 | `levelup-card.ts` | "Stufe N" stamp card (centre, `top: max(170px, 24vh)`), merges several level-ups, chime on the stamp; game time; steps aside (`kqp-held`) while a story title card / curtain, a modal or a skill unlock card shows |
@@ -2135,10 +2341,14 @@ Each RPG track adds its own subsection here when it fills its system in.
 | `icons.ts`, `audio.ts`, `progression.css` | procedural glyphs, Web Audio sounds (pickup, level, use, collection), styles incl. high-contrast and reduced-motion rules |
 
 Rules that came out of it:
-- **Consumable split**: progression only decrements and emits `item:use {item}`; **combat** owns
+- **Consumable use**: progression decrements the stack and emits `item:use {item}`. **Combat** owns
   Lebenskraft / Atem / Bannlicht and applies the `ItemEffect` from `src/rpg/items.ts` (heal ×
-  `stats.healing`, stamina, bann, Kalkstaub burst). Lampenöl's lantern refill is the one effect
-  progression sends itself (`lantern:request`).
+  `stats.healing`, stamina, bann, Kalkstaub burst). Combat mirrors the resources into its slice during
+  that event. Progression requests Lampenöl's oil increment through `lantern:request`, then checkpoints
+  the successful use, including from the gear page while the simulation is paused. Kalkstaub is the
+  exception: its stun exists only in the running fight (enemies are rebuilt on load), so its use stays
+  on the throttled autosave like other combat state. The Bannlicht recharge timer is not saved;
+  loading restarts it, so a loaded charge count never refills on the first tick.
 - **Stats**: `stats:changed {stats}` at boot, again on `game:start` (systems registered after
   progression miss the boot one) and whenever `deriveStats(slice, {gentle, rauhnacht})` changes.
 - **Loot**: progression rolls on `enemy:killed`, emits `loot:drop`, then `loot:place` per item
@@ -2194,9 +2404,12 @@ Rules that came out of it:
 - **Actions, not keys.** Features read `input.isDown(action)` / `input.wasPressed(action)`. Keys come
   from `effectiveBindings` (defaults plus the player's remaps). Mouse look comes from pointer-locked
   `movementX/Y`, `addLook(dx, dy)` (the pilot and touch) and ← / → (`keyTurn.ts`).
+  Changing modal input ownership or losing window focus clears pending presses, look and wheel movement.
 - **Virtual presses.** `input.press(action, down, edge?)` holds a binding-independent code `@<action>`.
   Remaps and the shared-key pairs (LMB = attack + interact, Space = dodge + up) stay untouched, and
-  the touch layer says per button which actions it means. `releaseVirtual()` drops every `@` hold.
+  the touch layer says per button which actions it means. `releaseVirtual()` clears virtual holds
+  and queued virtual presses. Fingers and brief keyboard or assistive technology activations share
+  a single press on each button. The action releases when all fingers leave and any active tap ends.
 - **Touch mode** (`input.touchMode`): `requestLock()` is a no-op, the "Ins Bild klicken" chip stays
   hidden, and the pause menu comes from a button, since Esc and losing the lock do not exist on touch.
 - **`TouchControls` (`src/ui/touch.ts`)** is created in boot after the input.

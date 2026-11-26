@@ -123,7 +123,8 @@ export class CameraTakeover implements CinematicCamera {
     this.avatar = opts.showAvatar !== false;
     this.blend = null;
     this.hasShot = false;
-    this.baseFov = 0;
+    // A new shot can interrupt the hand-back while the camera still has a cinematic FOV.
+    if (this.deps.slot.fn !== this.apply) this.baseFov = 0;
     const pl = this.deps.player;
     if (opts.freeze !== false) {
       this.saved = { frozen: pl.frozen, lookLocked: pl.lookLocked, yaw: pl.yaw, pitch: pl.pitch };

@@ -1,12 +1,12 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { SCREENS } from './helpers/common';
 
 /**
  * Die Meute + der Pikeur + die Laterne. Drives the hunt system through `window.kq.hunt` /
  * `window.kq.lantern` with `?manual` (deterministic stepping). Screenshots:
  * test-results/screens/hunt-*.png — look at them after visual changes.
  */
-const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];

@@ -13,6 +13,7 @@
  * `dark`: only seen with the lantern OFF (the fire's reflection on the water).
  */
 import type { Era } from '../../core/era';
+import { stringList } from '../../core/saved';
 import { toWorld } from '../quelle/layout';
 
 export type FlaschenVerb = 'walk' | 'crouch' | 'look' | 'wucht' | 'lantern' | 'dark' | 'unseen' | 'relief' | 'open';
@@ -87,6 +88,19 @@ export const FLASCHEN: readonly FlaschenSpot[] = [
 ];
 
 export const FLASCHEN_TOTAL = FLASCHEN.length;
+
+/**
+ * The known bottle ids of a saved list, each once. Retired ids and duplicates must not count towards
+ * the collection or its milestones (`hanging`: only bottles that hang, for `dropped`).
+ */
+export function liveBottleIds(ids: unknown, hanging = false): string[] {
+  return [...new Set(stringList(ids).filter((id) => FLASCHEN.some((spot) => spot.id === id && (!hanging || spot.hang))))];
+}
+
+/** The collection slice as the system restores it from a save (older, sparse or corrupt). */
+export function readBottleSlice(s: { found?: unknown; dropped?: unknown; said?: unknown }): { found: string[]; dropped: string[]; said: string[] } {
+  return { found: liveBottleIds(s.found), dropped: liveBottleIds(s.dropped, true), said: stringList(s.said) };
+}
 
 /** Era order of the Journal row. */
 export const FLASCHEN_ERAS: readonly Era[] = ['today', '1789', '1793-02', '1793-07', '1796'];

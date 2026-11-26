@@ -10,7 +10,7 @@ import type { Clue, ContentPack } from '../src/content/types';
 import { validateContent } from '../src/content/validate';
 
 const ROOT = new URL('..', import.meta.url).pathname;
-const { packs: allPacks, parseErrors } = loadPacks(ROOT);
+const { packs: allPacks, errors: inputErrors } = loadPacks(ROOT);
 const packs = allPacks.filter((p) => p.file.startsWith('content/packs/'));
 const merged = <K extends keyof ContentPack>(k: K) => packs.flatMap((p) => (p.pack[k] ?? []) as NonNullable<ContentPack[K]> & unknown[]);
 const clues = merged('clues') as Clue[];
@@ -69,7 +69,7 @@ function playthrough(maxChapter = CHAPTERS.length - 1) {
 
 describe('campaign packs', () => {
   it('parse and validate with zero errors', () => {
-    expect(parseErrors).toEqual([]);
+    expect(inputErrors).toEqual([]);
     expect(packs.length).toBeGreaterThanOrEqual(9);
     const r = validateContent(allPacks, { bounds: gameBounds(ROOT) });
     expect(r.errors.map((e) => `${e.file} [${e.id}] ${e.message}`)).toEqual([]);

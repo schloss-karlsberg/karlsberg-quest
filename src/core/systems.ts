@@ -43,8 +43,9 @@ export class SystemRegistry {
 
   registerSystem(sys: GameSystem): void {
     if (this.entries.some((e) => e.sys.id === sys.id)) throw new Error(`system '${sys.id}' registered twice`);
-    this.entries.push({ sys, failed: false, ms: 0, frameMs: 0 });
-    this.ordered = sortByDeps(this.entries);
+    const entry = { sys, failed: false, ms: 0, frameMs: 0 };
+    this.ordered = sortByDeps([...this.entries, entry]);
+    this.entries.push(entry);
   }
 
   get(id: string): GameSystem | undefined {

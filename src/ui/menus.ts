@@ -2,6 +2,7 @@ import { SPEAKER_PERMISSION_NOTICE, type LicencesFile, type VoiceCredit } from '
 import type { SettingsStore } from '../core/save';
 import type { AttributionItem } from '../data/types';
 import { t } from '../i18n';
+import { type Action, effectiveBindings } from '../player/input';
 import { h } from './dom';
 import type { ModalHandle, ModalManager } from './modal';
 import { openPausePage, pausePages } from './pause-pages';
@@ -15,21 +16,73 @@ export interface MenuDeps {
 }
 
 export { SETTINGS_SECTIONS, type SettingsRow, type SettingsSection, addSettingsRows, settingsForm } from './settings';
-import { settingsForm } from './settings';
+import { keyLabel, refreshOnKeyboardLayout, settingsForm } from './settings';
 
-/** Key help: `ui.keys.<id>` (description) + `ui.keys.<id>.key` (key label) from the bible, in this order. */
-export const CONTROL_KEYS: string[] = ['move', 'turn', 'run', 'sneak', 'prone', 'spirit', 'scan', 'map', 'listen', 'examine', 'shift', 'lantern', 'inventory', 'measure', 'pause'];
-/** Feature systems append their own control ids (strings `ui.keys.<id>` / `.key` registered via addStrings). */
-export function addControlKeys(...ids: string[]): void {
-  for (const id of ids) if (!CONTROL_KEYS.includes(id)) CONTROL_KEYS.push(id);
+interface ControlRow {
+  id: string;
+  actions?: readonly Action[];
 }
 
-export function controlsBody(): HTMLElement {
-  return h(
-    'table.kq-keys',
-    { 'data-testid': 'key-help' },
-    CONTROL_KEYS.map((id) => h('tr', [h('td.k', t(`ui.keys.${id}.key`)), h('td', t(`ui.keys.${id}`))])),
+const CONTROL_ROWS: ControlRow[] = [
+  { id: 'move', actions: ['forward', 'left', 'back', 'right'] },
+  { id: 'turn', actions: ['lookLeft', 'lookRight', 'lookUp', 'lookDown'] },
+  { id: 'run', actions: ['sprint'] },
+  { id: 'sneak', actions: ['crouch'] },
+  { id: 'prone', actions: ['prone'] },
+  { id: 'spirit', actions: ['fly'] },
+  { id: 'scan', actions: ['scan'] },
+  { id: 'map', actions: ['map'] },
+  { id: 'listen', actions: ['listen'] },
+  { id: 'examine', actions: ['interact'] },
+  { id: 'shift', actions: ['shift'] },
+  { id: 'lantern', actions: ['lantern'] },
+  { id: 'inventory', actions: ['inventory'] },
+  { id: 'measure', actions: ['measure'] },
+  { id: 'pause' },
+];
+
+/** Feature rows register `ui.keys.<id>` and use `.key` for fixed shortcuts outside Input. */
+export function addControlKeys(...rows: ControlRow[]): void {
+  for (const row of rows) if (!CONTROL_ROWS.some(({ id }) => id === row.id)) CONTROL_ROWS.push(row);
+}
+
+function scanKeyLabels(codes: readonly string[], layout?: ReadonlyMap<string, string>): string[] {
+  const forward: string[] = [];
+  const reverse: string[] = [];
+  for (const code of codes) {
+    const key = keyLabel(code, layout);
+    if (code === 'ShiftLeft' || code === 'ShiftRight') {
+      reverse.push(t('ui.keys.scan.reverseOnly', { key }));
+    } else {
+      forward.push(`[${key}]`);
+      reverse.push(`[${t('ui.keys.scan.reverse', { key })}]`);
+    }
+  }
+  return [...forward, ...reverse];
+}
+
+export function controlKeyRows(overrides: Record<string, string[]>, layout?: ReadonlyMap<string, string>) {
+  const bindings = effectiveBindings(overrides);
+  return CONTROL_ROWS.map(({ id, actions }) => {
+    const keys = actions?.map((action) => {
+      const codes = bindings[action];
+      const labels = action === 'scan'
+        ? scanKeyLabels(codes, layout)
+        : codes.map((code) => `[${keyLabel(code, layout)}]`);
+      return labels.length ? labels.join(' / ') : t('settings.keys.none');
+    }).join(' · ') ?? t(`ui.keys.${id}.key`);
+    return { id, keys, description: t(`ui.keys.${id}`) };
+  });
+}
+
+export function controlsBody(settings: SettingsStore): HTMLElement {
+  const body = h('tbody');
+  const render = () => body.replaceChildren(
+    ...controlKeyRows(settings.state.bindings).map(({ keys, description }) => h('tr', [h('td.k', keys), h('td', description)])),
   );
+  render();
+  refreshOnKeyboardLayout(render);
+  return h('table.kq-keys', { 'data-testid': 'key-help' }, body);
 }
 
 let assetLicences: LicencesFile | null = null;
@@ -168,11 +221,11 @@ export function openPause(deps: MenuDeps, onClose: () => void): ModalHandle {
         h('button.kq-btn.primary', { onclick: () => m.close(), 'data-testid': 'resume' }, t('pause.resume')),
         ...(pauseHooks.extraActions?.() ?? []).map((a) => h('button.kq-btn', { 'data-testid': a.testid, onclick: () => (m.close(), a.run()) }, a.label)),
         destinations(),
-        h('button.kq-btn', { 'data-testid': 'pause-settings', onclick: () => sub(t('settings.title'), settingsForm(deps.settings)) }, t('pause.settings')),
-        h('button.kq-btn', { 'data-testid': 'pause-controls', onclick: () => sub(t('controls.title'), controlsBody()) }, t('pause.controls')),
+        h('button.kq-btn', { 'data-testid': 'pause-settings', onclick: () => sub(t('settings.title'), settingsForm(deps.settings), 'pause-settings') }, t('pause.settings')),
+        h('button.kq-btn', { 'data-testid': 'pause-controls', onclick: () => sub(t('controls.title'), controlsBody(deps.settings), 'pause-controls') }, t('pause.controls')),
         h('button.kq-btn', { 'data-testid': 'pause-save', onclick: () => deps.save() && deps.modals.open({ body: t('pause.saved'), backdrop: 'still', actions: [{ label: t('modal.ok') }] }) }, t('pause.save')),
         ...notesButtons(),
-        h('button.kq-btn', { onclick: () => sub(t('licences.title'), licencesBody(deps.attribution())) }, t('pause.licences')),
+        h('button.kq-btn', { 'data-testid': 'pause-licences', onclick: () => sub(t('licences.title'), licencesBody(deps.attribution()), 'pause-licences') }, t('pause.licences')),
         h('button.kq-link', { onclick: () => { m.close(); deps.toTitle(); } }, t('pause.toTitle')),
       ]),
       t('pause.title'),
@@ -199,8 +252,12 @@ export function openPause(deps: MenuDeps, onClose: () => void): ModalHandle {
         : []),
     ];
   };
-  const sub = (title: string, body: HTMLElement | HTMLElement[]) => {
-    m.setBody([...(Array.isArray(body) ? body : [body]), h('div.actions', h('button.kq-btn', { onclick: main }, t('settings.back')))], title);
+  const sub = (title: string, body: HTMLElement | HTMLElement[], opener: string) => {
+    const back = () => {
+      main();
+      m.el.querySelector<HTMLElement>(`[data-testid="${opener}"]`)?.focus();
+    };
+    m.setBody([...(Array.isArray(body) ? body : [body]), h('div.actions', h('button.kq-btn', { onclick: back }, t('settings.back')))], title);
   };
   main();
   return m;

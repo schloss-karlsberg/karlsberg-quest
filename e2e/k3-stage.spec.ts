@@ -6,8 +6,8 @@
  */
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { SCREENS } from './helpers/common';
 
-const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];
 // biome-ignore lint/suspicious/noExplicitAny: test glue

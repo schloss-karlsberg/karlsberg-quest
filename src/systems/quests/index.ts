@@ -30,7 +30,7 @@ import { Feed, RewardNotice, showBanner, Tracker, type RewardView, type TrackerQ
 import { Waymark } from '../../ui/waymark';
 import { hideWhileQuiet } from '../../core/quiet';
 import { renderCodex, renderQuests, renderSets, type PageData } from './pages';
-import { type QuestDefIn, type QuestPayout, QuestBook, createQuestSlice, giverId, historyAtTurnin, need, normaliseSlice, turninOf } from './logic';
+import { type QuestDefIn, type QuestPayout, QuestBook, createQuestSlice, giverId, historyAtTurnin, need, objectiveEvents, normaliseSlice, recordItemDeed, turninOf } from './logic';
 
 declare module '../../core/state' {
   interface SystemStates {
@@ -85,18 +85,6 @@ const SIDE_MARK_RANGE = 90;
 /** Rough reading time of a spoken line (game seconds). */
 const lineSeconds = (s: string) => 1.6 + s.length * 0.055;
 
-/**
- * The deed contract for physical choices (docs/ACTION-RPG.md §8.6): taking one of these things in
- * the world (`item:pickup`) sets the flag the epilogue reads. The Festsaal (Ch. 3): whichever of the
- * three objects is carried out first is `flag.k3_objekt`; leaving with none is the story's
- * `nichts`. Quest-file items add theirs with `deed`.
- */
-export const DEED_ITEMS: Readonly<Record<string, { flag: string; value: string }>> = {
-  'item.charm.tuergriff': { flag: 'flag.k3_objekt', value: 'tuergriff' },
-  'item.charm.dukat': { flag: 'flag.k3_objekt', value: 'dukat' },
-  'item.charm.uhr': { flag: 'flag.k3_objekt', value: 'uhr' },
-};
-
 const SKILL_NAME: Record<string, string> = { relief: 'Relief-Blick', kartograf: 'Kartograf', baumeister: 'Baumeister', roentgen: 'Röntgenblick', spurenleser: 'Spurenleser' };
 
 type CompassKind = 'obj' | 'offer' | 'offer-main' | 'ready';
@@ -107,6 +95,7 @@ interface Lead {
   obj: QuestDefIn['objectives'][number] | null;
   target: WayPoint | null;
   label: string;
+  story?: { x?: number; z?: number };
 }
 
 /** The waymark's label: the objective in a few words (up to the first colon or 46 characters). */
@@ -127,6 +116,8 @@ class QuestRuntime {
   private readonly feed = new Feed();
   private readonly layer: HTMLElement;
   private readonly reward: RewardNotice;
+  private readonly restoredPayouts: QuestPayout[] = [];
+  private restoring = false;
   private bannerQ: (() => void)[] = [];
   private readonly beacons: Beacons;
   private readonly sentTopics = new Map<string, string>();
@@ -151,7 +142,7 @@ class QuestRuntime {
   private here: string | null = null;
   private interest = new Set<string>();
   private dirty = true;
-  /** Set when a quest was accepted or an objective closed: clues found earlier settle next tick (Q-15). */
+  /** Set when a quest was accepted or an objective closed: saved actions settle next tick. */
   private settle = false;
   private availIn = 0;
   private markIn = 0;
@@ -173,6 +164,9 @@ class QuestRuntime {
       },
       get codex() {
         return ctx.state.mutable.codex.facts;
+      },
+      get menagerie() {
+        return ctx.state.state.systems.menagerie;
       },
       emit: (n, p) => ctx.events.emit(n, p),
       now: () => ctx.state.state.meta.playSeconds,
@@ -221,23 +215,38 @@ class QuestRuntime {
       ev.on('quest:turnin', ({ id }) => this.book.complete(id)),
       ev.on('story:chapter', ({ id }) => {
         this.availIn = 0;
-        this.dropEarlier(id);
+        this.book.dropEarlier(id);
         // the main quest on offer is the chapter's (renderTracker)
         this.dirty = true;
       }),
       ev.on('era:change', () => {
         this.availIn = 0;
+        this.markIn = 0;
         this.dirty = true;
       }),
       ev.on('level:up', () => (this.availIn = 0)),
       ev.on('chronik:open', () => openPausePage(ctx.ui.modals, 'codex')),
-      ev.on('save:loaded', () => this.restore()),
+      ev.on('game:start', ({ resumed }) => {
+        if (resumed) this.presentRestoredPayouts();
+        else this.restoredPayouts.length = 0;
+      }),
+      ev.on('save:loaded', () => {
+        this.restore();
+        this.presentRestoredPayouts();
+      }),
       // a new game replaces the whole state: the book must follow the new slice, or it keeps
       // writing into the old one and nothing it records is saved any more
       // (a load too, at once: save:loaded reaches the story first, whose resume runs quest
       // commands that must land in the loaded slice, not in the one being replaced)
       ctx.state.subscribe((_s, reason) => {
-        if (reason === 'new' || reason === 'replace' || reason === 'load') this.restore();
+        if (reason !== 'new' && reason !== 'replace' && reason !== 'load') return;
+        // „Weiter“ reloads the slot that boot already recovered (and autosaved): keep its payouts.
+        if (reason !== 'load' || !this.ctx.pause.reasons.has('title')) {
+          this.restoredPayouts.length = 0;
+          this.reward.clear();
+        }
+        this.restore();
+        if (reason !== 'load') this.presentRestoredPayouts();
       }),
       ev.on('codex:unlocked', ({ factId }) => {
         const s = this.book.slice;
@@ -247,11 +256,8 @@ class QuestRuntime {
       ev.on('discovery:found', ({ title }) => this.feed.push(t('quest.discovery.feed', { title }), 'done')),
       // deeds: a thing taken in the world sets its flag (first taken wins)
       ev.on('item:pickup', ({ item }) => {
-        const d = DEED_ITEMS[item] ?? this.items.get(item)?.deed;
+        const d = recordItemDeed(item, this.items.get(item), ctx.state.mutable.flags);
         if (!d) return;
-        const flags = ctx.state.mutable.flags;
-        if (flags[d.flag] !== undefined && flags[d.flag] !== '' && flags[d.flag] !== 'nichts') return;
-        flags[d.flag] = d.value;
         ctx.events.emit('quest:deed', { flag: d.flag, value: d.value, item });
       }),
       ev.on('enemy:killed', ({ kind }) => {
@@ -275,43 +281,27 @@ class QuestRuntime {
         this.book.handle(name, payload);
       }),
     );
-    this.book.onPayout = (p) => this.onPayout(p);
+    this.book.onPayout = (p) => {
+      if (this.restoring) {
+        // a title reload can recover the same payout again: present it once
+        const i = this.restoredPayouts.findIndex((q) => q.id === p.id);
+        if (i >= 0) this.restoredPayouts.splice(i, 1);
+        this.restoredPayouts.push(p);
+      }
+      else this.presentPayout(p);
+    };
     this.restore();
-  }
-
-  /**
-   * A new chapter: main quests of earlier chapters still running and unaccepted offers leave the
-   * log (a chapter select or story jump skipped them; in a straight run they are all done); side
-   * quests of a past era of an earlier chapter end (ready → paid, active → failed).
-   */
-  private dropEarlier(chapter: string): void {
-    const order = ['tour', 'k1', 'k2', 'k3', 'k4', 'enden'];
-    // a chapter outside the campaign (the e2e `test` chapter) comes after all of it
-    const at = order.includes(chapter) ? order.indexOf(chapter) : order.length;
-    for (const q of this.defs.values()) {
-      const i = order.indexOf(q.chapter ?? '');
-      if (i < 0 || i >= at) continue;
-      const st = this.book.state(q.id);
-      // main quests of a skipped chapter, and offers whose (chapter-bound) giver is gone
-      if (st === 'offered' || (q.kind === 'main' && (st === 'active' || st === 'ready'))) this.book.reset(q.id);
-      // side quests bound to a past era of that chapter cannot be finished any more: a finished one
-      // pays out (its giver is gone), an open one fails. Present-day side quests carry over.
-      else if (q.kind === 'side' && q.era && q.era !== 'today') {
-        if (st === 'ready') this.book.complete(q.id, true);
-        else if (st === 'active') this.book.fail(q.id, 'chapter');
-      }
-      // Two chapters on, a present-day side quest ends too.
-      else if (q.kind === 'side' && at - i >= 2) {
-        if (st === 'ready') this.book.complete(q.id, true);
-        else if (st === 'active') this.book.fail(q.id, 'chapter');
-      }
-    }
   }
 
   /** A good photo of this target exists (the photo system's save slice `systems.photo.good`). */
   private hasPhoto(id: string): boolean {
     const p = (this.ctx.state.state.systems as Record<string, unknown>).photo as { good?: unknown } | undefined;
     return Array.isArray(p?.good) && p.good.includes(id);
+  }
+
+  private settleKnown(): void {
+    const { inventory } = this.ctx.state.state;
+    this.book.settleKnown((c) => inventory.clues.includes(c), (id) => this.hasPhoto(id));
   }
 
   slice(): QuestSlice {
@@ -323,7 +313,12 @@ class QuestRuntime {
     this.book.slice = this.slice();
     this.book.mirror();
     this.book.reassert();
-    this.book.settleKnown((c) => this.ctx.state.state.inventory.clues.includes(c), (id) => this.hasPhoto(id));
+    this.restoring = true;
+    try {
+      this.settleKnown();
+    } finally {
+      this.restoring = false;
+    }
     this.sentTopics.clear();
     this.sentMarks.clear();
     for (const npc of [...this.following]) this.ctx.events.emit('npc:follow', { npc, follow: false });
@@ -338,8 +333,7 @@ class QuestRuntime {
     this.syncNpcs();
     this.interest = this.computeInterest();
     this.syncFollow();
-    // a restore (boot, save:loaded) changes nothing worth saving — and at boot it would write an
-    // empty save before the title, which then offers "Weiter" on a fresh start
+    // Save only on quest changes so a fresh boot leaves the save slot empty.
     // taking, finishing and failing a quest are milestones: forced saves
     if (why !== 'restore') this.ctx.save.autosave(`quest-${why}`, why === 'accept' || why === 'complete' || why === 'fail');
   }
@@ -347,12 +341,7 @@ class QuestRuntime {
   private computeInterest(): Set<string> {
     const s = new Set<string>();
     for (const q of this.book.running())
-      for (const o of this.book.openObjectives(q)) {
-        const ev: Record<string, string> = { kill: 'enemy:killed', collect: 'item:pickup', use: 'item:use', talk: 'npc:talk', room: 'room:enter', examine: 'clue:found', echo: 'echo:end', calm: 'menagerie:calmed', photo: 'photo:good' };
-        if (ev[o.type]) s.add(ev[o.type]!);
-        if (o.type === 'event' && o.event) s.add(o.event);
-        if (o.type === 'collect' && o.drop) s.add('enemy:killed');
-      }
+      for (const o of this.book.openObjectives(q)) for (const name of objectiveEvents(o)) s.add(name);
     return s;
   }
 
@@ -392,7 +381,11 @@ class QuestRuntime {
     const first = q.objectives.find((o) => !o.optional && !o.hidden && !(o.after ?? []).length);
     const xp = q.rewards?.xp ?? 0;
     const sub = [first?.text_de, xp > 0 ? t('quest.xp', { n: xp }) : ''].filter(Boolean).join(' · ');
-    this.bannerQ.push(() => showBanner(this.layer, q.kind === 'main' ? t('quest.new') : t('quest.newSide'), q.title_de, q.kind === 'main', sub));
+    this.bannerQ.push(() => {
+      // A saved calm can finish the quest on acceptance: no "Nebenaufgabe" banner after its payout.
+      const st = this.book.state(q.id);
+      if (st === 'active' || st === 'ready') showBanner(this.layer, q.kind === 'main' ? t('quest.new') : t('quest.newSide'), q.title_de, q.kind === 'main', sub);
+    });
     // voice givers speak their request (the dialogue presenter queues it)
     // (they lose their point once the first step is done: "Geh zum Damm" while you stand on it)
     const until = first ? { quest: { id: q.id, objective: first.id, gte: first.count ?? 1 } } : undefined;
@@ -432,8 +425,14 @@ class QuestRuntime {
     this.feed.push(t('quest.turnin.feed', { title: q.title_de }), 'ready', 4200);
   }
 
+  /** Story clears its dialogue queue on start and load. Present recovered payouts after that. */
+  private presentRestoredPayouts(): void {
+    if (this.ctx.pause.reasons.has('title')) return;
+    for (const p of this.restoredPayouts.splice(0)) this.presentPayout(p);
+  }
+
   /** Queue the payout notice; voice or auto turn-ins also give a short spoken line. */
-  private onPayout(p: QuestPayout): void {
+  private presentPayout(p: QuestPayout): void {
     const q = this.defs.get(p.id);
     if (!q) return;
     turninSound(this.ctx.audio, p.quiet);
@@ -504,9 +503,8 @@ class QuestRuntime {
     const p = ctx.player.position;
     const room = String(ctx.state.state.flags['interior.room'] ?? '');
     if (this.settle) {
-      // examine / echo / photo objectives that open after their clue was found (photo taken) count at once
       this.settle = false;
-      this.book.settleKnown((c) => ctx.state.state.inventory.clues.includes(c), (id) => this.hasPhoto(id));
+      this.settleKnown();
     }
     this.book.tick(dt, { x: p.x, z: p.z, era: ctx.era.current, room }, (npc) => this.npcDistance(npc));
     this.book.chapter = this.chapter();
@@ -664,10 +662,9 @@ class QuestRuntime {
     const deps = this.wayDeps();
     const era = deps.era;
     const tracked = this.book.tracked().map((id) => this.defs.get(id)).filter((q): q is QuestDefIn => !!q);
-    const story = (this.ctx.state.state.systems as Record<string, unknown>).story as { objective?: { text?: string | null; x?: number; z?: number } | null } | undefined;
-    const so = story?.objective;
+    const so = this.ctx.state.state.systems.story?.objective;
     const storyLead = (q: QuestDefIn | null, obj: Lead['obj']): Lead | null =>
-      so && typeof so.x === 'number' && typeof so.z === 'number' && so.text ? { quest: q, obj, target: { x: so.x, z: so.z, r: 6, kind: 'zone' }, label: so.text } : null;
+      so && typeof so.x === 'number' && typeof so.z === 'number' && so.text ? { quest: q, obj, target: { x: so.x, z: so.z, r: 6, kind: 'zone' }, label: so.text, story: so } : null;
     for (const q of tracked) {
       // the story's own line (the main path between two main quests: „VAT (3): die Kante im Wald
       // ansehen“) comes before any side quest
@@ -748,6 +745,7 @@ class QuestRuntime {
     // the headline follows the tracker (playtest round 3): the lead goal is where the Bussole
     // points (story reads it from the tracker's data-tx / data-tz)
     const tx = lead?.target ?? null;
+    ctx.ui.hud.questLead = lead;
     const tel = this.tracker.el;
     if (tx) {
       tel.dataset.tx = String(Math.round(tx.x * 10) / 10);

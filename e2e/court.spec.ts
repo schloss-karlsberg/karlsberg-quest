@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { SCREENS } from './helpers/common';
 
 /**
  * "Unauffällig" (src/systems/court, docs/IDEAS-ROUND11.md §2.6): watchers placed through the npc
@@ -8,7 +9,6 @@ import { type Page, expect, test } from '@playwright/test';
  * (refused / ejected / thrown out during the ring / passed → gate open), the costume per era and
  * the fast-travel arrival outside the gitter. Screenshots: test-results/screens/court-*.png.
  */
-const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 test.describe.configure({ timeout: 300_000 });
 
@@ -27,15 +27,17 @@ function trackErrors(page: Page): string[] {
 
 type Rec = { n: string; p: unknown }[];
 
-async function boot(page: Page): Promise<void> {
-  await page.goto('./?notitle&nosave&fresh&manual');
+async function boot(page: Page, { idle = false } = {}): Promise<void> {
+  await page.goto(`./?notitle&nosave&fresh&manual${idle ? '&idle' : ''}`);
   await page.waitForFunction(() => !!window.kq?.court && !!window.kq?.npc && !!window.kq?.travel, null, { timeout: 180_000 });
   await page.evaluate(() => {
     const k = window.kq!;
     const w = window as unknown as { rec: Rec };
     w.rec = [];
     k.ctx.events.onAny((n, p) => {
-      if (n.startsWith('court:') || n === 'npc:yaw' || n === 'player:costume' || n === 'story:cue') w.rec.push({ n, p: JSON.parse(JSON.stringify(p ?? null)) });
+      if (n.startsWith('court:') || n === 'npc:yaw' || n === 'player:costume' || n === 'story:cue' || n === 'shift:done') {
+        w.rec.push({ n, p: JSON.parse(JSON.stringify(p ?? null)) });
+      }
     });
     k.story?.look('day');
     if (k.ctx.era.current !== '1789') k.setEra('1789');
@@ -103,6 +105,39 @@ async function lossless(page: Page): Promise<string> {
     return JSON.stringify({ era: s.era, hp: combat?.hp, bann: combat?.bann, hunt: sys.hunt ?? null, progression: sys.progression ?? null, items: s.inventory.items });
   });
 }
+
+test('court: holding Q through the escort fade lets the player walk after the reduced-motion shift', async ({ page }) => {
+  await boot(page, { idle: true }); // Advance the shift on fixed steps under WebDriver.
+  await setFlags(page, { 'disguise.coat': true });
+  await spawn(page, COURT_WATCHER);
+  await place(page, 1212, -1116, 0);
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.ctx.settings.update((s) => (s.reducedMotion = true), 'reducedMotion');
+    k.ctx.input.simulate('KeyQ', true);
+    k.step(60);
+    k.ctx.events.emit('court:take', {});
+    k.step(1);
+  });
+  expect((await court(page)).ejecting).toBe(true);
+  const duringShift = await page.evaluate(() => {
+    const k = window.kq!;
+    k.step(24);
+    k.ctx.input.simulate('KeyQ', false);
+    return { escorting: k.court!.state().ejecting, frozen: k.ctx.player.frozen, era: k.ctx.era.current };
+  });
+  expect(duringShift).toEqual({ escorting: false, frozen: true, era: '1789' });
+  await step(page, 90);
+  expect(await events(page, 'shift:done')).toEqual([{ from: '1789', to: 'today', reason: 'return' }]);
+  expect(await events(page, 'court:ejected')).toEqual([]);
+  const walked = await page.evaluate(() => {
+    const k = window.kq!;
+    const { x, z } = k.ctx.player.position;
+    k.press('KeyS', 30); // Walk away from the trough the player faces after returning.
+    return Math.hypot(k.ctx.player.position.x - x, k.ctx.player.position.z - z);
+  });
+  expect(walked).toBeGreaterThan(0.5);
+});
 
 test('court: a watcher sees the hi-vis vest — meter, caption, lossless ejection with the first-time hint', async ({ page }) => {
   const errors = trackErrors(page);

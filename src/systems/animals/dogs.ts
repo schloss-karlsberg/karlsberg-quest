@@ -17,6 +17,7 @@
  * eased by ACCEL / DECEL, so `motion.yaw` is the body's facing and `motion.speed` its ground speed:
  * the body shows both as they are (no second smoothing that would lag behind the motion).
  */
+import { allOf, finiteOr, isRecord } from '../../core/saved';
 import type { AnimalClipHint, AnimalEvent, AnimalLook, AnimalMotion, AnimalRequest, AnimalSpawnOp, DogSave } from './types';
 
 /** fauna v0 speeds per dog (m/s). */
@@ -491,18 +492,24 @@ export function serializeDog(dog: Dog): DogSave {
   return s;
 }
 
-const DOG_STATES: readonly DogState[] = ['idle', 'follow', 'sit', 'bolt', 'return', 'lie'];
+const DOG_STATES = allOf<DogState>()(['idle', 'follow', 'sit', 'bolt', 'return', 'lie']);
 
 export function restoreDog(s: DogSave): Dog {
-  const dog = createDog({ op: 'spawn', id: s.id, kind: 'hund', look: s.look, x: s.x, z: s.z, follow: s.follow, spacing: s.spacing }, s.slot);
-  dog.yaw = s.yaw;
+  const dog = createDog({
+    op: 'spawn', id: s.id, kind: 'hund', look: s.look, x: finiteOr(s.x, 0), z: finiteOr(s.z, 0),
+    follow: typeof s.follow === 'string' ? s.follow : undefined, spacing: finiteOr(s.spacing, DOGS.SPACING),
+  }, Number.isFinite(s.slot) ? s.slot : undefined);
+  dog.yaw = finiteOr(s.yaw, 0);
   dog.state = DOG_STATES.includes(s.state as DogState) ? (s.state as DogState) : 'idle';
-  dog.t = s.t;
-  dog.path = s.path ? s.path.map((p) => [p[0], p[1]] as [number, number]) : null;
-  dog.i = s.i ?? 0;
-  dog.bark = s.bark ?? false;
-  dog.back = s.back ?? false;
-  dog.lie = s.lie ? { ...s.lie } : null;
+  dog.t = finiteOr(s.t, 0);
+  dog.path = Array.isArray(s.path)
+    ? s.path.filter((p) => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1])).map((p) => [p[0], p[1]] as [number, number])
+    : null;
+  dog.i = Math.max(0, finiteOr(s.i, 0));
+  dog.bark = s.bark === true;
+  dog.back = s.back === true;
+  const lie = s.lie;
+  dog.lie = isRecord(lie) && Number.isFinite(lie.x) && Number.isFinite(lie.z) ? { x: lie.x, z: lie.z, follow: typeof lie.follow === 'string' ? lie.follow : '' } : null;
   dog.v = typeof s.v === 'number' && Number.isFinite(s.v) ? Math.max(0, Math.min(dog.run, s.v)) : 0;
   if (dog.state === 'bolt' && !dog.path) dog.state = dog.back ? 'return' : 'idle';
   if (dog.state === 'lie' && !dog.lie) dog.lie = { x: dog.x, z: dog.z, follow: '' };

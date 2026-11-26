@@ -3,12 +3,13 @@ import type { GameContext } from '../../core/context';
 import type { Confidence, Fact } from '../../content/types';
 import { t } from '../../i18n';
 import { h } from '../../ui/dom';
+import { preserveFocus } from '../../ui/focus';
 import { pageSections } from '../../ui/pause-pages';
 import type { ItemDef, QuestDef, QuestProgress } from '../../rpg/types';
 import { ENEMIES } from '../../rpg/enemies';
 import { COLLECTIONS } from '../../rpg/items';
 import type { Era } from '../../core/era';
-import { journalRunning } from './logic';
+import { journalRunning, need } from './logic';
 
 export interface PageData {
   ctx: GameContext;
@@ -68,7 +69,8 @@ export function renderQuests(el: HTMLElement, d: PageData): void {
   const done = all.filter((q) => st(q) === 'done' || st(q) === 'failed').sort((a, b) => (d.progress(b.id)?.t ?? 0) - (d.progress(a.id)?.t ?? 0));
   if (!selQuest || ![...active, ...done].some((q) => q.id === selQuest)) selQuest = active[0]?.id ?? done[0]?.id ?? null;
   const unseen = new Set(d.unseen());
-  const rerender = () => renderQuests(el, d);
+  if (selQuest && unseen.delete(`q:${selQuest}`)) d.seen(`q:${selQuest}`);
+  const rerender = () => preserveFocus(el, () => renderQuests(el, d));
 
   const row = (q: QuestDef) => {
     const s = st(q);
@@ -81,7 +83,6 @@ export function renderQuests(el: HTMLElement, d: PageData): void {
         'aria-pressed': String(q.id === selQuest),
         onclick: () => {
           selQuest = q.id;
-          d.seen(`q:${q.id}`);
           rerender();
         },
       },
@@ -121,12 +122,12 @@ export function renderQuests(el: HTMLElement, d: PageData): void {
         'ul.kqj-objs',
         objs.map((o) => {
           const n = d.count(q.id, o.id);
-          const need = o.type === 'survive' ? Math.round(o.seconds ?? o.count ?? 1) : (o.count ?? 1);
-          const ok = n >= need || s === 'done';
+          const target = need(o);
+          const ok = n >= target || (s === 'done' && !o.optional);
           return h(`li${ok ? '.kqj-ok' : ''}${o.optional ? '.kqj-opt' : ''}`, [
             h('span.kqq-box', { 'aria-hidden': 'true' }, ok ? '✓' : ''),
             o.text_de,
-            need > 1 ? h('span.kqj-n', ` ${Math.min(n, need)}/${need}`) : null,
+            target > 1 ? h('span.kqj-n', ` ${Math.min(n, target)}/${target}`) : null,
             o.optional ? h('span.kqj-tag', o.bonus_xp ? `${t('quest.bonus')} +${o.bonus_xp} EP` : t('quest.optional')) : null,
           ]);
         }),
@@ -152,7 +153,6 @@ export function renderQuests(el: HTMLElement, d: PageData): void {
           )
         : null,
     ]);
-    if (unseen.has(`q:${q.id}`)) d.seen(`q:${q.id}`);
   }
   el.replaceChildren(h('div.kqj-quests', [list, detail]));
 }
@@ -171,7 +171,7 @@ export function renderCodex(el: HTMLElement, d: PageData): void {
   const relief = facts.filter(isReliefPattern);
   const pool = codexFilter === 'relief' ? relief : codexFilter === 'new' ? facts.filter((f) => unseen.has(f.id) && have.has(f.id)) : cards;
   const sorted = [...pool.filter((f) => have.has(f.id)), ...(codexFilter === 'new' ? [] : pool.filter((f) => !have.has(f.id)))];
-  const rerender = () => renderCodex(el, d);
+  const rerender = () => preserveFocus(el, () => renderCodex(el, d));
   const nNew = facts.filter((f) => unseen.has(f.id) && have.has(f.id)).length;
   const filt = (id: typeof codexFilter, text: string) =>
     h('button.kq-btn.kqj-filter', { type: 'button', 'aria-pressed': String(codexFilter === id), dataset: { testid: `codex-filter-${id}` }, onclick: () => ((codexFilter = id), rerender()) }, text);
@@ -200,6 +200,7 @@ export function renderCodex(el: HTMLElement, d: PageData): void {
         {
           type: 'button',
           dataset: { fact: f.id, testid: `codex-card-${f.id}` },
+          'aria-pressed': String(codexSel === f.id),
           onclick: () => {
             codexSel = f.id;
             d.seen(f.id);

@@ -39,12 +39,12 @@ import { LORE, LORE_KIND_DE, loreById } from './lore';
 import { type MapModel, injectTravelCss, renderMap } from './map';
 import { SURVEY_POINTS, TRIPOD_SEED_BASE, type SurveyPoint, announceFor, cardMayTakeE, knownPoints, mayActivate, nearestPoint, pointById, travelBlock, wayLineBlocked, wayStartBlocked } from './points';
 import { type QuietGate, hideWhileQuiet } from '../../core/quiet';
-import { laufschrittTarget } from './laufschritt';
+import { LAUF_DELAY, LAUF_RISE, laufschrittTarget } from './laufschritt';
 import { CHAPTER_TIER, type Poi, cacheLoot, generatePois, poiXp } from './pois';
 import { TRAVEL_DE } from './strings';
 import { Trail } from './trail';
 import { registerEraMaterials } from '../fx/shift/prewarm';
-import { type PoiVisual, type TripodVisual, animatePoi, animateTripod, buildCache, buildLetter, buildShrine, buildTripod, disposeGroup, setCacheOpen } from './visuals';
+import { type PoiVisual, type TripodVisual, animatePoi, animateTripod, buildCache, buildLetter, buildShrine, buildTripod, cacheLidStep, disposeGroup, setCacheOpen } from './visuals';
 
 export interface TravelSlice {
   /** Points walked up to. */
@@ -163,7 +163,9 @@ class Travel {
   private sprint = 0;
   private lastWritten = Number.NaN;
   private lastBase = 1;
-  private journeying = false;
+  private curtain: HTMLElement | null = null;
+  private journeyTimer?: ReturnType<typeof setTimeout>;
+  private fadingCurtain?: { element: HTMLElement; timer: ReturnType<typeof setTimeout> };
   private goalStory: { x: number; z: number } | null = null;
   readonly trail = new Trail();
   private deepToastAt = -1e9;
@@ -179,6 +181,7 @@ class Travel {
   private cardT = 0;
   /** The card up is the activation banner (it shares the centre-card slot: ui/cards.ts). */
   private cardBanner = false;
+  private readonly pendingActivations: { name: string; first: boolean }[] = [];
   private time = 0;
   /** 'world:quiet' (the party): tripods, POIs and the trail hidden, no activation, no announcement. */
   private readonly quiet: QuietGate;
@@ -235,7 +238,7 @@ class Travel {
       hunt: this.hunt,
       threat: this.storyThreat(),
       locked: ctx.state.state.flags['travel.locked'] === true,
-      busy: this.caughtPending || this.journeying || ctx.post.uniforms.uShift!.value > 0.02 || ctx.player.frozen,
+      busy: this.caughtPending || this.curtain !== null || ctx.post.uniforms.uShift!.value > 0.02 || ctx.player.frozen,
       flying: ctx.player.flying,
     });
     return b ? (TRAVEL_DE.block[b] ?? TRAVEL_DE.block.busy!) : null;
@@ -294,7 +297,8 @@ class Travel {
     // the first one says what the map is for, on the banner itself (a toast would sit under it)
     const first = !this.slice.tips.includes('map');
     if (first) this.slice.tips.push('map');
-    this.showCard(TRAVEL_DE.activated(p.name), first ? TRAVEL_DE.firstMap : TRAVEL_DE.activatedSub, null, first ? 6 : 4.5, 'travel-card-activated');
+    if (this.quiet.photoOpen || this.pendingActivations.length) this.pendingActivations.push({ name: p.name, first });
+    else this.showActivation(p.name, first);
     ctx.events.emit('travel:activated', { id });
     ctx.save.autosave('travel');
   }
@@ -333,16 +337,38 @@ class Travel {
 
   // ---- journeys ------------------------------------------------------------------------------
 
+  private removeFadingCurtain(): void {
+    if (!this.fadingCurtain) return;
+    clearTimeout(this.fadingCurtain.timer);
+    this.fadingCurtain.element.remove();
+    this.fadingCurtain = undefined;
+  }
+
+  private endJourney(fade = false): void {
+    this.removeFadingCurtain();
+    const curtain = this.curtain;
+    if (!curtain) return;
+    clearTimeout(this.journeyTimer);
+    this.journeyTimer = undefined;
+    this.curtain = null;
+    if (fade) {
+      curtain.classList.remove('on');
+      this.fadingCurtain = { element: curtain, timer: setTimeout(() => this.removeFadingCurtain(), 500) };
+    } else curtain.remove();
+    this.ctx.pause.pop('travel');
+  }
+
   go(id: string, { force = false, fromMap = false } = {}): boolean {
     const ctx = this.ctx;
     const p = pointById(id);
     if (!p) return false;
     if (!force && (this.blockReason() || !this.known().some((k) => k.id === id))) return false;
+    this.endJourney();
     if (fromMap) ctx.ui.modals.closeAll();
     else this.closeMap();
-    this.journeying = true;
     const from = { x: ctx.player.position.x, z: ctx.player.position.z };
     const curtain = document.createElement('div');
+    this.curtain = curtain;
     curtain.className = 'kqt-travel-curtain';
     curtain.dataset.testid = 'travel-curtain';
     const cross = document.createElement('div');
@@ -373,35 +399,25 @@ class Travel {
       ctx.world.forest.invalidate();
       ctx.quality.hold(2);
       ctx.events.emit('travel:arrived', { id, from });
+      if (this.curtain !== curtain) return;
       this.trail.clear();
       this.trailFor = '';
       this.bestD = Infinity;
+      // The paused game loop has not copied the arrival pose into the store yet.
+      ctx.player.writeState(ctx.state.mutable.player);
       ctx.save.autosave('travel', true);
     };
     if (skipRealTimeWaits(ctx.loop.manual, ctx.params)) {
       // deterministic tests and bullet time (also switched on at runtime, playtest round 10): no
       // real-time wait while the game stands still
       arrive();
-      ctx.pause.pop('travel');
-      curtain.remove();
-      this.journeying = false;
+      if (this.curtain === curtain) this.endJourney();
       return true;
     }
-    setTimeout(
-      () => {
-        arrive();
-        setTimeout(
-          () => {
-            ctx.pause.pop('travel');
-            curtain.classList.remove('on');
-            setTimeout(() => curtain.remove(), 500);
-            this.journeying = false;
-          },
-          reduced ? 250 : 650,
-        );
-      },
-      reduced ? 450 : 1100,
-    );
+    this.journeyTimer = setTimeout(() => {
+      arrive();
+      if (this.curtain === curtain) this.journeyTimer = setTimeout(() => this.endJourney(true), reduced ? 250 : 650);
+    }, reduced ? 450 : 1100);
     return true;
   }
 
@@ -522,7 +538,7 @@ class Travel {
       } else if (poi.kind === 'shrine' && d < SHRINE_R && !this.inCombat) {
         this.touchShrine(poi, v);
       }
-      if (poi.kind === 'cache' && done && v.open < 1) setCacheOpen(v, Math.min(1, v.open + dt * 1.6));
+      if (poi.kind === 'cache' && done && v.open < 1) setCacheOpen(v, cacheLidStep(v.open, dt, ctx.settings.state.reducedMotion));
     }
   }
 
@@ -559,18 +575,25 @@ class Travel {
   private openCache(poi: Poi): void {
     if (this.slice.done.includes(poi.id)) return;
     const ctx = this.ctx;
-    this.slice.done.push(poi.id);
-    this.guards.delete(poi.id);
+    // Loot placement and XP handlers can autosave. Hold through the combat sync on travel:poi.
+    const hold = `travel:cache:${poi.id}`;
+    ctx.save.hold(hold, true);
+    try {
+      this.slice.done.push(poi.id);
+      this.guards.delete(poi.id);
+      const items = cacheLoot(poi.id);
+      items.forEach((item, i) => {
+        const a = (i / items.length) * Math.PI * 2 + 0.6;
+        ctx.events.emit('loot:place', { id: `${poi.id}.${i}`, item, x: poi.x + Math.cos(a) * 1.3, z: poi.z + Math.sin(a) * 1.3, era: poi.era as Era });
+      });
+      ctx.events.emit('xp:grant', { amount: poiXp('cache', this.tier()), reason: 'poi', x: poi.x, z: poi.z });
+      ctx.events.emit('travel:poi', { id: poi.id, kind: 'cache' });
+      ctx.save.autosave('poi', true);
+    } finally {
+      ctx.save.hold(hold, false);
+    }
     cacheOpen(ctx.audio);
-    const items = cacheLoot(poi.id);
-    items.forEach((item, i) => {
-      const a = (i / items.length) * Math.PI * 2 + 0.6;
-      ctx.events.emit('loot:place', { id: `${poi.id}.${i}`, item, x: poi.x + Math.cos(a) * 1.3, z: poi.z + Math.sin(a) * 1.3, era: poi.era as Era });
-    });
-    ctx.events.emit('xp:grant', { amount: poiXp('cache', this.tier()), reason: 'poi', x: poi.x, z: poi.z });
-    ctx.events.emit('travel:poi', { id: poi.id, kind: 'cache' });
     ctx.ui.toast(TRAVEL_DE.cacheOpen, 2400);
-    ctx.save.autosave('poi');
   }
 
   private takeLore(poi: Poi, v: PoiVisual): void {
@@ -605,6 +628,10 @@ class Travel {
 
   // ---- the found-card (activation, Fundstück) ---------------------------------------------------
 
+  private showActivation(name: string, first: boolean): void {
+    this.showCard(TRAVEL_DE.activated(name), first ? TRAVEL_DE.firstMap : TRAVEL_DE.activatedSub, null, first ? 6 : 4.5, 'travel-card-activated');
+  }
+
   showCard(title: string, text: string, from: string | null, seconds: number, testid: string): void {
     this.hideCard();
     const c = document.createElement('div');
@@ -628,7 +655,12 @@ class Travel {
       tag.textContent = TRAVEL_DE.fundTag;
       c.append(tag);
     }
-    c.onclick = () => this.hideCard();
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'kqt-card-dismiss';
+    close.setAttribute('aria-label', this.ctx.t('modal.close'));
+    close.onclick = () => this.hideCard();
+    c.append(close);
     this.ctx.ui.add(c);
     this.card = c;
     this.cardT = seconds;
@@ -671,10 +703,15 @@ class Travel {
     // hunt, the stand and the patrols are tuned to the plain sprint), never in the palace rooms
     const indoors = !!ctx.state.state.flags['interior.room'];
     const free = !this.inCombat && !this.packOut && !indoors && this.hunt !== 'chasing' && this.hunt !== 'searching' && !pl.flying && pl.stance === 'stand' && pl.canSprint;
-    if (free && moving && inp.isDown('sprint')) this.sprintT += dt;
-    else this.sprintT = Math.max(0, this.sprintT - dt * 4);
-    const target = laufschrittTarget(this.sprintT);
-    this.sprint += (target - this.sprint) * Math.min(1, dt * 3);
+    if (free) {
+      if (moving && inp.isDown('sprint')) this.sprintT = Math.min(LAUF_DELAY + LAUF_RISE, this.sprintT + dt);
+      else this.sprintT = Math.max(0, this.sprintT - dt * 4);
+      const target = laufschrittTarget(this.sprintT);
+      this.sprint += (target - this.sprint) * Math.min(1, dt * 3);
+    } else {
+      this.sprintT = 0;
+      this.sprint = 0;
+    }
     if (this.sprint < 0.002) this.sprint = 0;
     if (this.sprint > 0.3 && !this.slice.tips.includes('sprint')) {
       this.slice.tips.push('sprint');
@@ -859,12 +896,17 @@ class Travel {
       this.wakeAt -= dt;
       if (this.wakeAt < 0) this.wakeHint();
     }
+    if (this.quiet.photoOpen) return;
     if (this.card) {
       const aside = this.cardBanner && this.bannerAside();
       this.card.classList.toggle('kqt-aside', aside);
       if (aside) return;
       this.cardT -= dt;
       if (this.cardT <= 0 || (ctx.input.wasPressed('listen') && this.cardT < 11 && cardMayTakeE(ctx.state.state.flags))) this.hideCard();
+    }
+    if (!this.card) {
+      const next = this.pendingActivations.shift();
+      if (next) this.showActivation(next.name, next.first);
     }
   }
 
@@ -874,7 +916,7 @@ class Travel {
     const rm = ctx.settings.state.reducedMotion;
     const t = performance.now() / 1000;
     const cam = ctx.camera.position;
-    for (const tp of this.tripods.values()) animateTripod(tp, dt, t, rf, Math.hypot(cam.x - tp.group.position.x, cam.z - tp.group.position.z));
+    for (const tp of this.tripods.values()) animateTripod(tp, dt, t, rf, Math.hypot(cam.x - tp.group.position.x, cam.z - tp.group.position.z), rm);
     for (const v of this.poiVis.values()) animatePoi(v, dt, t, rm, Math.hypot(cam.x - v.group.position.x, cam.z - v.group.position.z), rf);
     this.trail.frame(dt, (x, z) => ctx.world.heightAt(x, z), rm);
   }
@@ -937,12 +979,16 @@ class Travel {
       this.trail.clear();
     });
     const reload = (): void => {
+      this.endJourney();
       this.slice = this.loadSlice();
+      this.pendingActivations.length = 0;
+      this.hideCard();
       this.dropAllVisuals();
       this.guards.clear();
       this.trail.clear();
       this.trailFor = '';
     };
+    ev.on('game:title', () => this.endJourney());
     ev.on('game:start', reload);
     ev.on('save:loaded', reload);
     ctx.state.subscribe((_s, reason) => {
@@ -1013,6 +1059,7 @@ class Travel {
   }
 
   dispose(): void {
+    this.endJourney();
     this.quiet.dispose();
     this.closeMap();
     this.hideCard();
