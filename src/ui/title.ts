@@ -1,11 +1,14 @@
+import type { SaveManager } from '../core/save';
 import { t } from '../i18n';
 import { h } from './dom';
 import type { BootLoader } from './loader';
 import { newsUnseen, versionLabel } from './news';
 
+type TitleStart = 'new' | 'continue' | 'extra';
+
 export interface TitleCallbacks {
-  /** `fresh` = start a new game instead of continuing. */
-  onStart(fresh: boolean): void;
+  save: Pick<SaveManager, 'availability' | 'readRaw' | 'load' | 'enabled'>;
+  onStart(mode: TitleStart): void;
   onLicences(): void;
   /** „Neuigkeiten“ (release notes); call `title.refreshNews()` once they were seen. */
   onNews?(): void;
@@ -18,20 +21,20 @@ export interface TitleCallbacks {
  * title starts a new game directly.
  */
 export interface TitleHooks {
-  /** Runs before a new game starts; render into `host` (the title root). Resolve false to cancel. */
-  beforeNewGame?(host: HTMLElement): Promise<boolean>;
+  /** Render into `host`. Resolve false to cancel, or return a callback to apply choices at start. */
+  beforeNewGame?(host: HTMLElement): Promise<boolean | (() => void)>;
   openSettings?(): void;
   /**
    * Extra main-menu entries, asked for each time the title becomes ready (e.g. the story's "Ende
-   * noch einmal wählen" once an ending was reached). `run` prepares the state (e.g. loads a slot);
-   * resolve true to continue into the game, false to stay on the title.
+   * noch einmal wählen" once an ending was reached). After checking the autosave, `run` prepares
+   * the state synchronously and returns true to start play or false to stay on the title.
    */
   extraActions?(): TitleAction[];
 }
 export interface TitleAction {
   label: string;
   testid: string;
-  run(): boolean | Promise<boolean>;
+  run(): boolean;
 }
 export const titleHooks: TitleHooks = {};
 
@@ -41,15 +44,16 @@ export class TitleScreen {
   private readonly page: HTMLElement;
   private readonly startBtn: HTMLButtonElement;
   private readonly newBtn: HTMLButtonElement;
+  private readonly saveStatus: HTMLElement;
   private readonly settingsBtn: HTMLButtonElement;
   private readonly extrasEl: HTMLElement;
   private readonly newsBadge: HTMLElement;
-  private hasSave = false;
   private busy = false;
 
   constructor(private readonly cb: TitleCallbacks, private readonly loader?: BootLoader) {
-    this.startBtn = h('button.kq-btn.primary.kq-hidden', { disabled: true, 'data-testid': 'title-continue', onclick: () => this.start(false) }, t('title.continue'));
-    this.newBtn = h('button.kq-btn', { disabled: true, 'data-testid': 'title-new', onclick: () => void this.newGame() }, t('title.newGame'));
+    this.startBtn = h('button.kq-btn.primary.kq-hidden', { disabled: true, 'data-testid': 'title-continue', onclick: () => this.start('continue') }, t('title.continue'));
+    this.newBtn = h('button.kq-btn', { disabled: true, 'data-testid': 'title-new', onclick: () => this.newGame() }, t('title.newGame'));
+    this.saveStatus = h('p.kq-hidden', { role: 'status', 'data-testid': 'title-save-status' });
     this.settingsBtn = h('button.kq-btn', { 'data-testid': 'title-settings', onclick: () => titleHooks.openSettings?.() }, t('pause.settings'));
     this.extrasEl = h('div.kq-title-extras');
     this.newsBadge = h('span.kq-news-badge', { 'aria-label': t('news.unseen'), title: t('news.unseen') });
@@ -58,6 +62,7 @@ export class TitleScreen {
     this.page = h('div.kq-title-page.kq-paper', [
       h('h1', t('game.title')),
       h('p.note', t('title.headphones')),
+      this.saveStatus,
       h('div.actions', [this.startBtn, this.newBtn, this.extrasEl, this.settingsBtn]),
       h('p.controls', t('title.hint')),
       h('div.kq-title-links', [newsBtn, h('button.kq-link', { onclick: () => cb.onLicences() }, t('title.licences'))]),
@@ -76,36 +81,47 @@ export class TitleScreen {
     this.newsBadge.classList.toggle('kq-hidden', !newsUnseen());
   }
 
-  setReady(hasSave: boolean): void {
-    this.hasSave = hasSave;
+  setReady(): void {
+    const autosave = this.cb.save.readRaw();
+    const availability = this.cb.save.availability();
+    const canContinue = availability === 'readable';
+    const unreadable = availability === 'unreadable';
     this.busy = false;
-    this.startBtn.disabled = false;
+    this.startBtn.disabled = !canContinue;
     this.newBtn.disabled = false;
     this.loader?.hide();
     this.startBtn.textContent = t('title.continue');
     this.newBtn.textContent = t('title.newGame');
-    this.startBtn.classList.toggle('kq-hidden', !hasSave);
-    this.newBtn.classList.toggle('primary', !hasSave);
+    this.startBtn.classList.toggle('kq-hidden', !canContinue);
+    this.newBtn.classList.toggle('primary', !canContinue);
+    this.saveStatus.textContent = unreadable ? t('title.unreadableSave') : '';
+    this.saveStatus.classList.toggle('kq-hidden', !unreadable);
     this.settingsBtn.classList.toggle('kq-hidden', !titleHooks.openSettings);
-    this.renderExtras();
-    (hasSave ? this.startBtn : this.newBtn).focus();
+    this.renderExtras(autosave);
+    (canContinue ? this.startBtn : this.newBtn).focus();
   }
 
-  private renderExtras(): void {
+  private renderExtras(autosave: string | null): void {
     const list = titleHooks.extraActions?.() ?? [];
     this.extrasEl.replaceChildren(
       ...list.map((a) =>
         h('button.kq-btn', {
           'data-testid': a.testid,
           onclick: async () => {
-            if (this.busy || this.startBtn.disabled) return;
+            if (this.busy || this.newBtn.disabled) return;
             this.busy = true;
-            const go = await Promise.resolve(a.run()).catch((err) => {
-              console.error('[title] action failed', err);
-              return false;
-            });
-            this.busy = false;
-            if (go) this.start(false);
+            try {
+              await this.startAfterSaveCheck('extra', autosave, () => {
+                try {
+                  return a.run();
+                } catch (err) {
+                  console.error('[title] action failed', err);
+                  return false;
+                }
+              });
+            } finally {
+              this.busy = false;
+            }
           },
         }, a.label),
       ),
@@ -117,9 +133,13 @@ export class TitleScreen {
     if (this.busy || this.newBtn.disabled) return;
     this.busy = true;
     try {
-      if (this.hasSave && !(await this.cb.confirm(t('title.confirmNew')))) return;
+      const approved = this.cb.save.enabled ? this.cb.save.readRaw() : null;
+      if (approved !== null && !(await this.cb.confirm(t('title.confirmNew')))) {
+        this.setReady();
+        return;
+      }
+      let go: boolean | (() => void) = false;
       if (titleHooks.beforeNewGame) {
-        let go = true;
         this.page.inert = true;
         try {
           go = await titleHooks.beforeNewGame(this.el);
@@ -129,27 +149,51 @@ export class TitleScreen {
           this.page.inert = false;
         }
         if (!go) {
-          this.newBtn.focus();
+          this.setReady();
           return;
         }
       }
-      this.start(true);
+      await this.startAfterSaveCheck('new', approved, () => {
+        if (typeof go === 'function') go();
+        return true;
+      });
     } finally {
       this.busy = false;
     }
   }
 
-  private start(fresh: boolean): void {
-    if (this.startBtn.disabled) return;
+  private async startAfterSaveCheck(mode: 'new' | 'extra', approved: string | null, prepare: () => boolean): Promise<void> {
+    // Another tab can write after the title appears, during setup, or during confirmation.
+    while (this.cb.save.enabled) {
+      const current = this.cb.save.readRaw();
+      if (current === null || current === approved) break;
+      if (!(await this.cb.confirm(t(mode === 'new' ? 'title.confirmNew' : 'title.confirmReplay')))) {
+        this.setReady();
+        return;
+      }
+      approved = current;
+    }
+    if (prepare()) this.start(mode);
+    else this.setReady();
+  }
+
+  private start(mode: TitleStart): void {
+    if (this.newBtn.disabled) return;
+    if (mode === 'continue') {
+      if (this.busy || this.startBtn.disabled) return;
+      if (!this.cb.save.load()) {
+        this.setReady();
+        return;
+      }
+    }
     this.startBtn.disabled = true;
     this.newBtn.disabled = true;
-    this.cb.onStart(fresh);
+    this.cb.onStart(mode);
   }
 
   show(): void {
     this.el.classList.remove('fade-out', 'kq-hidden');
-    this.startBtn.disabled = false;
-    this.newBtn.disabled = false;
+    this.setReady();
   }
 
   hide(instant = false): void {

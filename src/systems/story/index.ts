@@ -8,6 +8,7 @@
  */
 import './story.css';
 import './strings';
+import { fastManualSteps } from '../../core/bullet';
 import type { GameContext } from '../../core/context';
 import { type Era, ERA_INFO, isEra } from '../../core/era';
 import { defineSystem } from '../../core/systems';
@@ -230,7 +231,7 @@ class StoryRuntime {
   readonly endings: EndingScreen;
   readonly stage: EndingStage;
   readonly voice: Voice;
-  /** Recorded clips (null outside a browser). */
+  /** Recorded clips, when browser playback is enabled. */
   readonly clips: VoiceClips | null;
   private time = 0;
   private gen = 0;
@@ -280,7 +281,7 @@ class StoryRuntime {
   private quietCard = false;
   /** Seconds the caught curtain has been down (game time); hold = caughtHold / 1000. */
   private caughtT = 0;
-  /** game:start has run (a later save:loaded is a load during play). */
+  /** game:start has run at least once. */
   private started = false;
   /** Where and by what the player was last caught (a fight's wake goes to the nearest surveyed point). */
   private caughtAt: { x: number; z: number; by: ThreatKind; boss: boolean } | null = null;
@@ -338,7 +339,7 @@ class StoryRuntime {
       return { x, y: y + guide.info.height * 0.9, z };
     });
     this.voice = new Voice(ctx.audio);
-    this.clips = typeof window !== 'undefined' && typeof fetch === 'function' ? new VoiceClips(ctx.audio) : null;
+    this.clips = !fastManualSteps(ctx.params) && typeof window !== 'undefined' && typeof fetch === 'function' ? new VoiceClips(ctx.audio) : null;
     this.clips?.init();
     this.presenter = new DialoguePresenter({
       layer: this.layer,
@@ -419,7 +420,7 @@ class StoryRuntime {
       this.resync();
       // a load during play (the pause menu's „Ende noch einmal wählen“) resumes the beat like a
       // boot does — e1's onResume opens the choice at the table (playtest round 4: it never came)
-      if (this.started && this.slice.active) {
+      if (this.started && !ctx.pause.reasons.has('title') && this.slice.active) {
         this.presenter.clear();
         this.engine.resume(false);
       }

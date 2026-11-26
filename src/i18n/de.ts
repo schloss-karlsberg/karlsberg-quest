@@ -6,6 +6,7 @@ export const de: Record<string, string> = {
   'game.title': 'Schloss Karlsberg Tour',
   'title.continue': 'Weiter',
   'title.newGame': 'Neues Spiel',
+  'title.unreadableSave': 'Der Spielstand lässt sich nicht laden. Er ist möglicherweise beschädigt oder stammt aus einer neueren Spielversion.',
   'title.loading': 'Gelände wird geladen … {pct} %',
   'loader.starting': 'Spiel wird vorbereitet …',
   'loader.terrain': 'Gelände wird geladen …',
@@ -21,6 +22,7 @@ export const de: Record<string, string> = {
   'news.unseen': 'Neue Einträge',
   'news.empty': 'Noch keine Einträge.',
   'title.confirmNew': 'Der bisherige Spielstand wird überschrieben. Wirklich neu beginnen?',
+  'title.confirmReplay': 'Der bisherige Spielstand wird überschrieben. Das Ende noch einmal wählen?',
 
   'era.today': 'Heute · 2025',
   'era.1789': 'Sommer 1789',

@@ -39,6 +39,8 @@ These are intentionally **on in production** too, so you can reproduce a bug on 
 | `?x=…&z=…` | Start at a local position |
 | `?party=museum\|burn\|keep` | Start at the end-of-game party on the plateau at dusk, credits rolling |
 | `?manual` | Bullet time: the game advances only when stepped |
+| `?manual&faststep` | Campaign test mode. Dialogue uses subtitle timing on fixed steps. `kq.step(n)` and `kq.press(code, n)` update frame-driven prompts and cameras. A browser frame requested just to show that view draws it without advancing presentation again. Use `await kq.screenshotReady()` before a capture. |
+| `?nosave` | Makes save slots read-only. „Neues Spiel“ opens the content warning directly, and „Weiter“ reloads the autosave from the title. Add `&fresh` to skip loading the autosave on boot. |
 | `window.kq` | Debug API in the browser console: teleport, set the era, step, press keys, combat hooks |
 | `kq.pilot` | Scripted play on top of `window.kq`: act, observe, choose, `bulletTime(true)`, `showStrip(true)` |
 | F8 (in game) | Write a playtest note with the current position and state; export it from the pause menu |
@@ -56,8 +58,10 @@ pnpm build        # production build
 
 ### End-to-end tests
 
-The Playwright suites in `e2e/` build the game and drive a real browser. They are a regression
-net, not a gate, and some suites (the full campaign) take about an hour.
+The Playwright suites in `e2e/` drive a real browser. The release campaign uses
+`?manual&faststep` on every load, including the mid-chapter save and continue.
+Chapter 3 waits for skill cards to fade when it captures screenshots.
+Use ordinary `?manual` when testing recorded audio or inspecting individual draws.
 
 ```sh
 pnpm e2e --workers=1
@@ -94,6 +98,21 @@ has a priority lane: it goes ahead of the queue, but after 2 priority holds in a
 waiting normal job gets the next hold. A priority job without `--max-hold` of 15 or less is refused
 (exit 2); for everyone else a larger value only prints a warning. `--status` marks priority tickets
 with `P` and exclusive tickets with `X`, and shows who is next.
+
+To compare campaign timings, build once and run both modes with the same machine,
+browser and port. Use Playwright’s reported durations so time in the lock queue is excluded.
+Leave `CAMPAIGN_FROM` and `CAMPAIGN_TO` unset for a full release run.
+
+```sh
+pnpm build
+for fast in 0 1; do
+  CAMPAIGN_FASTSTEP=$fast KQ_E2E_PORT=5405 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/campaign.spec.ts --workers=1 --reporter=line || exit 1
+done
+```
+
+Vitest prints a `FAIL` line with the file and case name for each failed test.
+Capture both output streams when investigating a load flake, for example
+`pnpm test --maxWorkers=1 >/tmp/kq-vitest.log 2>&1`.
 
 ## Project rules
 

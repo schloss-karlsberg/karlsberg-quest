@@ -22,6 +22,10 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-26 | **Autosave protection (TASK-024 review).** Malformed system slices make a save unavailable to „Weiter“. If another tab writes a different autosave during „Neues Spiel“, the title asks before replacing those bytes. A cancelled or failed setup preserves the slot. |
+| unreleased | 2026-11-26 | **Unreadable autosaves (TASK-024).** The title explains when the autosave cannot be loaded and offers „Weiter“ for readable saves, including saves that need migration. Cancelling „Neues Spiel“ preserves the occupied slot byte for byte. |
+| unreleased | 2026-11-26 | **Read-only playtests and campaign pacing (TASK-019 review).** „Weiter“ loads the autosave, including after returning to the title from a `?nosave` session. Read-only new games open the content warning directly. A deferred paint reuses the prepared presentation, and the campaign skips the K3 station's cosmetic wait when chapter screenshots are off. |
+| unreleased | 2026-11-26 | **Campaign testing and save protection (TASK-019).** Manual campaign tests can use subtitle timing and draw once after a batch of steps. The travel and group-walk tests bound work independently of machine speed. Starting „Neues Spiel“ with `?nosave` preserves the stored game. |
 | unreleased | 2026-11-26 | **Minimap review fixes (TASK-015).** The Registratur marker leads through the doorway, and historical paths follow the in-game terrain over the survey. On landscape phones, notices clear long action labels. The minimap steps aside for staged scenes and the touch survey menu. |
 | unreleased | 2026-11-26 | **Minimap (TASK-015).** A north-up corner map shows nearby paths, the current objective, the player's heading and the guide and group during the tour. It switches with the era, fits beside the landscape touch controls and can be switched off under Spiel → „Minikarte“. |
 | unreleased | 2026-11-26 | **Heavy-job slots (TASK-063, dev tooling, no player-visible change).** `scripts/dev/heavy.sh` runs up to three normal heavy jobs at once (`KQ_HEAVY_SLOTS`, default 3; 1 restores one at a time). `--exclusive` takes every slot, for the walk, framerate and perf specs, real-GPU runs and local model runs, and jobs queued behind an exclusive ticket wait for it. Waiters running an older heavy.sh keep slot 0 and their place in the queue. |
@@ -182,7 +186,12 @@ flowchart LR
     F -->|Caught| H
 ```
 
-The player keeps earned progress when caught. Continue resumes from the latest saved state.
+The player keeps earned progress when caught. „Weiter“ resumes the current autosave, including
+older saves that can be migrated. If the autosave is unreadable or comes from a newer version,
+the title explains why „Weiter“ is unavailable. „Neues Spiel“ can replace an occupied slot after
+the player completes the new-game flow and confirms replacement of the current autosave. If the
+slot changes during setup, the title asks before replacing the current save.
+A cancelled or failed setup preserves the autosave.
 
 ### 3.2 Verbs and controls
 

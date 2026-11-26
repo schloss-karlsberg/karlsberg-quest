@@ -40,9 +40,9 @@ export async function clearCards(page: Page): Promise<void> {
 }
 
 export async function shot(page: Page, name: string): Promise<void> {
+  if (!SHOTS) return;
   // let a skill card (real-time HUD card) leave the picture
   await page.waitForFunction(() => (window.kq as Any).skills?.card() === null, null, { timeout: 60_000 }).catch(() => undefined);
-  if (!SHOTS) return;
   await clearCards(page);
   await page.evaluate(() => (window.kq as Any).story?.finishTyping());
   await page.evaluate(() => window.kq!.screenshotReady());
@@ -264,7 +264,7 @@ export async function examineAt(page: Page, id: string, at: [number, number], o:
 
 /** Hold E at an echo: it must be the E target there; plays it to the end. */
 export async function listenAt(page: Page, id: string, at: [number, number] | null, screenshot?: string): Promise<void> {
-  if (screenshot) await page.waitForFunction(() => (window.kq as Any).skills?.card() === null, null, { timeout: 60_000 }).catch(() => undefined);
+  if (SHOTS && screenshot) await page.waitForFunction(() => (window.kq as Any).skills?.card() === null, null, { timeout: 60_000 }).catch(() => undefined);
   const r = await page.evaluate(
     ({ id, at }) => {
       const k = window.kq as Any;
@@ -462,7 +462,6 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
     await page.evaluate(() => (window as Any).k3h.settle(160));
     expect((await inv(page)).clues).toContain('clue.k3.marlene');
     expect(await quest(page, 'q.k3.nachmittag')).toBe('active');
-    await page.waitForFunction(() => (window.kq as Any).skills.card() === null, null, { timeout: 120_000 });
     await shot(page, '01-station');
 
     // ---- 3.1 Q at the Ehrenhof → 28 July 1793 -------------------------------------------------------

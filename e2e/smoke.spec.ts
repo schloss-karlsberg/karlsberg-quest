@@ -1,5 +1,6 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { openPause } from './helpers/pause';
 
 /**
  * Smoke + visual tests. Screenshots land in test-results/screens/*.png — look at them after a
@@ -67,8 +68,12 @@ async function shoot(page: Page, name: string, v: View): Promise<void> {
   await page.screenshot({ path: `${SCREENS}/${name}.png` });
 }
 
-test('title screen loads and the tour map starts the game with audio', async ({ page }) => {
+test('the tour starts with audio and Continue restores the read-only autosave', async ({ page }) => {
   const errors = trackErrors(page);
+  const legacy = JSON.parse(readFileSync(new URL('../tests/fixtures/saves/v0.8.0.json', import.meta.url), 'utf8'));
+  delete legacy.meta.savedAt;
+  const stored = JSON.stringify(legacy);
+  await page.addInitScript((raw) => localStorage.setItem('kq.save.v1.auto', raw), stored);
   await page.goto('./?nosave&fresh');
   await expect(page.getByTestId('title')).toBeVisible();
   const start = page.getByTestId('title-new');
@@ -92,6 +97,8 @@ test('title screen loads and the tour map starts the game with audio', async ({ 
 
   // new game: content warning → name → tour map (story feature's title flow)
   await start.click();
+  await expect(page.getByTestId('content-warning')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Ja', exact: true })).toHaveCount(0);
   await page.getByTestId('warning-accept').click();
   await page.getByTestId('name-confirm').click();
   const map = page.getByRole('dialog', { name: 'Die Route der Führung' });
@@ -104,8 +111,75 @@ test('title screen loads and the tour map starts the game with audio', async ({ 
   // (the fade-out runs on real time: generous on a busy machine with software WebGL)
   await expect(page.getByTestId('title')).toBeHidden({ timeout: 30_000 });
   await expect.poll(() => page.evaluate(() => window.kq!.ctx.audio.unlocked)).toBe(true);
+  expect(await page.evaluate(() => localStorage.getItem('kq.save.v1.auto'))).toBe(stored);
+  expect(await page.evaluate(() => window.kq!.story!.state().chapter)).toBe('tour');
   expect(await page.evaluate(() => window.kq!.ctx.pause.paused)).toBe(false);
+
+  await openPause(page);
+  await page.getByTestId('pause-menu').getByRole('button', { name: 'Zum Titelbild' }).click();
+  const resume = page.getByTestId('title-continue');
+  await expect(resume).toBeVisible();
+  const k1Entries = await page.evaluateHandle(() => {
+    const { events, pause } = window.kq!.ctx;
+    const entries: Array<{ beat: string; onTitle: boolean }> = [];
+    events.on('story:beat', ({ chapter, beat }) => {
+      if (chapter === 'k1') entries.push({ beat, onTitle: pause.reasons.has('title') });
+    });
+    return entries;
+  });
+  await resume.click();
+  await expect(page.getByTestId('title')).toBeHidden({ timeout: 30_000 });
+  // The v0.8.0 slot migrates from the retired prologue to K1 at the spring.
+  expect(await page.evaluate(() => window.kq!.story!.state())).toMatchObject({ chapter: 'k1', beat: 'k1_0' });
+  expect(await k1Entries.jsonValue()).toEqual([{ beat: 'k1_0', onTitle: false }]);
+  expect(await page.evaluate(() => localStorage.getItem('kq.save.v1.auto'))).toBe(stored);
   expect(errors).toEqual([]);
+});
+
+test('the title protects an unreadable autosave when New Game is cancelled', async ({ page }) => {
+  const stored = '{\n  "version": 999,\n  "flags": { "future": true }\n}\n';
+  const readAutosave = () => page.evaluate(() => localStorage.getItem('kq.save.v1.auto'));
+  await page.addInitScript((raw) => localStorage.setItem('kq.save.v1.auto', raw), stored);
+  await page.goto('./');
+  const title = page.getByTestId('title');
+  const start = title.getByTestId('title-new');
+  await expect(start).toBeEnabled({ timeout: 90_000 });
+  await expect(title.getByTestId('title-continue')).toBeHidden();
+  await expect(title.getByRole('status')).toHaveText(/Spielstand.*neueren Spielversion/);
+  expect(await readAutosave()).toBe(stored);
+
+  await start.click();
+  await expect(page.getByText(/Der bisherige Spielstand wird überschrieben/)).toBeVisible();
+  await page.getByRole('button', { name: 'Nein', exact: true }).click();
+  await expect(title).toBeVisible();
+  await expect(title.getByRole('status')).toBeVisible();
+  await expect(page.getByTestId('content-warning')).toBeHidden();
+  expect(await readAutosave()).toBe(stored);
+});
+
+test('the title asks before replacing an autosave that appears during name entry', async ({ page }) => {
+  const stored = readFileSync(new URL('../tests/fixtures/saves/v0.8.0.json', import.meta.url), 'utf8');
+  await page.goto('./');
+  const title = page.getByTestId('title');
+  const start = title.getByTestId('title-new');
+  const resume = title.getByTestId('title-continue');
+  await expect(start).toBeEnabled({ timeout: 90_000 });
+  await expect(resume).toBeHidden();
+
+  await start.click();
+  await page.getByTestId('warning-accept').click();
+  await page.getByTestId('player-name').fill('Neuer Name');
+  await page.evaluate((raw) => localStorage.setItem('kq.save.v1.auto', raw), stored);
+  await page.getByTestId('name-confirm').click();
+  await page.getByTestId('start-tour').click();
+
+  await expect(page.getByText(/Der bisherige Spielstand wird überschrieben/)).toBeVisible();
+  await page.getByRole('button', { name: 'Nein', exact: true }).click();
+  await expect(resume).toBeFocused();
+  expect(await page.evaluate(() => localStorage.getItem('kq.save.v1.auto'))).toBe(stored);
+  await resume.click();
+  await expect(title).toBeHidden();
+  expect(await page.evaluate(() => window.kq!.story!.state())).toMatchObject({ chapter: 'k1', beat: 'k1_0', name: 'Mara' });
 });
 
 for (const view of [
