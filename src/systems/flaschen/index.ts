@@ -26,12 +26,14 @@ import { FLASCHENGRUEN, cosmetics } from '../../player/cosmetics';
 import { h } from '../../ui/dom';
 import { addPageSection } from '../../ui/pause-pages';
 import type { Solid } from '../../world/collision';
+import type { MemorialZone } from '../barks/rules';
+import type { ThreatKind } from '../contracts';
 import { basinBase, wallBase, lookFor } from '../quelle/layout';
 import { clink } from './audio';
 import { disposeLabel, labelCanvas } from './label';
 import { registerEraMaterials } from '../fx/shift/prewarm';
 import { type BottleVisual, buildBottle, buildCover, disposeCover } from './model';
-import { FLASCHEN, FLASCHEN_TOTAL, type FlaschenBase, type FlaschenSpot, MILESTONES, countByEra } from './spots';
+import { FLASCHEN, FLASCHEN_TOTAL, type FlaschenBase, type FlaschenSpot, MILESTONES, countByEra, readBottleSlice } from './spots';
 import { FLASCHEN_DE } from './strings';
 
 export interface FlaschenSlice {
@@ -105,8 +107,10 @@ class Flaschen {
   slice: FlaschenSlice;
   readonly root = new Group();
   private readonly live = new Map<string, Live>();
-  private memorials = new Map<string, { x: number; z: number; r: number; era?: string }>();
-  private threat: { x: number; z: number; r: number } | null = null;
+  private readonly memorials = new Map<string, MemorialZone>();
+  private readonly threats = new Map<ThreatKind, { x: number; z: number; r: number }>();
+  /** Spot ids inside a memorial or a small arena (null: recompute; the bounds change only on events). */
+  private holds: Set<string> | null = null;
   private bossUp = false;
   private clinkT = 4;
   private promptFor: string | null = null;
@@ -117,16 +121,19 @@ class Flaschen {
 
   constructor(private readonly ctx: GameContext) {
     this.slice = this.loadSlice();
+    this.restoreMemorials();
     this.root.name = 'flaschen';
     ctx.scene.add(this.root);
   }
 
+  private restoreMemorials(): void {
+    this.memorials.clear();
+    for (const zone of this.ctx.state.state.systems.barks?.memorials ?? []) this.memorials.set(zone.id, zone);
+  }
+
   loadSlice(): FlaschenSlice {
     const s = this.ctx.state.slice('flaschen', () => ({ found: [], dropped: [], said: [] }));
-    s.found ??= [];
-    s.dropped ??= [];
-    s.said ??= [];
-    return s;
+    return Object.assign(s, readBottleSlice(s));
   }
 
   // ---- heights -------------------------------------------------------------------------------
@@ -161,7 +168,6 @@ class Flaschen {
     }
     const l: Live = { spot: s, vis, cover, coverR, restY, hangY, fall: hanging ? 0 : 1, vy: 0, y: hanging ? hangY : restY, shown: true };
     this.live.set(s.id, l);
-    this.solidsKey = '';
     return l;
   }
 
@@ -175,7 +181,6 @@ class Flaschen {
       disposeCover(l.cover);
     }
     this.live.delete(id);
-    this.solidsKey = '';
   }
 
   dropAll(): void {
@@ -205,13 +210,25 @@ class Flaschen {
 
   /** Is the place held by a memorial, a pack's arena or a boss fight? */
   private held(s: FlaschenSpot): boolean {
-    if (this.bossUp) return true;
-    for (const m of this.memorials.values()) {
-      if (m.era && m.era !== this.ctx.era.current) continue;
-      if (Math.hypot(m.x - s.x, m.z - s.z) < m.r + 6) return true;
+    return this.bossUp || (this.holds ??= this.computeHolds()).has(s.id);
+  }
+
+  private computeHolds(): Set<string> {
+    const out = new Set<string>();
+    const era = this.ctx.era.current;
+    for (const s of FLASCHEN) {
+      for (const m of this.memorials.values()) {
+        if (m.era && m.era !== era) continue;
+        if (m.x !== undefined && m.z !== undefined && Math.hypot(m.x - s.x, m.z - s.z) < (m.r ?? 20) + 6) out.add(s.id);
+      }
+      for (const t of this.threats.values()) if (t.r <= 100 && Math.hypot(t.x - s.x, t.z - s.z) < t.r) out.add(s.id);
     }
-    const t = this.threat;
-    return !!t && t.r <= 100 && Math.hypot(t.x - s.x, t.z - s.z) < t.r;
+    return out;
+  }
+
+  /** The memorials or arenas changed: recompute which spots they hold on the next step. */
+  private boundsChanged(): void {
+    this.holds = null;
   }
 
   private seen(s: FlaschenSpot): boolean {
@@ -395,7 +412,7 @@ class Flaschen {
         const d = g.length();
         const cos = d > 0 ? g.dot(this.fwd) / d : 0;
         const litHere = l.spot.verb === 'dark' ? !ctx.player.stats.lanternLit : lit;
-        if (d < GLINT_R && cos > GLINT_COS && litHere) target = 0.35 + 0.35 * Math.sin(ctx.loop.time * 5 + l.spot.x);
+        if (d < GLINT_R && cos > GLINT_COS && litHere) target = ctx.settings.state.reducedMotion ? 0.35 : 0.35 + 0.35 * Math.sin(ctx.loop.time * 5 + l.spot.x);
       }
       m.opacity += (target - m.opacity) * Math.min(1, dt * 8);
       l.vis.glint.visible = m.opacity > 0.01;
@@ -410,17 +427,35 @@ class Flaschen {
       ev.on('era:change', () => {
         this.dropAll();
         this.bossUp = false;
-        this.threat = null;
+        this.threats.clear();
+        this.boundsChanged();
       }),
       ev.on('memorial:set', (m) => {
         if (m.active === false) this.memorials.delete(m.id);
-        else if (typeof m.x === 'number' && typeof m.z === 'number') this.memorials.set(m.id, { x: m.x, z: m.z, r: m.r ?? 20, era: m.era });
+        else if (m.x !== undefined && m.z !== undefined) this.memorials.set(m.id, m);
+        this.boundsChanged();
       }),
       ev.on('threat:configure', (t) => {
-        if (!t.active) this.threat = null;
-        else if (t.center) this.threat = { x: t.center.x, z: t.center.z, r: t.radius ?? 60 };
+        // the pack's arena comes from hunt:start / hunt:end only: hunt fills in the defaults (its
+        // radius) and restores a saved pack without a new threat:configure
+        if (t.kind === 'pack') return;
+        if (!t.active) this.threats.delete(t.kind);
+        else if (t.center) this.threats.set(t.kind, { ...t.center, r: t.radius ?? 60 });
+        this.boundsChanged();
+      }),
+      ev.on('hunt:start', ({ x, z, radius }) => {
+        this.threats.set('pack', { x, z, r: radius });
+        this.boundsChanged();
+      }),
+      ev.on('hunt:end', () => {
+        this.threats.delete('pack');
+        this.boundsChanged();
       }),
       ev.on('boss:phase', () => (this.bossUp = true)),
+      // a boss saved (or undone and rebuilt) in a later phase comes back without a boss:phase
+      ev.on('enemy:spawned', ({ group, boss }) => {
+        if (boss && (this.ctx.state.state.systems.combat?.groups[group]?.bossPhase ?? 1) > 1) this.bossUp = true;
+      }),
       ev.on('enemy:killed', (e) => {
         if (e.boss) this.bossUp = false;
       }),
@@ -439,9 +474,15 @@ class Flaschen {
       this.applyCosmetics();
     };
     this.offs.push(ev.on('game:start', reload), ev.on('save:loaded', reload));
-    this.ctx.state.subscribe((_s, reason) => {
-      if (reason === 'new' || reason === 'replace') reload();
-    });
+    this.offs.push(this.ctx.state.subscribe((_s, reason) => {
+      if (reason !== 'new' && reason !== 'replace' && reason !== 'load') return;
+      // Clear the outgoing slot's live holds before systems replay the new slot's events.
+      this.bossUp = false;
+      this.threats.clear();
+      this.restoreMemorials();
+      this.boundsChanged();
+      if (reason !== 'load') reload();
+    }));
   }
 
   hooks(): FlaschenHooks {

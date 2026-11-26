@@ -194,9 +194,11 @@ html[data-kq-photo] :is(
   0% { opacity: 0.92; }
   100% { opacity: 0; }
 }
-html[data-kq-reduced-motion] .kq-photo-flash.go,
 html[data-kq-reduced-flash] .kq-photo-flash.go {
   animation: kq-photo-flash-soft 0.2s linear;
+}
+html[data-kq-reduced-motion] .kq-photo-flash.go {
+  animation: none;
 }
 @keyframes kq-photo-flash-soft {
   0% { opacity: 0.3; }

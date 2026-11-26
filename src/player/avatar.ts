@@ -948,7 +948,7 @@ export class Avatar {
     if (this.lanternGlow) this.lanternGlow.opacity = 0.08 + 0.5 * Math.min(1, lit);
     if (this.flame) {
       this.flame.visible = lit > 0.05;
-      const fl = f.reducedFlash ? 1 : 0.85 + 0.15 * Math.sin(f.time * 17);
+      const fl = f.reducedFlash || f.reducedMotion ? 1 : 0.85 + 0.15 * Math.sin(f.time * 17);
       this.flame.scale.set(1, 1.6 * fl, 1).multiplyScalar(0.6 + 0.4 * Math.min(1, lit));
     }
   }

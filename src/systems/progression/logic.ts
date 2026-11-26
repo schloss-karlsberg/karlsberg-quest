@@ -14,7 +14,9 @@
  * - Collections: members are items with `set` (core + quest files); complete → XP once.
  * - Codex: +10 XP the first time each fact unlocks.
  */
+import { isEra } from '../../core/era';
 import type { GameEvents } from '../../core/events';
+import { finiteOr, isRecord, numberRecord, stringList } from '../../core/saved';
 import { COLLECTIONS, lootTable } from '../../rpg/items';
 import { LEVEL_XP, MAX_LEVEL, type StatOptions, charmSlots, deriveStats, levelForXp, spentPoints, talentBlock, talentDef, weaponPower } from '../../rpg/stats';
 import type { CollectionSet, DerivedStats, EnemyDef, ItemDef, LootTable, PlacedPickup, ProgressionSlice } from '../../rpg/types';
@@ -51,22 +53,30 @@ export function createProgressionSlice(): ProgressionSlice {
   return { xp: 0, level: 1, points: 0, talents: {}, inventory: {}, equipped: { weapon: null, charms: [] }, quick: null, taken: [], completedSets: [], codexXp: [], placed: {}, drops: 0, dry: 0 };
 }
 
+function isPickup(p: unknown): p is PlacedPickup {
+  return isRecord(p) && typeof p.id === 'string' && typeof p.item === 'string' && Number.isFinite(p.x) && Number.isFinite(p.z)
+    && isEra(p.era) && (p.count === undefined || Number.isFinite(p.count)) && (p.y === undefined || Number.isFinite(p.y));
+}
+
 /** Fill fields a saved slice may lack (older saves, hand-made test slices). Mutates and returns it. */
 export function normalizeSlice(s: ProgressionSlice): ProgressionSlice {
   s.xp = Math.max(0, Math.min(XP_CAP, Number(s.xp) || 0));
   s.level = Math.max(1, Math.min(MAX_LEVEL, Math.max(Number(s.level) || 1, levelForXp(s.xp))));
   s.points = Math.max(0, Number(s.points) || 0);
-  s.talents ??= {};
-  s.inventory ??= {};
-  s.equipped ??= { weapon: null, charms: [] };
-  s.equipped.charms ??= [];
-  s.quick ??= null;
-  s.taken ??= [];
-  s.completedSets ??= [];
-  s.codexXp ??= [];
-  s.placed ??= {};
-  s.drops ??= 0;
-  s.dry ??= 0;
+  // Corrupt values fall back per field (a slot that loads must not break the pack or the stats).
+  s.talents = numberRecord(s.talents);
+  s.inventory = numberRecord(s.inventory);
+  if (!isRecord(s.equipped)) s.equipped = { weapon: null, charms: [] };
+  if (typeof s.equipped.weapon !== 'string') s.equipped.weapon = null;
+  s.equipped.charms = stringList(s.equipped.charms);
+  if (typeof s.quick !== 'string') s.quick = null;
+  s.taken = stringList(s.taken);
+  s.completedSets = stringList(s.completedSets);
+  s.codexXp = stringList(s.codexXp);
+  if (!isRecord(s.placed)) s.placed = {};
+  for (const [id, pickup] of Object.entries(s.placed)) if (!isPickup(pickup)) delete s.placed[id];
+  s.drops = Math.max(0, finiteOr(s.drops, 0));
+  s.dry = Math.max(0, finiteOr(s.dry, 0));
   return s;
 }
 
@@ -398,7 +408,10 @@ export class ProgressionCore {
     const s = this.s;
     if (s.taken.includes(p.id)) return false;
     const placed = (s.placed ??= {});
-    placed[p.id] = { ...placed[p.id], ...p, drop: p.drop ?? placed[p.id]?.drop };
+    const previous = placed[p.id];
+    // Replaying a placement may move it, but the saved remainder belongs to this pickup.
+    const count = previous?.item === p.item ? previous.count : p.count;
+    placed[p.id] = { ...previous, ...p, count, drop: p.drop ?? previous?.drop };
     const drops = Object.values(placed).filter((x) => x.drop);
     for (let i = 0; i < drops.length - MAX_DROPS; i++) delete placed[drops[i]!.id];
     return true;

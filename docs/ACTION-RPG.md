@@ -101,7 +101,8 @@ player the Messstab at the Weiher. Combat starts in Chapter 1.
 | Survey tools | **1** Geisterblick · **2** Relief (Shift+2 backwards, ^ off) · **3** Messen · **4** Röntgenblick · **5** Planblatt · **M** Karte | Open „Erkunden“ on touch. Relief cycles through the modes you’ve unlocked. |
 
 Accessibility (ARCHITECTURE §5 contract, extended): `settings.reducedMotion` → no camera shake, no
-roll camera tilt, shorter hit-stop; `settings.reducedFlash` → no full-screen flashes from combat at
+roll camera tilt, shorter hit-stop, a brief steady beam from reflected Bannlicht, and a static
+„Geblendet“ indicator for the debuff; `settings.reducedFlash` → no full-screen flashes from combat at
 all, hit flashes are local and ≤ 25 %; telegraphs always use **shape + motion + sound + caption**, never
 colour alone; `settings.soundIndicators` shows screen-edge arrows for off-screen attackers; gentle mode
 (below) makes fights forgiving; every combat key is remappable; keyboard-only play works (K, G, H, T / Z / U).
@@ -118,6 +119,7 @@ Over the shoulder by default (camera track, 2026-11-19), first person as an opti
 - **Spring arm:** pivot at the head, 0.62 m right shoulder offset, distance = wheel zoom (default
   3.6 m). It never sits inside a wall, a palace collider, a tree trunk (`forest.trunksNear`), under
   the terrain or above a room's ceiling (`world.ceilingAt`): it snaps in at once and eases back out.
+  In reduced motion, it cuts outward once the boom sweep clears at the extended shoulder offset.
 - **Fights:** aggro enemies within 16 m are written to `cameraHints.fight`; the arm pulls back and
   lifts until they fit in the frame (a boss adds its radius). **Conversations:** the talking NPC's
   head (within 8 m) is `cameraHints.focus`; the view eases into an over-the-shoulder two-shot.
@@ -509,6 +511,8 @@ The tour and quests grant survey skills (`skill:grant`, unlock cards and Laub’
   Zeichen** (four marked stones across eras), **Planblätter**, **Mannlichs Festpläne**. A complete set
   gives XP and a line from its owner. Relief patterns (rm.01–08) stay codex cards.
 - **Funde** in Sammlungen shows route discoveries with a count and a FIKTION label on each find.
+- A partly collected stack stays visible. Replaying its placement after a load keeps the quantity
+  left on the ground. Picking up the last item retires the placement.
 - **Fläschchen** (hidden collectibles, docs/IDEAS-ROUND11.md §4; `src/systems/flaschen/`, state
   `systems.flaschen`): 24 small bottles hand-placed at named places in all five eras (today 6, 1789 6,
   Feb 1793 4, Jul 1793 3, 1796 5; the spring holds one in every year), never guarded, no glow, no map
@@ -523,6 +527,11 @@ The tour and quests grant survey skills (`skill:grant`, unlock cards and Laub’
   codex XP. The bottle carries the real beer label as the owner's swappable placeholder: the text lives
   in `content/collectibles/flaschen.json` → `label` only, drawn to one texture / one material
   (`label.ts`); `tests/flaschen.test.ts` fails if it appears in any other file.
+  A bottle stays hidden inside a memorial, inside a threat arena of at most 100 m (the pack's arena
+  as `hunt:start` announces it, Hunt's default radius included) and while a boss is past phase 1,
+  also a boss rebuilt in a later phase after a load or a defeat. On a slot change, saved memorials
+  and the incoming encounter determine bottle visibility. A cover that disappears also releases its
+  collision shape.
 - **Collectibles** (item kind `collectible`, TASK-002): plain things gathered for their count. They
   stack to 99, cannot be used or equipped, and lie in the world as small glowing pickups: no light
   column, ordinary pickup sound. The feed counts them („+ Kastanie ×1 (7)“). The first is
@@ -1052,6 +1061,8 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Motion and focus regressions (TASK-032 review, 2026-11-26) | Verify shoulder clearance before extending the reduced-motion camera. Keep steady cues for the torch, reflected Bannlicht, fireworks, survey markers, loot and party lights. Both credits views honor the OS preference. Release notes open at the top, and inline pilot choices apply through the story API. |
+| Involuntary motion and lost keyboard focus (TASK-032, 2026-11-26) | Reduced motion uses still title and map views, camera cuts and short fades. Survey activations, the lantern and staged effects retain steady cues. Menus keep Tab inside the active dialog and restore focus after a page closes or a journal filter changes. |
 | Storage failures can stall play or leave a stale checkpoint after a cinematic (TASK-031, 2026-11-26) | The first failure allows an immediate retry. From the second consecutive failure onward, autosaves back off for one second of elapsed time. The game retries queued forced checkpoints, and hiding the tab or returning to the title gives one immediate attempt when there is no active cinematic hold. |
 | A failed checkpoint or interrupted input can affect the next play session (TASK-031, 2026-11-26) | A rejected save preserves the last checkpoint time and retry eligibility. Pause and focus changes clear pending input. Switching touch off cancels queued taps. Fingers and keyboard or assistive technology activations on Hieb share one attack until all holds end. |
 | Several autosave requests in one update can stall play if storage keeps failing (TASK-031, 2026-11-26) | The first failure allows an immediate retry. From the second consecutive failure onward, autosaves wait one second between attempts. |
@@ -1073,12 +1084,19 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | A playtest overwrites a stored game or spends most of a chapter drawing intermediate steps (TASK-019, 2026-11-26) | `?nosave` protects save slots during „Neues Spiel“. The campaign uses `?manual&faststep` for subtitle timing and batched draws while still testing quest state, save and continue, and all three endings. |
 | The minimap leads through the Nordflügel wall or away from historical paths, and notices collide with touch controls (TASK-015, 2026-11-26) | The minimap follows the entrance route for the story lead and prepares the historical path overlay during loading. The touch notice dock clears the action pill and unlocked skills. Dialogue and notices reclaim the space when the map hides. |
 | The next turn or the tour group is hard to find at a glance (TASK-015, 2026-11-26) | The local minimap uses a steady north-up view, live tour dots and the compass objective. Map layers follow the era, distant markers retain their bearing along the edge, and reduced motion snaps the heading arrow. |
+| Cinematic hand-back and court transitions can leave stale state (TASK-055, 2026-11-26) | Consecutive shots restore the gameplay field of view. Cinematic disposal clears its marker before flushing the autosave. A load, era change or system disposal releases an interrupted court escort's movement lock. |
+| Returning home during an escort or loading after cinematic disposal can stop play (TASK-055 review, 2026-11-26) | The shift takes over movement after the court releases the escort and restores it at the end. A deferred autosave retains the interrupted cinematic's ID for one skipped completion on load. |
+| Cinematic hand-back and court transitions can leave stale state (TASK-055, 2026-11-26) | Consecutive shots restore the gameplay field of view. A load, era change or system disposal releases an interrupted court escort's movement lock. Loading clears the inspection ring and letter hold timer. |
+| Indoor and scenery state can outlive its room, era or save slot (TASK-059, 2026-11-26) | Restore the saved storey (also from a doorway); while the palace streams, the room catalogue holds the floor and walls. A shift away from the Festsaal choice hides its objects and prompt until the player returns; a fire that ends releases them. A shift drops the previous scenery obstacles, and slot loads restore the gate, coat and lit windows. |
+| A load during a hunt or while collecting can carry an encounter or reward across slots (TASK-058, 2026-11-26) | The incoming slot restores the pack configuration, bottle count, lantern glass and codex receipt. Tests cover partial pickups, a bottle saved mid-fall, and loading a peaceful slot during a capture. |
 | Very large headings in shared links can freeze horizontal look (TASK-060, 2026-11-26) | Wrap the starting heading within one turn before converting it to radians so look input can adjust it. |
 | Invalid shared positions and interrupted gameplay events (TASK-060, 2026-11-26) | Both URL coordinates must be finite before teleporting. Each event observer can fail independently, so later listeners still receive the era change, reward or pause event. |
 | Player transitions can leave a pending attack, a blocked lens or stale motion (TASK-057 review, 2026-11-26) | Cancel the pending charge when focus drops the held attack, sweep the shoulder from the pivot, clear frozen flight velocity, and snap the avatar to the placement yaw under the travel curtain. |
 | Camera and movement state can carry across focus and placement changes (TASK-057, 2026-11-26) | Drop stale input on pointer-lock loss or blur. Clamp the shoulder offset against a wall on contact. Reset stride and avatar motion at placement boundaries and hold spirit flight during a movement freeze. |
 | Fast travel can save the departure pose or leave a curtain on a newly opened game (TASK-030, 2026-11-26) | The autosave captures the arrival pose before the travel pause is released. Loading a slot or starting a game clears the curtain during its fade. |
 | Travel effects can outlast the action that started them (TASK-030, 2026-11-26) | A loaded game cancels pending fast travel. The outdoor sprint boost clears on combat entry. Regression tests also exercise one-time lore XP and the 120-second Wegstein cooldown across a reload. |
+| Accepting „Der Jaguar“ while Hanne’s conversation is open delays saved calm credit (TASK-040 review, 2026-11-26) | The acceptance autosave includes the payout. For a save recovered at the title, „Weiter“ presents the reward dialogue and notice. „Neues Spiel“ drops that presentation. A quest finished on acceptance shows no „Nebenaufgabe“ banner after its payout. |
+| Driving the jaguar away early strands Hanne’s quest at 0/1 (TASK-040, 2026-11-26) | „Der Jaguar“ credits the saved calm on acceptance or when an active save loads, and automatically grants its 200 base XP and two Lampenöl once. |
 | A skipped subsecond survival bonus can look complete in Aufgaben (TASK-047) | The journal uses the quest engine's target for ticks and progress counts. Survival targets round to whole seconds with a minimum of one. |
 | A finished quest can look as if it paid every optional bonus (TASK-047) | In Aufgaben, a bonus objective is checked only if its saved count reached the target, even after turn-in. The journal does not award XP. |
 | Campaign encounter reloads and terrain edges (TASK-048 review, 2026-11-26) | The selected save restores cassowary misses and jaguar flares. Overlapping animals separate on walkable ground. A saved deer follows a valid departure chain, with invalid chains restored as gone. Scripted trails cap sampling along each segment. The Soll reload test rebuilds his placement and verifies single rewards. |

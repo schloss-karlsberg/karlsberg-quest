@@ -160,6 +160,22 @@ test.describe('cinematic', () => {
     expect(p4.avatar).toBe(true);
     expect(await page.evaluate(() => window.kq!.camera!.state().see)).toBe(true);
 
+    // Replace a framed shot in the same tick, then tap to hand the camera back.
+    await page.evaluate(() => {
+      const k = window.kq!;
+      k.cinematic!.play({ id: 'e2e-wide', keys: [{ t: 0, fov: 48 }, { t: 3 }] });
+      k.step(1);
+      k.cinematic!.play({ id: 'e2e-tight', keys: [{ t: 0, fov: 24 }, { t: 3 }] });
+      k.step(35);
+    });
+    expect((await probe(page)).fov).toBe(24);
+    await page.locator('canvas').first().dispatchEvent('pointerdown', { pointerType: 'touch', isPrimary: true });
+    await page.waitForFunction(() => window.kq!.camera!.state().see);
+    const tapped = await probe(page);
+    expect(tapped.events).toContainEqual(['cinematic:end', { id: 'e2e-tight', skipped: true }]);
+    expect(tapped.frozen).toBe(false);
+    expect(tapped.fov).toBeCloseTo(before.fov, 3);
+
     // ---- reduced motion: two stills (≤ 3 s), then a cut back
     await closeModals(page);
     await page.evaluate(() => {

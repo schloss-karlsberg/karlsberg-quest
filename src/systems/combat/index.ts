@@ -439,13 +439,7 @@ class Combat {
   }
 
   private loadResources(): void {
-    const s = this.slice();
-    const p = this.sim.p;
-    p.hp = s.hp > 0 ? Math.min(p.max, s.hp) : p.max;
-    p.st.stamina = Math.min(p.st.max, s.stamina);
-    p.bann = Math.min(p.bannMax, s.bann);
-    // The recharge timer is not saved: a loaded charge count starts a fresh recharge.
-    p.bannT = 0;
+    this.sim.loadResources(this.slice());
   }
 
   private syncResources(): void {
@@ -1037,7 +1031,7 @@ class Combat {
         break;
       case 'reflect': {
         const e = ev.e;
-        this.visuals.reflectBeam(e.x, e.y, e.z, inp.x, inp.y + 1.4, inp.z, st.reducedFlash);
+        this.visuals.reflectBeam(e.x, e.y, e.z, inp.x, inp.y + 1.4, inp.z, st.reducedFlash, st.reducedMotion);
         this.audio.reflect(this.posOf(e, 0), false);
         this.captionOnce('reflect', t('combat.reflect'), 'boss', 6, 2800);
         break;
@@ -1311,13 +1305,14 @@ class Combat {
       dt: this.deathSlow > 0 ? dt * 0.3 : dt,
       frozen,
       heightAt: (x, z) => ctx.world.heightAt(x, z),
-      reducedFlash: st.reducedFlash,
+      reducedFlash: st.reducedFlash || st.reducedMotion,
+      reducedMotion: st.reducedMotion,
       bann: this.bannFx,
       // the reveal camera looks at the boss: nothing may stand in the way of it
       focus: this.introCam ? [{ x: this.introCam.e.x, y: this.introCam.e.y + this.visuals.topOf(this.introCam.e) * 0.5, z: this.introCam.e.z, id: this.introCam.e.id }] : undefined,
     });
     // an ability under way: the Wirbel's ring of motes, the Ausfall's streak
-    if (p.skill && !frozen) {
+    if (p.skill && !frozen && !st.reducedMotion) {
       const gy = ctx.world.heightAt(pl.position.x, pl.position.z);
       if (p.skill.id === 'wirbel') this.visuals.whirl(pl.position.x, gy + 0.2, pl.position.z, SKILLS.wirbel.radius * 0.7, ctx.loop.time, st.reducedFlash);
       if (p.skill.id === 'ausfall' && this.lungeFrom) {

@@ -399,6 +399,9 @@ html[data-kq-rotate] .kq-toasts {
   color: var(--hud-gold-2);
   filter: drop-shadow(0 0 3px rgba(242, 199, 107, 0.5));
 }
+html[data-kq-reduced-motion] .kq-hud .kq-click-to-play {
+  animation: none;
+}
 .kq-hud .kq-click-to-play .kq-ctp-text {
   display: flex;
   flex-direction: row;

@@ -54,7 +54,8 @@ export class CandlePiece implements Piece {
   frame(dt: number): void {
     this.t += dt;
     const t = this.t;
-    const steady = this.ctx.settings.state.reducedFlash;
+    const { reducedFlash, reducedMotion } = this.ctx.settings.state;
+    const steady = reducedFlash || reducedMotion;
     // the match: a short bright flare, then the candle takes the flame
     const match = steady ? 0 : Math.max(0, 1 - Math.abs(t - 0.35) / 0.35) * 1.5;
     const lit = smooth(this.lit);

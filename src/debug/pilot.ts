@@ -545,8 +545,8 @@ const inner = (el: HTMLElement | null | undefined, sep: string, max = 300) =>
   clean((el?.innerText ?? el?.textContent ?? '').split('\n').map((l) => l.trim()).filter((l) => /[\p{L}\p{N}]/u.test(l)).join(sep), max);
 const visible = (el: HTMLElement) => !el.hasAttribute('disabled') && (el.offsetParent !== null || el.getClientRects().length > 0);
 
-/** The open dialogue / modal (top of the stack) or a non-modal story choice card, with its buttons. */
-function readDialogue(): { obs: PilotObservation['dialogue']; buttons: HTMLElement[] } {
+/** The open dialogue / modal (top of the stack) or a non-modal story choice card, with its options. */
+function readDialogue(): { obs: PilotObservation['dialogue']; buttons: HTMLElement[]; inline?: boolean } {
   const modals = [...document.querySelectorAll<HTMLElement>('.kq-modal')];
   const top = modals[modals.length - 1];
   const card = document.querySelector<HTMLElement>('.kqs-choice-card[data-testid="story-choice"]');
@@ -569,8 +569,8 @@ function readDialogue(): { obs: PilotObservation['dialogue']; buttons: HTMLEleme
     text = txt(root, '.kq-modal-body', 600) || clean(root.textContent, 600);
     buttons = [...root.querySelectorAll<HTMLElement>('button:not(.close)')].filter(visible).slice(0, 16);
   }
-  const options = buttons.map((b, i) => ({ n: i + 1, label: clean(b.textContent, 80).replace(/^\d+\s*/, '') }));
-  return { obs: { kind, title: txt(root, ':scope > h2', 120) || clean(root.getAttribute('aria-label'), 120), who, text, options }, buttons };
+  const options = buttons.map((b, i) => ({ n: i + 1, label: clean(b.textContent, 80).replace(/^(?:\d+|•)\s*/, '') }));
+  return { obs: { kind, title: txt(root, ':scope > h2', 120) || clean(root.getAttribute('aria-label'), 120), who, text, options }, buttons, inline: root === card };
 }
 
 /** Compact JPEG data URL of the canvas, read right after a render (no preserveDrawingBuffer needed). */
@@ -846,15 +846,15 @@ export function installPilot(ctx: GameContext): PilotApi {
         events.push({ type: 'chooseRejected', t: r2(ctx.loop.time - actStart), n, reason: 'pending' });
         return null;
       }
-      const { buttons } = readDialogue();
+      const { buttons, obs, inline } = readDialogue();
       const b = buttons[n - 1];
-      if (!b) {
+      const option = obs?.options[n - 1];
+      if (!b || !option || (inline && !window.kq?.story?.choose(n - 1))) {
         gate.cancel();
         return null;
       }
-      const label = clean(b.textContent, 80).replace(/^\d+\s*/, '');
-      b.click();
-      return label;
+      if (!inline) b.click();
+      return option.label;
     },
     release() {
       for (const c of kept) ctx.input.simulate(c, false);
