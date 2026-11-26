@@ -52,7 +52,7 @@ vi.mock('../src/systems/story/objectives', async (original) => ({
 }));
 vi.mock('../src/systems/story/overlays', async (original) => ({
   ...await original<typeof import('../src/systems/story/overlays')>(),
-  StoryOverlays: class { fade() {} gauge() {} tickCard() {} tickChoice() {} closeChoice() {} },
+  StoryOverlays: class { fade() {} gauge() {} tickCard() {} tickChoice() {} closeChoice() {} clearCurtain() {} },
 }));
 
 const FIRST = 'k1.enge';
