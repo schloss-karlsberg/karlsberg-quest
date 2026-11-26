@@ -4,7 +4,7 @@ aliases:
 - TASK-006
 title: 'Phone gallery: save, download and share photos'
 slug: phone-gallery-save-download-and-share-photos
-status: todo
+status: in-progress
 priority: 3
 owner: ''
 projects: []
@@ -18,7 +18,7 @@ milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-26
 ---
 
 # Phone gallery: save, download and share photos
@@ -80,10 +80,63 @@ button, and sharing through the OS share sheet (WhatsApp, Signal, AirDrop, ...).
 - [ ] An e2e for take photo → gallery → delete (extend `e2e/photo.spec.ts`; run with `--workers=1`)
 - [ ] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
 
+## Plan
+_Status: approved 2026-11-26_
+
+**Approach:** A device-wide photo gallery next to the per-save album.
+- **Storage:** every shot with signal is stored in IndexedDB (database `kq-photos`) as a full JPEG Blob, a thumbnail Blob and metadata. It sits behind a small `PhotoStore` interface copied from the `notes/store.ts` pattern: an IndexedDB store plus a memory fallback for private windows. The store requests `navigator.storage.persist()`.
+- **Capture:** grows a Blob variant that reads the canvas once (render, `drawImage`) and encodes a full image (≤ 1920 px wide) and a 320 px thumbnail with `canvas.toBlob`.
+- **Gallery:** a modal with a thumbnail grid, the count („12 / 100“) and the device-only hint. A tap opens the photo full-size, with Zurück / Weiter (buttons, arrow keys, swipe), Löschen (asks once), Herunterladen and Teilen. Teilen uses `navigator.share({ files })` when `navigator.canShare({ files })` says yes, else it downloads.
+- **Entry points:** a „Galerie“ button on the phone, next to the 1× / 2× chips (the layer above the touch controls), and a button on Pause → Album.
+- **Unchanged:** the album, judging, cards, codex and save are untouched. No new dependencies.
+
+**Files to touch:**
+- `src/systems/notes/capture.ts` - `captureViewBlobs()`: one read-back, full (≤ 1920 px) + thumb (320 px) JPEG Blobs; the data-URL `captureView` stays for notes / cards.
+- `src/systems/photo/store.ts` (new) - `PhotoStore` (add / list / full / remove / count), `IdbPhotoStore` (`kq-photos`: store `photos` = meta + thumb, store `full` = the big Blob, same key), `MemoryPhotoStore`, `openPhotoStore()` with fallback and `persist()`.
+- `src/systems/photo/gallery-logic.ts` (new, pure) - cap (100), newest-first order, the download file name (`karlsberg-quest-2026-11-26-14-31.jpg`), share-or-download decision, metadata shape.
+- `src/systems/photo/gallery.ts` (new) - the gallery modal and the full-size viewer (object URLs revoked on close).
+- `src/systems/photo/index.ts` - `shoot()` stores the shot (signal only, async, never blocks the card); the full-gallery toast; the phone's „Galerie“ button; the Album page button; German strings; `kq.photo.gallery` hooks (open, list, remove, count, store kind).
+- `src/systems/photo/photo.css` - grid, viewer, buttons ≥ 44 px, portrait and landscape.
+- `tests/photo-gallery.test.ts` (new) - store contract on `MemoryPhotoStore`, cap, order, delete, file name, share fallback.
+- `e2e/photo.spec.ts` - extend: shoot → Galerie (from the phone) → full size → Herunterladen (download event) → reload keeps it → Löschen → empty; a touch-sized run of the gallery.
+- `docs/ARCHITECTURE.md` (photo section), `docs/ACTION-RPG.md` §14, `docs/PRD.md` changelog.
+
+**Steps:**
+- [ ] 1. `captureViewBlobs()` in `notes/capture.ts`.
+- [ ] 2. `photo/store.ts` + `photo/gallery-logic.ts`; unit tests on the memory store and the logic.
+- [ ] 3. `shoot()` → store (signal only, metadata: time, play seconds, era, x / z, targets, good, stars); cap toast; hooks.
+- [ ] 4. Gallery modal: grid, count, device-only hint (memory fallback: „nur bis zum Neuladen“), viewer with Zurück / Weiter / swipe, Löschen, Herunterladen, Teilen → Download fallback.
+- [ ] 5. Entry points: „Galerie“ on the phone (closes the phone, opens the gallery), button on Pause → Album.
+- [ ] 6. Touch / mobile: 44 px targets, portrait and landscape layouts, check in the touch e2e sizes.
+- [ ] 7. e2e in `e2e/photo.spec.ts`; run `photo` and `touch` with one worker.
+- [ ] 8. Manual check in the dev build (desktop and a phone-sized viewport); after shots; docs.
+- [ ] 9. Gates: `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build`; `pnpm build && pnpm exec playwright test e2e/photo.spec.ts e2e/touch.spec.ts --workers=1`.
+
+**Test plan:**
+- Unit: `pnpm exec vitest run tests/photo-gallery.test.ts tests/photo.test.ts`.
+- e2e: `e2e/photo.spec.ts`, `e2e/touch.spec.ts`, one worker. The download is checked with Playwright's download event; Share falls back to Download in headless Chromium (no file share).
+- Manual: `http://localhost:5280/?debug&nosave&fresh` → „Neues Spiel“; at the car park press N, take 2–3 photos, then „Galerie“ on the phone. Check the grid, full size, swipe, Löschen, Herunterladen, then reload: the photos are still there.
+- Screenshots in `test-results/contribute/TASK-006/`:
+  - before: `before-1-phone.png` (phone up at the car park, the board in view), `before-2-album.png` (Pause → Album after one shot);
+  - after: `after-1-phone.png` (the „Galerie“ button), `after-2-gallery.png` (grid with count and hint), `after-3-viewer.png` (full size with the buttons), `after-4-gallery-mobile.png` (phone-sized portrait).
+
+**Risks:**
+- The full-size read-back costs a frame's `drawImage` from the WebGL canvas plus async JPEG encoding. Shooting has a 0.6 s cooldown, and encoding runs off the main thread in Chromium (check the frame time with `?debug`).
+- Storage: about 0.3–0.6 MB per photo, so 100 photos is at most about 60 MB. That is inside normal IndexedDB quotas; a failed write shows a toast instead of throwing.
+- Safari may clear site data after about 7 days without a visit (the gallery says so); private windows fall back to memory.
+- Web Share needs HTTPS and a user gesture. The button calls it directly from the click; the GitHub Pages build is HTTPS.
+- The gallery is device-wide, not per save slot (a new game keeps the photos). See open question 1.
+
+**Open questions:** none. Approved by the contributor 2026-11-26 as proposed: the gallery belongs to the device, not to a save; the cap is 100, and when full a new shot is not stored and a toast says so; the optional ideas (watermark, photo quest, zip export) stay out of this cut.
+
 ## Optional ideas
 - A game watermark or frame on downloaded / shared images.
 - A photo-quest hook, e.g. "photograph the deer" (see the tour's Ricke and Kitz, TASK-001), via the existing `photo:good` event.
 - "Export all" as a zip, only if it needs no new dependency.
+
+## Progress
+- Branch: `feat/task-006-gallery` (from `main` `1bd1597`)
+- 2026-11-26: plan approved (gallery per device, cap 100 with a toast, optional ideas out). Before shots (real GPU, Iris Xe, dev build): `test-results/contribute/TASK-006/before-1-phone.png` (phone up at the car park, 528 / −795, the board in view, only 1× / 2× on the phone), `before-2-album.png` (Pause → Album after one shot: the entry with this session's thumbnail and „Bilder dieser Sitzung; nach dem Neuladen bleibt die Karte.“).
 
 ## Notes
 - Update `docs/ACTION-RPG.md` §14 and the `docs/PRD.md` changelog (CONTRIBUTING.md).
