@@ -35,7 +35,7 @@ export const TRAVEL_DE = {
   cacheOpen: 'Die Truhe springt auf.',
   cacheGuarded: 'Etwas bewacht die Truhe.',
   fundTitle: 'Fundstück',
-  fundTag: 'Fiktion, nach den Quellen erzählt',
+  fundTag: 'FIKTION, nach den Quellen erzählt',
   fundEmpty: 'Noch nichts gefunden. Am Wegesrand liegt manchmal etwas, das leuchtet.',
   fundCount: (n: number, of: number) => `${n} von ${of} gefunden`,
   close: 'E / Klick: weiter',

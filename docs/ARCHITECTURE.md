@@ -1605,7 +1605,7 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
 - Route POIs (`pois.ts`, deterministic): along 18 chapter routes every ~120 m a cache (2–4 era
   guards via `enemy:spawn`, group `poi:<id>`, only with a weapon in hand; `enemy:cleared` opens it:
   `loot:place` + EP), a Fundstück (`lore.ts`, 26 fictional letters / notes / tokens / coins, card +
-  Pause page „Funde“) or a Wegstein (full heal + lantern refill, 120 s cooldown, out of combat).
+  Pause → Sammlungen → Funde) or a Wegstein (full heal + lantern refill, 120 s cooldown, out of combat).
   Kept clear of buildings, content places (`KEEP_CLEAR`) and each other. Ids are `poi.<route>.<n>` and
   sit in saves (`done`): a new route goes LAST in `ROUTES` (the per-era spacing and Fundstück pools
   are shared, so an earlier insert would move later routes' POIs). `p-weiher` (round 10) follows
@@ -2018,7 +2018,7 @@ quests ──codex:unlocked / skill:grant──▶ codex, skills
 | Story conditions | `{quest: {id, state?, objective?, gte?}}` (state defaults to done; `active` also holds while ready), `{level: n}` | `questHolds()` in `story/engine.ts` |
 | Input | actions `attack` (LMB, K), `bannlicht` (RMB, G), `dodge` (Space), `quickUse` (H), `inventory` (I), `lockOn` (Tab, middle mouse), `cameraMode` (F5); `takeWheel()` for the zoom; `SHARED_KEYS` C crouch/down, LMB interact/attack, Space up/dodge; the canvas swallows the context menu | `src/player/input.ts` |
 | Player hooks | `player.moveScale` (×speed), `player.canSprint`, `player.impulse(vx, vz, seconds)` (decaying push through collision and slope rules; cleared by `teleport`), `player.pushed` | owned by combat (additive) |
-| Pause pages | Feature systems register their destination with `src/ui/pause-pages.ts`. Pause opens Aufgaben, Codex, Sammlungen, Funde, Ausrüstung, Talente, Karte and Album. | I and M remain shortcuts. |
+| Pause pages | Feature systems register their destination with `src/ui/pause-pages.ts`. Pause opens Aufgaben, Codex, Sammlungen, Ausrüstung & Talente, Karte, Album and Kapitel. | I opens Ausrüstung & Talente and M opens Karte. |
 | Debug | `window.kq.quests`, `kq.combat`, `kq.progression` (installed on the first frame: `window.kq` exists only after `initAll`) | each track extends its own |
 | Test chapter | `?storytest` + `kq.story.goto('test', 'q1')`: Hanne offers `q.test.lohnzettel`, then Laub `q.test.irrlichter` | e2e entry point for all tracks |
 
@@ -2071,7 +2071,8 @@ Each RPG track adds its own subsection here when it fills its system in.
   (`quest:hint`). Hooks `kq.quests.lead/hint/stall`. Compass markers `kqq:obj`, `kqq:npc:<npc>` (offer / offer-main / ready
   shapes, givers within 150 m).
 - `pages.ts` renders Aufgaben (objectives, rewards and sourced history), Codex (filters, confidence
-  badges and sources) and Sammlungen (sets and bestiary). All three open from Pause.
+  badges and sources) and Sammlungen (sets and bestiary). Travel and Fläschchen register their
+  Sammlungen sections through `addPageSection`. All three pages open from Pause.
 - `audio.ts` provides procedural cues for accepting and completing quests. `strings.ts` provides
   the German copy.
 - `e2e/quests.spec.ts` covers turn-ins and save/load. `e2e/chronik.spec.ts` covers the Codex page.
@@ -2122,7 +2123,7 @@ Each RPG track adds its own subsection here when it fills its system in.
 | `pickups.ts` | three.js pickups: billboard core with a glint (no fog, min. on-screen size, fades past 40 m), spinning token, rising motes, ground pool, light column for quest / lore / weapon / charm items; era tint; pop-in bounce, drops drift towards a player within 3.4 m, take = fly to the bottom of the view + burst (reduced motion: fade only) |
 | `hud.ts` | `hud.dock('vitals', xp, 30)` (level medallion + brass bar with ghost gain, "+50" pop, brass ring pulse on level-up — no flash), `dock('vitals', quick, 40)` (key, glyph, name, count), `dock('feed', lines, 10)` (max 3 lines, fade after 4.2 s), floating "+N EP" at the `xp:grant` x/z |
 | `levelup-card.ts` | "Stufe N" stamp card (centre, `top: max(170px, 24vh)`), merges several level-ups, chime on the stamp; game time; steps aside (`kqp-held`) while a story title card / curtain, a modal or a skill unlock card shows |
-| `pages.ts` | Ausrüstung (weapon, charms, supplies, quest items, lore and stats) and Talente (badge counts unspent points). Respec is available at the spring through `hub:enter` / `hub:leave`. |
+| `pages.ts` | Ausrüstung & Talente combines equipment and talent sections. Its Pause badge counts unspent points. Respec is available at the spring through `hub:enter` / `hub:leave`. |
 | `icons.ts`, `audio.ts`, `progression.css` | procedural glyphs, Web Audio sounds (pickup, level, use, collection), styles incl. high-contrast and reduced-motion rules |
 
 Rules that came out of it:
@@ -2154,7 +2155,7 @@ Rules that came out of it:
   (`body:has(.kq-dock-boss:not(:empty))`). Quest payouts share the right-edge toast dock, which
   moves inward on short landscape viewports to clear the touch buttons. The feed fades while a
   conversation page is open.
-- **Pause pages.** Ausrüstung and Talente use separate page registrations. I opens Ausrüstung.
+- **Pause page.** The Pause entry and I both open `gear`, the Ausrüstung & Talente page.
 - **State** `state.systems.progression` (`ProgressionSlice` + additive `codexXp`, `placed`, `drops`,
   `dry`); rebuilt on `new` / `load` / `replace` (no cards). Hooks `kq.progression.state / xp / level /
   grant / equip / use / learn / respec / place / pickups / take / stats / card / feed`.

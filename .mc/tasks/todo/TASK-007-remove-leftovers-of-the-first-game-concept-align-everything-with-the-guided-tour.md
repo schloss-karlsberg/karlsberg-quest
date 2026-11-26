@@ -50,6 +50,7 @@ main story. Pause remains the way to reach the game's essential functions. The t
 
 `src/ui/title.ts` (TitleScreen), strings in `src/i18n/de.ts`:
 - [x] **Decision: working title along the lines of "Schloss Karlsberg Tour"** on the title screen (`game.title` / title page); final wording is the owner's, keep it in one string so it is a one-line change
+- [ ] Final title wording from the owner.
 - [x] **Decision: remove** the surveyor motto `title.motto` ("Fakten mit Quelle. ... Schauen, nicht graben.") and the subtitle `game.subtitle` ("Das Land erinnert sich") from the title screen (check other users of `game.subtitle`, e.g. `story.credits.sub`, `content/party/credits.json`; same decision there unless the owner says otherwise)
 - [x] Buttons without lantern icons (`LANTERN_SVG`, `.kq-lantern-btn`) and in plain wording: "Weiter" (`title.continue`, was "Weiter vermessen"), "Neues Spiel" (`title.newGame`, was "Neues Feldbuch beginnen"); delete `title.light` "Laterne entzünden"
 - [x] `title.confirmNew`: "Der bisherige Spielstand wird überschrieben. Wirklich neu beginnen?"
@@ -116,20 +117,20 @@ The owner dislikes the name and thinks the game does not need a journal. What "F
 | **The journal modal (J)**, one "field book" with tabs | `src/ui/journal.ts` (tab registry), `src/systems/quests/journal.ts`, fallback modal titled "Feldbuch" in `src/systems/progression/index.ts` (~line 477); key `journal: KeyJ`; touch button "Feldbuch" (`touch.journal` in `src/ui/touch.ts`, `src/player/touchMap.ts`) | **remove the journal** as a place; its useful tabs move (rows below) |
 | Tab "Aufgaben" (quest log, order 10) + HUD hint "Mehr dazu im Feldbuch (J)" | `src/systems/quests/index.ts` ~line 967, `quest.moreJournal` | **survives** as the quest log, reachable from the phone (an app) or the pause menu; HUD hint points there |
 | Tab "Codex" (order 20; Chronik cards "Neu im Feldbuch", "Feldbuch öffnen") | `src/systems/quests/index.ts`, `src/systems/chronik/strings.ts` | **survives** as the Codex (the game's facts with sources), reachable from the phone or the pause menu; cards say "Neu im Codex", "Codex öffnen" |
-| Tab "Sammlungen" (30) and "Funde" (35) | `src/systems/quests/index.ts`, `src/systems/travel/index.ts` ~line 1058 | **verify with owner**: proposal: fold both into the Codex as sections |
+| "Sammlungen" (30) and "Funde" | `src/systems/quests/pages.ts`, `src/systems/travel/index.ts` | Funde is a section of Sammlungen in Pause. |
 | Tab "Karte" (60) | `src/systems/travel/index.ts` ~line 1039 | **survives** as the map (M already opens maps); also a phone app |
 | Tab "Album" (70, photos) | `src/systems/photo/index.ts` ~line 275 | **survives** in the phone's gallery (see TASK-006) |
-| Tabs "Ausrüstung" (40, key I) and "Talente" (50) | `src/systems/progression/journal-tabs.ts` | **verify with owner**: the chapters after the tour still have combat; proposal: one small "Ausrüstung & Talente" screen on I / the pause menu |
+| "Ausrüstung" (40, key I) and "Talente" | `src/systems/progression/pages.ts` | One "Ausrüstung & Talente" screen from I and Pause. |
 | Talent branch named "Feldbuch" ("Wissen und Vorrat") | `src/systems/progression/journal-tabs.ts` (`BRANCHES`, id `feldbuch`) | use "Wissen" for the heading (implemented in slice 7, confirmed by the owner on 2026-11-25). Keep the internal id `feldbuch` so saves keep their talent points. |
 | Name entry titled "Feldbuch" | `story.name.title` in `src/systems/story/strings.ts` | plain title (e.g. "Dein Name"), see section 2 |
 | Credits end line "{name} · Feldbuch geschlossen" | `src/systems/story/endings/ui.ts` ~line 270 | drop "Feldbuch geschlossen" |
 | Other UI strings: "Noch keine Pläne im Feldbuch", skill card "Neu im Feldbuch" | `src/systems/skills/strings.ts` | plain wording ("Noch keine Pläne", "Neue Fähigkeit") |
-| In-fiction mentions: Laub's notebook, Marlene's loose page, quest "Feldbuch-Notiz", story lines ("steht im Feldbuch") | `content/story/00-tour.story.json` (`laub.t.seite`), `01-kapitel-1`, `04-kapitel-4`, `05-enden` (`keep`, free-roam hint "im Feldbuch (J)"), `content/packs/*.pack.json`, `content/quests/04-kapitel-4.quests.json`, `src/systems/travel/lore.ts` | **verify with owner**: Laub's own field book as a story object may stay; lines that point the player to "das Feldbuch (J)" must change. Voiced lines need new clips |
+| In-fiction references to Laub's notebook and Marlene's travel note | `content/story/00-tour.story.json` (`laub.t.seite`), `04-kapitel-4.story.json`, `05-enden.story.json` (`keep`), `src/systems/travel/lore.ts` | Keep the objects, references and recorded dialogue. |
 
 - [x] Remove the journal modal, its key J and the touch button; nothing is lost: every surviving tab above has a new home
 - [x] Quest log and Codex reachable from the phone or the pause menu (pick one primary route, keep it consistent on desktop and mobile)
 - [x] Rename the save UI as in the table and remove "Feldbuch" from interface copy. Retain in-fiction lines.
-- [ ] Rows marked "verify with owner" decided before work starts
+- [x] Coordinator resolved the remaining §6 decisions before implementation. See the slice 10 plan.
 
 ### 7. Survey skills: keep them, conflict-free keys (owner decision 2026-11-23)
 
@@ -172,7 +173,7 @@ moved to the new defaults (settings migration).
 ## Acceptance Criteria
 - [x] Title, new-game flow and pause menu speak of the tour, not of a surveyor / lantern / Feldstation (German text); working title on the title screen, no motto / subtitle
 - [x] The lantern screen is a tour map (Karlsberger Hof → Felsenpfad → Weiher → Karlsbergquelle) with one "Tour starten" click that unlocks audio
-- [ ] No journal and no "Feldbuch" in the UI; save UI in plain wording; quest log, codex, map and album reachable as decided (section 6)
+- [x] No journal and no "Feldbuch" in navigation or save UI; quest log, Codex, map and album reachable as decided (section 6)
 - [x] Survey skills on the new keymap (no clash with the WASD hand) and behind one expanding button on mobile
 - [x] `?classic` and the legacy prologue files are gone; `content/bible/` is the single merged bible
 - [x] The Messstab is received visibly during the tour, before the first time travel, and not shown before
@@ -180,7 +181,7 @@ moved to the new defaults (settings migration).
 - [x] **Old saves load**: saves from v0.6–v0.8 (mid-tour, after the tour, legacy prologue) are migrated or tolerated without losing XP, items or progress; a unit test covers the migration
 - [ ] e2e smoke and touched specs updated and green (`--workers=1`); unit tests green. Slice 2 has a guard callout failure also observed on main. See Progress.
 - [x] Docs updated: `docs/PRD.md` (changelog + outdated sections), `docs/ACTION-RPG.md` §14, README "How to play"
-- [ ] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
+- [x] The four gates pass with the commands listed for slice 10 in Progress
 
 ## Slice 2 plan (history)
 
@@ -573,7 +574,7 @@ remaining interface destinations are deferred.
 - [ ] §6 — Confirm remaining interface destinations and any further changes to in-fiction lines with the owner.
 - [ ] Complete the listed contributor browser and mobile checks.
 
-## Plan
+## Slice 9 plan (history)
 
 _Status: approved 2026-11-26_ (slice 9, coordinator approves for the owner)
 
@@ -616,11 +617,49 @@ Keep the present-day home ring, its arrival effects and the existing water inter
 **Follow-up slices:**
 
 - [ ] §1 — Owner decision: final wording for the working title „Schloss Karlsberg Tour“.
-- [ ] §6 — Owner decision: keep Sammlungen and Funde as Pause pages or fold them into Codex.
-- [ ] §6 — Owner decision: keep Ausrüstung and Talente separate or combine them on I and in Pause.
-- [ ] §6 — Owner decision: whether Laub’s field book, its K4 and Behalten references, and Marlene’s loose note in travel lore stay as fiction.
-- [ ] §6 — Blocked on TASK-010: any owner-approved rewrite of the tour’s Bussole-page handoff `laub.t.seite` needs the tour script integration. The live line already directs the player to Ausrüstung. Any changed recorded dialogue needs matching clips after script lock.
+- [x] §6 — Resolved in slice 10. Funde is a section of Sammlungen in Pause.
+- [x] §6 — Resolved in slice 10. I and Pause open Ausrüstung & Talente.
+- [x] §6 — Resolved in slice 10. Keep Laub’s field book, its K4 and Behalten references, and Marlene’s travel note as in-fiction objects.
+- [x] §6 — Closed in slice 10. `laub.t.seite` still directs the player to the Ausrüstung section.
 - [ ] Verification — Run the one-worker browser and mobile checks in Progress. Refresh the archived spring menu storyboard image and caption on the next capture.
+
+## Plan
+
+_Status: approved 2026-11-26_ (slice 10, owner delegated the decisions to the coordinator)
+
+### coordinator decision 2026-11-26
+
+> (2) Sammlungen and Funde become ONE Pause page 'Sammlungen' with Funde as a section inside it; the Codex stays facts-with-sources only; fewer menu entries.
+>
+> (3) Ausrüstung and Talente become ONE screen 'Ausrüstung & Talente' with two sections, opened by key I and from the Pause menu; internal ids stay (saves, hooks, debug APIs unchanged).
+>
+> (4) Laub's field book, the K4/Behalten references and Marlene's travel note stay as in-fiction objects, unchanged; the UI-only 'no Feldbuch' rule stands; check invented bits are labelled FIKTION where the rules require it; NO voiced text changes.
+>
+> (5) No rewrite of laub.t.seite ('unter Ausrüstung' stays true with decision 3); close that item.
+>
+> (1) Final title wording is pending with the owner: keep game.title unchanged and leave that item open.
+
+**Steps:**
+
+- [x] 1. Register Funde as a section of Sammlungen. Check the fiction labels on the in-game finds and references.
+- [x] 2. Combine equipment and talents in the existing `gear` Pause page. Keep the shortcut, talent-point badge and progression state.
+- [x] 3. Update the affected desktop and touch specs and mobile runner. Audit selectors, IDs and translations across the specs, helpers and unit tests.
+- [x] 4. Update the live docs and run the four requested gates. Record the one-worker browser checks and commit handoff.
+
+**Test plan:** Verify the inventory and talents from I and Pause, talent learning and badge refresh, real route finds in Sammlungen with a fiction label, and the Codex source display. Exercise Back and Escape, keyboard focus, and the #44 landscape touch layout with reduced motion. Browser runs and captures are external for this slice.
+
+| Epic criterion | Coverage |
+| --- | --- |
+| 1–2. Opening copy and tour map | Full for the working title and tour flow. Final title wording is an owner follow-up. |
+| 3. Pause destinations and save wording | Full. The merged pages complete the remaining decisions. |
+| 4–8. Survey controls, classic retirement, bible, staff, Bauwagen, spring and older saves | Full in the earlier slices. Full unit suite rerun for this slice. |
+| 9. Unit and browser tests | Partial. Unit tests pass and Playwright discovers the updated specs. Browser runs are pending. |
+| 10–11. Docs and four gates | Full. The live docs and both change logs describe the merged pages. |
+
+**Follow-up slices:**
+
+- [ ] §1 — Owner decision on final title wording.
+- [ ] Verification — Run the listed one-worker browser and mobile checks. Refresh the archived spring menu storyboard image and caption on the next capture.
 
 ## Progress
 
@@ -850,7 +889,20 @@ Keep the present-day home ring, its arrival effects and the existing water inter
 
 - 2026-11-26 — The worktree’s `index.lock` restriction leaves the separate TASK-001/TASK-002 closure commit and this slice ready for staging in the contributor shell.
 
+- 2026-11-26 — Slice 10 on `feat/task-007-slice10`. Funde joins the existing sets, bestiary and bottle display in Sammlungen. Route finds and the inventory's fictional writings have a FIKTION label. The Codex keeps its sourced history and existing fiction disclosures, including the note on Laub and Marlene. The Bussole page, K4 and Behalten text and Marlene’s note retain their wording. No story or voice assets changed.
+- 2026-11-26 — I and Pause share the `gear` page. Its equipment section has a keyboard- and touch-operable jump to the Talente heading. The Pause badge still counts unspent points. Save fields, hooks, debug APIs and the working title retain their existing IDs and behavior. Typecheck and 105 focused tests passed.
+- 2026-11-26 — Audited the retired page IDs, current selectors and German strings across desktop specs, shared helpers, the mobile runner, unit tests and all feature dictionaries. Browser coverage exercises the merged pages, source display, Back and Escape focus, reduced motion and the #44 touch layout. Playwright listed 45 tests in 12 specs and one mobile test. Browser execution and screenshots are pending.
+- 2026-11-26 — `pnpm typecheck`, `pnpm exec vitest run --maxWorkers=2` (1,561 tests in 117 files), `pnpm build`, `node --import tsx scripts/validate-content.ts`, `mc validate` and `git diff --check` passed. Content validation reported the existing example-pack warning. Gates used a temporary writable copy of the installed dependencies with pnpm dependency verification disabled. The worktree's `index.lock` restriction leaves staging and the commit for the contributor shell.
+
+  ```sh
+  pnpm build
+  for spec in smoke progression world touch quests flaschen kastanien chronik integration perf skills bauwagen; do
+    scripts/dev/heavy.sh -- pnpm exec playwright test "e2e/$spec.spec.ts" --workers=1
+  done
+  KQ_MOBILE_UNIT=small-landscape KQ_MOBILE_STATES=hud-idle,pause,journal scripts/dev/heavy.sh -- pnpm exec playwright test -c e2e/mobile/playwright.config.ts --workers=1
+  ```
+
 ## Notes
-- See the active plan’s follow-up list for owner decisions and the tour script dependency.
+- See the active plan’s follow-up list for the final title and contributor verification.
 - Story content: chapters are generated by `scripts/content-build/`; the tour file is hand-authored.
 %% mc-links: [[SPR-001]] %%

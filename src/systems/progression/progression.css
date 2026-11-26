@@ -1,5 +1,5 @@
 /* Progression: XP bar + quick slot (vitals dock), pickup feed (feed dock), floating XP numbers,
-   level-up card, the Ausrüstung and Talente pages. Tokens: src/ui/styles.css. */
+   level-up card and the equipment and talents page. Tokens: src/ui/styles.css. */
 
 /* The vitals dock stays inside the 190 px gutter the dialogue card leaves at 1024 px and up
    (story.css .kqs-dlg): 22 + 168 px. Combat's bars share this width. */
@@ -525,6 +525,29 @@ body:has(.kq-dock-boss:not(:empty)) .kqp-cards {
 
 
 /* ---------------------------------------------------------------- Ausrüstung */
+.kqp-progress-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.kqp-progress-header h3,
+.kqp-talents > h3 {
+  margin: 0;
+  font-family: var(--sc);
+  font-weight: 400;
+  font-size: 24px;
+}
+.kqp-talents {
+  border-top: 1px solid var(--ink-faint);
+  margin-top: 8px;
+  padding-top: 16px;
+}
+.kqp-talents > h3 {
+  margin-bottom: 12px;
+}
 .kqp-gear {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -538,8 +561,8 @@ body:has(.kq-dock-boss:not(:empty)) .kqp-cards {
 .kqp-g-sec {
   margin-bottom: 14px;
 }
-.kqp-g-sec h3,
-.kqp-t-col h3 {
+.kqp-g-sec h4,
+.kqp-t-col h4 {
   margin: 0 0 6px;
   font-family: var(--sc);
   font-weight: 400;

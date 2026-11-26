@@ -9,7 +9,7 @@
  *    goal is announced by Laub, so a chapter never starts with a march across the land.
  *  - Route POIs (pois.ts): every ~120 m beside the chapters' walks a cache guarded by two to four
  *    spectral things (`enemy:spawn` group `poi.<id>`; cleared → the lid flies open, `loot:place`,
- *    `xp:grant`), a Fundstück (lore.ts: a card, EP, Pause → Funde) or a Wegstein
+ *    `xp:grant`), a Fundstück (lore.ts: a card, EP, Pause → Sammlungen → Funde) or a Wegstein
  *    that heals once in a while.
  *  - Wegweiser (trail.ts + world/route.ts): chalk-blue motes along the walkable route to the goal
  *    (round wings, through the open gate) when a goal is new, the straight line is blocked, or the
@@ -28,7 +28,8 @@ import type { GameContext } from '../../core/context';
 import type { Era } from '../../core/era';
 import { defineSystem } from '../../core/systems';
 import type { QuestDef, QuestObjective, QuestSlice } from '../../rpg/types';
-import { addPausePage, openPausePage, pausePageHandle } from '../../ui/pause-pages';
+import { h } from '../../ui/dom';
+import { addPageSection, addPausePage, openPausePage, pausePageHandle } from '../../ui/pause-pages';
 import { loadBundledQuests, questsInPlay } from '../quests/data';
 import { PATH_COST, findRoute, pathGroundCost } from '../../world/route';
 import { type MapLayer, gateFrom, nextMap } from '../skills/logic';
@@ -455,7 +456,7 @@ class Travel {
         cleanup = undefined;
       },
     });
-    addPausePage({ id: 'funde', label: TRAVEL_DE.fundLabel, order: 35, render: (el) => this.renderFunde(el) });
+    addPageSection({ id: 'funde', page: 'sets', order: 20, render: () => this.renderFunde() });
   }
 
   // ---- POIs ----------------------------------------------------------------------------------
@@ -980,26 +981,25 @@ class Travel {
     };
   }
 
-  renderFunde(el: HTMLElement): void {
-    const found = LORE.filter((l) => this.pois.some((p) => p.lore === l.id && this.slice.done.includes(p.id)));
-    const total = new Set(this.pois.filter((p) => p.lore).map((p) => p.lore)).size;
-    const head = document.createElement('p');
-    head.textContent = found.length ? TRAVEL_DE.fundCount(found.length, total) : TRAVEL_DE.fundEmpty;
-    el.append(head);
-    const ul = document.createElement('ul');
-    ul.className = 'kqt-fund-list';
-    for (const l of found) {
-      const li = document.createElement('li');
-      const b = document.createElement('b');
-      b.textContent = l.title;
-      const i = document.createElement('i');
-      i.textContent = `${LORE_KIND_DE[l.kind]} · ${l.from} · ${TRAVEL_DE.fundTag}`;
-      const p = document.createElement('p');
-      p.textContent = l.text;
-      li.append(b, i, p);
-      ul.append(li);
+  private renderFunde(): HTMLElement {
+    const done = new Set(this.slice.done);
+    const placed = new Set<string>();
+    const read = new Set<string>();
+    for (const poi of this.pois) {
+      if (!poi.lore) continue;
+      placed.add(poi.lore);
+      if (done.has(poi.id)) read.add(poi.lore);
     }
-    el.append(ul);
+    const found = LORE.filter((lore) => read.has(lore.id));
+    return h('section', { 'aria-labelledby': 'funde-heading', 'data-testid': 'collection-finds' }, [
+      h('h4#funde-heading', TRAVEL_DE.fundLabel),
+      h('p', found.length ? TRAVEL_DE.fundCount(found.length, placed.size) : TRAVEL_DE.fundEmpty),
+      found.length ? h('ul.kqt-fund-list', found.map((lore) => h('li', [
+        h('b', lore.title),
+        h('i', `${LORE_KIND_DE[lore.kind]} · ${lore.from} · ${TRAVEL_DE.fundTag}`),
+        h('p', lore.text),
+      ]))) : null,
+    ]);
   }
 
   dispose(): void {

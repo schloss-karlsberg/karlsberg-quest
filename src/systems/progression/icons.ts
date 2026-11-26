@@ -1,6 +1,6 @@
 /**
  * Item glyphs: small engraved SVGs (24×24, stroke = currentColor), procedural — no assets (D-007).
- * One per item family; the HUD, the feed and the Ausrüstung tab share them.
+ * One per item family; the HUD, the feed and the equipment section share them.
  */
 import type { ItemDef } from '../../rpg/types';
 

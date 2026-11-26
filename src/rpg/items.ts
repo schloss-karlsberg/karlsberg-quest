@@ -70,7 +70,7 @@ export function collectionDef(id: string): CollectionSet | undefined {
 }
 
 /**
- * Collections (journal tab "Sammlungen"). Members are declared by the chapters' quest files
+ * The "Sammlungen" Pause page. Members are declared by the chapters' quest files
  * (`items` with `set`), so the content tracks place them without touching this file; the lists
  * here name the sets and their order. A set is complete when every member listed by any quest
  * file is owned.

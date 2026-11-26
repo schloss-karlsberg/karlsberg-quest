@@ -3,7 +3,7 @@
  * (marked so in the game), written around what the sources tell (the palace built from 1778 for
  * Duke Karl II. August, Mannlich as building director, the kennels and the menagerie, the duke's
  * flight in February 1793, the fire of 28 July 1793, the ruin as a quarry afterwards). Nobody asks
- * anything about them: you find one, you read it, and it appears under Funde.
+ * anything about them: you find one, you read it, and it appears under Funde in Sammlungen.
  */
 
 export type LoreKind = 'brief' | 'zettel' | 'marke' | 'muenze';

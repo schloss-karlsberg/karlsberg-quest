@@ -124,7 +124,7 @@ export const de: Record<string, string> = {
   'action.bannlicht': 'Bannlicht',
   'action.dodge': 'Ausweichen',
   'action.quickUse': 'Schnellgegenstand',
-  'action.inventory': 'Ausrüstung',
+  'action.inventory': 'Ausrüstung & Talente',
   'action.skill1': 'Ausfall (ab Stufe 2)',
   'action.skill2': 'Erdstoß (ab Stufe 4)',
   'action.skill3': 'Wirbel (ab Stufe 6)',

@@ -17,7 +17,7 @@ import { type UiMeasure, measureUi, sampleFrames, scrollModalToBottom } from './
  * which sets KQ_MOBILE_UNIT / KQ_MOBILE_STATES and uses this folder's config.
  *
  * States reach their moment through window.kq (story.goto, teleport, combat spawn …); what a player
- * does with a finger (open the pause menu, the map, the field book, tabs, lock-on, Hieb, the stick,
+ * does with a finger (open Pause and its pages, use the map, lock-on, Hieb, the stick,
  * scrolling a long page) is done with real CDP touch events (`Finger`).
  */
 
@@ -493,8 +493,13 @@ const STATES: State[] = [
         const sub = entry.slice('pause-'.length);
         const panel = c.page.getByTestId(`page-${sub}`);
         await expect(panel).toBeVisible();
-        await c.shot(sub, sub === 'codex' ? 'codex' : sub === 'gear' ? 'inventory and equipment' : undefined);
+        await c.shot(sub, sub === 'gear' ? 'equipment and talents' : undefined);
         await c.scrollShot(sub);
+        if (sub === 'gear') {
+          await panel.getByRole('button', { name: 'Zu den Talenten', exact: true }).tap();
+          await expect(panel.getByRole('heading', { name: 'Talente', exact: true })).toBeInViewport();
+          await c.shot('talents', 'talent section of the equipment page');
+        }
         await panel.getByRole('button', { name: 'Zurück', exact: true }).tap();
         await expect(panel).toBeHidden();
       }

@@ -4,7 +4,7 @@
  * level-up card, the XP bar, the quick slot and the pickup feed (docs/ACTION-RPG.md §6–§7, §10).
  *
  * Modules: logic.ts (pure rules, tested), pickups.ts (three.js), hud.ts (docks), levelup-card.ts,
- * pages.ts (Ausrüstung / Talente), icons.ts, audio.ts, progression.css.
+ * pages.ts (Ausrüstung & Talente), icons.ts, audio.ts, progression.css.
  *
  * Contract (src/systems/contracts.ts, "progression"): listens to xp:grant, item:grant, loot:place
  * / clear, enemy:killed (loot tables), codex:unlocked (+10 XP once per fact), settings:change
@@ -450,7 +450,6 @@ class Progression {
 
   dispose(): void {
     pausePageHandle('gear')?.close();
-    pausePageHandle('talents')?.close();
     this.cards.clear();
     this.world.dispose();
     this.ctx.scene.remove(this.world.group);

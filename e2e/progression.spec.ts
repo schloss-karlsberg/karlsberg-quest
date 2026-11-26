@@ -5,7 +5,7 @@ import { SCREENS, trackErrors } from './helpers/common';
 /**
  * Progression (docs/ACTION-RPG.md §6–§7, §10): XP bar + level-up stamp card (and how it steps
  * aside for a story title card), `flags['rpg.level']`, a glowing pickup in the test chapter
- * (walk over it → feed → H uses it), enemy loot drops, the Ausrüstung and Talente pages.
+ * (walk over it → feed → H uses it), enemy loot drops, and the combined equipment and talents page.
  * Runs the test chapter (`?storytest`, beat q1). Screenshots: test-results/screens/prg-*.png.
  */
 test.describe.configure({ timeout: 420_000 });
@@ -292,7 +292,7 @@ test('a glowing pickup at dusk: walk over it → feed → H uses it; E picks up;
   expect(errors).toEqual([]);
 });
 
-test('I opens Ausrüstung, Pause opens Talente, and learning a talent changes the stats', async ({ page }) => {
+test('I and Pause open Ausrüstung & Talente, and learning a talent changes the stats', async ({ page }) => {
   const errors = trackErrors(page);
   await boot(page);
   await quiet(page);
@@ -307,6 +307,7 @@ test('I opens Ausrüstung, Pause opens Talente, and learning a talent changes th
     p.grant('item.charm.uhr');
     p.grant('item.test.zettel');
     p.grant('item.test.marke');
+    p.grant('item.p.seite', 1, true);
     p.xp(500, { x: 1262, z: -1210 });
     k.step(4);
   });
@@ -320,13 +321,17 @@ test('I opens Ausrüstung, Pause opens Talente, and learning a talent changes th
   expect((await prog(page)).equipped.weapon).toBe('item.stab.eisen');
 
   await page.evaluate(() => window.kq!.press('KeyI', 2));
-  const gear = page.getByTestId('page-gear');
-  await expect(gear).toBeVisible();
-  await expect(page.getByTestId('journal-gear')).toBeVisible();
+  const progression = page.getByRole('dialog', { name: 'Ausrüstung & Talente', exact: true });
+  const gear = progression.getByRole('region', { name: 'Ausrüstung', exact: true });
+  const talents = progression.getByRole('region', { name: 'Talente', exact: true });
+  await expect(progression).toBeVisible();
+  await expect(gear).toHaveAttribute('data-testid', 'journal-gear');
+  await expect(talents).toHaveAttribute('data-testid', 'journal-talents');
   await expect(page.getByTestId('gear-weapon')).toContainText('Messstab mit Eisenbeschlag');
   await expect(page.getByTestId('gear-supply-item.balsam')).toContainText('4 / 9');
   await expect(page.getByTestId('gear-quest-item.test.zettel')).toBeVisible();
   await expect(page.getByTestId('gear-lore-item.test.marke')).toBeVisible();
+  await expect(gear.getByTestId('gear-lore-item.p.seite')).toContainText('FIKTION');
   // put Lampenöl on H
   await page.getByTestId('gear-quick-item.lampenoel').click();
   expect((await prog(page)).quick).toBe('item.lampenoel');
@@ -339,13 +344,21 @@ test('I opens Ausrüstung, Pause opens Talente, and learning a talent changes th
   await shot(page, 'gear-1024');
   await page.setViewportSize({ width: 1280, height: 720 });
 
-  await gear.getByRole('button', { name: 'Zurück', exact: true }).click();
-  await expect(gear).toBeHidden();
+  await gear.getByRole('button', { name: 'Zu den Talenten', exact: true }).press('Enter');
+  const talentHeading = talents.getByRole('heading', { name: 'Talente', exact: true });
+  await expect(talentHeading).toBeFocused();
+  await expect(talentHeading).toBeInViewport();
+  await progression.getByRole('button', { name: 'Zurück', exact: true }).click();
+  await expect(progression).toBeHidden();
   await openPause(page);
-  const talentEntry = page.getByTestId('pause-talents');
-  await expect(talentEntry).toContainText('2');
-  await talentEntry.click();
-  await expect(page.getByTestId('journal-talents')).toBeVisible();
+  const progressionEntry = page.getByTestId('pause-gear');
+  const badge = progressionEntry.locator('.kq-pause-badge');
+  await expect(progressionEntry).toContainText('Ausrüstung & Talente');
+  await expect(badge).toHaveText('2');
+  await progressionEntry.press('Enter');
+  await expect(progression).toBeVisible();
+  await expect(gear).toBeVisible();
+  await expect(talents).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Wissen Erkundung und Vorrat' })).toBeVisible();
   await expect(page.getByTestId('talent-points')).toHaveAttribute('data-points', '2');
   await expect(page.getByTestId('talent-learn-stab.dritter')).toBeDisabled();
@@ -366,9 +379,9 @@ test('I opens Ausrüstung, Pause opens Talente, and learning a talent changes th
   await shot(page, 'talents-1024');
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.keyboard.press('Escape');
-  await expect(page.getByTestId('page-talents')).toBeHidden();
-  await expect(talentEntry.locator('.kq-pause-badge')).toBeHidden();
-  await expect(talentEntry).toBeFocused();
+  await expect(progression).toBeHidden();
+  await expect(badge).toBeHidden();
+  await expect(progressionEntry).toBeFocused();
   await page.keyboard.press('Escape');
   // H now pours oil: the lantern is asked to light and refill
   await page.evaluate(() => window.kq!.press('KeyH', 2));
@@ -389,7 +402,7 @@ test('I opens Ausrüstung, Pause opens Talente, and learning a talent changes th
     k.step(4);
   });
   await openPause(page);
-  await talentEntry.click();
+  await progressionEntry.click();
   await expect(page.getByTestId('talent-respec')).toBeEnabled();
   expect(errors).toEqual([]);
 });
