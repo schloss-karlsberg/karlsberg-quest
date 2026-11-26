@@ -83,6 +83,9 @@ Record design-dependent ownership decisions only if encountered during the audit
 - 2026-11-26: Each Festsaal replacement left eight prop materials live and disposed one shared
   geometry twice. The regression now observes exactly one disposal per prop resource and one
   glint texture for the feature's lifetime.
+- 2026-11-26: Actual interior streaming released its GPU resources on the baseline, but the
+  distance cache grew from one to five building records after four era changes. It now holds only
+  the current plan's records and is empty at teardown.
 
 ## Coverage map
 

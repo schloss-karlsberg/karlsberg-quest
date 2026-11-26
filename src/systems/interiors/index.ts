@@ -285,6 +285,8 @@ function switchMode(ctx: GameContext): void {
   if (!rt) return;
   for (const b of rt.brt.values()) drop(ctx, b);
   rt.brt.clear();
+  frameOrder.length = 0;
+  dist.clear();
   rt.pendingBlock.clear();
   const previousRoom = rt.room >= 0 ? current()?.plan.rooms[rt.room] : undefined;
   rt.mode = modeOf(ctx.era.current);
@@ -1118,6 +1120,8 @@ export default defineSystem({
     if (!rt) return;
     const ctx = rt.ctx;
     for (const b of rt.brt.values()) drop(ctx, b);
+    frameOrder.length = 0;
+    dist.clear();
     rt.cut?.dispose();
     ctx.world.collider.overlay = null;
     ctx.world.groundOverride = null;
