@@ -292,6 +292,8 @@ function build(ctx: GameContext, b: BRT): void {
   mesh.matrixAutoUpdate = false;
   ctx.scene.add(mesh);
   const flames = new FlameLayer(built.flames, b.fire, b.smoke, b.heat);
+  flames.additive.name = `interior-${b.id}-flames`;
+  flames.smoke.name = `interior-${b.id}-smoke`;
   ctx.scene.add(flames.additive, flames.smoke);
   if (built.models.length) {
     const group = new Group();

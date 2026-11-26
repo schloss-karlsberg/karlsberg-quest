@@ -1,5 +1,6 @@
-import { ShaderMaterial, type Vector3 } from 'three';
+import { Scene, ShaderMaterial, Vector3, type WebGLRenderer } from 'three';
 import { describe, expect, it, vi } from 'vitest';
+import { SunShadows } from '../src/render/shadows';
 import type { FlameSpot } from '../src/systems/interiors/builder';
 import { FireLightSelection } from '../src/systems/interiors/fireLights';
 import { FlameLayer } from '../src/systems/interiors/flames';
@@ -70,6 +71,34 @@ describe('interior flame batches', () => {
     layer.update(4, false, 0);
     expect(layer.additive.visible).toBe(false);
     expect(layer.smoke.visible).toBe(false);
+    layer.dispose();
+  });
+
+  it('keeps smoke that ignites between two shadow scans out of the depth pass', () => {
+    const smoke = [0];
+    const layer = new FlameLayer([spot(1, 3)], [0], smoke, [0]);
+    const scene = new Scene();
+    scene.add(layer.smoke);
+    const drawn: boolean[] = [];
+    const renderer = {
+      getRenderTarget: () => null,
+      setRenderTarget: () => undefined,
+      clear: () => undefined,
+      render: () => drawn.push(layer.smoke.visible),
+    } as unknown as WebGLRenderer;
+    const shadows = new SunShadows();
+    shadows.configure(16, 20, 1);
+    const focus = new Vector3();
+    shadows.update(renderer, scene, focus, 0.016);
+    expect(layer.smoke.visible).toBe(false);
+
+    smoke[0] = 1;
+    layer.update(1, false, 1);
+    expect(layer.smoke.visible).toBe(true);
+    shadows.update(renderer, scene, focus.set(5, 0, 0), 0.016);
+    expect(drawn).toEqual([false, false]);
+    expect(layer.smoke.visible).toBe(true);
+    shadows.dispose();
     layer.dispose();
   });
 });

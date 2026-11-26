@@ -33,7 +33,8 @@ palace while reducing rendering work across tiers.
 
 - [x] Trace fire particles, lighting, interior materials, transparency, shadows and CPU work.
 - [x] Reduce rendering work across all three tiers and cover the changed logic with unit tests.
-- [ ] Confirm the 16.7 ms target, comparable visuals and no phone regression on hardware.
+- [ ] **Open, owner hardware step (cannot be done by an agent):** confirm the 16.7 ms target,
+  comparable visuals and no phone regression on hardware (see Hardware acceptance below).
 - [ ] Run the four gates with zero failed unit tests. Run the touched e2e specs and smoke
   under the machine lock if the browser can start.
 - [x] Document the expected effects, remaining costs and exact paired benchmark procedure.
@@ -83,8 +84,8 @@ Only hardware timing and matched views can confirm the frame-time and visual cri
 - 2026-11-26: Added depth-only shader exits, bounds for shell cuts, reusable fire-light slots,
   direct room-state lookup, separate fire and smoke submissions, fitted ember quads and cached
   facade fire-map bytes. Focused Vitest run passed 17 tests.
-- 2026-11-26: Recorded the paired GPU procedure in PERFORMANCE §3.8, with `a1082bb` as the
-  benchmark-only baseline. Added PRD and ACTION-RPG log rows.
+- 2026-11-26: Recorded the paired GPU procedure in PERFORMANCE §3.8, with a benchmark-only
+  baseline (since replaced by main before this PR plus the PR's harness files). Added PRD and ACTION-RPG log rows.
 - 2026-11-26: `pnpm typecheck`, `pnpm test` and `pnpm build` passed. Vitest reported
   `Test Files  119 passed (119)` and `Tests  1577 passed (1577)`. `pnpm validate` hit
   `listen EPERM` on the TSX IPC socket. The same script passed via
@@ -106,6 +107,36 @@ Only hardware timing and matched views can confirm the frame-time and visual cri
   5367. The interiors spec was skipped after confirming the same preview dependency.
 - 2026-11-26: The benchmark and allocation fixes are committed. The final documentation and
   task update remain in the worktree after Git was denied access to `index.lock`.
+
+- 2026-11-26: Second review: the shadow-cache skip list now includes hidden non-casters (smoke
+  that ignites between two scans stays out of the depth pass), fire benchmark samples reset the
+  fire controller and interior fire state first, the baseline commands in PERFORMANCE §3.8 work
+  from a fresh checkout, and the interiors spec asserts both flame batches after each tier switch.
+
+## Hardware acceptance (open, owner)
+
+Not done. No paired GPU timings exist; the agent sandbox cannot start the preview server. Steps,
+detailed in PERFORMANCE §3.8:
+
+```sh
+git fetch origin main dev/task-021
+PR=origin/dev/task-021
+BASE=$(git merge-base origin/main "$PR")   # main before this PR
+HARNESS="src/debug/bench.ts src/boot.ts src/core/loop.ts e2e/gpu/palace-fire.gpu.ts"
+git switch --detach "$BASE"
+git checkout "$PR" -- $HARNESS
+pnpm install && pnpm build && PERF_LABEL=before KQ_E2E_PORT=5361 scripts/dev/heavy.sh --max-hold 15 -- pnpm exec playwright test -c playwright.gpu.config.ts e2e/gpu/palace-fire.gpu.ts --workers=1 --reporter=line
+git restore --source=HEAD --staged --worktree -- $HARNESS
+git switch --detach "$PR"
+pnpm install && pnpm build && PERF_LABEL=after KQ_E2E_PORT=5361 scripts/dev/heavy.sh --max-hold 15 -- pnpm exec playwright test -c playwright.gpu.config.ts e2e/gpu/palace-fire.gpu.ts --workers=1 --reporter=line
+```
+
+- [ ] Reference GPU, Hoch, idle machine: fill the §3.8 table from
+  `test-results/palace-fire-gpu/{before,after}/high.json`; every `after` palace and fire sample
+  (fixed and advancing) at frame p95 ≤ 16.7 ms.
+- [ ] Compare the paired held stills on Hoch and Mittel.
+- [ ] Physical phone, Niedrig, both builds: `pnpm preview --host`, open
+  `http://<LAN IP>:5281/?q=low`, touch and reduced motion; no p95 or visual regression.
 
 ## Follow-ups
 

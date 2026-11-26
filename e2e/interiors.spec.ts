@@ -95,9 +95,19 @@ test.describe('interiors', () => {
         const k = window.kq!;
         k.ctx.settings.update((s) => { s.graphics = graphics; }, 'graphics');
         await k.screenshotReady();
-        return { graphics: k.ctx.quality.level, room: k.interiors!.room()?.roomId };
+        // both fire batches must still be drawn after the switch (count real draws of each mesh)
+        const drawn: Record<string, number> = {};
+        const meshes = ['flames', 'smoke'].map((batch) => {
+          const m = k.ctx.scene.getObjectByName(`interior-KB-B01-${batch}`);
+          drawn[batch] = 0;
+          if (m) m.onBeforeRender = () => { drawn[batch]!++; };
+          return m;
+        });
+        await k.screenshotReady();
+        for (const m of meshes) if (m) m.onBeforeRender = () => {};
+        return { graphics: k.ctx.quality.level, room: k.interiors!.room()?.roomId, flames: drawn.flames! > 0, smoke: drawn.smoke! > 0 };
       }, graphics);
-      expect(active).toEqual({ graphics, room: 'B01.2.og-festsaal' });
+      expect(active).toEqual({ graphics, room: 'B01.2.og-festsaal', flames: true, smoke: true });
     }
     // a collapsed room blocks its doors once the player is out
     const blocked = await page.evaluate(() => {

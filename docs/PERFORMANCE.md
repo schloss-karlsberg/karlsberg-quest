@@ -465,16 +465,24 @@ sweep for comparison.
   per contributing room and skips the texture upload when its input bytes match. Roof smoke
   cards, the smoke screen and fullscreen post FX remain potential fill costs.
 
-Run the two labelled builds in a clean task worktree. Apply `eaff169` to the benchmark-only
-baseline `a1082bb` so both builds use the corrected harness. Leave the forest baseline toggle
-off so that both runs use the same forest settings.
+Run the two labelled builds in a clean checkout. The baseline is main before this PR (the merge
+base) with only the corrected benchmark harness from the PR applied on top, so both builds use the
+same harness: `src/debug/bench.ts`, `src/boot.ts` and `src/core/loop.ts` (the `holdvisuals` flag)
+and `e2e/gpu/palace-fire.gpu.ts`. Leave the forest baseline toggle off so that both runs use the
+same forest settings. Once the PR is merged, use `BASE=<merge commit>^` and run `after` at the
+merge commit instead.
 
 ```sh
-git switch --detach a1082bb
-git cherry-pick eaff169
-pnpm build && PERF_LABEL=before KQ_E2E_PORT=5361 scripts/dev/heavy.sh --max-hold 15 -- pnpm exec playwright test -c playwright.gpu.config.ts e2e/gpu/palace-fire.gpu.ts --workers=1 --reporter=line
-git switch dev/task-021
-pnpm build && PERF_LABEL=after KQ_E2E_PORT=5361 scripts/dev/heavy.sh --max-hold 15 -- pnpm exec playwright test -c playwright.gpu.config.ts e2e/gpu/palace-fire.gpu.ts --workers=1 --reporter=line
+git fetch origin main dev/task-021
+PR=origin/dev/task-021
+BASE=$(git merge-base origin/main "$PR")   # main before this PR
+HARNESS="src/debug/bench.ts src/boot.ts src/core/loop.ts e2e/gpu/palace-fire.gpu.ts"
+git switch --detach "$BASE"
+git checkout "$PR" -- $HARNESS
+pnpm install && pnpm build && PERF_LABEL=before KQ_E2E_PORT=5361 scripts/dev/heavy.sh --max-hold 15 -- pnpm exec playwright test -c playwright.gpu.config.ts e2e/gpu/palace-fire.gpu.ts --workers=1 --reporter=line
+git restore --source=HEAD --staged --worktree -- $HARNESS
+git switch --detach "$PR"
+pnpm install && pnpm build && PERF_LABEL=after KQ_E2E_PORT=5361 scripts/dev/heavy.sh --max-hold 15 -- pnpm exec playwright test -c playwright.gpu.config.ts e2e/gpu/palace-fire.gpu.ts --workers=1 --reporter=line
 ```
 
 The spec uses headed Chromium with ANGLE Metal, uncapped frame timing and a pixel ratio of 1.
@@ -515,9 +523,22 @@ fire in motion using touch and compare frame p95 and visual quality with reduced
 | `1793-07-fire-outside` (advancing) | pending | pending |
 | `today-forest` (control) | pending | pending |
 
-The corrected GPU run was blocked by `listen EPERM` when Playwright tried to start the preview
-server. The paired p95, matched visual review and physical-phone check remain open. If the
-16.7 ms target is missed, isolate the remaining cost by timing
+**Open: owner hardware acceptance (not done).** The agent sandbox could not start the preview
+server (`listen EPERM`), so no paired GPU timings exist yet and the table above stays `pending`.
+TASK-021 is not accepted until the owner, or a contributor with the reference machine, has:
+
+1. run both commands above on the reference GPU and Hoch preset of §3.1a on an idle machine and
+   filled the table from `test-results/palace-fire-gpu/{before,after}/high.json` (fixed and
+   advancing samples); every `after` palace and fire row needs frame p95 ≤ 16.7 ms
+   (`withinFrameTarget: true`);
+2. compared the paired held stills from the same runs on Hoch and Mittel (fire size, smoke,
+   candle light, surface detail, window and door clipping);
+3. checked Niedrig on a physical phone on both builds (after each build above, run
+   `pnpm preview --host` and open `http://<LAN IP>:5281/?q=low` on the phone; touch controls,
+   reduced motion on) in the burning Festsaal,
+   `1793-07` outside the palace and the 1789 palace views, with no p95 or visual regression.
+
+If the 16.7 ms target is missed, isolate the remaining cost by timing
 roof smoke, the interior smoke bank, the sun pass and the post passes independently before
 changing effect density or detail by tier.
 ### 3.8 Minimap (TASK-015)

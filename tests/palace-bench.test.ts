@@ -10,6 +10,7 @@ function fixture({ stuck = false, frameMs = 16.7 } = {}) {
   let teleported = false;
   const events: string[] = [];
   const fire = { active: false, clock: 0 };
+  const rooms = new Map<string, string>();
   const renderClocks: number[] = [];
   const perf = {
     onFrame: null as PerfMonitor['onFrame'],
@@ -28,7 +29,11 @@ function fixture({ stuck = false, frameMs = 16.7 } = {}) {
     },
     settings: { state: { graphics: 'high' } },
     loop: { manual: true, dt: 1 / 60, requestRender() {} },
-    events: { emit() {} },
+    events: {
+      emit(name: string, data: { kind?: string; active?: boolean }) {
+        if (name === 'threat:configure' && data.kind === 'fire' && !data.active) rooms.clear();
+      },
+    },
   };
   const k: Parameters<typeof runBench>[0] = {
     ctx: ctx as unknown as GameContext,
@@ -48,7 +53,10 @@ function fixture({ stuck = false, frameMs = 16.7 } = {}) {
         room = hall;
         return true;
       },
-      fire() {},
+      fire(id, state) {
+        // like the interiors runtime: a collapsed room stays collapsed until the fire is cleared
+        if (rooms.get(id) !== 'collapsed') rooms.set(id, state);
+      },
       list: () => [],
       room() {
         events.push('room');
@@ -57,10 +65,15 @@ function fixture({ stuck = false, frameMs = 16.7 } = {}) {
     },
     fx: {
       fire(on, opts) {
+        // like FireController.start: a running fire keeps its clock
+        if (on && fire.active) return;
         fire.active = on;
         fire.clock = Number(opts?.clock ?? 0);
       },
-      fireTime(t) { fire.clock = t; },
+      fireTime(t) {
+        fire.clock = t;
+        if (t > 122 && rooms.has(hall.roomId)) rooms.set(hall.roomId, 'collapsed');
+      },
       state: () => ({ fire }),
     },
   };
@@ -72,7 +85,7 @@ function fixture({ stuck = false, frameMs = 16.7 } = {}) {
       callback(0);
     });
   });
-  return { k, events, renderClocks, perf: perf as unknown as PerfMonitor };
+  return { k, events, rooms, renderClocks, perf: perf as unknown as PerfMonitor };
 }
 
 afterEach(() => vi.unstubAllGlobals());
@@ -100,6 +113,19 @@ describe('palace benchmark', () => {
       expect(renderClocks.slice(0, 2)).toEqual([120, 120]);
       expect(renderClocks.slice(2)).toEqual(Array.from({ length: 240 }, (_, i) => advances ? 120 + (i + 1) / 60 : 120));
     }
+  });
+
+  it('resets the fire before a fixed sample that follows an advancing one in the same era', async () => {
+    const { k, perf, rooms, renderClocks } = fixture();
+    const opts = { only: ['1793-07-festsaal-fire'], frames: 240, warmup: 2, log: false };
+    const advancing = await runBench(k, perf, () => {}, { ...opts, fireClock: 'advancing' });
+    expect(advancing.scenes[0]!.fireClock).toEqual({ start: 120, end: 124 });
+    expect(rooms.get('B01.2.og-festsaal')).toBe('collapsed');
+    renderClocks.length = 0;
+    const fixed = await runBench(k, perf, () => {}, { ...opts, fireClock: 'fixed' });
+    expect(fixed.scenes[0]!.fireClock).toEqual({ start: 120, end: 120 });
+    expect(renderClocks.every((clock) => clock === 120)).toBe(true);
+    expect(rooms.get('B01.2.og-festsaal')).toBe('burning');
   });
 
   it.each([[16.7, true], [35, false]])('evaluates a %s ms frame p95 against the frame target', async (frameMs, passes) => {

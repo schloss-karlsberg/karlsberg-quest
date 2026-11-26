@@ -241,6 +241,11 @@ export async function runBench(
     for (const sc of scenes) {
       ctx.player.setFlying(false);
       if (ctx.era.current !== sc.era) k.setEra(sc.era);
+      if (sc.fire && fireClock) {
+        // a fire left by the era or an earlier sample keeps its clock and collapsed rooms: start clean
+        k.fx?.fire(false);
+        ctx.events.emit('threat:configure', { kind: 'fire', active: false } as never);
+      }
       sc.setup(k, opts);
       const fire = sc.fire && fireClock ? k.fx : undefined;
       if (sc.fire && fireClock && !fire?.state().fire.active) throw new Error(`No active fire for ${sc.id}`);
