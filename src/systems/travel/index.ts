@@ -27,7 +27,7 @@ import { type Group, Group as ThreeGroup } from 'three';
 import type { GameContext } from '../../core/context';
 import type { Era } from '../../core/era';
 import { defineSystem } from '../../core/systems';
-import { PLAYER_RADIUS } from '../../player/player';
+import { PLAYER_RADIUS, WADE_LIMIT_M } from '../../player/player';
 import type { QuestDef, QuestObjective, QuestSlice } from '../../rpg/types';
 import { h } from '../../ui/dom';
 import { addPageSection, addPausePage, openPausePage, pausePageHandle } from '../../ui/pause-pages';
@@ -37,7 +37,7 @@ import { type MapLayer, gateFrom, nextMap } from '../skills/logic';
 import { cacheOpen, chimeActivate, paper, shrineHum, travelSwell } from './audio';
 import { LORE, LORE_KIND_DE, loreById } from './lore';
 import { type MapModel, injectTravelCss, renderMap } from './map';
-import { SURVEY_POINTS, TRIPOD_SEED_BASE, type SurveyPoint, announceFor, cardMayTakeE, knownPoints, mayActivate, nearestPoint, pointById, travelBlock, wayLineBlocked } from './points';
+import { SURVEY_POINTS, TRIPOD_SEED_BASE, type SurveyPoint, announceFor, cardMayTakeE, knownPoints, mayActivate, nearestPoint, pointById, travelBlock, wayLineBlocked, wayStartBlocked } from './points';
 import { type QuietGate, hideWhileQuiet } from '../../core/quiet';
 import { laufschrittTarget } from './laufschritt';
 import { CHAPTER_TIER, type Poi, cacheLoot, generatePois, poiXp } from './pois';
@@ -687,7 +687,7 @@ class Travel {
 
   // ---- the Wegweiser -------------------------------------------------------------------------
 
-  private blockedAt = (x: number, z: number, radius = 0.38): boolean => {
+  private wallAt = (x: number, z: number, radius: number): boolean => {
     const ctx = this.ctx;
     const c = ctx.world.collider;
     // the interiors' walls are height-aware (tested at the player's feet): probe each point at
@@ -698,11 +698,18 @@ class Travel {
     if (c.overlay) pl.y = ctx.world.heightAt(x, z, ctx.world.heightfield.heightAt(x, z) + 0.6);
     const hit = c.resolve(x, z, radius).hit;
     pl.y = feet;
-    if (hit) return true;
-    return ctx.world.surfaceAt(x, z) === 'water';
+    return hit;
   };
 
-  private startBlockedAt = (x: number, z: number): boolean => this.blockedAt(x, z, PLAYER_RADIUS);
+  private blockedAt = (x: number, z: number): boolean => this.wallAt(x, z, 0.38) || this.ctx.world.surfaceAt(x, z) === 'water';
+  // the player's own spot and first step: walls at the walking radius, water past wading depth
+  // (the same depth rule as the player's movement, boot.ts)
+  private startBlockedAt = wayStartBlocked(
+    this.wallAt,
+    (x, z) => (this.ctx.world.surfaceOverride?.(x, z) ? -Infinity : this.ctx.world.water.depthInside(x, z)),
+    PLAYER_RADIUS,
+    WADE_LIMIT_M,
+  );
   private waterAt = (x: number, z: number): boolean => this.ctx.world.surfaceAt(x, z) === 'water';
   private pathCost = pathGroundCost((x, z) => this.ctx.world.pathAt(x, z));
 

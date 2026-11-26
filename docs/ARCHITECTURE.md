@@ -1619,7 +1619,10 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
 - Wegweiser (`trail.ts` + `src/world/route.ts`): A* over the collider (footprints, set solids and
   interior walls), with no corner cutting and a 1 m grid for goals within 170 m, else 2 m. Each
   search edge and shortcut checks its midpoint and samples at most 0.3 m apart. The probe radius
-  is 0.38 m, except at the exact start and on its first search edge, which use the player's 0.35 m.
+  is 0.38 m, except at the exact start and on its first search edge (`wayStartBlocked` in
+  `points.ts`): there walls count at the player's 0.35 m less 5 cm, because a player pushed against
+  a wall sits exactly one radius away and rounding reads that as an overlap, and water counts only
+  past the 0.8 m wading limit, so a player in the shallows still gets a way out.
   Because interior walls are height-aware, each probe sets the feet to the local ground-floor
   height so the Durchfahrten and vestibules with a step up read open. From the player to the story
   objective or tracked quest's goal, 48 glow motes flow along the first 70 m when a goal is new

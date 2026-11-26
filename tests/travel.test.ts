@@ -7,14 +7,14 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import type { Footprint } from '../src/data/types';
-import { PLAYER_RADIUS } from '../src/player/player';
+import { PLAYER_RADIUS, WADE_LIMIT_M } from '../src/player/player';
 import { LAUF_DELAY, SPRINT_BOOST, laufschrittTarget } from '../src/systems/travel/laufschritt';
 import { LORE } from '../src/systems/travel/lore';
 import { QUELLE, REACH, canTouch, toWorld, touchLocal } from '../src/systems/quelle/layout';
 import { decodeH2025, quantToMetres } from '../src/data/decode';
 import type { TerrainMeta } from '../src/data/types';
 import { Heightfield } from '../src/world/heightfield';
-import { ACTIVATE_RADIUS, ANNOUNCE_MIN, SURVEY_POINTS, TRIPOD_SEED_BASE, activateRadius, announceFor, cardMayTakeE, knownPoints, livePointIds, pointById, travelBlock, wayLineBlocked } from '../src/systems/travel/points';
+import { ACTIVATE_RADIUS, ANNOUNCE_MIN, SURVEY_POINTS, TRIPOD_SEED_BASE, activateRadius, announceFor, cardMayTakeE, knownPoints, livePointIds, pointById, travelBlock, wayLineBlocked, wayStartBlocked } from '../src/systems/travel/points';
 import { KEEP_CLEAR, KEEP_CLEAR_R, POI_SPACING, ROUTES, cacheLoot, generatePois } from '../src/systems/travel/pois';
 import { ENEMIES } from '../src/rpg/enemies';
 import { FootprintCollider, type Ring } from '../src/world/collision';
@@ -269,6 +269,34 @@ describe('way-finding (world/route.ts)', () => {
     expect(findRoute(...start, 6, 0.36, blocked, { cell: 1, margin: 0, startBlocked })).toMatchObject({
       points: [start, [1, 0.36], [2, 0.36]], complete: false, straight: false,
     });
+  });
+
+  it('keeps the trail for a player pushed against a wall, where rounding reads the spot as an overlap', () => {
+    // a wing whose east face is x = 1250: walking west into it, the collider sets the player one
+    // radius off the face, and the same probe there reports a hit (1250.35 − 1250 < 0.35)
+    const wing = new FootprintCollider([[[1230, -1200], [1250, -1200], [1250, -1180], [1230, -1180]]]);
+    const start = wing.resolve(1250.1, -1190, PLAYER_RADIUS);
+    expect(start.hit).toBe(true);
+    expect(wing.resolve(start.x, start.z, PLAYER_RADIUS).hit).toBe(true);
+    const blocked = (x: number, z: number) => wing.resolve(x, z, 0.38).hit;
+    const startBlocked = wayStartBlocked((x, z, r) => wing.resolve(x, z, r).hit, () => -Infinity, PLAYER_RADIUS, WADE_LIMIT_M);
+    expect(startBlocked(start.x, start.z)).toBe(false);
+    const route = findRoute(start.x, start.z, 1220, -1190, blocked, { cell: 1, margin: 45, startBlocked });
+    expect(route).toMatchObject({ complete: true, straight: false });
+    expect(route.points.at(-1)).toEqual([1220, -1190]);
+    for (const [index, point] of route.points.slice(1).entries()) {
+      expect(lineFree(...route.points[index]!, ...point, index === 0 ? startBlocked : blocked, 0.1)).toBe(true);
+    }
+  });
+
+  it('shows the way out of the shallows, but not from past the wading limit', () => {
+    // a lake east of x = 0, as deep inside as it is far from the shore
+    const water = (x: number) => x > 0;
+    const startBlocked = wayStartBlocked(() => false, (x) => x, PLAYER_RADIUS, WADE_LIMIT_M);
+    const wading = findRoute(0.6, 0.1, -10, 6, water, { cell: 1, startBlocked });
+    expect(wading).toMatchObject({ complete: true, straight: false });
+    expect(wading.points.at(-1)).toEqual([-10, 6]);
+    expect(findRoute(1.2, 0.1, -10, 6, water, { cell: 1, startBlocked }).points).toEqual([[1.2, 0.1]]);
   });
 
   it('walks round a wall instead of through it, and every leg is free', () => {
