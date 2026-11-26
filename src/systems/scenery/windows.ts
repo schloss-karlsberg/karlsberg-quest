@@ -60,6 +60,7 @@ export function buildLitWindows(
   heightAt: (x: number, z: number) => number,
   share = 0.7,
 ): LitWindows | null {
+  if (share <= 0) return null;
   const openings = extractOpenings(paletteGeo, new Map([[index, fp.id]])).filter((o) => o.kind === 'window');
   if (!openings.length) return null;
   const ring = fp.ring as [number, number][];

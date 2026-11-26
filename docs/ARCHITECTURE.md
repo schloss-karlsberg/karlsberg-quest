@@ -607,6 +607,10 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 
 ## 11. Testing
 
+- `tests/interiors-runtime-fixture.ts` runs the interiors system with the shipped room catalogue,
+  terrain, player and event bus. Tests can delay the palace shell, load a pose and step the
+  simulation to check storeys, room events and doors without a renderer.
+
 - `tests/exploration-fixture.ts` supplies a game state store, event bus and in-memory save slots
   with a fixed clock and seeded randomness. A slot load restores the era before feature listeners
   run, including the nested `era:change`. Hunt, survey, measurement and collectible tests call
@@ -1578,6 +1582,14 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   re-selected after ≥ 0.5 m of movement or when the built set changes (< 0.05 ms per frame).
 - Emits `room:enter {roomId, building, id, name}` / `room:leave` (contracts.ts), mirrors them in
   `flags['interior.room']` / `flags['interior.building']`; story condition `{ "room": "<id>" }`.
+  A shift reports the room left using its original plan. Loading on foot inside a palace room
+  grounds the player on the saved storey (a room's floor or a doorway's, checked with `floorAt`).
+  While the shell still streams, a plan built from the room catalogue alone (no shell openings,
+  procedural entrances) provides those floors and walls, so the pose an autosave writes keeps the
+  storey and the exterior walls block; the shell's plan replaces it when it arrives.
+- Festsaal choice (K3, cue `festsaal:objects`): shifting away before choosing removes the objects,
+  the E prompt and the card hold; back in the choice's era (nothing in `festsaal.took` yet) they
+  return. A fire that ends or `festsaal:clear` drops the choice; a slot load drops a waiting one.
   Room names as a toast with `skills.baumeister ≥ 1`, `?debug` or `?rooms`.
 - Hooks `kq.interiors.list/enter/doors/room/build/fire/state/floorAt`.
 
@@ -1660,7 +1672,10 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   walks) whenever the npc system shows him in 1793-07 within 160 m; not solid.
 - Westblick (1796): within 260 m of 200/−905 the haze thins to a quarter (`atmosphere.uFogDensity`
   and `uFogHeightDensity` scaled from `world.look`; restored when leaving) so the Hohenburg reads.
-- Runs in `update` (deterministic with `kq.step`). State `systems.scenery {windows, gate}`.
+- When an era drops a set, it also releases the set's collision. Loading a slot restores its
+  windows, gate and coat before the resumed story issues new scenery cues. Changing the lit share
+  rebuilds that building's panes for the requested era.
+- Runs in `update` (deterministic with `kq.step`). State `systems.scenery {windows, gate, coatTaken?}`.
   Hooks `kq.scenery.built/sets/solids/windows/gate/fireworks/hohenburg/passage/convoy/chair/fogLift`.
 
 ### travel (`src/systems/travel/`) – Vermessungspunkte, fast travel, route POIs, Wegweiser
