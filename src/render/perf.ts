@@ -15,6 +15,11 @@ export const PERF_BUDGET = {
 /** Frames kept in the ring buffer (≈ 4 s at 60 fps). */
 const RING = 240;
 
+interface GpuSample {
+  sum: number;
+  frames: number;
+}
+
 export interface PerfSummary {
   frames: number;
   fps: number;
@@ -69,6 +74,8 @@ export class PerfMonitor {
   private timerExt: { TIME_ELAPSED_EXT: number; GPU_DISJOINT_EXT: number } | null = null;
   private queries: WebGLQuery[] = [];
   private pending: WebGLQuery[] = [];
+  private pendingSamples: (GpuSample | null)[] = [];
+  private gpuSample: GpuSample | null = null;
   private gpuAcc = 0;
   private gpuN = 0;
   gpuMs: number | null = null;
@@ -90,6 +97,18 @@ export class PerfMonitor {
     this.timerExt = ext;
   }
 
+  /** Collect completed queries from the bench's measurement window, excluding warm-up and prior scenes. */
+  startGpuSample(): void {
+    this.gpuSample = { sum: 0, frames: 0 };
+  }
+
+  finishGpuSample(): { ms: number | null; frames: number } {
+    const sample = this.gpuSample;
+    this.gpuSample = null;
+    const frames = sample?.frames ?? 0;
+    return { ms: sample && frames ? sample.sum / frames : null, frames };
+  }
+
   begin(): void {
     this.t0 = performance.now();
     this.renderer.info.reset();
@@ -98,6 +117,7 @@ export class PerfMonitor {
       if (q) {
         this.gl.beginQuery(this.timerExt.TIME_ELAPSED_EXT, q);
         this.pending.push(q);
+        this.pendingSamples.push(this.gpuSample);
       }
     }
   }
@@ -127,8 +147,13 @@ export class PerfMonitor {
         const disjoint = gl.getParameter(this.timerExt.GPU_DISJOINT_EXT) as boolean;
         const ns = gl.getQueryParameter(q, gl.QUERY_RESULT) as number;
         this.pending.shift();
+        const sample = this.pendingSamples.shift();
         this.queries.push(q);
         if (!disjoint) {
+          if (sample) {
+            sample.sum += ns / 1e6;
+            sample.frames++;
+          }
           this.gpuAcc += ns / 1e6;
           this.gpuN++;
           if (this.gpuN >= 20) {

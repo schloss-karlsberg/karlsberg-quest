@@ -171,45 +171,52 @@ and flowers already skipped casting.
 Hoch now uses a 2048² comparison texture over a 120 m box, down from 150 m. It retains the 3×3
 kernel within 20 m on the ground plane, blends to one hardware-filtered comparison by 28 m, and
 fades shadows at the edge of the box. Mittel uses a 1024² map over a 90 m box, down from 110 m,
-with a 2×2 kernel within 16 m that blends to one comparison by 24 m. The narrower receiver radius
-also trims the sorted lists of model and impostor tree casters, with 30 m of reach for trees
-outside the receiver radius. Imported casters run their alpha tests and skip lighting in the
-depth pass. Nearby props and characters still cast on tiers with a sun map. Niedrig continues
-to run without a sun map, using the terrain's blanket canopy shade.
+with a 2×2 kernel within 16 m that blends to one comparison by 24 m. Model and impostor casters
+are sorted by the distance of their padded trunk segment from the map centre in light space.
+This includes tall trees whose feet are far away but whose shadow can still reach a nearby
+receiver. Imported casters run their alpha tests and skip lighting in the depth pass. Nearby
+props and characters still cast on tiers with a sun map. Niedrig uses the terrain's blanket
+canopy shade.
 
-Expect fewer shadow-pass triangles and less receiver texture work. GPU timings and visual
-verification are pending. Use the same clean checkout and machine for both runs. The baseline
-commit includes the benchmark and the previous renderer.
+The sandbox denied the preview port before browser startup. The GPU result and visual review
+are outstanding. On a GPU host, use one clean checkout and apply the corrected benchmark
+harness to the previous renderer at `1a70652` before measuring.
 
 ```sh
+forest_bench_patch=$(mktemp)
+git diff 1a70652 dev/task-023 -- src/debug/bench.ts src/render/perf.ts e2e/gpu/forest-shadows.gpu.ts e2e/helpers/forest-shadows.ts > "$forest_bench_patch"
 git switch --detach 1a70652
+git apply "$forest_bench_patch"
 pnpm build
 PERF_LABEL=before KQ_E2E_PORT=5410 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test -c playwright.gpu.config.ts e2e/gpu/forest-shadows.gpu.ts --workers=1 --reporter=line
 
+git apply --reverse "$forest_bench_patch"
 git switch dev/task-023
 pnpm build
 PERF_LABEL=after KQ_E2E_PORT=5410 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test -c playwright.gpu.config.ts e2e/gpu/forest-shadows.gpu.ts --workers=1 --reporter=line
 ```
 
-Compare `test-results/perf/forest-shadows-{before,after}/high.json` for `today-forest` (the
-existing sweep), `today-forest-b` (1632 / −1640) and `today-forest-c` (1952 / −1010). The
-desktop run uses 1440×900 at pixel ratio 1.25 with frame limiting and vsync off. For each scene,
-subtract the shadows-off time from the shadows-on time in each of the three pairs, then compare
-the median deltas. Use GPU ms where available and average frame ms as the throughput fallback.
-Also record shadows-on frame p95 and triangle peaks. The target is a decrease of at least 3 ms
-in the shadow delta for view B.
+The desktop run uses 1440×900 at pixel ratio 1.25 with frame limiting and vsync off.
+`today-forest` uses the existing sweep. The fixed B (1632 / −1640) and C (1952 / −1010) poses
+use the normal player camera with the avatar and foreground see-through active. Each of three
+pairs subtracts the shadows-off average from the shadows-on average. The spec uses GPU timer
+results when queries cover at least 90% of timed frames in every run for that view, or wall frame
+time for all its runs. It writes both medians, their difference, shadows-on median frame p95 and
+peak triangles to `test-results/perf/forest-shadows-after/comparison.json`. The after run fails
+if view B’s median paired shadow cost decreases by less than 3 ms.
 
-| Hoch scene | Shadow delta before (ms) | Shadow delta after (ms) | Shadows-on frame p95 before / after (ms) |
+| Hoch scene | Median shadow cost before (ms) | Median shadow cost after (ms) | Reduction (ms) |
 |---|---:|---:|---:|
-| today-forest | pending | pending | pending |
-| today-forest-b | pending | pending | pending |
-| today-forest-c | pending | pending | pending |
+| today-forest | — | — | — |
+| today-forest-b | — | — | — |
+| today-forest-c | — | — | — |
 
-Flip the paired PNGs to inspect nearby trunks, ground shadows and the player. Walk and turn at
-B on Hoch and Mittel to check the filter transition and texel stability. Compare `low.json`
-and the tour opening still as Niedrig controls at 667×375 with touch, reduced motion and
-Energiesparen. Repeat a short walk with the tour group on a phone to check performance and how
-the player and NPCs read against the ground.
+Flip the paired PNGs at tick 20 to inspect nearby trunks, ground shadows and the player.
+Review the Hoch and Mittel B walking and turning sequences for the filter transition and texel
+stability under the tour's 13° sun. Compare `low.json` for naturally rendered intervals on
+Niedrig at 667×375 with touch, reduced motion and Energiesparen. The tour opening PNG starts
+with the tour group in a fresh manual session. Walk with the group on a phone to check pacing
+and the grounding of the player and NPCs.
 
 ### 3.2 SwiftShader (headless e2e, 1280×720, pixel ratio 1, Hoch, 8 frames per scene)
 
@@ -335,6 +342,7 @@ and shadow pass). Three changes, each checked with before / after look pairs:
    are drawn, which is the same limit the vertex shaders already applied. So the cut changes no
    shadow, but the dropped casters no longer cost vertex work (`renderer.info` counted the
    collapsed instances). The lod1 casters move the edges of near trunk shadows by a few pixels.
+   TASK-023 replaces this trunk-distance cutoff with a footprint in light space (§3.1b).
 
 The Quelle water box was checked as well. The reflected body is the Weiher, 102 m away, seen
 through the trunks (≈ 200 px of 0.92 M). The box is the body plus its bank pad, so it is not a

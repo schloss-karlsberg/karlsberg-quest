@@ -58,6 +58,19 @@ bench timing at the same poses on a machine with a real GPU.
 
 **Risks.** Check the shadow transition while turning and walking, especially at low sun angles.
 
+### Review fix round (2026-11-26)
+
+Preserve nearby shadows at low sun angles and make the paired comparison test the player view,
+shadow quality and normal phone pacing. The task still requires a measured 3 ms improvement in
+view B and a review of nearby shadows and character grounding in motion.
+
+- [x] Use projected tree shadow footprints for CPU and shader culling and cover the low-sun case.
+- [x] Keep the player camera active in fixed benchmark views and define matched manual-tick captures.
+- [x] Sample natural phone frame intervals and assert receiver pixels during tier switches.
+- [x] Attempt the four gates and both locked browser specs.
+- [ ] Compare both revisions on a real GPU with the corrected harness, record the paired medians,
+  and review the near-field motion and phone grounding.
+
 ## Progress
 
 - Branch: `dev/task-023`.
@@ -68,15 +81,31 @@ bench timing at the same poses on a machine with a real GPU.
   The validator completed via `node --import tsx scripts/validate-content.ts`.
 - 2026-11-26. The smoke run stopped before browser startup because the preview server could not
   bind to 127.0.0.1:5410 (`EPERM`). Real-GPU execution is outside the sandbox.
-- 2026-11-26. Baseline commit `1a70652` is available. Git denied access to the worktree's
-  `index.lock` when staging the implementation, which remains in the worktree.
+- 2026-11-26. Baseline commit `1a70652` and the original implementation commit `58800b4`
+  are both on the branch.
+- 2026-11-26. Review findings 2–6 have fixes and focused regression tests. The smoke test has
+  a 26 m occluder at the tour's sun angle and compares receiver pixels on all three tiers.
+- 2026-11-26. The corrected benchmark records per-scene GPU queries and enforces the 3 ms
+  view B threshold against the baseline artifact. The port error prevented measuring either
+  revision or capturing stills and motion, so finding 1 remains open.
+- 2026-11-26. Typecheck and production build passed. Vitest reported `Tests  1588 passed (1588)`,
+  0 failed. The `pnpm validate` launcher hit `EPERM` on its IPC socket. The same validator
+  passed via `node --import tsx scripts/validate-content.ts`.
+- 2026-11-26. Playwright discovered both forest GPU tests and all eight smoke tests. Both
+  locked runs stopped before browser startup with `listen EPERM` on 127.0.0.1:5410.
+- 2026-11-26. The caster and receiver fixes are committed as `aed1526`. Git denied the
+  worktree's `index.lock` when staging the benchmark and verification updates.
 
 ## Follow-ups
 
-- Commit the implementation as `perf(render): reduce forest sun shadow cost` with the Codex
-  co-author trailer.
+- Commit the remaining changes as `test(render): enforce the paired forest shadow target`
+  with the Codex co-author trailer.
 - Run `pnpm validate` and `e2e/smoke.spec.ts` on a host that allows the required sockets.
 - Run `e2e/gpu/forest-shadows.gpu.ts` using the before/after commands in PERFORMANCE §3.1b.
-  Record the three forest timings and check the 3 ms Hoch target at view B.
+  Record the three forest medians, shadows-on frame p95 and peak triangles, and verify the
+  3 ms Hoch reduction at view B.
 - Review nearby trunks and player/NPC grounding while walking and turning. Check Niedrig on a
   phone and record any timing or visual difference.
+- The pre-existing forest view cone also limits which trees reach the caster lists. Assess
+  out-of-view casters independently if turning still drops ground shadows. Expanding that
+  selection needs a separate draw-budget and motion check.

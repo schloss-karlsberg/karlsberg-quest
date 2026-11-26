@@ -33,6 +33,7 @@ export interface BenchSceneResult {
   frameMs: ReturnType<typeof frameStats>;
   cpuMs: ReturnType<typeof frameStats>;
   gpuMs: number | null;
+  gpuFrames: number;
   calls: { avg: number; max: number };
   triangles: { avg: number; max: number };
   geometries: number;
@@ -211,7 +212,7 @@ export async function runBench(
       sc.setup(k);
       let i = 0;
       const total = warmup + frames;
-      setCamera((cam) => {
+      setCamera(sc.camera || sc.sweep ? (cam) => {
         const j = Math.max(0, i - warmup);
         if (sc.camera) sc.camera(cam, j, frames, k);
         else if (sc.sweep) {
@@ -220,7 +221,7 @@ export async function runBench(
           ctx.player.yaw = yaw;
           cam.rotation.set(ctx.player.pitch, yaw, 0, 'YXZ');
         }
-      });
+      } : null);
       ctx.world.forest.invalidate();
       const fm: number[] = [];
       const cm: number[] = [];
@@ -235,6 +236,7 @@ export async function runBench(
         i++;
       }
       perf.resetClock();
+      perf.startGpuSample();
       perf.onFrame = (f, c, dc, tr) => {
         fm.push(f);
         cm.push(c);
@@ -249,6 +251,7 @@ export async function runBench(
         i++;
       }
       perf.onFrame = null;
+      const gpu = perf.finishGpuSample();
       // the first recorded frame may carry the warm-up gap: drop it from the wall-time series
       fm.shift();
       const n = cm.length;
@@ -259,7 +262,8 @@ export async function runBench(
         frames: n,
         frameMs: frameStats(fm),
         cpuMs: frameStats(cm),
-        gpuMs: perf.gpuMs,
+        gpuMs: gpu.ms,
+        gpuFrames: gpu.frames,
         calls: { avg: Math.round(calls / n), max: callsMax },
         triangles: { avg: Math.round(tris / n), max: trisMax },
         geometries: mem.geometries,
@@ -273,6 +277,7 @@ export async function runBench(
     }
   } finally {
     perf.onFrame = null;
+    perf.finishGpuSample();
     setCamera(null);
     perf.enableGpuTimer(gpuWas);
     if (ctx.era.current !== saved.era) k.setEra(saved.era);
