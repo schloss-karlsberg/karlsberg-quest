@@ -33,7 +33,7 @@ Reduce repeated heap allocation and work in the simulation, renderer and UI whil
 - [x] Remove redundant work on the selected paths, including unchanged HUD work where practical.
 - [x] Add focused Vitest coverage for unchanged state and transitions.
 - [x] Document hot-path rules and the top findings in `docs/PERFORMANCE.md` and add a PRD changelog row.
-- [ ] Run the four gates and record the smoke result or sandbox limitation. The `pnpm validate` command needs a rerun where its IPC socket is allowed. The validator passed via Node's `tsx` import.
+- [x] Run the four gates and record the smoke result or sandbox limitation (see the second review below).
 
 ## Plan
 
@@ -70,3 +70,15 @@ Reduce repeated heap allocation and work in the simulation, renderer and UI whil
 
 - Rerun `pnpm validate` and the locked `e2e/smoke.spec.ts` command in an environment that permits local sockets.
 - Profile frame time and allocation in a browser before considering changes to the remaining per-step keyboard-turn objects or the camera update's frame argument object.
+
+## Second review (2026-11-26)
+
+- The sweep and the review fixes are committed as `19aa2dd` and `55ec57d`.
+- All four first-round findings are confirmed fixed. The rewritten wading block matches the old
+  `deep()` rule (blocked when the depth exceeds both the wading limit and the current depth) for
+  straight, diagonal and stationary steps. The terrain cull cache covers every culling input
+  (view-projection, eye, far, LOD scale, relief eligibility; dataset and relief changes mark it
+  dirty). No further findings.
+- Gates outside the sandbox: `pnpm typecheck` passed; `pnpm test` reported `Test Files  119 passed (119)`
+  and `Tests  1582 passed (1582)`; `pnpm validate` reported `✓ content valid (1 warning(s))`;
+  `pnpm build` passed. The locked `smoke` spec passed (7 passed).
