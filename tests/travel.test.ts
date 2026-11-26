@@ -7,6 +7,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import type { Footprint } from '../src/data/types';
+import { PLAYER_RADIUS } from '../src/player/player';
 import { LAUF_DELAY, SPRINT_BOOST, laufschrittTarget } from '../src/systems/travel/laufschritt';
 import { LORE } from '../src/systems/travel/lore';
 import { QUELLE, REACH, canTouch, toWorld, touchLocal } from '../src/systems/quelle/layout';
@@ -215,10 +216,59 @@ describe('way-finding (world/route.ts)', () => {
     expect(r).toMatchObject({ points: [[0, 0], [4, 0]], complete: false, straight: false });
   });
 
+  it('takes another connector to a free off-grid goal across a finite diagonal wall', () => {
+    const diagonal = (x: number, z: number) => Math.abs(z) <= 4 && z - x - 20 >= -0.8 && z - x - 20 <= 0.3;
+    const goal: [number, number] = [-20.4, 0.4];
+    expect(diagonal(...goal)).toBe(false);
+    expect(lineFree(-20, -1, ...goal, diagonal, 0.1)).toBe(false);
+    const route = findRoute(0, 0, ...goal, diagonal, { cell: 1 });
+    expect(route).toMatchObject({ complete: true, straight: false });
+    expect(route.points.at(-1)).toEqual(goal);
+    expect(route.points.some(([, z]) => Math.abs(z) > 4)).toBe(true);
+    for (const [index, point] of route.points.slice(1).entries()) {
+      expect(lineFree(...route.points[index]!, ...point, diagonal, 0.1)).toBe(true);
+    }
+  });
+
   it('checks the only available grid leg when a thin wall misses its midpoint', () => {
     const thin = (x: number) => x >= 0.3 && x <= 0.7;
     const r = findRoute(0, 0, 8, 0, thin, { margin: 0 });
     expect(r).toMatchObject({ points: [[0, 0]], complete: false, straight: false });
+  });
+
+  it('routes around a thin wall even when a crossing edge misses it at the midpoint', () => {
+    const thin = (x: number, z: number) => x >= 10.6 && x <= 11.4 && Math.abs(z) <= 4;
+    expect(thin(11.5, 0)).toBe(false);
+    expect(lineFree(12.5, 0, 10.5, 0, thin, 0.3)).toBe(false);
+    const route = findRoute(180.5, 0, 0, 0, thin);
+    expect(route).toMatchObject({ complete: true, straight: false });
+    expect(route.points.at(-1)).toEqual([0, 0]);
+    expect(route.points.some(([, z]) => Math.abs(z) > 4)).toBe(true);
+    for (const [index, point] of route.points.slice(1).entries()) {
+      expect(lineFree(...route.points[index]!, ...point, thin, 0.1)).toBe(true);
+    }
+  });
+
+  it('uses player clearance to leave a footprint but keeps the routing margin beyond the first leg', () => {
+    const walls = new FootprintCollider([
+      [[-2, -2], [1.5, -2], [1.5, -0.045], [-2, 0.06]],
+      [[2.5, -2], [4, -2], [4, 0], [2.5, 0]],
+    ]);
+    const blocked = (x: number, z: number) => walls.resolve(x, z, 0.38).hit;
+    const startBlocked = (x: number, z: number) => walls.resolve(x, z, PLAYER_RADIUS).hit;
+    const start: [number, number] = [0, 0.36];
+    expect(blocked(...start)).toBe(true);
+    expect(startBlocked(...start)).toBe(false);
+    expect(findRoute(...start, 0, 8, blocked, { startBlocked })).toEqual({
+      points: [start, [0, 8]], complete: true, straight: true, expanded: 0,
+    });
+    expect(lineFree(...start, 1, 0.36, blocked, 0.3)).toBe(false);
+    expect(lineFree(...start, 1, 0.36, startBlocked, 0.3)).toBe(true);
+    expect(lineFree(2, 0.36, 3, 0.36, blocked, 0.3)).toBe(false);
+    expect(lineFree(2, 0.36, 3, 0.36, startBlocked, 0.3)).toBe(true);
+    expect(findRoute(...start, 6, 0.36, blocked, { cell: 1, margin: 0, startBlocked })).toMatchObject({
+      points: [start, [1, 0.36], [2, 0.36]], complete: false, straight: false,
+    });
   });
 
   it('walks round a wall instead of through it, and every leg is free', () => {

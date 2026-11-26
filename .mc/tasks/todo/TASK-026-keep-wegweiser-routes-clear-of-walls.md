@@ -34,6 +34,10 @@ Travel uses the returned waypoints directly.
 - [x] A blocked endpoint half a metre away cannot use the straight-line shortcut. A reachable approach point is valid.
 - [x] An incomplete search ends at the reachable point. A free straight line still returns two points with zero expansions.
 - [x] Regression tests cover both reported failures alongside the wall, doorway and palace footprints.
+- [x] A thin wall missed by an edge midpoint triggers a detour when one is reachable.
+- [x] A free off-grid goal is reached through another clear connector when the first approach fails.
+- [x] A player beside a wall can leave with player clearance; later legs keep the routing margin.
+- [ ] All four gates pass, with zero unit test failures.
 
 ## Plan
 
@@ -63,6 +67,14 @@ return the start alone when there is no drawable progress.
 **Risks** — The solver must preserve its unobstructed fast path and continue to route around
 palace walls and through doorways.
 
+### Review fix round (2026-11-26)
+
+- [x] Reproduce both detours and the wall-adjacent start in travel regression tests.
+- [x] Check full grid edges during A* and reuse the checked path during simplification.
+- [x] Consider multiple clear final connectors for a free off-grid goal and use the player's
+  collider radius at the start and on the first search edge.
+- [x] Update the travel docs and PRD changelog, rerun all four gates, and attempt locked smoke.
+
 ## Progress
 
 - Branch `dev/task-026`, baseline `d2d1f48`.
@@ -75,10 +87,16 @@ palace walls and through doorways.
   `pnpm validate` was blocked by `listen EPERM` on the `tsx` IPC socket.
 - 2026-11-26 — The locked smoke command reached preview startup. The sandbox denied the listener
   on `127.0.0.1:5414` with `EPERM`, so the spec did not launch.
+- 2026-11-26 — Review findings 1–3 fixed. All three new regressions failed before the fix;
+  focused Vitest now reports `Tests  42 passed (42)`. The detour cases also check each returned
+  leg; the wall-adjacent case checks that the wider margin still blocks a later leg.
+- 2026-11-26 — Review round: `pnpm typecheck`, `pnpm test` and `pnpm build` passed. Vitest
+  reported `Test Files  118 passed (118)` and `Tests  1582 passed (1582)` (0 failed).
+  `pnpm validate` was blocked at the `tsx` IPC listener (`listen EPERM`). The locked smoke spec
+  was blocked at preview startup (`listen EPERM` on `127.0.0.1:5414`); no e2e specs changed.
+- 2026-11-26 — `mc validate` and `git diff --check` passed. The sandbox denied Git's worktree
+  `index.lock` at staging, so the review changes remain unstaged and uncommitted in this worktree.
 
 ## Follow-ups
 
 - Run `pnpm validate` and the smoke command in the test plan where local listeners are permitted.
-- A grid leg can fail final collision sampling even when its midpoint is free. The trail stops at
-  the last checked waypoint in that case. Finding a detour around that leg would require checking
-  more points during search.

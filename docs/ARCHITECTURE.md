@@ -1616,21 +1616,22 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
 - Sprint (Laufschritt, `laufschritt.ts`): out of a fight and a chase, after 1.0 s of sprinting
   (1.8 s before playtest round 10) the move scale grows to ×1.45 over 1.4 s (multiplies combat's
   `moveScale`, never compounds). Never indoors; no separate 1789-court rule exists.
-- Wegweiser (`trail.ts` + `src/world/route.ts`): A* on a 2 m grid over the collider (footprints +
-  set solids + the interiors' walls, no corner cutting, the midpoint of every move tested on a
-  cached half-cell grid, and all returned legs checked at intervals of at most 0.3 m; a 1 m
-  grid for goals within 170 m, else 2 m; probe radius 0.38; each probe sets the feet to the
-  ground-floor height there because the interiors' walls are height-aware — so the Durchfahrten
-  and vestibules with a step up read open) from the player to the story objective or the tracked
-  quest's goal; 48 glow motes flow along the first 70 m when a goal is new (14 s), after
-  12 s without progress, or when the straight line within 30 m is blocked (round the wings, through
-  doors and gates instead of into corners). While that straight line is blocked the compass
+- Wegweiser (`trail.ts` + `src/world/route.ts`): A* over the collider (footprints, set solids and
+  interior walls), with no corner cutting and a 1 m grid for goals within 170 m, else 2 m. Each
+  search edge and shortcut checks its midpoint and samples at most 0.3 m apart. The probe radius
+  is 0.38 m, except at the exact start and on its first search edge, which use the player's 0.35 m.
+  Because interior walls are height-aware, each probe sets the feet to the local ground-floor
+  height so the Durchfahrten and vestibules with a step up read open. From the player to the story
+  objective or tracked quest's goal, 48 glow motes flow along the first 70 m when a goal is new
+  (14 s), after 12 s without progress, or when the straight line within 30 m is blocked (round the
+  wings, through doors and gates instead of into corners). While that straight line is blocked the compass
   carries a chalk-blue "Weg" marker (`hud.setMarker('wegweiser')`) at the route's next bend
   (> 4 m ahead) beside the gold objective marker; hook `kq.travel.way()`.
   The straight route checks both endpoints and skips the search when the segment is clear. A*
-  starts at the player's exact position, checks the final leg to an off-grid goal and returns the
-  reachable portion for blocked goals or unfinished searches. If no leg is reachable, the single
-  start point leaves the trail hidden.
+  starts at the player's exact position and searches for a reachable cell with a clear final leg
+  to a free off-grid goal. Simplification reuses the checked search legs when it cannot find a
+  shortcut. Blocked goals and unfinished searches return a reachable approach; if no leg is
+  reachable, the single start point leaves the trail hidden.
   Present day (playtest round 10): the straight-line check counts only water (`wayLineBlocked`
   in `points.ts`; trunks and ruins would fire it every few steps, the Weiher must), and the A*
   takes a ground cost (`RouteOptions.cost` / `minCost`): OSM path cells (`World.pathAt`, the

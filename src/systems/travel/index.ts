@@ -27,6 +27,7 @@ import { type Group, Group as ThreeGroup } from 'three';
 import type { GameContext } from '../../core/context';
 import type { Era } from '../../core/era';
 import { defineSystem } from '../../core/systems';
+import { PLAYER_RADIUS } from '../../player/player';
 import type { QuestDef, QuestObjective, QuestSlice } from '../../rpg/types';
 import { h } from '../../ui/dom';
 import { addPageSection, addPausePage, openPausePage, pausePageHandle } from '../../ui/pause-pages';
@@ -686,21 +687,22 @@ class Travel {
 
   // ---- the Wegweiser -------------------------------------------------------------------------
 
-  private blockedAt = (x: number, z: number): boolean => {
+  private blockedAt = (x: number, z: number, radius = 0.38): boolean => {
     const ctx = this.ctx;
     const c = ctx.world.collider;
     // the interiors' walls are height-aware (tested at the player's feet): probe each point at
     // the ground-floor height there, so a door with a step up (the Durchfahrten) reads open
-    // wherever the player stands; a little over the player's radius (0.35) keeps 1.9 m doors open
+    // wherever the player stands.
     const pl = ctx.player.position;
     const feet = pl.y;
     if (c.overlay) pl.y = ctx.world.heightAt(x, z, ctx.world.heightfield.heightAt(x, z) + 0.6);
-    const hit = c.resolve(x, z, 0.38).hit;
+    const hit = c.resolve(x, z, radius).hit;
     pl.y = feet;
     if (hit) return true;
     return ctx.world.surfaceAt(x, z) === 'water';
   };
 
+  private startBlockedAt = (x: number, z: number): boolean => this.blockedAt(x, z, PLAYER_RADIUS);
   private waterAt = (x: number, z: number): boolean => this.ctx.world.surfaceAt(x, z) === 'water';
   private pathCost = pathGroundCost((x, z) => this.ctx.world.pathAt(x, z));
 
@@ -711,7 +713,8 @@ class Travel {
     // in the present day the route prefers the OSM paths (the Waldweg round the Weiher); the
     // search only runs when the straight line is blocked, ~10 ms there (tests/travel.test.ts)
     const ground = this.ctx.era.info.palace === 'hidden' ? { cost: this.pathCost, minCost: PATH_COST } : {};
-    return findRoute(p.x, p.z, x, z, this.blockedAt, near ? { cell: 1, margin: 45, maxExpand: 90000, ...ground } : { maxExpand: 40000, ...ground }).points;
+    const grid = near ? { cell: 1, margin: 45, maxExpand: 90000 } : { maxExpand: 40000 };
+    return findRoute(p.x, p.z, x, z, this.blockedAt, { ...grid, ...ground, startBlocked: this.startBlockedAt }).points;
   }
 
   private updateTrail(dt: number): void {
