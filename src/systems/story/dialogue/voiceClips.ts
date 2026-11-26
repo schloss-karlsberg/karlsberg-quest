@@ -16,7 +16,7 @@ import { type LineTexts, type VoiceFormat, type VoiceManifest, type VoiceManifes
 const CACHE_MAX = 16;
 /** Parallel fetch + decode jobs. */
 const CONCURRENCY = 3;
-/** Waiting jobs beyond this drop the oldest requests (an old beat's lines). */
+/** Overflow drops the oldest background preloads (an old beat's lines). */
 const QUEUE_MAX = 24;
 
 export interface ReadyClip {
@@ -72,6 +72,8 @@ export class VoiceClips implements ClipProvider {
   private readonly inflight = new Set<string>();
   private readonly failed = new Set<string>();
   private queue: VoiceManifestEntry[] = [];
+  /** The queue head is a clip requested by the presenter for immediate playback. */
+  private urgentHead = false;
   private pending: PreloadLine[] = [];
   private active = 0;
   private stale = 0;
@@ -167,15 +169,19 @@ export class VoiceClips implements ClipProvider {
   private want(entry: VoiceManifestEntry, urgent: boolean): void {
     const f = entryKey(entry);
     if (this.cache.has(f) || this.inflight.has(f) || this.failed.has(f)) return;
-    if (this.queue.some((q) => entryKey(q) === f)) return;
-    if (urgent) this.queue.unshift(entry);
-    else this.queue.push(entry);
-    if (this.queue.length > QUEUE_MAX) this.queue.splice(0, this.queue.length - QUEUE_MAX);
+    const queued = this.queue.findIndex((q) => entryKey(q) === f);
+    if (urgent) {
+      if (queued >= 0) this.queue.splice(queued, 1);
+      this.queue.unshift(entry);
+      this.urgentHead = true;
+    } else if (queued < 0) this.queue.push(entry);
+    if (this.queue.length > QUEUE_MAX) this.queue.splice(this.urgentHead ? 1 : 0, 1);
   }
 
   private pump(): void {
     while (this.active < CONCURRENCY && this.queue.length) {
       const entry = this.queue.shift()!;
+      this.urgentHead = false;
       this.active++;
       const key = entryKey(entry);
       this.inflight.add(key);

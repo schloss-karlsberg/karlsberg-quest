@@ -2,72 +2,24 @@ import { PerspectiveCamera } from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import tourRoute from '../content/routes/p-fuehrung.json';
 import tourStory from '../content/story/00-tour.story.json';
-import { AudioManager, type Bus } from '../src/audio/audio';
+import { AudioManager } from '../src/audio/audio';
 import type { GameContext } from '../src/core/context';
+import type { Era } from '../src/core/era';
 import { EventBus } from '../src/core/events';
+import { defaultSettings, MemoryStorage, SETTINGS_KEY, SettingsStore } from '../src/core/save';
 import { t } from '../src/i18n';
+import type { Stance } from '../src/player/stance';
 import ambience from '../src/systems/ambience';
+import { seededRng } from '../src/systems/barks/rules';
 import footsteps from '../src/systems/footsteps';
 import { speakerMeta } from '../src/systems/story/dialogue/speakers';
 import { Voice } from '../src/systems/story/dialogue/voice';
 import { playStorySoundAction } from '../src/systems/story/sfx';
 import type { StoryFile } from '../src/systems/story/types';
 import { World } from '../src/world/world';
+import { bus, Context, duckGain, Panner, type Node } from './audio-fixture';
 import { loadWorldData } from './world-data';
 
-class Param {
-  value = 1;
-  setTargetAtTime(value: number) { this.value = value; }
-  setValueAtTime(value: number) { this.value = value; }
-  linearRampToValueAtTime(value: number) { this.value = value; }
-  exponentialRampToValueAtTime(value: number) { this.value = value; }
-  cancelScheduledValues() {}
-}
-
-class Node {
-  connections: Node[] = [];
-  gain = new Param();
-  connect(node: Node) { this.connections.push(node); return node; }
-  disconnect() { this.connections.length = 0; }
-}
-
-class Source extends Node {
-  onended: (() => void) | null = null;
-  private endedListeners: (() => void)[] = [];
-  frequency = new Param();
-  start = vi.fn();
-  stop = vi.fn();
-  addEventListener(_type: string, listener: () => void) { this.endedListeners.push(listener); }
-  end() {
-    this.onended?.();
-    for (const listener of this.endedListeners) listener();
-  }
-}
-
-class Panner extends Node {
-  positionX = new Param();
-  positionY = new Param();
-  positionZ = new Param();
-}
-
-class Context {
-  currentTime = 1;
-  state = 'running';
-  sampleRate = 32;
-  destination = new Node();
-  listener = { setPosition() {} };
-  sources: Source[] = [];
-  createGain() { return new Node(); }
-  createDynamicsCompressor() { return Object.assign(new Node(), { threshold: new Param(), ratio: new Param() }); }
-  createBiquadFilter() { return Object.assign(new Node(), { frequency: new Param(), Q: new Param() }); }
-  createDelay() { return Object.assign(new Node(), { delayTime: new Param() }); }
-  createBuffer(_channels: number, length: number) { return { getChannelData: () => new Float32Array(length) }; }
-  createBufferSource() { const s = new Source(); this.sources.push(s); return s; }
-  createOscillator() { return this.createBufferSource(); }
-}
-
-const bus = (audio: AudioManager, name: Bus) => audio.bus(name) as unknown as Node;
-const duckGain = (audio: AudioManager, name: 'music' | 'ambience') => bus(audio, name).connections[0]!.gain.value;
 const buffer = { duration: 4 } as AudioBuffer;
 
 function reaches(source: Node, dest: Node): boolean {
@@ -78,7 +30,177 @@ beforeEach(() => {
   vi.stubGlobal('window', { AudioContext: Context, setTimeout: vi.fn() });
   vi.stubGlobal('PannerNode', Panner);
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
+});
+
+describe('audio activation and settings', () => {
+  it('creates the graph on the start gesture and resumes a suspended context without rebuilding it', async () => {
+    class SuspendedContext extends Context {
+      override state: AudioContextState = 'suspended';
+    }
+    vi.stubGlobal('window', { AudioContext: SuspendedContext });
+    const audio = new AudioManager();
+    const opened = vi.fn();
+    audio.onUnlock(opened);
+    expect(audio.unlocked).toBe(false);
+    expect(audio.bus('music')).toBeNull();
+    expect(audio.noise()).toBeNull();
+    expect(opened).not.toHaveBeenCalled();
+
+    audio.unlock();
+    const ctx = audio.ctx as unknown as Context;
+    const music = audio.bus('music');
+    expect(ctx.resume).toHaveBeenCalledOnce();
+    expect(opened).toHaveBeenCalledExactlyOnceWith(ctx);
+    expect(audio.unlocked).toBe(true);
+    const late = vi.fn();
+    audio.onUnlock(late);
+    expect(late).toHaveBeenCalledExactlyOnceWith(ctx);
+    await ctx.suspend();
+    audio.unlock();
+    expect(ctx.resume).toHaveBeenCalledTimes(2);
+    expect(audio.ctx).toBe(ctx);
+    expect(audio.bus('music')).toBe(music);
+    expect(opened).toHaveBeenCalledOnce();
+  });
+
+  it('suspends a hidden tab and only restores audio when it suspended the context itself', async () => {
+    const audio = new AudioManager();
+    audio.setHidden(true);
+    audio.setHidden(false);
+    expect(audio.ctx).toBeNull();
+    audio.unlock();
+    const ctx = audio.ctx as unknown as Context;
+    ctx.state = 'suspended';
+    audio.setHidden(true);
+    audio.setHidden(false);
+    expect(ctx.resume).not.toHaveBeenCalled();
+    expect(ctx.suspend).not.toHaveBeenCalled();
+
+    ctx.state = 'running';
+    audio.setHidden(true);
+    await Promise.resolve();
+    expect(audio.unlocked).toBe(false);
+    audio.setHidden(false);
+    await Promise.resolve();
+    expect(audio.unlocked).toBe(true);
+    expect(ctx.suspend).toHaveBeenCalledOnce();
+    expect(ctx.resume).toHaveBeenCalledOnce();
+  });
+
+  it('fills missing buses in older settings and restores each saved volume at first unlock', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(SETTINGS_KEY, JSON.stringify({ volume: { master: 1, music: 0 } }));
+    const settings = new SettingsStore(storage);
+    expect(settings.state.volume).toEqual({ ...defaultSettings().volume, master: 1, music: 0 });
+    const volume = { master: 1, music: 0, sfx: 0.31, ambience: 0.57, voice: 0 };
+    settings.update((state) => { state.volume = volume; });
+    const restored = new SettingsStore(storage);
+    const audio = new AudioManager();
+    audio.setVolumes(restored.state.volume);
+    audio.unlock();
+    expect(restored.state.volume).toEqual(volume);
+    expect(audio.master?.gain.value).toBe(volume.master);
+    for (const name of ['music', 'sfx', 'ambience', 'voice'] as const) {
+      expect(bus(audio, name).gain.value).toBe(volume[name]);
+    }
+    const release = audio.holdVoice();
+    expect(duckGain(audio, 'music')).toBe(1);
+    expect(duckGain(audio, 'ambience')).toBe(1);
+    release();
+  });
+});
+
+it('plays softer steps in low stances and cleans up the wet and gravel cues after their tails', () => {
+  vi.useFakeTimers();
+  vi.spyOn(Math, 'random').mockImplementation(seededRng(54));
+  const audio = new AudioManager();
+  const events = new EventBus();
+  const player: { stance: Stance } = { stance: 'stand' };
+  const subtitle = vi.fn();
+  footsteps.init({ audio, events, player, ui: { hud: { subtitle } } } as unknown as GameContext);
+  const step = (surface: string, running = false) => events.emit('player:step', { x: 0, z: 0, surface, running });
+  step('gravel');
+  expect(vi.getTimerCount()).toBe(0);
+
+  audio.unlock();
+  const ac = audio.ctx as unknown as Context;
+  step('gravel');
+  player.stance = 'crouch';
+  step('water');
+  player.stance = 'prone';
+  step('water', true);
+  expect(ac.sources).toHaveLength(4);
+  const [crunch, grit, splash, runningSplash] = ac.sources.map((source) => source.connections[0]!.connections[0]!);
+  const [stand, crouch, prone] = [crunch, splash, runningSplash].map((envelope) => envelope!.connections[0]!);
+  expect(grit?.connections[0]).toBe(stand);
+  expect([stand, crouch, prone].map((gain) => gain?.gain.value)).toEqual([1, 0.5, 0.3]);
+  expect(splash?.gain.linearRampToValueAtTime).toHaveBeenCalledWith(0.25, 1.03);
+  expect(runningSplash?.gain.linearRampToValueAtTime).toHaveBeenCalledWith(0.35, 1.03);
+  expect(ac.sources[2]?.stop).toHaveBeenCalledWith(expect.closeTo(1.4));
+  expect(subtitle).not.toHaveBeenCalled();
+  vi.advanceTimersByTime(799);
+  expect([stand, crouch, prone].every((gain) => gain?.connections[0] === bus(audio, 'sfx'))).toBe(true);
+  vi.advanceTimersByTime(1);
+  expect([stand, crouch, prone].map((gain) => gain?.connections.length)).toEqual([0, 0, 0]);
+});
+
+it('fades water with altitude and winter, routes dread to music, and stops both beds on disposal', () => {
+  vi.spyOn(Math, 'random').mockImplementation(seededRng(54));
+  const audio = new AudioManager();
+  const { x, z } = tourRoute.stops.find((stop) => stop.id === 'weiher')!;
+  const player = { position: { x, z, y: 280 }, flying: false };
+  const era: { current: Era } = { current: 'today' };
+  const ctx = { audio, era, player, world: { heightAt: () => 280 },
+    settings: { state: { subtitles: false } } } as unknown as GameContext;
+  ambience.init(ctx);
+  try {
+    ambience.update(0.2);
+    expect(audio.ctx).toBeNull();
+    audio.unlock();
+    ambience.update(0.2);
+    const { sources } = audio.ctx as unknown as Context;
+    const loops = sources.filter((source) => source.loop);
+    expect(loops).toHaveLength(3);
+    const [, pond, brook] = loops;
+    const score = sources.filter((source) => reaches(source, bus(audio, 'music')));
+    expect(score).toHaveLength(4);
+    const dreadGain = score[0]!.connections[0]!.connections[0]!.gain;
+    const pondGain = pond!.connections[0]!.connections[0]!.gain;
+    const brookGain = brook!.connections[0]!.connections[0]!.gain;
+    const shore = pondGain.value;
+    expect(shore).toBeGreaterThan(0);
+    expect(brookGain.value).toBe(0);
+    expect(dreadGain.value).toBe(0);
+
+    player.flying = true;
+    player.position.y += 15;
+    ambience.update(0.2);
+    expect(pondGain.value).toBeCloseTo(shore / 2);
+    player.position.y += 15;
+    ambience.update(0.2);
+    expect(pondGain.value).toBe(0);
+    player.flying = false;
+    ambience.update(0.2);
+    expect(pondGain.value).toBeCloseTo(shore);
+
+    era.current = '1793-02';
+    ambience.update(0);
+    expect(pondGain.value).toBe(0);
+    expect(dreadGain.value).toBeCloseTo(0.7 * 0.12);
+    expect(sources.filter((source) => source.loop)).toEqual(loops);
+    ambience.dispose();
+    expect(pond?.stop).toHaveBeenCalledWith(2);
+    expect(brook?.stop).toHaveBeenCalledWith(2);
+    expect(score.every((source) => source.stop.mock.calls.length === 1)).toBe(true);
+    expect(dreadGain.value).toBe(0);
+  } finally {
+    ambience.dispose();
+  }
+});
 
 describe('tour sounds', () => {
   it('routes scripted cues to SFX, honors mute and captions, and plays during reduced motion', () => {

@@ -433,12 +433,10 @@ class StoryRuntime {
     });
     ctx.events.on('save:loaded', () => {
       this.resync();
+      this.presenter.clear();
       // a load during play (the pause menu's „Ende noch einmal wählen“) resumes the beat like a
       // boot does — e1's onResume opens the choice at the table (playtest round 4: it never came)
-      if (this.started && !ctx.pause.reasons.has('title') && this.slice.active) {
-        this.presenter.clear();
-        this.engine.resume(false);
-      }
+      if (this.started && !ctx.pause.reasons.has('title') && this.slice.active) this.engine.resume(false);
     });
     ctx.events.on('player:caught', ({ by, soft, family, boss }) => {
       const p = this.ctx.player.position;

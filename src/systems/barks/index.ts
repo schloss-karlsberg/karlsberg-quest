@@ -97,6 +97,7 @@ class BarksRuntime {
   private lastInput = { x: 0, z: 0, yaw: 0, pitch: 0 };
   private readonly spoken: { id: string; t: number }[] = [];
   private readonly mutedLines: Set<string>;
+  private readonly unwatchState: () => void;
   private hooks = false;
   private introUntil = 0;
 
@@ -105,6 +106,12 @@ class BarksRuntime {
     this.mutedLines = new Set(
       ctx.content.packs.filter((p) => p.file.includes('/examples/') || (p.pack.placeholder && !placeholder)).flatMap((p) => (p.pack.dialogue ?? []).map((d) => d.id)),
     );
+    // These deadlines belong to the old clock. Reset before save:loaded can resume dialogue.
+    this.unwatchState = ctx.state.subscribe((_state, reason) => {
+      if (reason !== 'load' && reason !== 'new') return;
+      this.requests = [];
+      this.dialogueUntil = this.curtainUntil = this.introUntil = 0;
+    });
     const ev = ctx.events;
     ev.onAny((name, payload) => this.onEvent(name, payload));
     ev.on('echo:start', () => (this.echo = true));
@@ -287,6 +294,7 @@ class BarksRuntime {
   }
 
   dispose(): void {
+    this.unwatchState();
     window.removeEventListener('keydown', this.onInput, true);
     window.removeEventListener('mousedown', this.onInput, true);
   }

@@ -610,6 +610,8 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 - `tests/terrain-load.test.ts` uses `serveTerrain()` to serve two compressed grid cells from
   memory. Each layer has distinct values so the test detects swapped eras, incorrect units and
   ground or canopy rasters whose dimensions disagree with the height grid.
+- `tests/audio-fixture.ts` provides a fake Web Audio context for mixer and story playback tests.
+  Set `currentTime` and call `end()` on a source to drive playback without an audio device.
 - `tests/travel-fixture.ts` runs the registered travel system on flat ground with a real game state
   store and event bus. Use `step()` for a simulation tick and Vitest's fake timers for a timed journey.
 - Pause and journal page tests use `tests/ui-fixture.ts` to run the real renderers and handlers on a
@@ -1083,8 +1085,9 @@ Round-4 (polish: set dressing) integration rules:
   (under the Vite base; contract and FNV-1a `textHash` over the raw `text_de` in
   `dialogue/voiceManifest.ts`) has a current one for the line (by id, else by text hash for id-less
   quest lines and variant / era ids) and it is already decoded (`dialogue/voiceClips.ts`: per-beat
-  preload, 3 parallel fetches, 16-clip LRU; Opus/WebM when `canPlayType` says "probably", else
-  AAC/M4A, an Opus decode failure retries as AAC and switches to AAC for the session; the old
+  preload, 3 parallel fetches, 24 waiting jobs, 16-clip LRU; the line that just fell back to the
+  murmur takes the next available fetch slot for future playback; Opus/WebM when `canPlayType` says
+  "probably", else AAC/M4A, an Opus decode failure retries as AAC and switches to AAC for the session; the old
   single `file` is still read); else the per-syllable murmur. Both get the
   speaker's character (`dialogue/voice.ts` `RADIO_CHAIN` / `RING_CHAIN` / `HALL_CHAIN`, a `blip`
   and a `clip` variant; the clip values are the casting render's, so in-game clips sound like the
@@ -1093,8 +1096,9 @@ Round-4 (polish: set dressing) integration rules:
   tab, `AudioManager.setHidden`) freezes it and no clip starts then. Bullet time (`loop.manual`)
   does not pause clips: they run in real time while the simulation waits, and the subtitle
   completes when the clip ends. If a source's end event is delayed, the audio clock still marks
-  the clip as ended and releases speech ducking on the next playback state check. Stale counts
-  only lines whose id the manifest knows (an id-less line with a changed text just finds no match);
+  the clip as ended and releases speech ducking on the next playback state check. Loading a save
+  clears the previous line and waiting subtitles, then resumes dialogue if the loaded story is
+  active. Stale counts only lines whose id the manifest knows (an id-less line with a changed text just finds no match);
   NPC conversations keep the murmur (only presenter lines play clips). `public/voice/` holds
   committed MOSS clips only; the build emits an empty manifest when there is
   none (no 404). Hook: `kq.story.voice.stats()/preload()`. The title flow asks the visitor to read the
@@ -1468,7 +1472,9 @@ stand-ins, the **authored meshes later behind the same interface**.
   prologue before the compass first speaks at the Orangerie) mutes Laub's barks and the Chronik's
   hint ladder (its clock waits).
 - Emits `bark:idle` (60 s without input), `bark:enter-fire`, `dialogue:say`.
-- State `systems.barks {t, mem, memorials}`. Hooks `kq.barks.state/advance/reset`.
+- State `systems.barks {t, mem, memorials}`. Loading or starting a game clears pending requests and
+  dialogue, curtain and intro deadlines from the prior session. The saved clock, cooldowns and
+  memorials are restored on load. Hooks `kq.barks.state/advance/reset`.
 
 ### animals (`src/systems/animals/`) – tour animals: the roe doe and fawn, Jost's dogs
 Tour contract C5 (`docs/design/tour/systems.md` §4 / C5), the behaviour layer over the fauna bodies.

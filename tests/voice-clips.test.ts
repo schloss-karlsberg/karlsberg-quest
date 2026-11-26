@@ -50,6 +50,36 @@ function server(opts: { manifest?: unknown; status?: number; gate?: boolean; bod
 }
 
 describe('VoiceClips', () => {
+  it.each([false, true])('fetches the current line next when the queue is full (already queued: %s)', async (queued) => {
+    const id = 'current';
+    const text = 'An der Quelle.';
+    const backlog = Array.from({ length: 27 }, (_, i) => ({ id: `old-${i}` }));
+    const later = { id: 'later' };
+    const s = server({ manifest: { version: 1, lines: Object.fromEntries([...backlog, { id }, later].map((line) => [
+      line.id, { file: `${line.id}.mp3`, textHash: textHash(text) },
+    ])) } });
+    const c = new VoiceClips(fakeAudio(), './', s.fetchFn, false);
+    const advance = async () => {
+      for (let i = 0; i < 30; i++) await Promise.resolve();
+    };
+    c.preload(backlog.slice(0, 3));
+    await advance();
+    c.preload(queued ? [...backlog.slice(3, -1), { id }] : backlog.slice(3));
+    expect(c.stats()).toMatchObject({ loading: 3, queued: 24 });
+    expect(c.take(id, text)).toBeNull();
+    c.preload([later]);
+    expect(c.stats().queued).toBe(24);
+
+    s.release.shift()!();
+    await advance();
+    expect(s.urls.at(-1)).toBe('./voice/current.mp3');
+    expect(c.stats()).toMatchObject({ loading: 3, queued: 23 });
+    s.release.at(-1)!();
+    await advance();
+    expect(c.take(id, text)?.id).toBe(id);
+    expect(s.urls.filter((url) => url.endsWith('/current.mp3'))).toHaveLength(1);
+  });
+
   it('a missing manifest means no voices and one debug line', async () => {
     const dbg = vi.spyOn(console, 'debug').mockImplementation(() => {});
     const err = vi.spyOn(console, 'error').mockImplementation(() => {});
