@@ -21,10 +21,22 @@ varying vec2 vUv;
 void main() {
   vSurf = aSurf - 1.0; // stored +1 (missing attribute → −1 = untextured)
   vUv = aUv;
-  vec4 wp = modelMatrix * vec4(position, 1.0);
+  vec4 p = vec4(position, 1.0);
+  vec3 n = normal;
+  #ifdef USE_INSTANCING
+    p = instanceMatrix * p;
+    // Inverse-transpose for rotation and non-uniform scale (no shear).
+    mat3 basis = mat3(instanceMatrix);
+    n /= vec3(dot(basis[0], basis[0]), dot(basis[1], basis[1]), dot(basis[2], basis[2]));
+    n = basis * n;
+  #endif
+  vec4 wp = modelMatrix * p;
   vWp = wp.xyz;
-  vN = normalize(mat3(modelMatrix) * normal);
+  vN = normalize(mat3(modelMatrix) * n);
   vCol = color;
+  #ifdef USE_INSTANCING_COLOR
+    vCol *= instanceColor;
+  #endif
   vGlow = aGlow;
   gl_Position = projectionMatrix * viewMatrix * wp;
 }

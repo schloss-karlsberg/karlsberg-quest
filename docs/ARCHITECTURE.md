@@ -1504,6 +1504,11 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   railing with the two-winged gate; the Orangerie court in 1793-02. Built within `range` of the
   player in their eras, dropped on era change / far away; solids to the collider (owner
   `scenery`). Ghost workers (`workers.ts`) swing on the GPU; their strikes clink within 45 m.
+- Present-day plateau (`palace-plateau.ts`): scenery imports the module after the title and within
+  100 m, and releases its mesh and solids beyond 125 m or on an era change. The authored stations
+  snap to OSM tracks and sample the dry verge against the LiDAR heightfield, path and water masks,
+  footprints, tour corridor and spring clearings. One instance batch uses the shared prop shader.
+  Niedrig draws a prefix of the same batch. Benches and courses keep their colliders on all presets.
 - The 1789 Ehrenhof (`court.ts`): the set `ehrenhof-1789` paves the court in the K3 court frame
   (`fx/k3-crowd.ts` `court(u, w)`) with strips draped a few cm over the terrain (cobble field,
   sandstone bands, gutters, axis and cross walks, a rosette round the era anchor 1218/−1118; no

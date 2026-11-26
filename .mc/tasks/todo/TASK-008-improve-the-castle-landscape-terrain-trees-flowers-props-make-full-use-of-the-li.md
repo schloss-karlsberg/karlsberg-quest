@@ -99,6 +99,120 @@ each file credited in `public/assets/LICENSES.json`; data licences in `public/da
 - [ ] New assets CC0 / own work with credits; `tests/assets.test.ts` green
 - [ ] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass; `docs/ART-DIRECTION.md` / `docs/PERFORMANCE.md` updated
 
+## Slice 5 plan
+
+_Status: approved 2026-11-25 (coordinator for the owner)_
+
+**Approach:** Dress the present-day palace plateau at the former Ehrenhof. Use the shipped
+OpenStreetMap track and present-day terrain to place weathered benches, short broken sandstone
+courses and intermittent verge stones. The fittings and masonry layout are FIKTION. Keep their
+footprints off paths, the group route, the Quelle hollow and water. Use one procedural instance
+batch, with the benches and fewer stones and masonry details on Niedrig. Load the batch code
+after play begins and only near the plateau.
+
+**Files to touch:**
+
+- `src/systems/scenery/` — place, instance and stream the plateau props using the existing world data and lighting.
+- `tests/` — verify deterministic placement and clearance on shipped data, exclusion rules and tier limits.
+- `public/assets/LICENSES.json` — credit the own-work procedural geometry.
+- `e2e/gpu/tour-groundcover.gpu.ts`, `e2e/perf.spec.ts` — match six baseline and after views, verify the new batch and check first-input downloads.
+- `docs/ART-DIRECTION.md`, `docs/PERFORMANCE.md`, `docs/ACTION-RPG.md`, `docs/ARCHITECTURE.md`, `docs/PRD.md` — describe the fitting style, placement and cost.
+
+**Steps:**
+
+- [x] 1. Place the plateau props deterministically from the track and terrain, and stream one static instance batch with a reduced Niedrig layout.
+- [x] 2. Test placement and render limits, including the trail, water and spring exclusions, and prepare paired GPU and first-input checks.
+- [x] 3. Update docs and run typecheck, Vitest with two workers, the build and the sandbox-safe content validation.
+- [ ] 4. Capture both revisions on ANGLE Metal and verify phone pacing, bench budgets, Hoch first-input bytes and the tour flow on the coordinator's machine.
+
+**Test plan:** Verify repeatability, clearance, grade, collision and preset changes without WebGL
+in Vitest. Compare the same six GPU views on desktop and the reduced-motion 667 × 375 phone
+profile, including a view facing the new plateau props and the 1789 Ehrenhof control. Check the
+phone route timing and all nine bench scenes against `PERF_BUDGET`, and Hoch before first input
+against 20 MiB using `PERF_LOAD_QUALITY=high`. Replay `e2e/tour-slice.spec.ts` and run the scenery and art specs.
+
+**Risks:** The 2 m terrain can bury verge stones on steep or rough edges. Reject those candidates,
+test the shipped positions and inspect the plateau at walking height. Keep async loading out of
+the title and check the first approach for visible pop-in.
+
+**Open questions:** Matched stills, phone performance, first-input bytes and browser playthroughs need the coordinator's hardware.
+
+| Epic criterion | Coverage | Evidence or remaining work |
+| --- | --- | --- |
+| 1. Used and unused data | partial | Use the existing OSM walk graph and raster, present-day DGM and water mask. |
+| 2. Higher terrain detail and data budget | follow-up | Geometry refinement remains separate from the slice 3 surface shading. |
+| 3. Trees, bushes, flowers and props | partial | Data-driven benches, stone edging and broken masonry at the palace plateau. |
+| 4. Mobile frame rate and reduced version | partial | Reduced Niedrig geometry and one instance batch, pending phone and bench measurements. |
+| 5. Before/after GPU views in the PR | partial | Six paired views per tier, pending hardware captures. |
+| 6. Assets and credits | full | Own-work procedural art credited in the asset ledger. |
+| 7. Gates and docs | full | Four local gates and design/performance docs. |
+
+**Follow-up slices:** Evaluate a 1 m terrain geometry pilot, CHM crown placement, understory
+placement and wider Röntgenblick coverage as described in slice 3.
+
+## Slice 5 progress
+
+- Branch `feat/task-008-slice5`, based on `fd18dcd` (slice 4 merged in PR #37).
+- 2026-11-25 — The coordinator approved the slice for the owner. Browser and GPU runs are reserved for the coordinator's machine.
+- 2026-11-25 — Step 1 complete. The shipped terrain accepts two benches, two broken courses
+  and six verge stones, drawn as 25 instances on Niedrig and 32 on Mittel and Hoch. The batch
+  streams after the title and uses the existing scenery light and collision systems.
+- 2026-11-25 — Step 2 complete. Focused tests confirm repeatable dry placements, footprint
+  clearance, reduced geometry and stable colliders across presets. The shipped tree placements
+  leave the props clear of trunks. Playwright lists the GPU, performance, art, scenery and tour
+  cases. The byte case checks the plateau chunk stays off the title.
+- 2026-11-25 — Step 3 complete. Typecheck, all 1,542 Vitest tests across 115 files, the build,
+  `node --import tsx scripts/validate-content.ts`, and `mc validate` passed. Content validation
+  reported existing warnings. The pnpm gates used a local copy of the installed dependencies and
+  `--config.verify-deps-before-run=false`. The build emitted a separate 3.77 kB plateau chunk
+  (1.90 kB gzip). Design and performance docs are updated.
+- 2026-11-25 — Step 4 is pending. Matched GPU screenshots, phone fps and bench totals, Hoch
+  first-input transfer, and browser playthroughs were not run. Git staging and commit are handed
+  over because the sandbox cannot create the worktree index lock.
+
+### Slice 5 coordinator capture commands
+
+Run from this worktree with Chromium installed on an ANGLE Metal machine. The baseline uses the
+same poses and first-input test as the changed build.
+
+```sh
+slice5_root=$(mktemp -d /tmp/kq-task-008-slice5.XXXXXX)
+git worktree add --detach "$slice5_root/before" fd18dcdd16f35de8defd9166ad7c02d196c839d7
+cp e2e/gpu/tour-groundcover.gpu.ts "$slice5_root/before/e2e/gpu/"
+cp e2e/perf.spec.ts "$slice5_root/before/e2e/"
+(cd "$slice5_root/before" && pnpm install --offline --frozen-lockfile && pnpm build)
+pnpm build
+
+slice5_gpu() {
+  CI=1 KQ_E2E_PORT=5361 PERF_LABEL="$1" scripts/dev/heavy.sh --max-hold 15 -- \
+    pnpm exec playwright test -c playwright.gpu.config.ts e2e/gpu/tour-groundcover.gpu.ts --workers=1
+}
+slice5_bytes() {
+  CI=1 KQ_E2E_PORT=5361 PERF_LABEL="$1" PERF_LOAD_QUALITY=high scripts/dev/heavy.sh --max-hold 15 -- \
+    pnpm exec playwright test e2e/perf.spec.ts --grep 'bytes and time before the first input' --workers=1
+}
+
+(cd "$slice5_root/before" && slice5_gpu slice5-before)
+slice5_gpu slice5-after
+(cd "$slice5_root/before" && slice5_bytes slice5-before)
+slice5_bytes slice5-after
+
+for spec in e2e/art.spec.ts e2e/scenery.spec.ts e2e/tour-slice.spec.ts; do
+  CI=1 KQ_E2E_PORT=5361 scripts/dev/heavy.sh --max-hold 15 -- \
+    pnpm exec playwright test "$spec" --workers=1
+done
+
+mkdir -p test-results/contribute/TASK-008 test-results/perf
+cp -R "$slice5_root/before/test-results/contribute/TASK-008/slice5-before" test-results/contribute/TASK-008/
+cp "$slice5_root/before/test-results/perf/load-slice5-before.json" test-results/perf/
+```
+
+Pair the six fixed views per tier and inspect the plateau from the track at 1199 / −1115.2, 96°.
+Use `phone-route.json` to compare the plateau's live fps, CPU and frame p95, and all-pass draws and
+triangles. Check the nine phone bench scenes and compare Hoch's first-input transfers with the
+strict 20 MiB cap. Walk the tour through the spring interaction and the shift. Check the FIKTION
+entry in the title credits.
+
 ## Plan
 
 ### Slice 4 — Hoch first-input budget

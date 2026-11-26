@@ -142,6 +142,11 @@ let passage: { group: Group; zones: PassZone[]; solids: Solid[]; patched: boolea
 let floorWorld: { floorPatch: unknown } | null = null;
 let solidsDirty = true;
 let lastEra: Era | null = null;
+type PlateauModule = typeof import('./palace-plateau');
+let plateauModule: PlateauModule | undefined;
+let plateauRequested = false;
+let plateau: ReturnType<PlateauModule['buildPlateauBatch']> | undefined;
+let removePlateau: (() => void) | undefined;
 let tally: RundTally | null = null;
 let life: CourtLife | null = null;
 let bauwagen: BauwagenDiscovery | null = null;
@@ -153,6 +158,48 @@ const CARTS_ECHO = 'clue.k4.karren';
 let tallyQuiet = true;
 /** Pikes placed by `kq.scenery.pike` (debug). */
 const pikes: Mesh[] = [];
+
+/** Stream the present-day plateau near the player, including in manual camera and bench views. */
+function updatePlateau(ctx: GameContext): void {
+  const { x, z } = ctx.player.position;
+  const range = plateau ? 125 : 100;
+  if (ctx.pause.reasons.has('title') || ctx.era.current !== 'today' || Math.hypot(x - 1216, z + 1114) >= range) {
+    removePlateau?.();
+    return;
+  }
+  if (!plateauModule) {
+    if (plateauRequested) return;
+    plateauRequested = true;
+    void import('./palace-plateau').then((module) => {
+      plateauModule = module;
+      ctx.loop.requestRender();
+    }).catch((err: unknown) => console.warn('[scenery] palace plateau unavailable', err));
+    return;
+  }
+  if (!plateau) {
+    const { world, data } = ctx;
+    const placements = plateauModule.placePlateauProps({
+      terrain: world.heightfields['2025'],
+      ground: data.ground,
+      paths: world.paths,
+      graph: data.paths,
+      footprintAt: (px, pz) => world.collider.footprintAt(px, pz),
+    });
+    const batch = plateauModule.buildPlateauBatch(placements);
+    plateau = batch;
+    root.add(batch.mesh);
+    world.water.reflectionSkip.push(batch.mesh);
+    world.collider.setSolids(batch.mesh.name, batch.solids);
+    removePlateau = () => {
+      world.collider.setSolids(batch.mesh.name, []);
+      world.water.reflectionSkip = world.water.reflectionSkip.filter((mesh) => mesh !== batch.mesh);
+      batch.dispose();
+      plateau = undefined;
+      removePlateau = undefined;
+    };
+  }
+  plateau.setLevel(ctx.quality.level);
+}
 
 /** The Ehrenhof's people in 1789 (medium / high, within 200 m of the court; court.ts). */
 function updateLife(ctx: GameContext, dt: number): void {
@@ -284,6 +331,7 @@ function applyPassage(ctx: GameContext, mesh: Mesh | null): void {
 
 function applyEra(ctx: GameContext): void {
   const era = ctx.era.current;
+  if (era !== 'today') removePlateau?.();
   for (const id of [...live.keys()]) {
     const l = live.get(id)!;
     if (l.era !== era) dropSet(id);
@@ -653,12 +701,14 @@ export default defineSystem({
   // per rendered frame: hooks (also while `?manual` holds the fixed steps) and motion settings
   frame(_dt, ctx) {
     installHooks(ctx);
+    updatePlateau(ctx);
     const reduced = ctx.settings.state.reducedMotion;
     for (const l of live.values()) for (const m of l.built.materials) if (m.uniforms.uMotion) m.uniforms.uMotion.value = reduced ? 0.6 : 1;
   },
   dispose() {
     bauwagen?.dispose();
     bauwagen = null;
+    removePlateau?.();
     for (const id of [...live.keys()]) dropSet(id);
     if (floorWorld?.floorPatch === passageFloor) floorWorld.floorPatch = null;
     floorWorld = null;

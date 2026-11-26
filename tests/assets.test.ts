@@ -35,6 +35,16 @@ describe('asset manifest (CC0 pipeline)', () => {
     }
   });
 
+  it('credits the procedural plateau props as own-work CC0 geometry', () => {
+    const source = 'src/systems/scenery/palace-plateau.ts';
+    expect(licences.procedural).toContainEqual(expect.objectContaining({
+      name: expect.stringContaining('FIKTION'),
+      licence: 'CC0-1.0',
+      source,
+    }));
+    expect(fs.existsSync(path.resolve(ROOT, '../..', source))).toBe(true);
+  });
+
   it('stays inside the download budgets (whole folder, first playable load)', () => {
     const total = walk(ROOT).reduce((s, f) => s + fs.statSync(f).size, 0);
     expect(total).toBeLessThan(ASSET_BUDGET.total);

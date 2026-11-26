@@ -72,6 +72,15 @@ the e2e test fails when a scene is over.
   Hoch opening, fixed views at each tier and walking samples. Compare `desktop-high-opening.png`
   and the Karlsberger Hof and Ehrenhof stills. Review the route samples for frame and CPU p95 and
   all-pass peaks. Verify the opening through the first shift with `e2e/tour-slice.spec.ts`.
+- **Palace plateau props (TASK-008, slice 5).** Use `PERF_LABEL=slice5-before` and
+  `PERF_LABEL=slice5-after` with `e2e/gpu/tour-groundcover.gpu.ts` and the same spec in both
+  worktrees. The six views per tier include a new plateau angle and the 1789 Ehrenhof control.
+  Compare `phone-route.json` for the plateau's 60 fps walking and turning sample, including
+  frame and CPU p95, long frames and all-pass peaks. Check all nine scenes in `phone-bench.json`
+  against §1. The batch contributes one main draw and at most 312 triangles on Niedrig. Mittel
+  and Hoch have up to 408 triangles in the main draw, with one additional draw and the same
+  triangle ceiling when the shadow pass runs. The water reflection omits the batch. GPU timings
+  and matched stills are pending.
 
 ## 3. Results
 
@@ -397,7 +406,13 @@ title and skip-title paths request their visible assets eagerly.
 The Hoch run from PR #35 transferred **26,753,846 bytes** before the first input. The palace mesh
 accounted for 4,373,227 bytes and the six surface pairs for 2,550,738 bytes in that file list.
 Subtracting those URLs leaves **19,829,881 bytes** against the strict 20 MiB gate. A new
-Playwright run is needed to confirm the total and first-input time.
+Playwright run for slice 4 measured **19,830,220 bytes** on Hoch.
+
+The slice 5 plateau geometry runs from one JavaScript chunk imported when today's player comes
+within 100 m of the plateau after leaving the title. It reuses the loaded path and terrain data
+and needs zero model or texture requests. Re-run the byte spec on Hoch with
+`PERF_LOAD_QUALITY=high` to confirm the first-input total is still under 20 MiB and the plateau
+chunk stays off the title.
 
 ### Earlier loading measurements
 

@@ -60,6 +60,7 @@ test.describe('art foundation', () => {
     await expect(list).toBeVisible();
     await expect(list).toContainText('Tree Stump 01');
     await expect(list).toContainText('CC0-1.0');
+    await expect(list).toContainText('Bänke und Sandstein am Schlossplateau (FIKTION): Karlsberg Quest — CC0-1.0');
     await expect(list.locator('a').first()).toHaveAttribute('href', /^https:\/\/polyhaven\.com\//);
     // synthetic voices (LICENSES.json `voices`)
     await expect(page.getByTestId('voice-licences-summary')).toContainText('Stimmen von Quirin Laub und Marlene: synthetisch, lokal erzeugt mit MOSS-TTS-v1.5 (Apache-2.0); Ausgabe CC0.');

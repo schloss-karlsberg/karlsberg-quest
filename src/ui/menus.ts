@@ -66,7 +66,10 @@ export function assetLicencesBody(f: LicencesFile | null = assetLicences): HTMLE
     h(
       'ul.kq-attrib',
       { 'data-testid': 'asset-licences' },
-      f.assets.map((a) => h('li', [h('span.lbl', `${a.name}: `), `${a.author} — ${a.licence} `, h('a', { href: a.source, target: '_blank', rel: 'noopener' }, a.source), a.modified ? h('em', ` (${a.modified})`) : null])),
+      [
+        ...f.assets.map((a) => h('li', [h('span.lbl', `${a.name}: `), `${a.author} — ${a.licence} `, h('a', { href: a.source, target: '_blank', rel: 'noopener' }, a.source), a.modified ? h('em', ` (${a.modified})`) : null])),
+        ...(f.procedural ?? []).map((a) => h('li', [h('span.lbl', `${a.name}: `), `${a.author} — ${a.licence}`])),
+      ],
     ),
     ...(f.libraries?.length ? [h('ul.kq-attrib', f.libraries.map((l) => h('li', [h('span.lbl', `${l.name}: `), `${l.licence} — ${l.source}`])))] : []),
     ...voiceLicencesBody(f),

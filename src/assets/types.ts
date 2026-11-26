@@ -76,6 +76,8 @@ export interface LicenceRecord {
 export interface LicencesFile {
   policy: string;
   assets: LicenceRecord[];
+  /** Own-work runtime geometry, with the repo-relative source in place of an asset download. */
+  procedural?: { name: string; author: string; licence: 'CC0-1.0'; source: string }[];
   /** Decoder libraries shipped with the assets (not art; three.js examples, own licences). */
   libraries?: { name: string; licence: string; files: string[]; source: string }[];
   /** Voices whose clips may sit in public/voice/ (rules: scripts/voice/assetRules.ts). */
