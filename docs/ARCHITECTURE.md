@@ -652,6 +652,7 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   `screenshotReady()` asks the loop for its frames, so it works in held views too.
   A shared starting position requires finite, nonblank `x` and `z` values. Missing or invalid
   coordinates preserve the current pose. An invalid optional `yaw` preserves the current heading.
+  Finite `yaw` values wrap modulo 360 degrees before conversion to radians so look input stays responsive.
 - Bullet-time pilot (`kq.pilot`, `src/debug/pilot.ts`; docs/NEXT-SESSION.md §3.1): an agent plays
   in slices while the game stands still (`?manual`, or `kq.pilot.bulletTime(true)` at runtime; the
   HUD then shows a "⏸ Bullet-Time" chip in place of the pointer-lock chip).

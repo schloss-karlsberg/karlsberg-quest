@@ -12,6 +12,11 @@ describe('position overrides in shared URLs', () => {
     expect(spawnFromParams(new URLSearchParams('x=4&z=5&yaw=0'))?.yaw).toBe(0);
   });
 
+  it.each([['1e308', 296], ['-450', -90]])('wraps a finite yaw of %s degrees before converting to radians', (yaw, degrees) => {
+    const spawn = spawnFromParams(new URLSearchParams({ x: '1138', z: '-1120', yaw }));
+    expect(spawn?.yaw).toBeCloseTo(degrees * Math.PI / 180, 12);
+  });
+
   it.each(['x=17', 'z=17', 'x=&z=1', 'x=4&z=%20', 'x=north&z=5', 'x=1&z=-Infinity', 'x=1e999&z=0'])(
     'keeps the current pose if the coordinate pair is unusable (%s)', (query) => {
       expect(spawnFromParams(new URLSearchParams(query))).toBeNull();

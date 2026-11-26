@@ -11,5 +11,5 @@ export function spawnFromParams(params: URLSearchParams): { x: number; z: number
   const z = finiteParam(params, 'z');
   if (x === undefined || z === undefined) return null;
   const degrees = finiteParam(params, 'yaw');
-  return { x, z, yaw: degrees === undefined ? undefined : degrees * (Math.PI / 180) };
+  return { x, z, yaw: degrees === undefined ? undefined : (degrees % 360) * (Math.PI / 180) };
 }
