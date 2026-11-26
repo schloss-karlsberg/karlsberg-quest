@@ -1766,8 +1766,10 @@ the ground), look at `npc:<id>` (`kq.npc.list()`, else the npc slice), `animal:<
 pitch / yaw; fov and the look keys fade / fog / sun / dark; smooth or linear easing; missing fields
 carry over. The timeline runs on fixed steps (Esc / modals stop it); `cinematic:stop {id}` ends that cinematic at once (no grace, also
 when not skippable; for features that route the input themselves, e.g. the party); skip after 0.5 s by any key
-(not Esc / P / F-keys), click or touch; the HUD steps back except subtitles (`html[data-kq-cinematic]`),
-centre cards wait, autosaves are held (`save.hold`) and written after; a save that holds a playing
+(not Esc / P / F-keys), click or touch; the HUD steps back except subtitles (`html[data-kq-cinematic]`).
+The attribute is `locked` when the cinematic locks player input and `free` during the party orbit.
+Only locked cinematics hide the touch surface. Centre cards wait and autosaves are held
+(`save.hold`) and written after. A save that holds a playing
 cinematic ends it skipped after the load. Reduced motion: 'stills' = first and last key with a dip
 through black (≤ 3 s), 'skip' = start + end skipped. Debug `kq.cinematic.play(id | spec)`, `skip()`,
 `at(id, t)`, `list()`, `playing()`. Tests: `tests/cinematic-keys.test.ts`,
