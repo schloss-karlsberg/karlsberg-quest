@@ -783,6 +783,19 @@ export class WalkRuntime {
 
   // ---- finding the group (find.ts) -----------------------------------------------------------
 
+  /** Visit the tour's live positions, including members whose models are distance-culled. */
+  visitTourMembers(visit: (x: number, z: number, guide: boolean) => void): void {
+    if (!this.era) return;
+    const tour = this.groups.get('fuehrung');
+    if (!tour) return;
+    for (let i = 0; i < tour.members.length; i++) {
+      const member = this.npcs.get(tour.members[i]!);
+      if (member) visit(member.x, member.z, false);
+    }
+    const guide = this.npcs.get(tour.leader);
+    if (guide) visit(guide.x, guide.z, true);
+  }
+
   /** The nearest group's guide to the player (only groups, no implicit followers; none outside the group era). */
   nearestGuide(): { group: string; leader: string; x: number; z: number; dist: number } | null {
     if (!this.active) return null;

@@ -10,6 +10,8 @@ const MOUSE_SVG = `<svg viewBox="0 0 24 32" class="kq-ctp-mouse" aria-hidden="tr
 
 export type HudDockArea = 'vitals' | 'boss' | 'feed';
 
+type MapTarget = Readonly<{ x?: number; z?: number }>;
+
 /** Retire a status immediately for reduced motion, or give it a short opacity fade. */
 export function retireNotice(el: HTMLElement): void {
   if (el.hidden || document.documentElement.hasAttribute('data-kq-reduced-motion')) {
@@ -48,6 +50,18 @@ export class Hud {
   private bulletTime = false;
   /** The world waymark over the tracked objective (./waymark.ts; the quests system drives it). */
   readonly waymark = new Waymark();
+  /** World coordinates behind the story and quest compass markers, for the minimap. */
+  storyTarget: MapTarget | null = null;
+  questLead: { target: Readonly<{ x: number; z: number }> | null; story?: MapTarget } | null = null;
+
+  get objectiveTarget() {
+    const story = this.storyTarget;
+    const lead = this.questLead;
+    // A lead derived from this story objective may have been routed through a door.
+    if (story?.x !== undefined && story.z !== undefined && lead?.story !== story) return story;
+    return lead?.target ?? null;
+  }
+
   /** Top-left column: era label, status, then feature lines (room, objective, gauges) — never overlapping. */
   private readonly tl: HTMLElement;
   /** Action-RPG docks (docs/ACTION-RPG.md §10): features put their own elements here. */

@@ -53,6 +53,7 @@ export const de: Record<string, string> = {
   'settings.camera.first': 'Ich-Sicht',
   'settings.camera.help': 'Über die Schulter: Sie sehen Ihre Figur und den Kampf um sie herum (Mausrad zoomt, Tab oder Mausrad-Klick erfasst ein Ziel). Ich-Sicht: der Blick durch die eigenen Augen. F5 wechselt im Spiel.',
   'settings.gentle': 'Sanfter Modus',
+  'settings.minimap': 'Minikarte',
   'settings.gentle.help':
     'Für alle, die die Geschichte ohne Hetze erleben wollen: Gegner halten weniger aus und treffen schwächer, ihre Angriffe kündigen sich länger an, und nur einer greift zugleich an. Die Meute ist langsamer und gibt schneller auf, der Jaguar stößt dich nie um, der Rauch im Brand ist dünner. Im Finale reicht eine Taste. Die Geschichte und alle Enden bleiben dieselben.',
   'settings.reducedMotion': 'Weniger Bewegung (kein Kopfwippen, sanfte Übergänge)',

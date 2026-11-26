@@ -48,6 +48,8 @@ export interface Settings {
   /** Invert horizontal mouse look. */
   invertX: boolean;
   gentleMode: boolean;
+  /** Show the local map in the HUD. */
+  minimap: boolean;
   reducedMotion: boolean;
   /**
    * No bright full-screen flashes (era-shift brass flash, fire collapse flashes, flicker). Read by
@@ -100,6 +102,7 @@ export function defaultSettings(): Settings {
     mouseSensitivity: 1,
     invertY: false,
     gentleMode: false,
+    minimap: true,
     invertX: false,
     reducedMotion: reduced,
     reducedFlash: reduced,

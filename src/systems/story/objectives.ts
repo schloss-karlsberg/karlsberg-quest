@@ -76,6 +76,7 @@ export class ObjectiveView {
     if (!o) {
       this.el.classList.remove('kqs-show');
       this.hud.setMarker('objective', null);
+      this.hud.storyTarget = null;
       return;
     }
     this.textEl.textContent = o.text;
@@ -149,6 +150,7 @@ export class ObjectiveView {
     // (and its compass mark) steps back, unless it tells the way through time (Q)
     const dup = !!opts.questLed && !!o && !/\bQ\b/.test(o.text);
     this.el.classList.toggle('kqs-dup', dup);
+    this.hud.storyTarget = opts.visible && !dup ? o : null;
     let target: number | null = null;
     if (opts.questTarget && (dup || !o)) {
       // the story line stepped back for the quest tracker: the needle follows the tracked goal
