@@ -105,6 +105,9 @@ export async function loadGameData(baseUrl = DATA_URL, onProgress?: (done: numbe
     onProgress = undefined;
     throw err;
   });
+  const cells = meta.cols * meta.rows;
+  if (ground.length !== cells) throw new Error(`ground: expected ${cells} cells, got ${ground.length}`);
+  if (canopy.length !== cells) throw new Error(`canopy: expected ${cells} cells, got ${canopy.length}`);
   const q2025 = decodeH2025(b2025, meta);
   const q1789 = decodeH1789(b1789, q2025);
   return {

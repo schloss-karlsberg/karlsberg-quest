@@ -11,6 +11,7 @@ import { DEFAULT_SPAWN, GameStateStore, createInitialState } from './core/state'
 import { SystemRegistry } from './core/systems';
 import { loadGameData } from './data/loader';
 import { installDebug } from './debug/hooks';
+import { spawnFromParams } from './debug/spawn';
 import { t } from './i18n';
 import { AVATAR_MODELS, Avatar, type AvatarModelId, avatarModelParam } from './player/avatar';
 import { cameraHints } from './player/camera';
@@ -348,7 +349,8 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   function applyStartOverrides(): void {
     const qEra = params.get('era');
     if (isEra(qEra)) era.set(qEra);
-    if (params.has('x') && params.has('z')) player.teleport(Number(params.get('x')), Number(params.get('z')), params.has('yaw') ? (Number(params.get('yaw')) * Math.PI) / 180 : undefined);
+    const spawn = spawnFromParams(params);
+    if (spawn) player.teleport(spawn.x, spawn.z, spawn.yaw);
   }
   applyStartOverrides();
   ui.hud.setEraLabel(t(ERA_INFO[world.currentEra].labelKey));
