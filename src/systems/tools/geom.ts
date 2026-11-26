@@ -19,7 +19,8 @@ export function rayHeightfield(o: V3, dir: V3, heightAt: HeightFn, maxDist = 800
   let prev = 0;
   if (above(0) <= 0) return 0;
   // larger steps far away (terrain is 2 m grid), always ≤ 2 m
-  for (let t = step; t <= maxDist; ) {
+  while (prev < maxDist) {
+    const t = Math.min(maxDist, prev + Math.min(2, step + prev * 0.004));
     const f = above(t);
     if (f <= 0) {
       let lo = prev;
@@ -32,7 +33,6 @@ export function rayHeightfield(o: V3, dir: V3, heightAt: HeightFn, maxDist = 800
       return (lo + hi) / 2;
     }
     prev = t;
-    t += Math.min(2, step + t * 0.004);
   }
   return null;
 }
