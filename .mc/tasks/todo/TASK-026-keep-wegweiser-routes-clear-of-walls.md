@@ -37,7 +37,7 @@ Travel uses the returned waypoints directly.
 - [x] A thin wall missed by an edge midpoint triggers a detour when one is reachable.
 - [x] A free off-grid goal is reached through another clear connector when the first approach fails.
 - [x] A player beside a wall can leave with player clearance; later legs keep the routing margin.
-- [ ] All four gates pass, with zero unit test failures.
+- [x] All four gates pass, with zero unit test failures.
 
 ## Plan
 
@@ -96,7 +96,13 @@ palace walls and through doorways.
   was blocked at preview startup (`listen EPERM` on `127.0.0.1:5414`); no e2e specs changed.
 - 2026-11-26 — `mc validate` and `git diff --check` passed. The sandbox denied Git's worktree
   `index.lock` at staging, so the review changes remain unstaged and uncommitted in this worktree.
+- 2026-11-27 — PR review: the start probe hid the trail for a player pushed against a wall
+  (rounding reads one radius off as an overlap) and for a player wading in the shallows.
+  `wayStartBlocked` (`points.ts`) now probes walls at the walking radius less 5 cm and water past
+  the wading limit; both new tests fail without it. Gates: `Tests  1594 passed (1594)`, validate
+  and build pass. Locked e2e: smoke 7, travel-paths 1, chapter-k1 2, world 4 passed.
 
 ## Follow-ups
 
-- Run `pnpm validate` and the smoke command in the test plan where local listeners are permitted.
+- Route cost: the 0.3 m edge sampling raises probe calls about 1.2–1.8× on long routes (same
+  expansions). Consider cheaper edge checks if replans hitch.
