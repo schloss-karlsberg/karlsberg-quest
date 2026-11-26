@@ -594,6 +594,10 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 
 ## 11. Testing
 
+- `tests/interiors-runtime-fixture.ts` runs the interiors system with the shipped room catalogue,
+  terrain, player and event bus. Tests can delay the palace shell, load a pose and step the
+  simulation to check storeys, room events and doors without a renderer.
+
 - `tests/travel-fixture.ts` runs the registered travel system on flat ground with a real game state
   store and event bus. Use `step()` for a simulation tick and Vitest's fake timers for a timed journey.
 - Pause and journal page tests use `tests/ui-fixture.ts` to run the real renderers and handlers on a
@@ -1545,6 +1549,8 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   re-selected after ≥ 0.5 m of movement or when the built set changes (< 0.05 ms per frame).
 - Emits `room:enter {roomId, building, id, name}` / `room:leave` (contracts.ts), mirrors them in
   `flags['interior.room']` / `flags['interior.building']`; story condition `{ "room": "<id>" }`.
+  A shift reports the room left using its original plan. Loading on foot inside a palace room
+  grounds the player on its saved storey once the shell is ready.
   Room names as a toast with `skills.baumeister ≥ 1`, `?debug` or `?rooms`.
 - Hooks `kq.interiors.list/enter/doors/room/build/fire/state/floorAt`.
 
@@ -1627,7 +1633,10 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   walks) whenever the npc system shows him in 1793-07 within 160 m; not solid.
 - Westblick (1796): within 260 m of 200/−905 the haze thins to a quarter (`atmosphere.uFogDensity`
   and `uFogHeightDensity` scaled from `world.look`; restored when leaving) so the Hohenburg reads.
-- Runs in `update` (deterministic with `kq.step`). State `systems.scenery {windows, gate}`.
+- When an era drops a set, it also releases the set's collision. Loading a slot restores its
+  windows, gate and coat before the resumed story issues new scenery cues. Changing the lit share
+  rebuilds that building's panes for the requested era.
+- Runs in `update` (deterministic with `kq.step`). State `systems.scenery {windows, gate, coatTaken?}`.
   Hooks `kq.scenery.built/sets/solids/windows/gate/fireworks/hohenburg/passage/convoy/chair/fogLift`.
 
 ### travel (`src/systems/travel/`) – Vermessungspunkte, fast travel, route POIs, Wegweiser

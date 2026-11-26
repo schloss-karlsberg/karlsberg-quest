@@ -10,6 +10,9 @@ import { EventBus, type EventName } from '../src/core/events';
 import { MemoryStorage, SaveManager } from '../src/core/save';
 import { GameStateStore, createInitialState } from '../src/core/state';
 import { t } from '../src/i18n';
+import { homeSpot } from '../src/systems/home';
+import { QUELLE } from '../src/systems/quelle/layout';
+import { atHome } from '../src/systems/story/hub/home';
 import { distToSegment } from '../src/systems/fx/geom';
 import { BAUWAGEN_FACT, BauwagenDiscovery } from '../src/systems/scenery/bauwagen-discovery';
 import { BAUWAGEN_DOOR, BAUWAGEN_SET, BAUWAGEN_SITE } from '../src/systems/scenery/bauwagen';
@@ -89,7 +92,7 @@ function setup(initial = createInitialState(), storage = new MemoryStorage()) {
   const log: [EventName, unknown][] = [];
   events.onAny((name, payload) => log.push([name, payload]));
   const state = new GameStateStore(initial);
-  const save = new SaveManager(state, storage, events);
+  const save = new SaveManager(state, storage, events, () => 1000);
   const player = { position: { x: BAUWAGEN_DOOR.x, y: 10, z: BAUWAGEN_SITE.z + 4 }, yaw: 0, flying: false, frozen: false };
   const era = { current: 'today' as Era };
   let owner: string | null = null;
@@ -184,5 +187,41 @@ describe('Bauwagen discovery', () => {
     expect(restored.ctx.state.state.codex.facts).toEqual([BAUWAGEN_FACT]);
     expect(restored.ctx.state.state.systems.quests?.tracked).toEqual(['q.k1.ankunft']);
     expect(restored.ctx.state.state.flags['tour.weiher']).toBe(true);
+  });
+});
+
+describe('Bauwagen access and the separate home ring', () => {
+  it('uses the twelve-metre spring ring for home and keeps the trailer door outside it', () => {
+    const home = homeSpot();
+    expect(home).toEqual({ x: QUELLE.x, z: QUELLE.z, r: 12 });
+    expect(atHome(home.x, home.z + home.r - 0.01, 'today', false)).toBe(true);
+    expect(atHome(home.x, home.z + home.r, 'today', false)).toBe(false);
+    expect(atHome(BAUWAGEN_DOOR.x, BAUWAGEN_DOOR.z, 'today', false)).toBe(false);
+  });
+
+  it('withholds the note above the doorstep, during a modal and until the last quiet reason ends', () => {
+    const s = setup();
+    s.step();
+    expect(s.prompt()).toBe(BAUWAGEN_SET.id);
+    s.ctx.player.position.y += 1.61;
+    s.step(true);
+    expect(s.prompt()).toBeNull();
+    s.ctx.player.position.y = 10;
+    s.ctx.ui.modals.count = 1;
+    s.step(true);
+    expect(s.ctx.state.state.codex.facts).toEqual([]);
+    s.ctx.ui.modals.count = 0;
+    s.ctx.events.emit('world:quiet', { on: true, reason: 'scene' });
+    s.ctx.events.emit('world:quiet', { on: true, reason: 'echo' });
+    s.ctx.events.emit('world:quiet', { on: false, reason: 'scene' });
+    s.step(true);
+    expect(s.prompt()).toBeNull();
+    expect(s.ctx.state.state.codex.facts).toEqual([]);
+    s.ctx.events.emit('world:quiet', { on: false, reason: 'echo' });
+    s.step();
+    expect(s.prompt()).toBe(BAUWAGEN_SET.id);
+    s.step(true);
+    expect(s.ctx.state.state.codex.facts).toEqual([BAUWAGEN_FACT]);
+    s.encounter.dispose();
   });
 });

@@ -40,7 +40,7 @@ import { type FullPlan, buildPlan } from './layout';
 import { bakeLight, lightTexture } from './lightmap';
 import { MAX_LIGHTS, MAX_ROOMS, makeInteriorMaterial } from './material';
 import { type CutBox, MAX_OPEN, ShellCut, extractOpenings, palaceMesh } from './shell';
-import type { BuildingPlan, InteriorMode, ShellOpening } from './types';
+import type { BuildingPlan, InteriorMode, IRoom, ShellOpening } from './types';
 import { pointInPoly } from './geom';
 import { t } from '../../i18n';
 import './strings';
@@ -126,6 +126,7 @@ interface Runtime {
   brt: Map<string, BRT>;
   fires: Map<string, FireState>;
   pendingBlock: Set<number>;
+  resume: { x: number; y: number; z: number } | null;
   room: number;
   fpIndex: Map<string, number>;
   time: number;
@@ -178,6 +179,43 @@ function playerY(ctx: GameContext): number {
   return ctx.player.position.y;
 }
 
+/** Hold the saved floor hint until the shell streams in. Its closed footprint must not
+ * eject a player who loaded inside before the first interior collision plan is ready. */
+function rememberStorey(ctx: GameContext): void {
+  if (!rt) return;
+  const { player, era } = ctx.state.state;
+  if (player.flying || era === 'today' || era !== ctx.era.current
+    || player.x !== ctx.player.position.x || player.z !== ctx.player.position.z) return;
+  rt.resume = { x: player.x, y: player.y, z: player.z };
+  if (!rt.ready) {
+    const i = ctx.world.collider.footprintAt(player.x, player.z);
+    if (ctx.data.footprints.buildings[i]?.interior === 'detailed') {
+      ctx.world.collider.overlay = { passable: new Set([i]), resolve: (x, z) => ({ x, z, hit: false }) };
+    }
+  }
+}
+
+function cancelStorey(ctx: GameContext): void {
+  if (!rt?.resume) return;
+  rt.resume = null;
+  if (!rt.ready) ctx.world.collider.overlay = null;
+}
+
+function restoreStorey(ctx: GameContext): void {
+  if (!rt?.resume) return;
+  const cur = current();
+  if (!cur) return;
+  const { x, y, z } = rt.resume;
+  rt.resume = null;
+  const p = ctx.player.position;
+  const room = cur.query.roomAt(x, z, y);
+  if (room < 0 || cur.query.roomAt(p.x, p.z, y) !== room) return;
+  if (p.y === ctx.world.heightAt(p.x, p.z, y)) return;
+  // Keep any step taken during streaming. The ground probe needs the saved height to pick its storey.
+  p.y = y;
+  ctx.player.teleport(p.x, p.z);
+}
+
 function setup(ctx: GameContext): boolean {
   if (!rt) return false;
   const mesh = palaceMesh(ctx.world.palace.object as unknown as { children: unknown[] });
@@ -200,6 +238,7 @@ function switchMode(ctx: GameContext): void {
   for (const b of rt.brt.values()) drop(ctx, b);
   rt.brt.clear();
   rt.pendingBlock.clear();
+  const previousRoom = rt.room >= 0 ? current()?.plan.rooms[rt.room] : undefined;
   rt.mode = modeOf(ctx.era.current);
   rt.era = ctx.era.current;
   const cur = current();
@@ -255,7 +294,8 @@ function switchMode(ctx: GameContext): void {
       return c.query.hits(x, z, r, y + 0.45, y + 3.4);
     },
   };
-  updateRoom(ctx, true);
+  restoreStorey(ctx);
+  updateRoom(ctx, true, previousRoom);
 }
 
 function distTo(bp: BuildingPlan, x: number, z: number): number {
@@ -406,6 +446,8 @@ function setFire(ctx: GameContext, id: string, state: FireState | 'none'): void 
 
 function clearFires(ctx: GameContext): void {
   if (!rt) return;
+  festsaalPending = null;
+  festsaal?.clear();
   for (const id of [...rt.fires.keys()]) setFire(ctx, id, 'none');
   rt.fires.clear();
   beams?.clear();
@@ -459,7 +501,7 @@ function animateFire(ctx: GameContext, dt: number): void {
 
 // ---- room tracking ----------------------------------------------------------------------------------
 
-function updateRoom(ctx: GameContext, force = false): void {
+function updateRoom(ctx: GameContext, force = false, previousRoom?: IRoom): void {
   if (!rt) return;
   const cur = current();
   const p = ctx.player.position;
@@ -467,8 +509,9 @@ function updateRoom(ctx: GameContext, force = false): void {
   if (ri === rt.room && !force) return;
   const prev = rt.room;
   rt.room = ri;
-  if (prev >= 0 && cur && cur.plan.rooms[prev] && prev !== ri) {
-    const r = cur.plan.rooms[prev]!;
+  // Room indices are local to a plan. A vanished upper floor can leave its index to another wing.
+  const r = previousRoom ?? cur?.plan.rooms[prev];
+  if (r && cur && r.id !== cur.plan.rooms[ri]?.id) {
     ctx.events.emit('room:leave', { roomId: r.roomId, building: r.building, id: r.id });
     if (rt.pendingBlock.has(prev)) {
       rt.pendingBlock.delete(prev);
@@ -960,10 +1003,12 @@ export default defineSystem({
       brt: new Map(),
       fires: new Map(),
       pendingBlock: new Set(),
+      resume: null,
       room: -1,
       fpIndex: new Map(),
       time: 0,
     };
+    rememberStorey(ctx);
     installWorldHooks(ctx);
     registerEraMaterials('interiors.shell', '*', () => { const g = new GeoBuf(); g.tri([0, 0, 0], [0.01, 0, 0], [0, 0.01, 0], [0, 0, 1], { col: [1, 1, 1], mat: 0, room: 0 }); return new Mesh(g.toGeometry(), makeInteriorMaterial(new DataTexture(new Uint8Array(4), 1, 1), new Vector4(), 0)); });
     registerEraMaterials('interiors.fire', '1793-07', () => {
@@ -973,7 +1018,17 @@ export default defineSystem({
       const layer = new FlameLayer([{ ...spot, kind: 1 }, { ...spot, kind: 3 }], room, room, room);
       return [layer.additive, layer.smoke];
     });
+    ctx.events.on('player:teleport', () => cancelStorey(ctx));
+    ctx.events.on('save:loaded', () => {
+      if (!rt) return;
+      rememberStorey(ctx);
+      if (rt.ready) {
+        restoreStorey(ctx);
+        updateRoom(ctx);
+      }
+    });
     ctx.events.on('era:change', ({ from, to }) => {
+      cancelStorey(ctx);
       if (!(from === '1793-07' && to === '1793-07')) clearFires(ctx);
       if (rt?.ready) switchMode(ctx);
     });

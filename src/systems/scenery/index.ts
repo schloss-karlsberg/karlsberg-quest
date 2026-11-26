@@ -124,6 +124,7 @@ interface Live {
 }
 
 let slice: ScenerySlice;
+let stopWatchingState: (() => void) | undefined;
 let root: Group;
 const live = new Map<string, Live>();
 let hohenburg: Hohenburg;
@@ -136,7 +137,7 @@ let hohVis = 0.5;
 let fireworks: Fireworks | null = null;
 let fwMaxLine = -1;
 let fwOwnClock = 0;
-const lit = new Map<string, LitWindows>();
+const lit = new Map<string, LitWindows | null>();
 let passage: { group: Group; zones: PassZone[]; solids: Solid[]; patched: boolean; b07: number } | null = null;
 /** The world whose `floorPatch` the passage set (cleared on dispose). */
 let floorWorld: { floorPatch: unknown } | null = null;
@@ -264,8 +265,8 @@ function updateTally(ctx: GameContext, dt: number): void {
   tallyQuiet = false;
 }
 
-function windowKey(w: { building: string; era: string }): string {
-  return `${w.building}@${w.era}`;
+function windowKey(w: SceneryWindow): string {
+  return `${w.building}:${w.share}@${w.era}`;
 }
 
 function dropSet(id: string): void {
@@ -368,8 +369,9 @@ function applyEra(ctx: GameContext): void {
     if (l.era !== era) dropSet(id);
   }
   applyPassage(ctx, palaceMesh(ctx));
-  for (const [key, w] of lit) w.setOn(key.endsWith(`@${era}`) ? 1 : 0);
+  for (const [key, w] of lit) w?.setOn(key.endsWith(`@${era}`) ? 1 : 0);
   solidsDirty = true;
+  syncSolids(ctx);
 }
 
 function applyWindows(ctx: GameContext): void {
@@ -378,7 +380,7 @@ function applyWindows(ctx: GameContext): void {
   const want = new Set(slice.windows.map(windowKey));
   for (const [key, w] of lit) {
     if (!want.has(key)) {
-      w.dispose();
+      w?.dispose();
       lit.delete(key);
     }
   }
@@ -389,18 +391,17 @@ function applyWindows(ctx: GameContext): void {
     const idx = ctx.world.palace.buildings.find((b) => b.id === w.building)?.index;
     if (!fp || idx === undefined) continue;
     const built = buildLitWindows(mesh.geometry, idx, fp, (x, z) => ctx.world.heightfields['1789'].heightAt(x, z), w.share);
-    if (!built) continue;
-    root.add(built.group);
+    if (built) root.add(built.group);
     lit.set(key, built);
   }
-  for (const [key, w] of lit) w.setOn(key.endsWith(`@${ctx.era.current}`) ? 1 : 0);
+  for (const [key, w] of lit) w?.setOn(key.endsWith(`@${ctx.era.current}`) ? 1 : 0);
 }
 
 function setWindows(ctx: GameContext, building: string, on: boolean, era: Era, share: number): number {
   slice.windows = slice.windows.filter((w) => !(w.building === building && w.era === era));
   if (on) slice.windows.push({ building, era, share });
   applyWindows(ctx);
-  return lit.get(`${building}@${era}`)?.count ?? 0;
+  return lit.get(windowKey({ building, era, share }))?.count ?? 0;
 }
 
 function setGate(ctx: GameContext, open: boolean): void {
@@ -644,13 +645,18 @@ function setCoat(visible: boolean): void {
   setCoatVisible(visible);
 }
 
+function readSlice(ctx: GameContext): ScenerySlice {
+  const saved = ctx.state.slice('scenery', () => ({ windows: [], gate: 0 }));
+  saved.windows ??= [];
+  saved.gate ??= 0;
+  return saved;
+}
+
 export default defineSystem({
   id: 'scenery',
   after: ['interiors'],
   init(ctx) {
-    slice = ctx.state.slice('scenery', () => ({ windows: [], gate: 0 }));
-    slice.windows ??= [];
-    slice.gate ??= 0;
+    slice = readSlice(ctx);
     setCoatVisible(slice.coatTaken !== true);
     root = new Group();
     root.name = 'scenery';
@@ -689,15 +695,19 @@ export default defineSystem({
       } else if (id === 'scenery:gate' && data) setGate(ctx, data.open === true);
       else if (id === 'scenery:coat' && data) setCoat(data.visible !== false);
     });
-    ctx.events.on('game:start', () => {
-      // a loaded save brings its own windows / gate
-      slice = ctx.state.slice('scenery', () => ({ windows: [], gate: 0 }));
+    const restore = () => {
+      slice = readSlice(ctx);
       for (const id of [...live.keys()]) dropSet(id);
       tally?.reset();
       tallyQuiet = true;
       setCoatVisible(slice.coatTaken !== true);
       applyWindows(ctx);
       applyEra(ctx);
+    };
+    ctx.events.on('game:start', restore);
+    // Story may emit new cues while handling save:loaded. Bind the slot before those cues arrive.
+    stopWatchingState = ctx.state.subscribe((state) => {
+      if (state.systems.scenery !== slice) restore();
     });
   },
   // fixed steps (deterministic with `kq.step`): sets, collision, strikes, Hohenburg, fireworks
@@ -739,6 +749,7 @@ export default defineSystem({
     for (const l of live.values()) for (const m of l.built.materials) if (m.uniforms.uMotion) m.uniforms.uMotion.value = reduced ? 0.6 : 1;
   },
   dispose() {
+    stopWatchingState?.();
     bauwagen?.dispose();
     bauwagen = null;
     removePlateau?.();
@@ -764,7 +775,7 @@ export default defineSystem({
     tally = null;
     life?.dispose();
     life = null;
-    for (const w of lit.values()) w.dispose();
+    for (const w of lit.values()) w?.dispose();
     lit.clear();
     root?.removeFromParent();
   },
