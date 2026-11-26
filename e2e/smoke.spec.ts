@@ -241,6 +241,27 @@ test.describe('world', () => {
     expect(errors).toEqual([]);
   });
 
+  test('binds sun shadows on Hoch and Mittel and releases them on Niedrig', async ({ page }) => {
+    const errors = trackErrors(page);
+    await show(page, { x: 1632, z: -1640, yaw: 260, pitch: -6 });
+    const draws = await page.evaluate(async () => {
+      const k = window.kq!;
+      const { world, settings } = k.ctx;
+      const results = [];
+      for (const graphics of ['high', 'medium', 'low'] as const) {
+        const before = world.shadows.stats.drawn;
+        settings.update((s) => { s.graphics = graphics; }, 'graphics');
+        await k.screenshotReady();
+        results.push(world.shadows.stats.drawn - before);
+      }
+      return results;
+    });
+    expect(draws[0]).toBeGreaterThan(0);
+    expect(draws[1]).toBeGreaterThan(0);
+    expect(draws[2]).toBe(0);
+    expect(errors).toEqual([]);
+  });
+
   test('player walks, crouches, uses spirit view only today, and state saves', async ({ page }) => {
     const errors = trackErrors(page);
     const r = await page.evaluate(() => {

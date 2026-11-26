@@ -10,7 +10,7 @@ import { GROUND_LAYERS, GROUND_TILE_M, BARK_LAYERS } from '../src/world/vegetati
 import { PROP_KINDS } from '../src/world/vegetation/props';
 import NATURE1 from '../src/assets/manifests/nature';
 import NATURE2 from '../src/assets/manifests/nature2';
-import { FAMILY_CROWN, SHADOW_REACH, TREE_BAND, TREE_N0, TREE_N1, TREE_VARIANTS, castCount, pickVariant, shadowLevel, treeLevels, treeScaleY } from '../src/world/vegetation/trees';
+import { FAMILY_CROWN, SHADOW_REACH, TREE_BAND, TREE_N0, TREE_N1, TREE_VARIANTS, castCount, pickVariant, shadowLevel, treeLevels, treeScaleY, treeShadowCasterLimit } from '../src/world/vegetation/trees';
 
 const NATURE_ASSETS = [...NATURE1, ...NATURE2];
 
@@ -313,6 +313,15 @@ describe('model trees (nature round 2)', () => {
     expect(castCount(d, 6, 105)).toBe(5);
     expect(castCount(d, 6, 1e9)).toBe(6);
     expect(castCount(d, 0, 1e9)).toBe(0);
+  });
+
+  it('uses the fitted receiver radius for caster lists, with room for focus drift', () => {
+    const d = new Float32Array([40, 74, 75, 88, 89, 105]);
+    expect(treeShadowCasterLimit(60)).toBeCloseTo(88.8);
+    expect(castCount(d, d.length, treeShadowCasterLimit(60))).toBe(4);
+    expect(castCount(d, d.length, treeShadowCasterLimit(45))).toBe(2);
+    expect(castCount(d, d.length, treeShadowCasterLimit(60, 3))).toBe(5);
+    expect(castCount(d, d.length, treeShadowCasterLimit(60, 24))).toBe(6);
   });
 
   it('the stand height maps the crown base and keeps the crown size', () => {

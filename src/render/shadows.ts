@@ -1,5 +1,7 @@
 import {
   DepthTexture,
+  LessEqualCompare,
+  LinearFilter,
   Matrix4,
   NearestFilter,
   type Object3D,
@@ -10,7 +12,12 @@ import {
   WebGLRenderTarget,
   type WebGLRenderer,
 } from 'three';
-import { NO_SHADOW_TEX, atmosphere } from '../world/atmosphere';
+import { atmosphere } from '../world/atmosphere';
+
+/** Fade receivers out just inside the shadow box. Tree casters add reach to this radius. */
+export const SHADOW_RECEIVER_SCALE = 0.98;
+/** Fraction of the box's half extent to place ahead of the camera. */
+export const SHADOW_FOCUS_LEAD = 0.35;
 
 /** Objects that never cast sun shadows (by name; anything else can set `userData.noShadow = true`). */
 export const NO_SHADOW_NAMES = new Set(['terrain', 'sky', 'scenery-hohenburg', 'combat-viewmodel', 'kq-xray']);
@@ -37,8 +44,8 @@ export function castsShadow(o: Object3D): boolean {
 export class ShadowReuse {
   /** Re-render at least every n-th frame (1 = every frame; the tier's `shadowEvery`). */
   every = 1;
-  /** 0.75 texel: walking (5.3 cm a 60 fps frame) re-uses on Hoch (7.3 cm texels) and Mittel (10.7 cm), sprinting (10.3 cm) does not. */
-  maxDriftTexels = 0.75;
+  /** 0.95 texel retains the walking/sprinting split with the tighter boxes (5.9 / 8.8 cm texels). */
+  maxDriftTexels = 0.95;
   maxAge = 0.025;
   private reused = 0;
   private age = 0;
@@ -88,7 +95,8 @@ export class SunShadows {
   private target: WebGLRenderTarget | null = null;
   private size = 0;
   private range = 60;
-  private taps = 8;
+  private taps = 0;
+  private detail: readonly [number, number] = [0, 0];
   /** Era strength 0..1 (night eras: softer moon shadows). */
   strength = 0.85;
   /** Re-use of the last map on the next frame (`ShadowReuse`; `every` comes from the tier). */
@@ -121,25 +129,28 @@ export class SunShadows {
     return this.size > 0;
   }
 
-  /** Quality tier: map size (0 = off), half extent of the box (m), PCF taps. */
-  configure(size: number, range: number, taps: number): void {
+  /** Quality tier: map size (0 = off), half extent (m), near PCF taps and filter transition (m). */
+  configure(size: number, range: number, taps: number, detail: readonly [number, number]): void {
     this.reuse.invalidate();
+    this.skipAge = 1e9;
     this.range = range;
     this.taps = taps;
+    this.detail = detail;
     if (size !== this.size) {
       this.target?.dispose();
       this.target = null;
       this.size = size;
       if (size > 0) {
         const dt = new DepthTexture(size, size, UnsignedIntType);
-        dt.minFilter = NearestFilter;
-        dt.magFilter = NearestFilter;
+        dt.compareFunction = LessEqualCompare;
+        dt.minFilter = LinearFilter;
+        dt.magFilter = LinearFilter;
         this.target = new WebGLRenderTarget(size, size, { depthBuffer: true, depthTexture: dt, minFilter: NearestFilter, magFilter: NearestFilter });
       }
     }
     if (!this.enabled) {
       atmosphere.uShadowParams.value.x = 0;
-      atmosphere.uShadowMap.value = NO_SHADOW_TEX;
+      atmosphere.uShadowMap.value = null;
     }
   }
 
@@ -148,6 +159,7 @@ export class SunShadows {
     const a = atmosphere;
     if (!this.target || this.strength <= 0 || a.uSunDir.value.y < 0.03) {
       a.uShadowParams.value.x = 0;
+      a.uShadowMap.value = null;
       this.reuse.invalidate();
       return;
     }
@@ -189,7 +201,8 @@ export class SunShadows {
       skip[i]!.visible = false;
     }
     a.uShadowParams.value.x = 0;
-    a.uShadowMap.value = NO_SHADOW_TEX;
+    a.uShadowMap.value = null; // three binds an empty comparison texture
+    a.uShadowCenter.value.set(focus.x, focus.y, focus.z, r * SHADOW_RECEIVER_SCALE);
     const prev = renderer.getRenderTarget();
     renderer.setRenderTarget(this.target);
     renderer.clear(true, true, false);
@@ -204,7 +217,7 @@ export class SunShadows {
     a.uShadowMap.value = this.target.depthTexture!;
     a.uShadowMatrix.value.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
     a.uShadowParams.value.set(1, 1 / this.size, this.taps, this.strength);
-    a.uShadowCenter.value.set(focus.x, focus.y, focus.z, r * 0.98);
+    a.uShadowDetailSq.value.set(this.detail[0] ** 2, this.detail[1] ** 2);
   }
 
   /**
@@ -218,7 +231,7 @@ export class SunShadows {
     const params = a.uShadowParams.value.x;
     const map = a.uShadowMap.value;
     a.uShadowParams.value.x = 0;
-    a.uShadowMap.value = NO_SHADOW_TEX;
+    a.uShadowMap.value = null;
     const prev = renderer.getRenderTarget();
     renderer.setRenderTarget(this.target);
     a.uShadowPass.value = 1;

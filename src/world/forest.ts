@@ -14,10 +14,11 @@ import {
 } from 'three';
 import type { Era } from '../core/era';
 import { GROUND } from '../data/types';
+import { SHADOW_FOCUS_LEAD } from '../render/shadows';
 import { ATMOS_GLSL, SEE_FRAG_GLSL, SEE_GLSL, atmosphere } from './atmosphere';
 import type { Heightfield } from './heightfield';
 import { FOLIAGE_GLSL } from './vegetation/foliage';
-import { type ModelTrees, pickVariant, SHADOW_REACH } from './vegetation/trees';
+import { type ModelTrees, pickVariant, treeShadowCasterLimit } from './vegetation/trees';
 import { ViewCone } from './viewCone';
 
 /**
@@ -894,15 +895,18 @@ export class Forest {
     return { ...atmosphere, uFar: u.uFar!, uScanMix: u.uScanMix!, uMapMix: u.uMapMix!, uScanCenter: u.uScanCenter!, uScanRadius: u.uScanRadius! };
   }
 
-  /** Half extent of the sun shadow box (m; the last pass's), for the model trees' caster lists. */
-  private shadowRange = 75;
+  /** Half extent of the sun shadow box (m), for the model trees' caster lists. */
+  private shadowRange = 0;
 
-  /** Shadow pass hook (render/shadows.ts `onPass`): the model trees draw their caster lists. */
-  shadowPass(on: boolean, focus: Vector3, range: number): void {
-    if (on && range !== this.shadowRange) {
+  setShadowRange(range: number): void {
+    if (range !== this.shadowRange) {
       this.shadowRange = range;
       this.dirty = true;
     }
+  }
+
+  /** Shadow pass hook (render/shadows.ts `onPass`): the model trees draw their caster lists. */
+  shadowPass(on: boolean, focus: Vector3, range: number): void {
     const drift = this.models?.shadowPass(on, focus.x, focus.z, range) ?? 0;
     // the lists hold the casters within 24 m of drift (a turn in the full-ring mode does not
     // rebuild them): past 20 m rebuild before the next pass
@@ -998,8 +1002,8 @@ export class Forest {
     const snagRate = atmosphere.uSeason.value > 0.5 ? 0.05 : 0.025;
     // the shadow lists are sorted from where the shadow focus will be (boot.ts: ahead of the camera
     // by 0.35 × the box's half extent); trees past the box + reach + 24 m of drift never cast
-    const lead = this.shadowRange * 0.35;
-    models?.begin(p.x + fx * lead, p.z + fz * lead, this.shadowRange + SHADOW_REACH + 24);
+    const lead = this.shadowRange * SHADOW_FOCUS_LEAD;
+    models?.begin(p.x + fx * lead, p.z + fz * lead, treeShadowCasterLimit(this.shadowRange, 24));
     const t0x = Math.floor((p.x - far) / TILE);
     const t1x = Math.floor((p.x + far) / TILE);
     const t0z = Math.floor((p.z - far) / TILE);

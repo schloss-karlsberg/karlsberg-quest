@@ -20,11 +20,13 @@ export interface QualityPreset {
   /** Sun shadow map size (px, 0 = no shadows) and the half extent (m) of the box around the player. */
   shadowSize: number;
   shadowRange: number;
-  /** PCF taps per shaded pixel: 1, 4 (2×2) or 9 (3×3), each a bilinear 4-texel compare. */
-  shadowTaps: number;
+  /** Near-field PCF taps. Each tap is a hardware-filtered depth comparison. */
+  shadowTaps: 0 | 4 | 9;
+  /** Camera distance (m) at which to start and finish fading to one PCF tap. */
+  shadowDetail: readonly [start: number, end: number];
   /**
    * Re-render the shadow map at most every n-th frame (`SunShadows.every`); a frame re-uses the
-   * last map only while the focus moved less than ¾ texel and the map is ≤ 25 ms old
+   * last map only while the focus moved less than one texel and the map is ≤ 25 ms old
    * (render/shadows.ts `ShadowReuse`; boot forces fresh maps in fights and bullet time).
    */
   shadowEvery: number;
@@ -37,9 +39,9 @@ export interface QualityPreset {
 }
 
 export const QUALITY_PRESETS: Record<GraphicsLevel, QualityPreset> = {
-  low: { maxDpr: 1, msaa: 0, lodScale: 0.6, treeFar: 480, treeNear: 110, shadowSize: 0, shadowRange: 0, shadowTaps: 0, shadowEvery: 2, bloom: false, ao: false, grade: false },
-  medium: { maxDpr: 1, msaa: 2, lodScale: 0.8, treeFar: 600, treeNear: 140, shadowSize: 1024, shadowRange: 55, shadowTaps: 4, shadowEvery: 2, bloom: true, ao: false, grade: true },
-  high: { maxDpr: 1.25, msaa: 4, lodScale: 1, treeFar: 700, treeNear: 170, shadowSize: 2048, shadowRange: 75, shadowTaps: 9, shadowEvery: 2, bloom: true, ao: true, grade: true },
+  low: { maxDpr: 1, msaa: 0, lodScale: 0.6, treeFar: 480, treeNear: 110, shadowSize: 0, shadowRange: 0, shadowTaps: 0, shadowDetail: [0, 0], shadowEvery: 2, bloom: false, ao: false, grade: false },
+  medium: { maxDpr: 1, msaa: 2, lodScale: 0.8, treeFar: 600, treeNear: 140, shadowSize: 1024, shadowRange: 45, shadowTaps: 4, shadowDetail: [16, 24], shadowEvery: 2, bloom: true, ao: false, grade: true },
+  high: { maxDpr: 1.25, msaa: 4, lodScale: 1, treeFar: 700, treeNear: 170, shadowSize: 2048, shadowRange: 60, shadowTaps: 9, shadowDetail: [20, 28], shadowEvery: 2, bloom: true, ao: true, grade: true },
 };
 
 /**

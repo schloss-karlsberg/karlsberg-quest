@@ -21,6 +21,7 @@ import { applySeeThrough, type SeeInput } from './player/seeThrough';
 import { PerfMonitor } from './render/perf';
 import { PostFX } from './render/post';
 import { QualityManager, gpuName, isSoftwareGpu, parseQualityParam, suggestLevel } from './render/quality';
+import { SHADOW_FOCUS_LEAD } from './render/shadows';
 import { EnvLight } from './render/standard';
 import { SYSTEM_LOADERS } from './systems';
 import { actionLabel } from './ui/actionLabel';
@@ -170,8 +171,9 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     if (coarse && Math.min(screen.width, screen.height) < 600) settings.update((d) => (d.powerSave = true), 'powerSave');
   }
   quality.listeners.push((p) => {
-    world.shadows.configure(p.shadowSize, p.shadowRange, p.shadowTaps);
+    world.shadows.configure(p.shadowSize, p.shadowRange, p.shadowTaps, p.shadowDetail);
     world.shadows.every = p.shadowEvery;
+    world.forest.setShadowRange(p.shadowRange);
   });
   const loadTerrainDetail = () => {
     if (!started || quality.level === 'low') return;
@@ -398,7 +400,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
       camera.getWorldDirection(camFwd);
       camFwd.y = 0;
       if (camFwd.lengthSq() > 1e-6) camFwd.normalize();
-      shadowFocus.copy(camera.position).addScaledVector(camFwd, quality.preset.shadowRange * 0.35);
+      shadowFocus.copy(camera.position).addScaledVector(camFwd, quality.preset.shadowRange * SHADOW_FOCUS_LEAD);
       // the map may stand for one more frame while it is exact (render/shadows.ts); never in
       // ?manual / bullet time, whose frames can lie many simulated steps apart, nor in a fight
       // (lunging enemies, dodges: every caster's shadow on time)

@@ -160,6 +160,57 @@ fragment shading paid twice (main + shadow pass). Toggling layers in the densest
 9-tap receiving everywhere) ≈ 7 ms — the next knob. The Festsaal fire and the palace views are
 bound by the fire / interior effects and stay under 60 fps (open, not this track's code).
 
+### 3.1b Forest sun shadows (TASK-023)
+
+The custom sun pass uses one texel-snapped orthographic depth map. The previous Hoch receiver
+did four shader reads and comparisons for each of its nine PCF taps, up to 36 depth reads per
+lit fragment inside the receiver radius. The depth pass also drew the model tree caster lists
+and shaded imported props before writing their depth. Terrain, procedural ground cover, ferns
+and flowers already skipped casting.
+
+Hoch now uses a 2048² comparison texture over a 120 m box, down from 150 m. It retains the 3×3
+kernel within 20 m on the ground plane, blends to one hardware-filtered comparison by 28 m, and
+fades shadows at the edge of the box. Mittel uses a 1024² map over a 90 m box, down from 110 m,
+with a 2×2 kernel within 16 m that blends to one comparison by 24 m. The narrower receiver radius
+also trims the sorted lists of model and impostor tree casters, with 30 m of reach for trees
+outside the receiver radius. Imported casters run their alpha tests and skip lighting in the
+depth pass. Nearby props and characters still cast on tiers with a sun map. Niedrig continues
+to run without a sun map, using the terrain's blanket canopy shade.
+
+Expect fewer shadow-pass triangles and less receiver texture work. GPU timings and visual
+verification are pending. Use the same clean checkout and machine for both runs. The baseline
+commit includes the benchmark and the previous renderer.
+
+```sh
+git switch --detach 1a70652
+pnpm build
+PERF_LABEL=before KQ_E2E_PORT=5410 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test -c playwright.gpu.config.ts e2e/gpu/forest-shadows.gpu.ts --workers=1 --reporter=line
+
+git switch dev/task-023
+pnpm build
+PERF_LABEL=after KQ_E2E_PORT=5410 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test -c playwright.gpu.config.ts e2e/gpu/forest-shadows.gpu.ts --workers=1 --reporter=line
+```
+
+Compare `test-results/perf/forest-shadows-{before,after}/high.json` for `today-forest` (the
+existing sweep), `today-forest-b` (1632 / −1640) and `today-forest-c` (1952 / −1010). The
+desktop run uses 1440×900 at pixel ratio 1.25 with frame limiting and vsync off. For each scene,
+subtract the shadows-off time from the shadows-on time in each of the three pairs, then compare
+the median deltas. Use GPU ms where available and average frame ms as the throughput fallback.
+Also record shadows-on frame p95 and triangle peaks. The target is a decrease of at least 3 ms
+in the shadow delta for view B.
+
+| Hoch scene | Shadow delta before (ms) | Shadow delta after (ms) | Shadows-on frame p95 before / after (ms) |
+|---|---:|---:|---:|
+| today-forest | pending | pending | pending |
+| today-forest-b | pending | pending | pending |
+| today-forest-c | pending | pending | pending |
+
+Flip the paired PNGs to inspect nearby trunks, ground shadows and the player. Walk and turn at
+B on Hoch and Mittel to check the filter transition and texel stability. Compare `low.json`
+and the tour opening still as Niedrig controls at 667×375 with touch, reduced motion and
+Energiesparen. Repeat a short walk with the tour group on a phone to check performance and how
+the player and NPCs read against the ground.
+
 ### 3.2 SwiftShader (headless e2e, 1280×720, pixel ratio 1, Hoch, 8 frames per scene)
 
 | Scene | Triangles before | after | Frame ms before | after | CPU ms before | after |
@@ -481,7 +532,8 @@ boot shader warm-up.
 | MSAA | off | 2× | 4× |
 | Terrain LOD distance | 0.6 | 0.8 | 1 (200 / 450 / 1000 m) |
 | Tree rings near / far | 110 / 480 m | 140 / 600 m | 170 / 700 m |
-| Sun shadow map | none | 1024², re-used every 2nd frame | 2048², re-used every 2nd frame |
+| Sun shadow map | none | 1024² over 90 m, re-used every 2nd frame when eligible | 2048² over 120 m, re-used every 2nd frame when eligible |
+| Sun shadow filter | off | 4 taps near, 1 from 24 m | 9 taps near, 1 from 28 m |
 | fx particles | low | high | high |
 | Point cloud (Röntgenblick) | sparser | full | full |
 | Ground cover radius | 14 m, present day | 21 m | 30 m |
@@ -508,8 +560,8 @@ request. The 2 m heightfield still supplies geometry and collision on all three 
   once, 15 s after the start; nothing switches by itself.
 - **Planar water reflection** (Hoch only): the nearest body on screen within 150 m, fading to
   the tree-line band from 105 m; re-rendered on the frames that re-use the shadow map (§3.4).
-- **Shadow re-use**: a frame keeps the last shadow map only while it is still exact: the focus
-  moved less than ¾ of a texel (walking 3.2 m/s = 5.3 cm a 60 fps frame keeps it on Hoch and
+- **Shadow re-use**: a frame can keep the last shadow map when the focus
+  moved at most 0.95 texel (walking 3.2 m/s = 5.3 cm a 60 fps frame keeps it on Hoch and
   Mittel; sprinting 6.2 m/s = 10.3 cm re-renders), the sun did not turn, the map is ≤ 25 ms old
   (so at 30 fps every frame re-renders), and never in a fight or in bullet time.
 

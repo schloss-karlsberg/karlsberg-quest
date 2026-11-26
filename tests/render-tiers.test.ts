@@ -1,7 +1,9 @@
-import { Mesh, MeshBasicMaterial, Object3D, Points } from 'three';
-import { describe, expect, it } from 'vitest';
+import { LessEqualCompare, LinearFilter, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, Points, Scene, ShaderLib, Vector3, type WebGLProgramParametersWithUniforms, type WebGLRenderer } from 'three';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { QUALITY_PRESETS, isSoftwareGpu, parseQualityParam } from '../src/render/quality';
-import { castsShadow } from '../src/render/shadows';
+import { SHADOW_FOCUS_LEAD, SHADOW_RECEIVER_SCALE, SunShadows, castsShadow } from '../src/render/shadows';
+import { kqStandard } from '../src/render/standard';
+import { atmosphere } from '../src/world/atmosphere';
 import { ERA_LOOKS } from '../src/world/eraPresets';
 
 describe('render tiers', () => {
@@ -22,10 +24,9 @@ describe('render tiers', () => {
 
   it('low has no shadows / bloom / AO; costs rise with the tier', () => {
     const { low, medium, high } = QUALITY_PRESETS;
-    expect(low).toMatchObject({ shadowSize: 0, bloom: false, ao: false, grade: false });
-    expect(medium.shadowSize).toBeGreaterThan(0);
-    expect(high.shadowSize).toBeGreaterThanOrEqual(medium.shadowSize);
-    expect(high.shadowTaps).toBeGreaterThanOrEqual(medium.shadowTaps);
+    expect(low).toMatchObject({ shadowSize: 0, shadowRange: 0, shadowTaps: 0, shadowDetail: [0, 0], bloom: false, ao: false, grade: false });
+    expect(medium).toMatchObject({ shadowSize: 1024, shadowRange: 45, shadowTaps: 4, shadowDetail: [16, 24] });
+    expect(high).toMatchObject({ shadowSize: 2048, shadowRange: 60, shadowTaps: 9, shadowDetail: [20, 28] });
     expect(high.ao).toBe(true);
   });
 
@@ -49,5 +50,86 @@ describe('render tiers', () => {
     const o = new Mesh(undefined, new MeshBasicMaterial());
     o.userData.noShadow = true;
     expect(castsShadow(o)).toBe(false);
+  });
+});
+
+describe('sun shadow pass', () => {
+  const shadows = new SunShadows();
+  const scene = new Scene();
+  const renderer = {
+    getRenderTarget: () => null,
+    setRenderTarget: vi.fn(),
+    clear: vi.fn(),
+    render: vi.fn(),
+  };
+  const webgl = renderer as unknown as WebGLRenderer;
+
+  afterEach(() => {
+    shadows.configure(0, 0, 0, [0, 0]);
+    scene.clear();
+    renderer.render.mockReset();
+    renderer.setRenderTarget.mockClear();
+  });
+
+  it.each(['medium', 'high'] as const)('fits and texel-snaps the %s map around the forward focus', (quality) => {
+    const { shadowRange: range, shadowSize: size, shadowTaps: taps, shadowDetail: detail } = QUALITY_PRESETS[quality];
+    shadows.configure(size, range, taps, detail);
+    const texel = (2 * range) / size;
+    const focus = new Vector3();
+    shadows.update(webgl, scene, focus);
+    const cam = shadows.camera;
+    expect([cam.left, cam.right, cam.bottom, cam.top]).toEqual([-range, range, -range, range]);
+    const side = new Vector3(1, 0, 0).applyQuaternion(cam.quaternion);
+    const cameraAtGround = new Vector3(0, -1.5, range * SHADOW_FOCUS_LEAD);
+    const first = cameraAtGround.clone().project(cam);
+    expect(Math.max(Math.abs(first.x), Math.abs(first.y), Math.abs(first.z))).toBeLessThan(1);
+
+    shadows.update(webgl, scene, focus.copy(side).multiplyScalar(0.25 * texel));
+    expect(cameraAtGround.clone().project(cam).distanceTo(first)).toBeLessThan(1e-10);
+    shadows.update(webgl, scene, focus.copy(side).multiplyScalar(0.75 * texel));
+    expect(cameraAtGround.clone().project(cam).x - first.x).toBeCloseTo(-2 / size, 9);
+    expect(atmosphere.uShadowParams.value.toArray()).toEqual([1, 1 / size, taps, shadows.strength]);
+    expect(atmosphere.uShadowDetailSq.value.toArray()).toEqual(detail.map((m) => m ** 2));
+  });
+
+  it('passes the new focus to casters and binds the comparison texture only after drawing', () => {
+    const { shadowRange, shadowSize, shadowTaps, shadowDetail } = QUALITY_PRESETS.high;
+    const focus = new Vector3(1632, 15, -1640);
+    const caster = new Mesh();
+    const cover = new Mesh();
+    cover.userData.noShadow = true;
+    scene.add(caster, cover);
+    shadows.configure(shadowSize, shadowRange, shadowTaps, shadowDetail);
+    renderer.render.mockImplementation(() => {
+      expect(atmosphere.uShadowCenter.value.toArray()).toEqual([...focus.toArray(), shadowRange * SHADOW_RECEIVER_SCALE]);
+      expect(atmosphere.uShadowMap.value).toBeNull();
+      expect(atmosphere.uShadowPass.value).toBe(1);
+      expect(caster.visible).toBe(true);
+      expect(cover.visible).toBe(false);
+    });
+    shadows.update(webgl, scene, focus);
+    expect(renderer.render).toHaveBeenCalledOnce();
+    expect(cover.visible).toBe(true);
+    expect(atmosphere.uShadowPass.value).toBe(0);
+    expect(atmosphere.uShadowMap.value).toMatchObject({
+      compareFunction: LessEqualCompare,
+      minFilter: LinearFilter,
+      magFilter: LinearFilter,
+    });
+    shadows.configure(0, 0, 0, [0, 0]);
+    shadows.update(webgl, scene, focus);
+    expect(renderer.render).toHaveBeenCalledOnce();
+    expect(atmosphere.uShadowParams.value.x).toBe(0);
+    expect(atmosphere.uShadowMap.value).toBeNull();
+  });
+
+  it('standard casters keep the alpha cuts and skip their lighting in the shadow pass', () => {
+    const material = kqStandard(new MeshStandardMaterial());
+    const { vertexShader, fragmentShader } = ShaderLib.standard;
+    const shader = { vertexShader, fragmentShader, uniforms: {} };
+    material.onBeforeCompile(shader as unknown as WebGLProgramParametersWithUniforms, webgl);
+    expect(shader.fragmentShader).toContain('#include <alphahash_fragment>\nif (uShadowPass > 0.5)');
+    expect(shader.fragmentShader.indexOf('if (uShadowPass > 0.5)')).toBeLessThan(shader.fragmentShader.indexOf('#include <normal_fragment_maps>'));
+    material.dispose();
   });
 });

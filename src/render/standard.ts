@@ -98,6 +98,8 @@ export function kqStandard<M extends MeshStandardMaterial>(m: M, opts: { ambient
       .replace('#include <worldpos_vertex>', `#include <worldpos_vertex>\n${VERT_WORLD}`);
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>\n${FRAG_HEAD}`)
+      // The caster uses its usual alpha and depth tests. The color attachment isn't sampled.
+      .replace('#include <alphahash_fragment>', '#include <alphahash_fragment>\nif (uShadowPass > 0.5) { gl_FragColor = vec4(1.0); return; }')
       .replace('#include <lights_fragment_begin>', `#include <lights_fragment_begin>\n${FRAG_LIGHT}`)
       .replace('#include <fog_fragment>', 'gl_FragColor.rgb = kqFog(gl_FragColor.rgb, vKqWorld);');
   };

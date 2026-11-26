@@ -22,6 +22,7 @@ import {
   WebGLRenderTarget,
   type WebGLRenderer,
 } from 'three';
+import { SHADOW_RECEIVER_SCALE } from '../../render/shadows';
 import { ATMOS_GLSL, SEE_FRAG_GLSL, SEE_GLSL } from '../atmosphere';
 import { FOLIAGE_GLSL } from './foliage';
 
@@ -73,11 +74,15 @@ export const TREE_BAND = 5;
 
 /**
  * Shadow casters (phase B): the shadow pass draws every model tree with the lod1 geometry (lod0
- * trees too: in a 2048² map over ±75 m a texel is 7 cm, the lod0 bark and card detail do not show),
- * and only trees within the shadow box plus `SHADOW_REACH` m of the focus, the same limit the
- * vertex shaders already applied (`uShadowCenter.w + 30.0`), now on the CPU so the draw skips them.
+ * trees too: in the 2048² Hoch map a texel is about 6 cm). The vertex shader clips trees outside
+ * the receiver radius plus `SHADOW_REACH` m. The sorted lists skip those draws on the CPU too,
+ * with a margin for the distance between the list's origin and the current focus.
  */
 export const SHADOW_REACH = 30;
+
+export function treeShadowCasterLimit(range: number, drift = 0): number {
+  return range * SHADOW_RECEIVER_SCALE + SHADOW_REACH + drift;
+}
 
 /** Shadow-pass level of a main-pass level: lod0 casts as lod1 (pure; tested). */
 export function shadowLevel(level: number): number {
@@ -240,7 +245,7 @@ void main() {
   vSee = kqSee(aInst.xyz, 0.1 + h * 0.016, aInst.y + h, wp);
   gl_Position = projectionMatrix * viewMatrix * vec4(wp, 1.0);
   // shadow pass: trees beyond the shadow box (plus a crown's reach) cost fill for nothing
-  if (uShadowPass > 0.5 && length(aInst.xz - uShadowCenter.xz) > uShadowCenter.w + 30.0) gl_Position = vec4(0.0, 0.0, -2.0, 1.0);
+  if (uShadowPass > 0.5 && length(aInst.xz - uShadowCenter.xz) > uShadowCenter.w + ${SHADOW_REACH.toFixed(1)}) gl_Position = vec4(0.0, 0.0, -2.0, 1.0);
 }
 `;
 
@@ -448,7 +453,7 @@ void main() {
   vWorld = wp;
   gl_Position = projectionMatrix * viewMatrix * vec4(wp, 1.0);
   // shadow pass: trees beyond the shadow box (plus a crown's reach) cost fill for nothing
-  if (uShadowPass > 0.5 && length(aInst.xz - uShadowCenter.xz) > uShadowCenter.w + 30.0) gl_Position = vec4(0.0, 0.0, -2.0, 1.0);
+  if (uShadowPass > 0.5 && length(aInst.xz - uShadowCenter.xz) > uShadowCenter.w + ${SHADOW_REACH.toFixed(1)}) gl_Position = vec4(0.0, 0.0, -2.0, 1.0);
 }
 `;
 
@@ -1055,7 +1060,7 @@ export class ModelTrees {
 
   /**
    * Shadow pass hook (render/shadows.ts `onPass`): during the pass only the caster lists draw,
-   * each up to the trees within `range + SHADOW_REACH` of the focus (plus the focus's drift from
+   * each up to the trees within the receiver radius plus `SHADOW_REACH` (and the focus's drift from
    * the rebuild's reference point, so the cut never drops a tree the shader would have kept).
    * Returns that drift (m).
    */
@@ -1063,7 +1068,7 @@ export class ModelTrees {
     const main = (this.mainBatches ??= [...this.lod[0]!, ...this.lod[1]!, this.imp]);
     const drift = Math.hypot(fx - this.refX, fz - this.refZ);
     if (on) {
-      const limit = range + SHADOW_REACH + drift;
+      const limit = treeShadowCasterLimit(range, drift);
       let lod = 0;
       let imp = 0;
       for (let i = 0; i < main.length; i++) {

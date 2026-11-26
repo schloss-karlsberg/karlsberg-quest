@@ -93,27 +93,28 @@ describe('quality presets', () => {
 
 describe('sun shadow re-use (every 2nd frame without swimming)', () => {
   const sun = new Vector3(0.3, 0.8, 0.5).normalize();
-  const texel = 110 / 1024; // Mittel: 55 m half extent on 1024 px ≈ 0.107 m
-  const run = (fps: number, speed: number, frames = 60) => {
+  const texel = 2 * QUALITY_PRESETS.medium.shadowRange / QUALITY_PRESETS.medium.shadowSize;
+  const run = (fps: number, speed: number, frames = 60, texelSize = texel) => {
     const r = new ShadowReuse();
     r.every = 2;
     const f = new Vector3();
     let drawn = 0;
     for (let i = 0; i < frames; i++) {
       f.set((i * speed) / fps, 0, 0);
-      if (!r.reuse(f, sun, 1 / fps, texel)) drawn++;
+      if (!r.reuse(f, sun, 1 / fps, texelSize)) drawn++;
     }
     return drawn;
   };
 
-  it('standing or walking slowly at 60 fps: every 2nd frame', () => {
-    expect(run(60, 0)).toBe(30);
-    expect(run(60, 3.2)).toBe(30); // walking: 5.3 cm a frame < ¾ texel
+  it.each(['medium', 'high'] as const)('standing or walking at 60 fps re-uses the %s map every 2nd frame', (level) => {
+    const { shadowRange, shadowSize } = QUALITY_PRESETS[level];
+    const size = 2 * shadowRange / shadowSize;
+    expect(run(60, 0, 60, size)).toBe(30);
+    expect(run(60, 3.2, 60, size)).toBe(30);
+    expect(run(60, 6.2, 60, size)).toBe(60);
   });
 
-  it('sprinting (6.2 m/s, more than ¾ texel a frame), 30 fps (map would be 33 ms old) or bullet time: every frame', () => {
-    expect(run(60, 6.2)).toBe(60);
-    expect(run(60, 7.5)).toBe(60);
+  it('30 fps (map would be 33 ms old) or bullet time: every frame', () => {
     expect(run(30, 0, 30)).toBe(30);
     const r = new ShadowReuse();
     r.every = 2;
