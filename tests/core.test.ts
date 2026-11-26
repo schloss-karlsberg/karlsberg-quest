@@ -313,7 +313,7 @@ describe('GameState + SaveManager', () => {
     const bus = new EventBus();
     let now = 1_000_000;
     const store = new GameStateStore(createInitialState());
-    const saves = new SaveManager(store, storage, bus, () => now);
+    const saves = new SaveManager(store, storage, bus, () => now, () => now);
     const written: string[] = [];
     bus.on('save:written', (p) => written.push(p.reason));
 

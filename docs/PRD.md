@@ -22,6 +22,8 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-26 | **Autosave backoff (TASK-031).** The first failed autosave can retry immediately. After consecutive failures, autosave requests wait one second between attempts so a burst of progress updates cannot repeatedly hit unavailable storage. |
+| unreleased | 2026-11-26 | **Saving and input between updates (TASK-031).** A failed autosave keeps the last saved time and can retry immediately. Opening or closing a menu and losing focus clear queued actions, turns and zoom. Disabling touch cancels pending taps. Two fingers on Hieb sustain one charge until the last finger lifts. |
 | unreleased | 2026-11-26 | **Photo mode review fixes (TASK-017).** The lantern choice and Gerold's good-photo reaction lower the phone. The viewfinder hides measuring controls and quest giver glyphs. Continue points the deer objective at the doe's saved position. At 2× zoom the timed fallback works beyond 27 m even at 95° field of view. |
 | unreleased | 2026-11-26 | **Tour photo mode (TASK-017).** The phone clears gameplay overlays on desktop and touch. A crouched player can frame the doe and fawn from 20–25 m at 2× zoom. The pair graze in a clearer spot, react sooner to an upright player, and Gerold's reaction reflects the doe's state when the shutter fires. |
 | unreleased | 2026-11-26 | **Urgent dialogue and pack validation (TASK-029 review).** The dodge tutorial can interrupt dialogue with every waiting slot filled. Pack discovery accepts regular files and links to regular files. |
