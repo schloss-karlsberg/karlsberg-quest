@@ -1,7 +1,7 @@
 import { type Era, isEra } from './era';
 import { migrateLegacyPrologue, restoreTourStaff } from './legacy-prologue';
 import type { Stance } from '../player/stance';
-import { readStorySlice } from '../systems/story/migrate';
+import { migrateStoryQuests, readStorySlice } from '../systems/story/migrate';
 import { livePointIds } from '../systems/travel/points';
 
 /**
@@ -164,6 +164,7 @@ export function deserializeState(json: string): GameState {
   if (!isEra(s.era)) s.era = 'today';
   if (isObj(s.systems.story)) s.systems.story = readStorySlice(s.systems.story);
   migrateLegacyPrologue(s);
+  if (isObj(s.systems.story)) migrateStoryQuests(s.systems.story, s);
   const travel = s.systems.travel;
   if (isObj(travel)) {
     travel.activated = livePointIds(travel.activated);

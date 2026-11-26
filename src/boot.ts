@@ -269,7 +269,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   // the authored MPFB player is the default; ?avatar=surveyor wears the CC0 surveyor (fallback)
   const avatarModel = (id: AvatarModelId) => () => assets.model(AVATAR_MODELS[id].asset);
   const avatarFirst = avatarModelParam(params.get('avatar'));
-  const avatar = new Avatar(scene, player, avatarModel(avatarFirst), AVATAR_MODELS[avatarFirst].height);
+  const avatar = new Avatar(scene, player, avatarModel(avatarFirst), events, AVATAR_MODELS[avatarFirst].height);
   let zoomSaved = 0;
   let capFps = 60;
   const applySettings = () => {
@@ -724,12 +724,11 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     updateSurfaceQuality();
     touch.setPlaying(modalOpen === 0);
     pause.pop('title');
-    input.requestLock();
+    // Title restores have already loaded a slot, including old saves without a timestamp.
+    startPlay(ctx, mode === 'restore' || (mode === 'direct' && state.state.meta.savedAt !== null));
     // the first click into the picture takes the mouse (pointer lock): say so until it has it
     // (playtest 2026-11-19: the view did not turn and nothing said why)
     window.setTimeout(() => ui.hud.showClickToPlay(started && !input.locked && modalOpen === 0), 900);
-    // Title restores have already loaded a slot, including old saves without a timestamp.
-    events.emit('game:start', { resumed: mode === 'restore' || (mode === 'direct' && state.state.meta.savedAt !== null) });
     save.autosave('start', true);
   }
 
@@ -830,6 +829,12 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     );
   }
   return ctx;
+}
+
+export function startPlay({ events, ui, input }: Pick<GameContext, 'events' | 'ui' | 'input'>, resumed: boolean): void {
+  // A resume handler can restore a modal synchronously while pointer lock is granted asynchronously.
+  events.emit('game:start', { resumed });
+  if (ui.modals.count === 0) input.requestLock();
 }
 
 /** `?kapitel=N`: jump a freshly started game to chapter N (see boot). */
