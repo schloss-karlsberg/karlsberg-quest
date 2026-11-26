@@ -39,6 +39,7 @@ function mapPage(distance: number, block: string | null = null) {
 it('Enter cannot travel to the point marked as already here', () => {
   const page = mapPage(24.9);
   page.pick();
+  expect(page.root.byId('travel-go-near').parentElement).toHaveProperty('className', 'sel');
   expect(page.root.byId('travel-go-near').disabled).toBe(true);
   page.enter();
   expect(page.travel).not.toHaveBeenCalled();
