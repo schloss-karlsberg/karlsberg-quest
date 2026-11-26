@@ -4,7 +4,7 @@ aliases:
 - TASK-006
 title: 'Phone gallery: save, download and share photos'
 slug: phone-gallery-save-download-and-share-photos
-status: in-progress
+status: review
 priority: 3
 owner: ''
 projects: []
@@ -179,6 +179,7 @@ _Status: approved 2026-11-26_
   - `pnpm typecheck`, `pnpm validate`, `pnpm build` green.
   - `pnpm test`: 1,989 passed, 5 files fail. `save-fuzz` is new from `main` and fails on untouched `main` the same way (`C:\C:\…` fixtures path); the other 4 are the known Windows-only ones.
   - `e2e/photo.spec.ts`: 7 / 8 green (both gallery tests, 1789, and `main`'s new viewfinder tests); „N at the car park“ is the known pre-existing failure.
+- 2026-11-26: shipped - self-review of `git diff main...HEAD` (no leftovers; all player-facing text German). PR: https://github.com/schloss-karlsberg/karlsberg-quest/pull/93
 
 ## Notes
 - Update `docs/ACTION-RPG.md` §14 and the `docs/PRD.md` changelog (CONTRIBUTING.md).
