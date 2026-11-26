@@ -75,6 +75,10 @@ html[data-kq-reduced-motion] .kqc-track .ghost { transition: none; }
 html[data-kq-reduced-motion] .kqc-skill.flash { animation: none; }
 html[data-kq-contrast] .kqc-skills { background: #0d0a07; opacity: 1; border: 1px solid #f3e6c8; }
 .kqc-dazzle { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at center, rgba(235,242,255,0.75) 0%, rgba(210,225,245,0.3) 40%, rgba(200,220,240,0) 75%); }
+.kqc-dazzle span { display: none; }
+.kqc-dazzle.steady { inset: calc(50% + 26px) auto auto 50%; transform: translateX(-50%);
+  padding: 3px 8px; border: 1px solid #bbd4ef; border-radius: 3px; background: #1b2634; color: #e7f1ff; font: 13px var(--serif); }
+.kqc-dazzle.steady span { display: inline; }
 .kqc-pips .tag.guard { color: #f3dca6; border-color: rgba(233,199,122,0.8); background: rgba(28,20,8,0.85); }
 .kqc-pips .tag.veil { color: #d8efff; border-color: rgba(190,225,250,0.9); }
 .kqc-pips .tag.mirror { color: #ffffff; border-color: #ffffff; background: rgba(30,40,55,0.85); }
@@ -347,6 +351,7 @@ export class CombatHud {
     this.tell = el('div', 'kqc-tell');
     this.tell.setAttribute('aria-live', 'polite');
     this.dazzleEl = el('div', 'kqc-dazzle');
+    this.dazzleEl.append(el('span', '', 'Geblendet'));
     layer.append(this.low, this.vignette, this.dazzleEl, this.tell);
   }
 
@@ -693,9 +698,10 @@ export class CombatHud {
     this.vignette.style.opacity = String(Math.min(cap, this.vig));
     const pulse = o.reducedMotion || o.reducedFlash ? 1 : 0.8 + 0.2 * Math.sin(performance.now() / 160);
     this.low.style.opacity = String(Math.min(cap, o.lowHp * 0.9 * pulse));
-    // dazzled by a mirror: a white bloom that fades (≤ 25 % with reduced flash)
-    // (round 9: a near-white frame; now a cold glare at the centre that leaves the edges readable)
-    this.dazzleEl.style.opacity = String(Math.min(o.reducedMotion ? 0 : o.reducedFlash ? 0.2 : 0.38, (o.dazzle ?? 0) * 0.35));
+    const dazzle = o.dazzle ?? 0;
+    const steady = o.reducedMotion && dazzle > 0;
+    this.dazzleEl.classList.toggle('steady', steady);
+    this.dazzleEl.style.opacity = String(steady ? 1 : Math.min(o.reducedFlash ? 0.2 : 0.38, dazzle * 0.35));
   }
 
   clearWorld(): void {

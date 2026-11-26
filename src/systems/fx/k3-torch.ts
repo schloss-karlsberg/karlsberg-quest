@@ -28,6 +28,7 @@ import {
 } from 'three';
 import type { Footprint } from '../../data/types';
 import { pointInRing } from '../../world/collision';
+import { motionTime } from '../../core/motion';
 import { ATMOS_GLSL, atmosphere } from '../../world/atmosphere';
 import type { ShellOpening } from '../interiors/types';
 import { quadInstanced } from './gl';
@@ -140,6 +141,7 @@ const PANE_VERT = /* glsl */ `
 ${ATMOS_GLSL}
 uniform float uT;
 uniform float uAll;
+uniform float uIgnitionFlash;
 attribute vec4 aWin;  // x, y, z, ignite time
 attribute vec4 aDim;  // nx, nz, w, h
 varying vec2 vQ;
@@ -150,7 +152,7 @@ const vec2 EXP = vec2(2.2, 2.0);
 void main() {
   float age = uT - aWin.w;
   float I = max(uAll, smoothstep(0.0, 0.55, age));
-  vFlash = uAll > 0.5 ? 0.0 : exp(-max(age, 0.0) * 4.0) * step(0.0, age);
+  vFlash = uAll > 0.5 ? 0.0 : uIgnitionFlash * exp(-max(age, 0.0) * 4.0) * step(0.0, age);
   vI = I;
   vSeed = aWin.w * 13.7 + aWin.x;
   vec3 n = vec3(aDim.x, 0.0, aDim.y);
@@ -165,6 +167,7 @@ void main() {
 const PANE_FRAG = /* glsl */ `
 ${ATMOS_GLSL}
 uniform float uGain;
+uniform float uPaneTime;
 varying vec2 vQ;
 varying float vI;
 varying float vFlash;
@@ -175,8 +178,8 @@ void main() {
   float inside = step(aq.x, 0.5) * step(aq.y, 0.5);
   float bars = max(step(abs(q.x), 0.03), max(step(abs(q.y - 0.12), 0.025), step(abs(q.y + 0.2), 0.025)));
   bars = max(bars, step(0.465, max(aq.x, aq.y)));
-  float fl = kqNoise(vec2(uTime * 3.4 + vSeed, q.y * 2.5 - uTime * 2.1));
-  float fl2 = kqNoise(vec2(q.x * 3.0 + vSeed * 3.0, q.y * 4.0 - uTime * 3.7));
+  float fl = kqNoise(vec2(uPaneTime * 3.4 + vSeed, q.y * 2.5 - uPaneTime * 2.1));
+  float fl2 = kqNoise(vec2(q.x * 3.0 + vSeed * 3.0, q.y * 4.0 - uPaneTime * 3.7));
   vec3 deep = vec3(0.55, 0.05, 0.0);
   vec3 hot = vec3(1.0, 0.36, 0.05);
   vec3 col = mix(deep, hot, clamp(fl * 0.7 + fl2 * 0.4 - (q.y + 0.5) * 0.35 + vFlash, 0.0, 1.0));
@@ -384,6 +387,8 @@ export class TorchStage {
   readonly uT = { value: -100 };
   readonly uAll = { value: 0 };
   readonly uGain = { value: 1 };
+  private readonly paneTime = { value: 0 };
+  private readonly ignitionFlash = { value: 1 };
 
   constructor() {
     this.object.name = 'k3-torch';
@@ -469,7 +474,9 @@ export class TorchStage {
       g.instanceCount = count;
       return g;
     };
-    this.panes = new Mesh(inst(n), mk(PANE_VERT, PANE_FRAG, false));
+    this.panes = new Mesh(inst(n), mk(PANE_VERT, PANE_FRAG, false, {
+      uPaneTime: this.paneTime, uIgnitionFlash: this.ignitionFlash,
+    }));
     this.sheets = new Mesh(inst(n), mk(SHEET_VERT, SHEET_FRAG, false));
     this.smoke = new Mesh(inst(n * PUFFS, PUFFS), mk(SMOKE_VERT, SMOKE_FRAG, true, { uWind: { value: new Vector2(0.42, -0.12) } }));
     for (const [m, o] of [[this.panes, 8], [this.sheets, 9], [this.smoke, 7]] as const) {
@@ -493,6 +500,8 @@ export class TorchStage {
     this.uT.value = t;
     this.uAll.value = all;
     this.uGain.value = reducedFlash ? 0.8 : 1;
+    this.paneTime.value = motionTime(atmosphere.uTime.value, reducedMotion);
+    this.ignitionFlash.value = reducedMotion ? 0 : 1;
     const tgt = this.target();
     const visible = all > 0.001 || t > -0.5;
     for (const m of [this.panes, this.sheets, this.smoke]) if (m) m.visible = visible && (!reducedMotion || m === this.panes);

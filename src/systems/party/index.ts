@@ -21,6 +21,7 @@
  */
 import type { Mesh, Object3D } from 'three';
 import type { GameContext } from '../../core/context';
+import { creditsReducedMotion } from '../../core/motion';
 import { defineSystem } from '../../core/systems';
 import { addStrings } from '../../i18n';
 import { creditLines, creditSections } from './creditContent';
@@ -90,7 +91,7 @@ class PartySystem {
       },
       slice: () => this.slice,
       defaultLines,
-      reduced: () => ctx.settings.state.reducedMotion,
+      reduced: () => creditsReducedMotion(ctx.settings.state.reducedMotion),
       strip,
       cinematic: {
         available: () => !!ctx.systems.get('cinematic') && !ctx.systems.stats().find((s) => s.id === 'cinematic')?.failed,

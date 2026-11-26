@@ -1036,7 +1036,7 @@ class Combat {
         break;
       case 'reflect': {
         const e = ev.e;
-        this.visuals.reflectBeam(e.x, e.y, e.z, inp.x, inp.y + 1.4, inp.z, st.reducedFlash);
+        this.visuals.reflectBeam(e.x, e.y, e.z, inp.x, inp.y + 1.4, inp.z, st.reducedFlash, st.reducedMotion);
         this.audio.reflect(this.posOf(e, 0), false);
         this.captionOnce('reflect', t('combat.reflect'), 'boss', 6, 2800);
         break;

@@ -4,6 +4,7 @@
  * page), then the party with the credits strip over it (bible 06-enden §8, `deps.party`); the
  * scrolling credits page with sources and data licences stays for `kq.story.credits()`.
  */
+import { creditsReducedMotion } from '../../../core/motion';
 import type { AttributionItem } from '../../../data/types';
 import { t } from '../../../i18n';
 import { h, svg } from '../../../ui/dom';
@@ -214,7 +215,7 @@ export class EndingScreen {
         h('ul', creditData(this.d.attribution()).map(({ label, text, licence }) => h('li', [h('b', `${label}: `), text, ` — ${licence}`]))),
       ] : []),
     ])));
-    const reduced = this.d.reducedMotion();
+    const reduced = creditsReducedMotion(this.d.reducedMotion());
     const viewport = h('div.kqs-cr-view', { 'data-testid': 'credits', tabindex: 0, 'aria-label': 'Abspann', role: 'region' }, roll);
     if (reduced) viewport.classList.add('kqs-static');
     const scrub = (s: number) => {

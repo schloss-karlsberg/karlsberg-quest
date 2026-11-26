@@ -13,6 +13,7 @@
  */
 import {
   AdditiveBlending,
+  CylinderGeometry,
   DynamicDrawUsage,
   Euler,
   Float32BufferAttribute,
@@ -22,6 +23,7 @@ import {
   InstancedMesh,
   Matrix4,
   Mesh,
+  MeshBasicMaterial,
   NormalBlending,
   BackSide,
   DoubleSide,
@@ -1052,6 +1054,8 @@ export class CombatVisuals {
   private readonly vis = new Map<string, Vis>();
   private readonly parts: Particle[] = [];
   private readonly waves: Wave[] = [];
+  private readonly reflection = new Mesh(new CylinderGeometry(0.035, 0.035, 1, 6), new MeshBasicMaterial({ color: 0xaccbe7 }));
+  private reflectionLeft = 0;
   private maxParticles = 900;
   private seedN = 1;
   /** Rigged CC0 bodies (hounds, the Raffschatten, the Pikeur's horse) from medium quality up. */
@@ -1067,7 +1071,9 @@ export class CombatVisuals {
     this.shapes.set('box', this.solids);
     for (const sh of SHAPES) if (sh !== 'box') this.shapes.set(sh, new SolidPool(sh === 'rock' || sh === 'rock2' || sh === 'block' || sh === 'page' ? 420 : 260, sh, this.outlineU));
     this.ringPool = new RingPool(48);
-    this.object.add(this.ringPool.mesh, this.puffs.mesh, this.glows.mesh, this.rigs.object);
+    this.reflection.name = 'combat-reflection';
+    this.reflection.visible = false;
+    this.object.add(this.ringPool.mesh, this.puffs.mesh, this.glows.mesh, this.rigs.object, this.reflection);
     for (const pool of this.shapes.values()) {
       if (pool.outline) this.object.add(pool.outline);
       this.object.add(pool.mesh);
@@ -1161,6 +1167,8 @@ export class CombatVisuals {
   clearParticles(): void {
     this.parts.length = 0;
     this.waves.length = 0;
+    this.reflectionLeft = 0;
+    this.reflection.visible = false;
   }
 
   /** The dissolve: the body comes apart along its own parts, everything rises. */
@@ -1332,8 +1340,16 @@ export class CombatVisuals {
     this.wave(x, y - 0.8, z, 0.4, 2.4, 0.4);
   }
 
-  /** The mirror throws the Bannlicht back: a bright line of motes from it to you. */
-  reflectBeam(fx: number, fy: number, fz: number, tx: number, ty: number, tz: number, reducedFlash: boolean): void {
+  /** The mirror throws the Bannlicht back along a steady beam or a line of motes. */
+  reflectBeam(fx: number, fy: number, fz: number, tx: number, ty: number, tz: number, reducedFlash: boolean, reducedMotion: boolean): void {
+    const beam = this.reflection;
+    const direction = _p.set(tx - fx, ty - fy, tz - fz);
+    const length = direction.length();
+    beam.position.set((fx + tx) / 2, (fy + ty) / 2, (fz + tz) / 2);
+    beam.scale.y = length;
+    beam.quaternion.setFromUnitVectors(_s.set(0, 1, 0), direction.normalize());
+    this.reflectionLeft = length > 0 ? 0.45 : 0;
+    if (reducedMotion) return;
     const n = Math.round(30 * (this.maxParticles / 900));
     for (let i = 0; i < n; i++) {
       const k = this.rnd();
@@ -1645,6 +1661,8 @@ export class CombatVisuals {
     }
     if (f.reducedMotion) this.parts.length = 0;
     else this.particles(dt, f);
+    this.reflection.visible = !!f.reducedMotion && this.reflectionLeft > 0;
+    this.reflectionLeft = Math.max(0, this.reflectionLeft - dt);
     this.puffs.end(cam);
     this.glows.end();
     for (const pool of this.shapes.values()) pool.end();
@@ -1936,6 +1954,7 @@ export class CombatVisuals {
     });
     this.puffMat.dispose();
     this.glowMat.dispose();
+    this.reflection.material.dispose();
     for (const pool of this.shapes.values()) pool.dispose();
     this.ringPool.mat.dispose();
   }

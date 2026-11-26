@@ -64,6 +64,23 @@ describe('third-person camera rig', () => {
     expect(rig.distance).toBeCloseTo(rig.zoom);
   });
 
+  it('holds the shortened boom across stationary frames beside a wall corner in reduced motion', () => {
+    const corner: CameraWorld = { heightAt: () => 0, blocked: (x, z, r) => x + r > 0.775 && z + r > 0.99 };
+    const rig = new CameraRig();
+    const cam = new PerspectiveCamera();
+    const stationary = input({ reducedMotion: true });
+    rig.update(cam, stationary, corner, noHints());
+    const shortened = rig.distance;
+    expect(shortened).toBeCloseTo(0.76);
+    for (let i = 0; i < 60; i++) {
+      rig.update(cam, stationary, corner, noHints());
+      expect(rig.distance).toBe(shortened);
+      expect(corner.blocked(cam.position.x, cam.position.z, 0.224)).toBe(false);
+    }
+    rig.update(cam, stationary, flat, noHints());
+    expect(rig.distance).toBe(rig.zoom);
+  });
+
   it('a thin trunk on the boom does not pull the camera into the head (it dithers instead, round 10)', () => {
     const rig = new CameraRig();
     const cam = new PerspectiveCamera();

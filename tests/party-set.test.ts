@@ -12,6 +12,7 @@ import { PROP_EMISSIVE_HOOK, festPropMaterial } from '../src/systems/party/festf
 import { PROPS, TABLE_TOP, partyLayout, propsFor } from '../src/systems/party/placements';
 import { PARTY_VARIANTS, type PartyVariant } from '../src/systems/party/types';
 import { propMaterial } from '../src/systems/scenery/material';
+import { atmosphere } from '../src/world/atmosphere';
 
 /** A gently sloped plateau at ~350 m. */
 const heightAt = (x: number, z: number) => 350 + (x - 1216) * 0.03 - (z + 1114) * 0.02 + Math.sin(x * 0.7) * 0.05;
@@ -130,14 +131,29 @@ describe('party set (fest.ts)', () => {
     const sprites = glows.geometry.getAttribute('aSprite');
     const liveSprites = () => Array.from({ length: sprites.count }, (_, i) => sprites.getY(i)).filter((y) => y > 0).length;
     const still = liveSprites();
-    h.burst();
-    h.update(1 / 60);
-    expect(liveSprites()).toBeGreaterThan(still);
-    reduced = true;
-    h.update(1 / 60);
-    expect(liveSprites()).toBe(still);
-    expect(steam.visible).toBe(false);
-    expect((flames.material as ShaderMaterial).uniforms.uTime!.value).toBe(0);
-    h.dispose();
+    const clocks = [flames, glows].map((mesh) => (mesh.material as ShaderMaterial).uniforms.uTime!);
+    const previousTime = atmosphere.uTime.value;
+    try {
+      h.burst();
+      atmosphere.uTime.value = 7;
+      h.update(1 / 60);
+      expect(liveSprites()).toBeGreaterThan(still);
+      expect(clocks.map((clock) => clock.value)).toEqual([7, 7]);
+      reduced = true;
+      for (const time of [11, 19]) {
+        atmosphere.uTime.value = time;
+        h.update(1 / 60);
+        expect(clocks.map((clock) => clock.value)).toEqual([0, 0]);
+        expect(atmosphere.uTime.value).toBe(time);
+      }
+      expect(liveSprites()).toBe(still);
+      expect(steam.visible).toBe(false);
+      reduced = false;
+      h.update(1 / 60);
+      expect(clocks.map((clock) => clock.value)).toEqual([19, 19]);
+    } finally {
+      atmosphere.uTime.value = previousTime;
+      h.dispose();
+    }
   });
 });

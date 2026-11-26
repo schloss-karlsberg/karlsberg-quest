@@ -88,7 +88,12 @@ export class ModalManager {
     const titleEl = h('h2', { id: `kq-dialog-${id}-title` });
     const bodyEl = h('div.kq-modal-body', { id: `kq-dialog-${id}-body` });
     const actionsEl = h('div.actions');
-    const focusPage = () => (tabStops(bodyEl)[0] ?? tabStops(actionsEl)[0] ?? tabStops(page)[0] ?? page).focus();
+    const hasAction = o.actions?.some((a) => a.primary || a.onClick);
+    const focusPage = () => {
+      const control = tabStops(bodyEl)[0] ?? (hasAction ? tabStops(actionsEl)[0] : undefined);
+      if (control) control.focus();
+      else page.focus({ preventScroll: true });
+    };
     page.append(titleEl, bodyEl, actionsEl);
     if (closable) page.append(h('button.close', { 'aria-label': t('modal.close'), onclick: () => handle.close() }, '×'));
     let closed = false;

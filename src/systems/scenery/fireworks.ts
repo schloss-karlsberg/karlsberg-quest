@@ -9,8 +9,8 @@
  *     then black and still, one light high up that slowly goes out;
  *  C  (the last line) the snow falls upwards and the summer comes back.
  * No people are shown hurt and nobody is heard; the picture is only light. Flashes respect
- * `settings.reducedFlash` (and reduced motion): no white-out, no strobing, slower and dimmer
- * light; the graphics preset Niedrig halves the sparks.
+ * `settings.reducedFlash`: no white-out or strobing, dimmer light. Reduced motion keeps the
+ * show timing and the final light, with the moving particles omitted.
  */
 import {
   AdditiveBlending,
@@ -26,6 +26,7 @@ import {
 } from 'three';
 import type { GameContext } from '../../core/context';
 import { ERA_INFO } from '../../core/era';
+import { motionTime } from '../../core/motion';
 import { ATMOS_GLSL, atmosphere } from '../../world/atmosphere';
 import type { EraLook } from '../../world/eraPresets';
 import { fireworkSound } from './audio';
@@ -182,7 +183,6 @@ export type FireworksPhase = 'off' | 'festive' | 'climax' | 'dark' | 'return';
 export class Fireworks {
   readonly group = new Group();
   phase: FireworksPhase = 'off';
-  private time = 0;
   private phaseT = 0;
   private readonly pos = new Float32Array(MAX_SPARKS * 3);
   private readonly vel = new Float32Array(MAX_SPARKS * 3);
@@ -201,12 +201,16 @@ export class Fireworks {
   private next = 0;
   private readonly sparks: Points;
   private readonly sparkGeo: BufferGeometry;
+  private readonly finalLight: Points;
   private readonly lamps: Points;
   private readonly snow: Points;
+  private readonly visualClock = { value: 0 };
   private readonly scaffold: Mesh;
   private rockets: Rocket[] = [];
   private launchIn = 1.5;
+  // Shell timing and sound positions stay the same when decorative particles are disabled.
   private readonly r = rng(1785);
+  private readonly particleRandom = rng(1786);
   /** Light of the last bursts (decays): colour · intensity, position. */
   private readonly light = new Color();
   private readonly lightPos = new Vector3();
@@ -215,7 +219,7 @@ export class Fireworks {
   private fall = 0;
   private snowUp = -1;
   private flash = 0;
-  private lastLight: Vector3 | null = null;
+  private hasBurst = false;
   private launchY = 0;
   private exposure0 = 1;
   private crowd: { stop(): void; set(v: number): void } | null = null;
@@ -247,7 +251,7 @@ export class Fireworks {
     // snow
     const n = 3000;
     const seed = new Float32Array(n * 4);
-    for (let i = 0; i < n * 4; i++) seed[i] = this.r();
+    for (let i = 0; i < n * 4; i++) seed[i] = this.particleRandom();
     const sg = new BufferGeometry();
     sg.setAttribute('position', new BufferAttribute(new Float32Array(n * 3), 3));
     sg.setAttribute('aSeed', new BufferAttribute(seed, 4));
@@ -256,7 +260,7 @@ export class Fireworks {
       new ShaderMaterial({
         vertexShader: SNOW_VERT,
         fragmentShader: SNOW_FRAG,
-        uniforms: { ...atmosphere, uUp: { value: -1 }, uAlpha: { value: 0 }, uScale: { value: 600 }, uFall: { value: 0 } },
+        uniforms: { ...atmosphere, uTime: this.visualClock, uUp: { value: -1 }, uAlpha: { value: 0 }, uScale: { value: 600 }, uFall: { value: 0 } },
         transparent: true,
         depthWrite: false,
         blending: NormalBlending,
@@ -268,6 +272,13 @@ export class Fireworks {
     const k = new Kit();
     const h = (x: number, z: number) => ctx.world.heightAt(x, z);
     this.launchY = h(LAUNCH.x, LAUNCH.z);
+    const star = new BufferGeometry();
+    star.setAttribute('position', new BufferAttribute(new Float32Array([LAUNCH.x - 20, this.launchY + 120, LAUNCH.z]), 3));
+    star.setAttribute('aCol', new BufferAttribute(new Float32Array([3.2, 2.4, 1.4, 1]), 4));
+    this.finalLight = new Points(star, this.sparks.material);
+    this.finalLight.name = 'scenery-fireworks-final-light';
+    this.finalLight.visible = false;
+    this.finalLight.renderOrder = this.sparks.renderOrder;
     k.place(LAUNCH.x, this.launchY - 0.2, LAUNCH.z, Math.atan2(RONDELL.x - LAUNCH.x, RONDELL.z - LAUNCH.z));
     scaffold(k, 1785, 7, 13, 4);
     // frames and wheels for set pieces on top
@@ -275,7 +286,7 @@ export class Fireworks {
     k.box(7.4, 0.15, 0.15, 0, 13.4, 2.1, C.woodDark);
     this.scaffold = new Mesh(k.build(), propMaterial());
     this.scaffold.name = 'scenery-fireworks-scaffold';
-    this.group.add(this.lamps, this.scaffold, this.smoke, this.sparks, this.snow);
+    this.group.add(this.lamps, this.scaffold, this.smoke, this.sparks, this.snow, this.finalLight);
   }
 
   private makeLamps(): Points {
@@ -307,7 +318,7 @@ export class Fireworks {
     const g = new BufferGeometry();
     g.setAttribute('position', new BufferAttribute(new Float32Array(pts), 3));
     g.setAttribute('aSeed', new BufferAttribute(new Float32Array(seeds), 1));
-    const p = new Points(g, new ShaderMaterial({ vertexShader: LAMP_VERT, fragmentShader: LAMP_FRAG, uniforms: { ...atmosphere, uScale: { value: 600 }, uOn: { value: 0 } }, transparent: true, depthWrite: false, blending: AdditiveBlending }));
+    const p = new Points(g, new ShaderMaterial({ vertexShader: LAMP_VERT, fragmentShader: LAMP_FRAG, uniforms: { ...atmosphere, uTime: this.visualClock, uScale: { value: 600 }, uOn: { value: 0 } }, transparent: true, depthWrite: false, blending: AdditiveBlending }));
     p.frustumCulled = false;
     p.renderOrder = 58;
     return p;
@@ -338,7 +349,6 @@ export class Fireworks {
     if (this.phase !== 'off') return;
     this.phase = 'festive';
     this.phaseT = 0;
-    this.time = 0;
     this.launchIn = 2.5;
     this.group.visible = true;
     this.scaffold.visible = true;
@@ -348,14 +358,22 @@ export class Fireworks {
     this.fall = 0;
     this.snowUp = -1;
     this.rockets = [];
-    this.life.fill(0);
-    this.smokeLife.fill(0);
-    this.crackles = [];
+    this.hasBurst = false;
+    this.finalLight.visible = false;
+    this.light.setRGB(0, 0, 0);
+    this.flash = 0;
+    this.clearParticles();
     this.crowd = crowdMurmur(this.ctx);
     // the show is east of the Rondell: turn the view there and up to where the shells open (the
     // quest brings the player facing north); the frame holds a while, the player may look away
     this.lookT = 4.5;
     this.ctx.ui.hud.setEraLabel(this.ctx.t('ui.hud.era.1785'));
+  }
+
+  private clearParticles(): void {
+    this.life.fill(0);
+    this.smokeLife.fill(0);
+    this.crackles = [];
   }
 
   /** Jump to a phase (the echo's lines drive it). */
@@ -420,11 +438,12 @@ export class Fireworks {
   }
 
   private puff(p: Vector3, size: number, alpha: number): void {
+    const r = this.particleRandom;
     const i = this.smokeNext;
     this.smokeNext = (this.smokeNext + 1) % MAX_SMOKE;
-    this.smokePos.set([p.x + (this.r() - 0.5) * size * 0.4, p.y + (this.r() - 0.5) * size * 0.3, p.z + (this.r() - 0.5) * size * 0.4], i * 3);
-    this.smokeAttr.set([size, alpha, this.r(), 0], i * 4);
-    this.smokeLife[i * 2] = 14 + this.r() * 8;
+    this.smokePos.set([p.x + (r() - 0.5) * size * 0.4, p.y + (r() - 0.5) * size * 0.3, p.z + (r() - 0.5) * size * 0.4], i * 3);
+    this.smokeAttr.set([size, alpha, r(), 0], i * 4);
+    this.smokeLife[i * 2] = 14 + r() * 8;
     this.smokeLife[i * 2 + 1] = 0;
   }
 
@@ -437,7 +456,13 @@ export class Fireworks {
   }
 
   private burst(p: Vector3, color: Color, n: number, speed: number, kind: BurstKind = 'peony'): void {
-    const r = this.r;
+    const big = kind === 'chrys' || kind === 'palm' || kind === 'willow';
+    this.hasBurst = true;
+    this.soundLater('burst', p, big ? 1 : 0.8);
+    if (kind !== 'willow') this.soundLater('crackle', p, 0.6, 500);
+    if (kind === 'crossette') this.splitStars(p, color, speed);
+    if (this.ctx.settings.state.reducedMotion) return;
+    const r = this.particleRandom;
     const axis = new Vector3(r() - 0.5, r() - 0.5, r() - 0.5).normalize();
     n = Math.round(n * this.sparkScale());
     const reduced = this.reduced();
@@ -472,30 +497,28 @@ export class Fireworks {
         this.spawn(p, d, inner, 1.2 + r() * 0.5, 1.3);
       }
     }
-    if (kind === 'crossette') {
-      // four stars that fly out and split into crosses
-      for (let i = 0; i < 6; i++) {
-        const d = new Vector3(r() * 2 - 1, r() * 0.8, r() * 2 - 1).normalize();
-        const q = p.clone().addScaledVector(d, speed * 0.5);
-        setTimeout(() => {
-          if (this.phase === 'off') return;
-          for (const ax of [new Vector3(1, 0, 0), new Vector3(-1, 0, 0), new Vector3(0, 1, 0), new Vector3(0, -1, 0), new Vector3(0, 0, 1), new Vector3(0, 0, -1)])
-            this.spawn(q, ax.multiplyScalar(speed * 0.45).add(d.clone().multiplyScalar(4)), color, 1.1 + r() * 0.4, 1.2, F_TRAIL);
-          this.soundLater('crackle', q, 0.35);
-        }, 520);
-      }
-    }
     for (let i = 0; i < 2; i++) this.puff(p, 18 + r() * 14, 0.5 + r() * 0.2);
     // coloured light on the snow, the slope and the pavilions; during the climax many flat
     // rockets burst at once and the night grade (exposure 1.6) would wash the slope out to white
-    const big = kind === 'chrys' || kind === 'palm' || kind === 'willow';
     const k = (reduced ? 0.35 : 1) * (this.phase === 'climax' ? 0.3 : big ? 1.05 : 0.7);
     this.light.copy(color).multiplyScalar(0.9 * k);
     this.lightPos.copy(p);
-    this.lastLight = p.clone();
     if (!reduced) this.flash = Math.max(this.flash, big ? 0.09 : 0.06);
-    this.soundLater('burst', p, big ? 1 : 0.8);
-    if (kind !== 'willow') this.soundLater('crackle', p, 0.6, 500);
+  }
+
+  private splitStars(p: Vector3, color: Color, speed: number): void {
+    const r = this.r;
+    for (let i = 0; i < 6; i++) {
+      const d = new Vector3(r() * 2 - 1, r() * 0.8, r() * 2 - 1).normalize();
+      const q = p.clone().addScaledVector(d, speed * 0.5);
+      setTimeout(() => {
+        if (this.phase === 'off') return;
+        this.soundLater('crackle', q, 0.35);
+        if (this.ctx.settings.state.reducedMotion) return;
+        for (const ax of [new Vector3(1, 0, 0), new Vector3(-1, 0, 0), new Vector3(0, 1, 0), new Vector3(0, -1, 0), new Vector3(0, 0, 1), new Vector3(0, 0, -1)])
+          this.spawn(q, ax.multiplyScalar(speed * 0.45).add(d.clone().multiplyScalar(4)), color, 1.1 + this.particleRandom() * 0.4, 1.2, F_TRAIL);
+      }, 520);
+    }
   }
 
   private launch(flat = false, big = false): void {
@@ -517,6 +540,7 @@ export class Fireworks {
       setTimeout(() => {
         if (this.phase !== 'climax') return;
         fireworkSound(this.ctx.audio, 'cannon', c.x + (i - 2) * 6, c.y, c.z, 1);
+        if (this.ctx.settings.state.reducedMotion) return;
         this.light.setRGB(3, 1.6, 0.6).multiplyScalar(this.reduced() ? 0.5 : 1.1);
         this.lightPos.copy(c);
         if (!this.reduced()) this.flash = Math.max(this.flash, 0.12);
@@ -532,9 +556,11 @@ export class Fireworks {
     this.burst(c.clone().add(new Vector3(0, 8, 0)), PALETTE[1]!, 500, 22, 'willow');
     for (let i = 0; i < 26; i++) this.launch(true, false);
     // warm and strong, but the snowy slope must not burn out to white (it reads as a flash otherwise)
-    this.light.setRGB(3.4, 2.2, 1.1).multiplyScalar(reduced ? 0.6 : 1.3);
-    this.lightPos.copy(c);
-    this.flash = reduced ? 0 : 0.9;
+    if (!this.ctx.settings.state.reducedMotion) {
+      this.light.setRGB(3.4, 2.2, 1.1).multiplyScalar(reduced ? 0.6 : 1.3);
+      this.lightPos.copy(c);
+      this.flash = reduced ? 0 : 0.9;
+    }
     this.scaffold.visible = false;
   }
 
@@ -543,11 +569,12 @@ export class Fireworks {
     if (this.phase === 'off') return;
     const ctx = this.ctx;
     dt = Math.min(dt, 0.1);
-    this.time += dt;
     this.phaseT += dt;
     const reduced = this.reduced();
     const motion = !this.ctx.settings.state.reducedMotion;
+    if (!motion && this.sparks.visible) this.clearParticles();
     this.sparks.visible = this.smoke.visible = motion;
+    this.visualClock.value = motionTime(atmosphere.uTime.value, !motion);
     this.turnView(dt);
     // ---- schedule
     if (this.phase === 'festive') {
@@ -566,20 +593,23 @@ export class Fireworks {
       if (this.phaseT > 6.5) this.setPhase('dark');
     } else if (this.phase === 'dark') {
       // one star left high up, slowly going out
-      if (this.phaseT < dt * 1.5 && this.lastLight) this.spawn(new Vector3(LAUNCH.x - 20, this.launchY + 120, LAUNCH.z), new Vector3(0, -0.25, 0), new Color(3.2, 2.4, 1.4), 9, 1.6);
+      if (motion && this.phaseT < dt * 1.5 && this.hasBurst) this.spawn(new Vector3(LAUNCH.x - 20, this.launchY + 120, LAUNCH.z), new Vector3(0, -0.25, 0), new Color(3.2, 2.4, 1.4), 9, 1.6);
     } else if (this.phase === 'return') {
       this.winter = Math.max(0, this.winter - dt / 3.5);
       this.snowUp = Math.min(1, this.snowUp + dt / 1.5);
     }
+    this.finalLight.visible = !motion && this.phase === 'dark';
     // ---- rockets
     const g = 9.81;
+    const r = this.particleRandom;
     for (const k of this.rockets) {
       k.t += dt;
       k.v.y -= (k.flat ? g * 0.6 : g * 0.25) * dt;
       k.p.addScaledVector(k.v, dt);
+      if (!motion) continue; // the shell still travels to its scheduled burst sound
       // a bright head and a long, slow trail
-      this.spawn(k.p, new Vector3((this.r() - 0.5) * 1.5, -1 - this.r(), (this.r() - 0.5) * 1.5), PALETTE[0]!, 0.9 + this.r() * 0.6, 0.8);
-      if (this.r() < 0.5) this.spawn(k.p, new Vector3(0, 0.5, 0), PALETTE[3]!, 0.25, 1.6);
+      this.spawn(k.p, new Vector3((r() - 0.5) * 1.5, -1 - r(), (r() - 0.5) * 1.5), PALETTE[0]!, 0.9 + r() * 0.6, 0.8);
+      if (r() < 0.5) this.spawn(k.p, new Vector3(0, 0.5, 0), PALETTE[3]!, 0.25, 1.6);
     }
     for (const k of this.rockets.filter((q) => q.t >= q.fuse)) {
       if (k.flat) {
@@ -592,6 +622,31 @@ export class Fireworks {
       this.burst(k.p, k.color, n, k.big ? 38 : 29, kind);
     }
     this.rockets = this.rockets.filter((q) => q.t < q.fuse);
+    if (motion) this.updateParticles(dt, reduced);
+    const scale = ctx.renderer.domElement.height / (2 * Math.tan(((ctx.camera.fov * Math.PI) / 180) / 2));
+    (this.sparks.material as ShaderMaterial).uniforms.uScale!.value = scale;
+    (this.lamps.material as ShaderMaterial).uniforms.uScale!.value = scale;
+    (this.smoke.material as ShaderMaterial).uniforms.uScale!.value = scale;
+    // ---- lamps, snow, crowd
+    const lampsOn = this.phase === 'festive' ? Math.min(1, this.phaseT / 2) : this.phase === 'climax' ? Math.max(0, 1 - this.phaseT / 2.5) : 0;
+    (this.lamps.material as ShaderMaterial).uniforms.uOn!.value = lampsOn;
+    this.crowd?.set(this.phase === 'festive' ? Math.min(1, this.phaseT / 3) : 0);
+    if (motion) this.fall += dt * (this.snowUp < 0 ? 1.1 * -this.snowUp : -2.4 * this.snowUp);
+    const su = (this.snow.material as ShaderMaterial).uniforms;
+    su.uFall!.value = this.fall;
+    su.uScale!.value = scale;
+    su.uAlpha!.value = 0.85 * Math.min(1, this.winter * 1.5) * (this.phase === 'dark' ? 0.35 : 1);
+    // ---- light on the land: the last bursts tint terrain, trees, snow and fog (shared glow)
+    this.light.multiplyScalar(motion ? Math.exp(-dt * (this.phase === 'climax' ? 2.0 : 2.6)) : 0);
+    this.flash *= Math.exp(-dt * 3.5);
+    const f = reduced ? 0 : Math.min(0.85, this.flash);
+    (ctx.post.uniforms.uFlash!.value as Color).setRGB(f, f * 0.85, f * 0.6);
+    this.applyWinter();
+  }
+
+  private updateParticles(dt: number, reduced: boolean): void {
+    const g = 9.81;
+    const r = this.particleRandom;
     // ---- sparks
     for (let i = 0; i < MAX_SPARKS; i++) {
       const L = this.life[i * 2]!;
@@ -648,7 +703,7 @@ export class Fireworks {
         c.t -= dt;
         if (c.t > 0) continue;
         popped++;
-        for (let k = 0; k < 3; k++) this.spawn(c.p, new Vector3((this.r() - 0.5) * 6, (this.r() - 0.5) * 6, (this.r() - 0.5) * 6), PALETTE[3]!, 0.12 + this.r() * 0.1, 2.2);
+        for (let k = 0; k < 3; k++) this.spawn(c.p, new Vector3((r() - 0.5) * 6, (r() - 0.5) * 6, (r() - 0.5) * 6), PALETTE[3]!, 0.12 + r() * 0.1, 2.2);
       }
       if (popped) {
         this.soundLater('crackle', this.crackles[0]!.p, Math.min(0.5, 0.15 + popped * 0.01));
@@ -674,29 +729,6 @@ export class Fireworks {
     this.smoke.geometry.attributes.aSmoke!.needsUpdate = true;
     this.sparkGeo.attributes.position!.needsUpdate = true;
     this.sparkGeo.attributes.aCol!.needsUpdate = true;
-    const scale = ctx.renderer.domElement.height / (2 * Math.tan(((ctx.camera.fov * Math.PI) / 180) / 2));
-    (this.sparks.material as ShaderMaterial).uniforms.uScale!.value = scale;
-    (this.lamps.material as ShaderMaterial).uniforms.uScale!.value = scale;
-    (this.smoke.material as ShaderMaterial).uniforms.uScale!.value = scale;
-    // ---- lamps, snow, crowd
-    const lampsOn = this.phase === 'festive' ? Math.min(1, this.phaseT / 2) : this.phase === 'climax' ? Math.max(0, 1 - this.phaseT / 2.5) : 0;
-    (this.lamps.material as ShaderMaterial).uniforms.uOn!.value = lampsOn;
-    this.crowd?.set(this.phase === 'festive' ? Math.min(1, this.phaseT / 3) : 0);
-    if (motion) this.fall += dt * (this.snowUp < 0 ? 1.1 * -this.snowUp : -2.4 * this.snowUp);
-    const su = (this.snow.material as ShaderMaterial).uniforms;
-    su.uFall!.value = this.fall;
-    su.uScale!.value = scale;
-    su.uAlpha!.value = 0.85 * Math.min(1, this.winter * 1.5) * (this.phase === 'dark' ? 0.35 : 1);
-    // ---- light on the land: the last bursts tint terrain, trees, snow and fog (shared glow)
-    this.light.multiplyScalar(Math.exp(-dt * (this.phase === 'climax' ? 2.0 : 2.6)));
-    atmosphere.uGlowColor.value.copy(this.light).multiplyScalar(motion ? 1 : 0);
-    atmosphere.uGlowPos.value.copy(this.lightPos);
-    // white flash (post), off in reduced flash
-    this.flash *= Math.exp(-dt * 3.5);
-    const f = reduced ? 0 : Math.min(0.85, this.flash);
-    (ctx.post.uniforms.uFlash!.value as Color).setRGB(f, f * 0.85, f * 0.6);
-    // ---- winter over the summer night
-    this.applyWinter();
   }
 
   private applyWinter(): void {
@@ -725,6 +757,7 @@ export class Fireworks {
     this.stop();
     this.group.removeFromParent();
     this.sparkGeo.dispose();
+    this.finalLight.geometry.dispose();
     this.smoke.geometry.dispose();
     this.lamps.geometry.dispose();
     this.snow.geometry.dispose();

@@ -25,6 +25,7 @@ import {
   Vector3,
 } from 'three';
 import type { Era } from '../../core/era';
+import { motionTime } from '../../core/motion';
 import type { ItemKind, PlacedPickup } from '../../rpg/types';
 
 /** sRGB hex → linear colour × k (the world renders linear HDR before tone mapping). */
@@ -374,7 +375,8 @@ export class PickupWorld {
    * `shown(p)` decides whether a pickup belongs to what the player sees now (era, storey).
    */
   frame(dt: number, time: number, camera: PerspectiveCamera, viewportHeight: number, player: Vector3, shown: (p: PlacedPickup) => boolean, reducedMotion: boolean): void {
-    shared.uTime.value = time;
+    const visualTime = motionTime(time, reducedMotion);
+    shared.uTime.value = visualTime;
     shared.uMotion.value = reducedMotion ? 0 : 1;
     const vh = Math.max(200, viewportHeight);
     shared.uPix.value = vh / (2 * Math.tan((camera.fov * Math.PI) / 360));
@@ -436,7 +438,7 @@ export class PickupWorld {
       v.glow.position.y = ly;
       v.glow.scale.setScalar(scale);
       v.token.position.y = ly;
-      v.token.rotation.y = time * 1.9 + v.seed;
+      v.token.rotation.y = visualTime * 1.9 + v.seed;
       v.token.rotation.x = 0.4;
       v.token.scale.setScalar(scale);
       v.motes.position.y = 0.1;

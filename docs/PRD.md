@@ -22,6 +22,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-26 | **Motion and accessibility review fixes (TASK-032).** The camera checks its extended shoulder path before cutting outward. Torch-lit windows, reflected Bannlicht, the fireworks finale, survey markers, loot and party lights retain steady cues. The OS preference can select static credits, „Neuigkeiten“ opens at the newest entry, and the playtest pilot applies inline choices. |
 | unreleased | 2026-11-26 | **Motion and keyboard accessibility (TASK-032).** „Weniger Bewegung“ keeps the title view and map markers still, cuts the spring camera, shortens story fades and suppresses full-screen flashes and selected particle effects. The title, Pause, Einstellungen and journal pages show keyboard focus and return it to the opener or refreshed control. Icon-only controls use German accessible names. |
 | unreleased | 2026-11-26 | **Autosave backoff (TASK-031).** The first failed autosave can retry immediately. After consecutive failures, autosave requests wait one second between attempts so a burst of progress updates cannot repeatedly hit unavailable storage. |
 | unreleased | 2026-11-26 | **Saving and input between updates (TASK-031).** A failed autosave keeps the last saved time and can retry immediately. Opening or closing a menu and losing focus clear queued actions, turns and zoom. Disabling touch cancels pending taps. Two fingers on Hieb sustain one charge until the last finger lifts. |

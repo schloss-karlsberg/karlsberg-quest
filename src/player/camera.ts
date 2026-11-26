@@ -396,6 +396,33 @@ export class CameraRig {
     return true;
   }
 
+  private clearShoulder(world: CameraWorld, width: number, distance: number, feetY: number, space: number): number {
+    const offset = width * (0.45 + 0.55 * smooth01(BOOM_MIN, NEAR_COMFORT + 0.4, distance));
+    for (let k = 1; k > 0; k -= 0.25) {
+      if (this.free(world, this.pivot.x + _r.x * offset * k, this.pivot.z + _r.z * offset * k, feetY, space)) return offset * k;
+    }
+    return 0;
+  }
+
+  /** The boom ends at walls, room boundaries or steep ridges, and cranes over smaller slopes. */
+  private sweepBoom(world: CameraWorld, feetY: number, space: number, boom: number): { free: number; craneK: number } {
+    let craneK = 0;
+    const steps = Math.max(1, Math.ceil(boom / STEP));
+    for (let i = 1; i <= steps; i++) {
+      const t = (i / steps) * boom;
+      const x = _s.x - _f.x * t;
+      const y = _s.y - _f.y * t;
+      const z = _s.z - _f.z * t;
+      if (!this.free(world, x, z, feetY, space)) return { free: Math.max(BOOM_MIN, t - 0.2), craneK };
+      if (t > 0.5) {
+        const def = world.heightAt(x, z, feetY) + CLEAR + 0.12 - y;
+        if (def > 0) craneK = Math.max(craneK, def / t);
+        if (craneK * t > CRANE_MAX) return { free: Math.max(BOOM_MIN, Math.min(t - 0.2, CRANE_MAX / craneK)), craneK };
+      }
+    }
+    return { free: boom, craneK };
+  }
+
   /** Free fraction (0..1) of the straight line a → b for the lens (walls and spaces only). */
   private sweep(world: CameraWorld, ax: number, az: number, bx: number, bz: number, feetY: number, space0: number): number {
     const L = Math.hypot(bx - ax, bz - az);
@@ -519,16 +546,8 @@ export class CameraRig {
     }
     // the shoulder: shrink it when a wall stands right beside the head, and as the boom gets short
     // (a short boom at full offset would park the lens beside the ear)
-    wantShoulder *= 0.45 + 0.55 * smooth01(BOOM_MIN, NEAR_COMFORT + 0.4, this.distance);
-    for (let k = 1; k >= 0; k -= 0.25) {
-      const sx = this.pivot.x + _r.x * wantShoulder * k;
-      const sz = this.pivot.z + _r.z * wantShoulder * k;
-      if (k === 0 || this.free(world, sx, sz, o.y, space0)) {
-        wantShoulder *= k;
-        break;
-      }
-    }
-    this.shoulder += (wantShoulder - this.shoulder) * Math.min(1, dt * 6);
+    const closeShoulder = this.clearShoulder(world, wantShoulder, this.distance, o.y, space0);
+    this.shoulder += (closeShoulder - this.shoulder) * Math.min(1, dt * 6);
     _s.copy(this.pivot).addScaledVector(_r, this.shoulder);
     _s.y += LIFT + this.lift + INDOOR_LIFT * ind;
     if (ceil !== null) _s.y = Math.min(_s.y, Math.max(this.pivot.y, ceil - CLEAR - 0.1));
@@ -548,32 +567,23 @@ export class CameraRig {
     }
     this.bodyLift += (Math.max(0, needLift) - this.bodyLift) * Math.min(1, dt * (needLift > this.bodyLift ? 4 : 1.2));
     _s.y += this.bodyLift;
-    // the boom: sweep from the shoulder back along the view; a wall or the edge of the character's
-    // space ends it. The ground does not: rising ground behind cranes the boom up instead (needs
-    // def / t per metre of boom), unless that would take more than CRANE_MAX (a real ridge).
-    let free = boom;
-    let craneK = 0;
-    const steps = Math.max(1, Math.ceil(boom / STEP));
-    for (let i = 1; i <= steps; i++) {
-      const t = (i / steps) * boom;
-      const x = _s.x - _f.x * t;
-      const y = _s.y - _f.y * t;
-      const z = _s.z - _f.z * t;
-      if (!this.free(world, x, z, o.y, space0)) {
-        free = Math.max(BOOM_MIN, t - 0.2);
-        break;
-      }
-      if (t > 0.5) {
-        const def = world.heightAt(x, z, o.y) + CLEAR + 0.12 - y;
-        if (def > 0) craneK = Math.max(craneK, def / t);
-        // the crane a boom this long would need is too much: end the boom where it still fits
-        if (craneK * t > CRANE_MAX) {
-          free = Math.max(BOOM_MIN, Math.min(t - 0.2, CRANE_MAX / craneK));
-          break;
-        }
+    let { free, craneK } = this.sweepBoom(world, o.y, space0, boom);
+    if (o.reducedMotion && free > this.distance) {
+      // Extending widens the shoulder. Test the resulting path before cutting there so a
+      // stationary corner cannot alternate between clearing the narrow boom and hitting the wide one.
+      const extended = this.clearShoulder(world, wantShoulder, free, o.y, space0);
+      const shift = extended - this.shoulder;
+      _s.addScaledVector(_r, shift);
+      const clearance = this.sweepBoom(world, o.y, space0, boom);
+      if (clearance.free >= free) {
+        this.shoulder = extended;
+        craneK = clearance.craneK;
+      } else {
+        _s.addScaledVector(_r, -shift);
+        free = this.distance;
       }
     }
-    // in at once, out gently (no pumping when the boom grazes a corner)
+    // Pull in at once. Normal motion eases out, reduced motion cuts to a verified position.
     this.distance = Math.min(free, ease(this.distance, free, 2.5, 2.5, dt, instant));
     this.crane = ease(this.crane, Math.min(CRANE_MAX, craneK * this.distance), 10, 2, dt, instant);
     // never inside the head: a short boom rises over the shoulder

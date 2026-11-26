@@ -824,6 +824,7 @@ export class FestPartySet implements PartySet {
     const flameMat = fl.material as ShaderMaterial;
     const visualClock = { value: atmosphere.uTime.value };
     flameMat.uniforms.uTime = visualClock;
+    gm.uniforms.uTime = visualClock;
 
     const root = new Group();
     root.name = 'party-set';

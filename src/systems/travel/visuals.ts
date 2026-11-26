@@ -19,6 +19,7 @@ import {
   RingGeometry,
   ShaderMaterial,
 } from 'three';
+import { motionTime } from '../../core/motion';
 import { atmosphere } from '../../world/atmosphere';
 import { Kit, rng, tint } from '../scenery/kit';
 import { glowMaterial, propMaterial } from '../scenery/material';
@@ -71,7 +72,7 @@ function beamMaterial(color: Color): ShaderMaterial {
   return new ShaderMaterial({
     vertexShader: BEAM_VERT,
     fragmentShader: BEAM_FRAG,
-    uniforms: { uColor: { value: color.clone() }, uAlpha: { value: 1 }, uTime: atmosphere.uTime, uCamPos: atmosphere.uCamPos },
+    uniforms: { uColor: { value: color.clone() }, uAlpha: { value: 1 }, uTime: { value: 0 }, uCamPos: atmosphere.uCamPos },
     transparent: true,
     depthWrite: false,
     blending: CustomBlending,
@@ -233,6 +234,7 @@ export function buildTripod(x: number, y: number, z: number, seed: number): Trip
  */
 export function animateTripod(t: TripodVisual, dt: number, time: number, reducedFlash: boolean, camDist = 0, reducedMotion = false): void {
   const bm = t.beam.material as ShaderMaterial;
+  bm.uniforms.uTime!.value = motionTime(atmosphere.uTime.value, reducedMotion);
   let h: number;
   let alpha: number;
   if (t.lit > 0.5) {
@@ -440,6 +442,7 @@ export function buildLetter(x: number, y: number, z: number, kind: string, era: 
 export function animatePoi(v: PoiVisual, dt: number, time: number, reducedMotion: boolean, camDist = 0, reducedFlash = false): void {
   if (v.beam && v.beam.visible) {
     const bm = v.beam.material as ShaderMaterial;
+    bm.uniforms.uTime!.value = motionTime(atmosphere.uTime.value, reducedMotion);
     let h = 18 + (reducedMotion ? 0 : Math.sin(time * 1.3) * 1.5);
     let alpha = 0.5;
     if (v.open > 0 && (v.burst ?? -1) < 0) v.burst = 0;

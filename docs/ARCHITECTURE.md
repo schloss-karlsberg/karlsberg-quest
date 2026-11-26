@@ -442,7 +442,8 @@ controls a `data-testid` and an `id` (the label's `for` is set from it).
   locomotion, simulation clocks and required combat tells responsive. Cut scripted camera moves
   to still shots or skip the move. Suppress shake, recoil offsets, title drift and camera bob.
   Keep decorative particles, rotation, pulsing markers and auto-scrolling still or omit them.
-  Offer a scrollable credits list and keep keyboard- and touch-driven scrolling available.
+  Both credits views offer a static list when the in-game setting or the OS preference requests
+  reduced motion. Keep keyboard- and touch-driven scrolling available.
 - Use immediate state changes for gauges and indicators. When opacity is needed to cover a cut
   or communicate a transition, use a short fade. Story overlays cap reduced-motion fades at
   200 ms while scene triggers keep their authored timing. The era shift uses its own crossfade.
@@ -458,7 +459,8 @@ controls a `data-testid` and an `id` (the label's `for` is set from it).
 - Use native controls with visible German labels. Add a German accessible name to icon-only
   controls and group radio options under a named radiogroup. Follow DOM order for Tab, show a
   visible focus ring and keep focus inside the active dialog. Return focus to its opener where
-  available. Retain focus on an equivalent control after journal content refreshes.
+  available. Focus reading-only panels without scrolling so the first entry is visible on open.
+  Retain focus on an equivalent control after journal content refreshes.
 - Encode information with more than colour. With `settings.colorblind`, relief uses the
   Okabe-Ito blue ↔ orange ramp (`terrain.uniforms.uPalette`). Route speech through the
   `voice` bus so players can set its volume independently.
@@ -733,8 +735,9 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   each press is reported at most once; `t` = seconds into the act; tapped by wrapping the live
   `CombatSim.step` and reading the player state, buffer included, before / after, nothing in
   combat changes) and `frames`. `kq.pilot.observe({frames?})` is the
-  same without stepping; `kq.pilot.choose(n)` clicks option n (1-based) of the open dialogue /
-  story choice / modal, one at a time: a second `choose()` before the next `act` / `observe` returns
+  same without stepping; `kq.pilot.choose(n)` selects option n (1-based) of the open dialogue,
+  story choice or modal. Inline choices go through `kq.story.choose` and return a label only when
+  the choice was accepted. A second `choose()` before the next `act` / `observe` returns
   null and adds a `chooseRejected` event (the next modal may not be up yet). In bullet time the era
   shift runs on the fixed steps when frames are drawn only on request, and fast travel arrives at
   once (`src/core/bullet.ts`); `kq.pilot.showStrip(true)` shows each act's frames along the bottom of
@@ -1657,6 +1660,8 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   terrace lamps, winter over the summer night, the climax on the one scaffold, darkness, the
   return. Light via `uGlowColor/uGlowPos`, white flash via `post.uFlash` — off with
   `settings.reducedFlash` or `reducedMotion`; the graphics preset Niedrig halves the sparks.
+  Reduced motion keeps the phase and shell audio schedules, skips moving spark and smoke work,
+  and shows one stationary light during the dark phase.
 - Lit windows (`windows.ts`, the interiors' `extractOpenings`): cue `{do:'cue', id:'scenery:windows',
   data:{building, era?, on?, share?}}` (chapter 2 lights KB-B10); Ehrenhof gate `scenery:gate
   {open}` (closed by default; open adds a pass zone through KB-B39).

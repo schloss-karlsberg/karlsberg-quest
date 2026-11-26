@@ -15,6 +15,23 @@ async function expectNamedControls(scope: Locator): Promise<void> {
   for (const control of controls) await expect(control).toHaveAccessibleName(/\S/);
 }
 
+test('release notes open at the top on a short viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 920, height: 420 });
+  await page.goto('./?nosave&fresh&q=low&nowarm');
+  const opener = page.getByTestId('title-news');
+  await expect(opener).toBeVisible({ timeout: 90_000 });
+  await opener.press('Enter');
+  const dialog = page.getByRole('dialog', { name: 'Neuigkeiten' });
+  await expect(dialog).toBeFocused();
+  expect(await dialog.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeGreaterThan(0);
+  expect(await dialog.evaluate((el) => el.scrollTop)).toBe(0);
+  await expect(dialog.locator('.kq-news-entry').first().locator('h3').first()).toBeInViewport();
+  await page.keyboard.press('Tab');
+  await expect(dialog.locator('.actions button')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(opener).toBeFocused();
+});
+
 test('title, settings and new-game screens follow the keyboard and the saved motion setting', async ({ page }) => {
   await page.goto('./?nosave&fresh&q=low&nowarm');
   const title = page.getByTestId('title');
