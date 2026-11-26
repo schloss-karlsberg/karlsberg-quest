@@ -2046,7 +2046,8 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
 - **Credits** (`party:credits`): lines = `data.lines`, else `content/party/credits.json`
   (`{lines}`, the story team's, bundled through an eager `import.meta.glob`, may be missing), else
   the 3-line placeholder. The strip crawls along the bottom edge (over the letterbox, game clock,
-  `data-testid="party-credits"`); reduced motion steps the lines through, centred. The camera way is
+  `data-testid="party-credits"`). Reduced motion uses a manually scrollable list. On phones, the
+  credits hide the gameplay touch layer and use the safe width until the credits end. The camera way is
   a `cinematic:play` **keys** spec (`party-credits`, `lockInput: false`, `skippable: false`, reduced
   'stills'): the cinematic's `orbit` circles at a constant rate and cannot stop on a person, so the
   keys run on the same circle (r 14 m, nominally a turn per 40 s, a key every ≤ 0.45 rad) and hold
