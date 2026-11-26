@@ -1,9 +1,8 @@
+import { setImmediate as settle } from 'node:timers/promises';
 import { describe, expect, it, vi } from 'vitest';
 import type { AudioManager } from '../src/audio/audio';
 import { VoiceClips } from '../src/systems/story/dialogue/voiceClips';
 import { textHash } from '../src/systems/story/dialogue/voiceManifest';
-
-const flush = () => new Promise((r) => setTimeout(r, 0));
 
 /** Bytes a fake file returns; BAD bytes fail to decode (an Opus file this "browser" cannot read). */
 const GOOD = 1200;
@@ -50,10 +49,6 @@ function server(opts: { manifest?: unknown; status?: number; gate?: boolean; bod
   return { fetchFn, urls, release, peak: () => peak };
 }
 
-async function settle(): Promise<void> {
-  for (let i = 0; i < 6; i++) await flush();
-}
-
 describe('VoiceClips', () => {
   it('a missing manifest means no voices and one debug line', async () => {
     const dbg = vi.spyOn(console, 'debug').mockImplementation(() => {});
@@ -61,7 +56,7 @@ describe('VoiceClips', () => {
     const s = server({ status: 404 });
     const c = new VoiceClips(fakeAudio(), './', s.fetchFn, true);
     c.init();
-    await flush();
+    await settle();
     c.preload([{ id: 'a' }]);
     expect(c.stats().manifest).toBe('none');
     expect(c.take('a', 'Hallo')).toBeNull();
@@ -75,7 +70,7 @@ describe('VoiceClips', () => {
     const dbg = vi.spyOn(console, 'debug').mockImplementation(() => {});
     const c = new VoiceClips(fakeAudio(), './', server({ manifest: { version: 9 } }).fetchFn, true);
     c.init();
-    await flush();
+    await settle();
     expect(c.stats().manifest).toBe('none');
     dbg.mockRestore();
   });
@@ -85,15 +80,17 @@ describe('VoiceClips', () => {
     const c = new VoiceClips(fakeAudio(), '/base/', s.fetchFn, true);
     // requested before the manifest arrived: kept and loaded after
     c.preload(Object.keys(LINES).map((id) => ({ id, text: LINES[id] })));
-    await flush();
+    await settle();
     expect(c.stats().manifest).toBe('ok');
     expect(c.stats().loading).toBe(3);
     expect(c.stats().queued).toBe(2);
     expect(s.urls).toContain(`/base/voice/a.${textHash('Hallo')}.webm`);
     // not decoded yet: no clip, never waits
     expect(c.take('a', 'Hallo')).toBeNull();
-    for (let i = 0; i < 10 && s.release.length; i++) {
-      for (const r of s.release.splice(0)) r();
+    // Each released batch drains its fetch/decode promises before the next event-loop turn.
+    for (const count of [3, 2]) {
+      expect(s.release).toHaveLength(count);
+      for (const release of s.release.splice(0)) release();
       await settle();
     }
     expect(s.peak()).toBeLessThanOrEqual(3);
@@ -111,7 +108,7 @@ describe('VoiceClips', () => {
       { id: 'a', text: 'Hallo' },
       { id: 'b', text: 'geändert' },
     ]);
-    await flush();
+    await settle();
     // the stale one is not even fetched
     expect(c.stats().loading).toBe(1);
     for (const r of s.release.splice(0)) r();

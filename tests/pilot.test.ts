@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FixedStepLoop } from '../src/core/loop';
-import { skipRealTimeWaits, stepsDriveVisuals } from '../src/core/bullet';
+import { fastManualSteps, skipRealTimeWaits, stepsDriveVisuals } from '../src/core/bullet';
 import {
   ChooseGate,
   attackReady,
@@ -213,6 +213,28 @@ describe('pilot round-10 fixes (docs/PLAYTEST-ROUND10.md §5)', () => {
     expect(skipRealTimeWaits(true, new URLSearchParams(''))).toBe(true);
     expect(skipRealTimeWaits(false, new URLSearchParams('manual'))).toBe(true);
     expect(skipRealTimeWaits(false, new URLSearchParams('nosave'))).toBe(false);
+  });
+
+  it('faststep requires manual mode and preserves frame logic between real draws', () => {
+    for (const query of ['', 'manual', 'faststep', 'manual&idle'])
+      expect(fastManualSteps(new URLSearchParams(query))).toBe(false);
+    expect(fastManualSteps(new URLSearchParams('manual&faststep'))).toBe(true);
+
+    let ticks = 0;
+    const frames: Array<[number, boolean]> = [];
+    const loop = new FixedStepLoop({
+      update: () => ticks++,
+      render: (dt, _alpha, draw) => frames.push([dt, draw]),
+    });
+    loop.manual = true;
+    loop.pace = () => 0;
+    loop.step(60, false);
+    loop.step(0, false); // refresh a frame-driven interaction target
+    loop.step(); // default manual hook
+    loop.frame(1); // the next browser paint, also used by screenshotReady()
+    loop.frame(2); // the requests from both fast steps coalesced
+    expect(ticks).toBe(61);
+    expect(frames).toEqual([[loop.dt, false], [loop.dt, false], [loop.dt, true], [loop.dt, true]]);
   });
 });
 
