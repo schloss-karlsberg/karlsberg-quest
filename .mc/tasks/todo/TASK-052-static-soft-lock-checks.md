@@ -53,7 +53,7 @@ and keep the chapter-three basket cue safe when resuming an older save.
 - [x] Guard the basket cue after pickup and test the old-save state.
 - [x] Update the authoring guides and changelogs, run the four gates and attempt locked browser checks.
 - [x] Record each review disposition.
-- [ ] Commit the remaining review changes locally on `dev/task-052`.
+- [x] Commit the remaining review changes locally on `dev/task-052` (`ae41dc6`).
 
 ## Progress
 
@@ -138,17 +138,15 @@ KQ_E2E_PORT=5452 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2
 - `0454b3a` feat(content) — static soft-lock checks in the content validator
 - `7046d00` fix(story) — keep the basket cue silent after pickup
 
-The subsequent staging attempt failed when Git could not create the worktree's `index.lock`.
-The validator, tests, documentation and task closeout are in the worktree. The intended
-commits are below.
+- `ae41dc6` fix — address review findings (validator, shared quest rules, tests and docs)
 
-```sh
-git add src/systems/quests/index.ts src/systems/quests/logic.ts
-git commit -m 'refactor(content): share quest rules with progression validation' -m 'Co-Authored-By: Codex <noreply@openai.com>'
+## Second review (2026-11-26)
 
-git add scripts/content-validation/catalog.ts scripts/content-validation/chapter.ts scripts/content-validation/progression.ts scripts/content-validation/timeline.ts tests/content-progression.test.ts
-git commit -m 'fix(content): model reachable story and quest progression' -m 'Co-Authored-By: Codex <noreply@openai.com>'
-
-git add content/quests/README.md content/story/README.md docs/PRD.md docs/ACTION-RPG.md .mc/tasks/todo/TASK-052-static-soft-lock-checks.md
-git commit -m 'docs(content): record task 052 review results' -m 'Co-Authored-By: Codex <noreply@openai.com>'
-```
+- All 15 first-round findings are confirmed fixed, each with a regression in
+  `tests/content-progression.test.ts` or `tests/story.test.ts`. The staging commands that used to
+  be listed here are superseded by `ae41dc6`.
+- The quest runtime refactor (`dropEarlier`, `killMatches`, `objectiveEvents`, `recordItemDeed`
+  moved into `logic.ts`) is behaviour-preserving. The changed chapter-three cue keeps its voiced text.
+- Gates: `pnpm typecheck` passed; `pnpm test` reported `Test Files  119 passed (119)` and
+  `Tests  1631 passed (1631)`; `pnpm validate` reported `Progression: 0 error(s), 15 warning(s)`
+  and `✓ content valid (24 warning(s))`; `pnpm build` passed.
