@@ -81,6 +81,14 @@ the e2e test fails when a scene is over.
   and Hoch have up to 408 triangles in the main draw, with one additional draw and the same
   triangle ceiling when the shadow pass runs. The water reflection omits the batch. GPU timings
   and matched stills are pending.
+- **Castle understory (TASK-008, slice 6).** Run `e2e/gpu/tour-groundcover.gpu.ts` with
+  `PERF_LABEL=slice6-before` on `origin/main` and `PERF_LABEL=slice6-after` on the slice. The
+  test pairs six desktop and phone views, including the Weiher, Quelle and plateau. The layer
+  builds each site's static batch on first approach within 55 m and reuses it on return. At most
+  one batch is visible. The main pass adds one draw and up to 780 triangles on Niedrig or 2,680
+  on Mittel and Hoch. The plants are excluded from reflections and the shadow pass. Check the
+  phone's rendered fps, CPU p95 and all-pass peaks in `phone-route.json`, and all nine scenes
+  in `phone-bench.json`. Hardware captures are pending.
 
 ## 3. Results
 
@@ -408,11 +416,11 @@ accounted for 4,373,227 bytes and the six surface pairs for 2,550,738 bytes in t
 Subtracting those URLs leaves **19,829,881 bytes** against the strict 20 MiB gate. A new
 Playwright run for slice 4 measured **19,830,220 bytes** on Hoch.
 
-The slice 5 plateau geometry runs from one JavaScript chunk imported when today's player comes
-within 100 m of the plateau after leaving the title. It reuses the loaded path and terrain data
-and needs zero model or texture requests. Re-run the byte spec on Hoch with
-`PERF_LOAD_QUALITY=high` to confirm the first-input total is still under 20 MiB and the plateau
-chunk stays off the title.
+The castle understory streams after the title on entry to the present-day world. It imports the
+slice 5 plateau module to reuse its dry-verge filter and reserve the prop footprints. The plateau
+prop mesh and colliders still build within 100 m of the plateau. Both modules use path and terrain
+data already in memory. Run the byte spec with `PERF_LOAD_QUALITY=high` to check request timing
+for both scenery chunks and the strict 20 MiB cap.
 
 ### Earlier loading measurements
 

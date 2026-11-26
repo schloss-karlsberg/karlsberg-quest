@@ -18,7 +18,7 @@ milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-23
-updated: 2026-11-25
+updated: 2026-11-26
 ---
 
 # Improve the castle landscape: terrain, trees, flowers, props; make full use of the LiDAR data
@@ -98,6 +98,119 @@ each file credited in `public/assets/LICENSES.json`; data licences in `public/da
 - [ ] Before / after GPU screenshots from 4–6 fixed viewpoints (palace plateau, Ehrenhof, Quelle, tour route, Weiher) in the PR
 - [ ] New assets CC0 / own work with credits; `tests/assets.test.ts` green
 - [ ] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass; `docs/ART-DIRECTION.md` / `docs/PERFORMANCE.md` updated
+
+## Slice 6 plan
+
+_Status: approved 2026-11-26 (coordinator for the owner)_
+
+**Approach:** Use the shipped present-day land cover, canopy height, OSM paths and DGM to dress
+three gaps in the castle landscape. Place low shrubs along canopy edges and dry flower seed heads
+in open patches at the Weiher, outside the Quelle hollow and on the former Ehrenhof plateau.
+The planting is FIKTION. Stream own-work static procedural geometry after play starts and keep
+one visible instanced batch, with fewer plants and parts on Niedrig.
+
+**Files to touch:**
+
+- `src/systems/scenery/` — place and stream the local plants, using the existing plateau prop positions and scenery lighting.
+- `tests/` — test repeatability, habitat, access, instancing, the reduced layout and credits.
+- `public/assets/LICENSES.json` — credit the own-work procedural geometry.
+- `e2e/gpu/tour-groundcover.gpu.ts`, `e2e/perf.spec.ts` — prepare paired GPU views and verify request timing.
+- `docs/ART-DIRECTION.md`, `docs/PERFORMANCE.md`, `docs/ACTION-RPG.md`, `docs/ARCHITECTURE.md`, `docs/PRD.md` — describe the appearance, placement and cost.
+
+**Steps:**
+
+- [x] 1. Implement deterministic placement and the post-start instance batch with a reduced Niedrig layout.
+- [x] 2. Test the shipped placements, full footprint clearance, caps, era and preset changes. Prepare paired captures and the startup request check.
+- [x] 3. Update the guides and run the four local gates.
+- [ ] 4. Capture the six GPU views on both revisions and verify Hoch startup bytes, phone timing, bench budgets and the tour in Playwright.
+
+**Test plan:** Use the shipped data in Vitest to check shrubs at canopy edges and seed heads in
+open cells, with room around trails, stops, the spring, water, the hidden Bauwagen and plateau
+fittings. Run typecheck, Vitest with two workers, the build, and the sandbox-safe validator.
+Capture the same six poses on `origin/main` and the slice at 667 × 375 on Niedrig with reduced
+motion and on desktop. Check the route and nine bench scenes against `PERF_BUDGET` and capture
+Hoch first-input transfers using `PERF_LOAD_QUALITY=high`.
+
+**Risks:** A plant can cross a path or the waterline when its centre is dry. Check the whole
+footprint. Nearby scenery can compete with the new silhouettes, so compare the paired stills
+at walking height. Keep the new module off the title and cap each visible batch.
+
+**Open questions:** GPU stills, repeat phone timings, first-input bytes and browser playthroughs
+await the coordinator's machine.
+
+| Epic criterion | Coverage | Evidence or remaining work |
+| --- | --- | --- |
+| 1. Used and unused data | partial | Reuse the 2 m canopy and present-day cover for local understory. |
+| 2. Higher terrain detail and data budget | follow-up | A 1 m geometry pilot remains open. |
+| 3. Trees, bushes, flowers and props | partial | Data-driven shrubs and dry flower seed heads at three sites. |
+| 4. Mobile frame rate and reduced version | partial | Reduced Niedrig subset; phone timing and bench captures pending. |
+| 5. Before/after GPU views in the PR | partial | Six paired views per tier, pending hardware captures. |
+| 6. Assets and credits | full | Own-work procedural geometry credited in the asset ledger. |
+| 7. Gates and docs | full | Four local gates and updated design and performance docs. |
+
+**Follow-up slices:** Evaluate a 1 m terrain geometry pilot, CHM crown placement and wider
+Röntgenblick coverage as described in slice 3.
+
+## Slice 6 progress
+
+- Branch `feat/task-008-slice6`, based on `22a33d0` (`origin/main`).
+- 2026-11-26 — The coordinator approved the plan for the owner. Browser and GPU runs are reserved for the coordinator's machine.
+- 2026-11-26 — Step 1 complete. The wooded tour stops use local canopy height differences as well
+  as open canopy cells. A CPU probe found shrubs and seed heads at all three sites. The
+  instance batches stream after the title. Typecheck passed.
+- 2026-11-26 — Step 2 complete. All 17 focused tests passed, including the shipped dry footprint
+  checks, seed-head and shrub placement, instance caps and CC0 credit. Playwright discovered
+  the paired captures and the art, performance, scenery and tour cases via `--list`. The load
+  spec checks for requests for the new module while the title is loading.
+- 2026-11-26 — Step 3 complete. Typecheck, all 1,565 Vitest tests across 118 files, production
+  build, `node --import tsx scripts/validate-content.ts`, `mc validate` and `git diff --check`
+  passed. Content validation reported existing warnings. The pnpm gates used a local copy of
+  installed dependencies with `verify-deps-before-run=false`. Vite emitted a separate 3.76 kB
+  understory chunk (2.03 kB gzip), gated by entry into present-day play. It also imports the
+  existing plateau chunk after the title for its dry-verge and prop placement rules.
+- 2026-11-26 — Step 4 is pending. The GPU stills, phone fps and all-pass benchmarks, Hoch first-input
+  bytes, and browser specs await the coordinator. Staging and commit are handed over because the
+  worktree sandbox cannot create `index.lock`.
+
+### Slice 6 coordinator capture commands
+
+Use the same Chromium installation and ANGLE Metal GPU for both builds. Copy the capture and
+byte checks into the detached baseline to run the same harness.
+
+```sh
+slice6_root=$(mktemp -d /tmp/kq-task-008-slice6.XXXXXX)
+git worktree add --detach "$slice6_root/before" origin/main
+cp e2e/gpu/tour-groundcover.gpu.ts "$slice6_root/before/e2e/gpu/"
+cp e2e/perf.spec.ts "$slice6_root/before/e2e/"
+(cd "$slice6_root/before" && pnpm install --offline --frozen-lockfile && pnpm build)
+pnpm build
+
+slice6_e2e() {
+  CI=1 KQ_E2E_PORT=5361 scripts/dev/heavy.sh --max-hold 15 -- \
+    pnpm exec playwright test "$@" --workers=1
+}
+slice6_capture() {
+  PERF_LABEL="$1" slice6_e2e -c playwright.gpu.config.ts e2e/gpu/tour-groundcover.gpu.ts
+  PERF_LABEL="$1" PERF_LOAD_QUALITY=high slice6_e2e e2e/perf.spec.ts --grep 'bytes and time before the first input'
+}
+(cd "$slice6_root/before" && slice6_capture slice6-before)
+slice6_capture slice6-after
+
+for spec in e2e/art.spec.ts e2e/scenery.spec.ts e2e/tour-slice.spec.ts; do
+  slice6_e2e "$spec"
+done
+PERF_LABEL=slice6-after slice6_e2e e2e/perf.spec.ts --grep 'bench route|quality presets'
+
+mkdir -p test-results/contribute/TASK-008 test-results/perf
+cp -R "$slice6_root/before/test-results/contribute/TASK-008/slice6-before" test-results/contribute/TASK-008/
+cp "$slice6_root/before/test-results/perf/load-slice6-before.json" test-results/perf/
+```
+
+Compare the six fixed views per tier, including the 1789 Ehrenhof control, and inspect the three
+present-day sites from walking height. Check `phone-route.json` and `phone-bench.json` for the
+60 fps target and all-pass budgets, then compare the two Hoch load JSON files against 20 MiB.
+The art spec checks the CC0 credit in the title, and the tour spec follows the group through the
+spring interaction and first shift.
 
 ## Slice 5 plan
 

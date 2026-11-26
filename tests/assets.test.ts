@@ -35,10 +35,11 @@ describe('asset manifest (CC0 pipeline)', () => {
     }
   });
 
-  it('credits the procedural plateau props as own-work CC0 geometry', () => {
-    const source = 'src/systems/scenery/palace-plateau.ts';
+  it.each(['palace-plateau', 'castle-understory'])('credits the procedural %s geometry as own-work CC0', (id) => {
+    const source = `src/systems/scenery/${id}.ts`;
     expect(licences.procedural).toContainEqual(expect.objectContaining({
       name: expect.stringContaining('FIKTION'),
+      author: 'Karlsberg Quest',
       licence: 'CC0-1.0',
       source,
     }));

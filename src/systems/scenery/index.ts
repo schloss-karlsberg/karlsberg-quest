@@ -147,6 +147,8 @@ let plateauModule: PlateauModule | undefined;
 let plateauRequested = false;
 let plateau: ReturnType<PlateauModule['buildPlateauBatch']> | undefined;
 let removePlateau: (() => void) | undefined;
+type Understory = ReturnType<typeof import('./castle-understory')['createCastleUnderstory']>;
+let understory: { requested: boolean; layer?: Understory; remove?: () => void } | undefined;
 let tally: RundTally | null = null;
 let life: CourtLife | null = null;
 let bauwagen: BauwagenDiscovery | null = null;
@@ -199,6 +201,35 @@ function updatePlateau(ctx: GameContext): void {
     };
   }
   plateau.setLevel(ctx.quality.level);
+}
+
+function updateUnderstory(ctx: GameContext): void {
+  const state = understory;
+  if (!state) return;
+  const playing = !ctx.pause.reasons.has('title');
+  const era = ctx.era.current;
+  const { x, z } = ctx.player.position;
+  if (state.layer) {
+    state.layer.update(playing, era, ctx.quality.level, x, z);
+  } else if (playing && era === 'today' && !state.requested) {
+    state.requested = true;
+    void import('./castle-understory').then(({ createCastleUnderstory }) => {
+      if (understory !== state) return;
+      const { world, data } = ctx;
+      const layer = createCastleUnderstory({
+        terrain: world.heightfields['2025'], ground: data.ground, paths: world.paths,
+        graph: data.paths, canopy: data.canopy, footprintAt: (px, pz) => world.collider.footprintAt(px, pz),
+      });
+      state.layer = layer;
+      root.add(layer.object);
+      world.water.reflectionSkip.push(layer.object);
+      state.remove = () => {
+        world.water.reflectionSkip = world.water.reflectionSkip.filter((o) => o !== layer.object);
+        layer.dispose();
+      };
+      ctx.loop.requestRender();
+    }).catch((err: unknown) => console.warn('[scenery] castle understory unavailable', err));
+  }
 }
 
 /** The Ehrenhof's people in 1789 (medium / high, within 200 m of the court; court.ts). */
@@ -624,6 +655,7 @@ export default defineSystem({
     root = new Group();
     root.name = 'scenery';
     ctx.scene.add(root);
+    understory = { requested: false };
     registerEraMaterials('scenery.figures', '*', () => [workersMesh([{ x: 0, z: 0, yaw: 0, pose: 'stand' }], () => 0), signMesh([{ x: 0, y: 1, z: 0, yaw: 0, w: 1, h: 0.3, text: 'Weg' }])].filter((m) => m !== null));
     hohenburg = new Hohenburg();
     root.add(hohenburg.mesh);
@@ -702,6 +734,7 @@ export default defineSystem({
   frame(_dt, ctx) {
     installHooks(ctx);
     updatePlateau(ctx);
+    updateUnderstory(ctx);
     const reduced = ctx.settings.state.reducedMotion;
     for (const l of live.values()) for (const m of l.built.materials) if (m.uniforms.uMotion) m.uniforms.uMotion.value = reduced ? 0.6 : 1;
   },
@@ -709,6 +742,8 @@ export default defineSystem({
     bauwagen?.dispose();
     bauwagen = null;
     removePlateau?.();
+    understory?.remove?.();
+    understory = undefined;
     for (const id of [...live.keys()]) dropSet(id);
     if (floorWorld?.floorPatch === passageFloor) floorWorld.floorPatch = null;
     floorWorld = null;

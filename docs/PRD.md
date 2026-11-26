@@ -22,6 +22,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-26 | **Castle understory (TASK-008, slice 6).** Low shrubs and dry flower seed heads (FIKTION) follow canopy edges and gaps at the present-day Weiher, Quelle and palace plateau. Trails, the spring and the fittings stay clear. Niedrig shows fewer plants with simpler silhouettes. |
 | unreleased | 2026-11-26 | **Spring interaction and Pause chapters (TASK-007, slice 9).** At the Karlsbergquelle, „Wasser berühren“ appears when the story calls for it and the player can reach the water. Pause provides saving and a „Kapitel“ page for replaying unlocked chapters. Sammlungen shows the bottles collected so far. The spring remains the home and wake point. |
 | unreleased | 2026-11-25 | **Palace plateau dressing (TASK-008, slice 5).** Present-day benches, low broken sandstone courses and verge stones follow dry ground beside the track through the former Ehrenhof. The fittings and layout are FIKTION. Niedrig keeps the benches and uses fewer stones. |
 | unreleased | 2026-11-25 | **Collect chestnuts on the guided tour (TASK-002).** 24 chestnuts lie in small clusters along the route, a few just off the path. Pick them up with E, by walking over them, or with the touch interact button. The feed and Ausrüstung → Fundstücke show the saved count. Gerold remarks on the first, Herr Soll counts the twelfth, and finding all 24 earns a last word. The activity is optional and awards no XP. |

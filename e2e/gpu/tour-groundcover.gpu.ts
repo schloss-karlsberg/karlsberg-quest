@@ -6,13 +6,14 @@ import { frameStats, PERF_BUDGET } from '../../src/render/perf';
 import { isSoftwareGpu } from '../../src/render/quality';
 import { trackErrors } from '../helpers/common';
 
-/** TASK-008. Labels select the matched prop, terrain-detail and startup-budget views. */
+/** TASK-008. Labels select matched scenery, terrain-detail and startup-budget views. */
 const LABEL = process.env.PERF_LABEL ?? 'after';
 const OUT = `test-results/contribute/TASK-008/${LABEL}`;
 const STARTUP_VIEWS = LABEL === 'slice4-before' || LABEL === 'slice4-after';
 const PLATEAU_VIEWS = LABEL === 'slice5-before' || LABEL === 'slice5-after';
-const TOUR_PROP_VIEWS = STARTUP_VIEWS || PLATEAU_VIEWS || LABEL === 'slice2-before' || LABEL === 'slice2-after';
-const TERRAIN_DETAIL_VIEWS = STARTUP_VIEWS || PLATEAU_VIEWS || LABEL === 'slice3-before' || LABEL === 'slice3-after';
+const UNDERSTORY_VIEWS = LABEL === 'slice6-before' || LABEL === 'slice6-after';
+const TOUR_PROP_VIEWS = STARTUP_VIEWS || PLATEAU_VIEWS || UNDERSTORY_VIEWS || LABEL === 'slice2-before' || LABEL === 'slice2-after';
+const TERRAIN_DETAIL_VIEWS = STARTUP_VIEWS || PLATEAU_VIEWS || UNDERSTORY_VIEWS || LABEL === 'slice3-before' || LABEL === 'slice3-after';
 const VIEWS = [
   { id: '01-karlsberger-hof', era: 'today', x: 524, z: -770, yaw: 253 },
   { id: '02-felsenpfad', era: 'today', x: 683, z: -596, yaw: 90 },
@@ -22,12 +23,17 @@ const VIEWS = [
   { id: '06-ehrenhof', era: '1789', x: 1138, z: -1120, yaw: 90 },
 ] as const;
 const PLATEAU_VIEW = { ...VIEWS[4], x: 1199, z: -1115.2, yaw: 96 } as const;
-const CAPTURE_VIEWS = PLATEAU_VIEWS ? [...VIEWS.slice(0, 4), PLATEAU_VIEW, VIEWS[5]] : VIEWS;
+const CAPTURE_VIEWS = PLATEAU_VIEWS || UNDERSTORY_VIEWS ? [...VIEWS.slice(0, 4), PLATEAU_VIEW, VIEWS[5]] : VIEWS;
 type View = (typeof CAPTURE_VIEWS)[number];
 const PROP_YAWS: Partial<Record<View['id'], number>> = {
   '01-karlsberger-hof': 312,
   '02-felsenpfad': 72,
   '03-weiher': 20,
+};
+const UNDERSTORY_STOPS: Partial<Record<View['id'], { site: string; yaw: number }>> = {
+  '03-weiher': { site: 'weiher', yaw: 74 },
+  '04-quelle': { site: 'quelle', yaw: 68 },
+  '05-palace-plateau': { site: 'plateau', yaw: 78 },
 };
 const LONG_FRAME_MS = 25; // 1.5 frames at the 60 fps cap
 
@@ -77,9 +83,10 @@ async function boot(page: Page, reducedMotion: boolean, graphics: GraphicsLevel 
 async function shootViews(page: Page, prefix: string, terrainDetail = false) {
   const results = [];
   for (const view of CAPTURE_VIEWS) {
+    const understory = UNDERSTORY_VIEWS ? UNDERSTORY_STOPS[view.id] : undefined;
     const still = {
       ...view,
-      yaw: TOUR_PROP_VIEWS ? (PROP_YAWS[view.id] ?? view.yaw) : view.yaw,
+      yaw: understory?.yaw ?? (TOUR_PROP_VIEWS ? (PROP_YAWS[view.id] ?? view.yaw) : view.yaw),
       pitch: terrainDetail && view.era === 'today' ? -18 : -6,
     };
     await page.evaluate(({ era, x, z, yaw, pitch }) => {
@@ -91,18 +98,40 @@ async function shootViews(page: Page, prefix: string, terrainDetail = false) {
     if (LABEL === 'slice5-after' && view.id === PLATEAU_VIEW.id) {
       await page.waitForFunction(() => window.kq!.ctx.scene.getObjectByName('scenery-palace-plateau')?.visible, null, { timeout: 30_000 });
     }
+    if (LABEL === 'slice6-after' && understory) {
+      await page.waitForFunction((name) => window.kq!.ctx.scene.getObjectByName(name)?.visible, `castle-understory-${understory.site}`, { timeout: 30_000 });
+    }
     const result = await page.evaluate(async () => {
       const k = window.kq!;
       await k.screenshotReady();
       const { calls, triangles } = k.ctx.renderer.info.render;
       const tourSets = k.scenery!.built().filter((id) => id.startsWith('tour-'));
       const plateau = k.ctx.scene.getObjectByName('scenery-palace-plateau') as InstancedMesh | undefined;
-      return { clock: k.ctx.loop.time, calls, triangles, cover: { ...k.ctx.world.nature.cover.stats }, tourSets, plateauParts: plateau?.count ?? 0 };
+      const plants = k.ctx.scene.getObjectByName('scenery-castle-understory')?.children.filter((mesh) => mesh.visible) as InstancedMesh[] | undefined;
+      return {
+        clock: k.ctx.loop.time, calls, triangles, cover: { ...k.ctx.world.nature.cover.stats }, tourSets, plateauParts: plateau?.count ?? 0,
+        understory: plants?.map(({ name, count }) => ({ name, count })) ?? [],
+      };
     });
     await page.screenshot({ path: `${OUT}/${prefix}-${view.id}.png` });
     results.push({ ...still, ...result });
   }
   return results;
+}
+
+function checkUnderstory(views: Awaited<ReturnType<typeof shootViews>>, graphics: GraphicsLevel) {
+  if (!UNDERSTORY_VIEWS) return;
+  for (const view of views) {
+    const expected = LABEL === 'slice6-after' ? UNDERSTORY_STOPS[view.id] : undefined;
+    if (expected) {
+      expect.soft(view.understory.map(({ name }) => name), view.id).toEqual([`castle-understory-${expected.site}`]);
+      const count = view.understory[0]?.count ?? 0;
+      expect.soft(count, view.id).toBeGreaterThan(0);
+      expect.soft(count, view.id).toBeLessThanOrEqual(graphics === 'low' ? 39 : 134);
+    } else {
+      expect.soft(view.understory, view.id).toEqual([]);
+    }
+  }
 }
 
 function checkPlateau(views: Awaited<ReturnType<typeof shootViews>>, graphics: GraphicsLevel) {
@@ -238,6 +267,7 @@ test('six matched Niedrig ground-cover views', async ({ page }) => {
   writeJson('desktop-views', { profile, views });
   checkTourSets(views);
   checkPlateau(views, 'low');
+  checkUnderstory(views, 'low');
   expect(views.at(-1)!.cover).toMatchObject({ grass: 0, flowers: 0, reeds: 0 });
   if (LABEL === 'before' || LABEL === 'pr26-before') {
     for (const view of views) expect(view.cover, view.id).toMatchObject({ grass: 0, flowers: 0, reeds: 0 });
@@ -259,17 +289,21 @@ test.describe('667×375 landscape touch', () => {
     writeJson('phone-reduced-motion-views', { profile, views });
     checkTourSets(views);
     checkPlateau(views, 'low');
+    checkUnderstory(views, 'low');
     await page.evaluate(() => window.kq!.ctx.settings.update((s) => { s.reducedMotion = false; }, 'reducedMotion'));
     const liveProfile = { ...profile, reducedMotion: false };
 
     const route = [];
-    for (const view of CAPTURE_VIEWS.slice(0, PLATEAU_VIEWS ? 5 : 4)) {
+    for (const view of CAPTURE_VIEWS.slice(0, PLATEAU_VIEWS || UNDERSTORY_VIEWS ? 5 : 4)) {
       await page.evaluate(() => window.kq!.setEra('today'));
       const sample = await walkAndTurn(page, view);
       route.push(sample);
       checkWalk(sample, view.id);
       if (LABEL === 'slice5-after' && view.id === PLATEAU_VIEW.id) {
         expect.soft(sample.renderedFps, 'Niedrig palace plateau at the 60 fps cap').toBeGreaterThanOrEqual(57);
+      }
+      if (LABEL === 'slice6-after' && UNDERSTORY_STOPS[view.id]) {
+        expect.soft(sample.renderedFps, `Niedrig ${view.id} at the 60 fps cap`).toBeGreaterThanOrEqual(57);
       }
     }
     writeJson('phone-route', { profile: liveProfile, budget: PERF_BUDGET, longFrameMs: LONG_FRAME_MS, route });
@@ -293,7 +327,7 @@ test.describe('667×375 landscape touch', () => {
 });
 
 test.describe('DGM1 surface on desktop', () => {
-  test.skip(!TERRAIN_DETAIL_VIEWS, 'use a slice3, slice4 or slice5 capture label');
+  test.skip(!TERRAIN_DETAIL_VIEWS, 'use a slice3 through slice6 capture label');
 
   for (const graphics of ['medium', 'high'] as const) {
     test(`${graphics}: six matched terrain views and five live route samples`, async ({ page }) => {
@@ -310,8 +344,9 @@ test.describe('DGM1 surface on desktop', () => {
       });
       expect(source).toEqual(hasDetail ? [448, -1248, 896, 832] : null);
       const views = await shootViews(page, `desktop-${graphics}`, true);
-      if (STARTUP_VIEWS || PLATEAU_VIEWS) checkTourSets(views);
+      if (STARTUP_VIEWS || PLATEAU_VIEWS || UNDERSTORY_VIEWS) checkTourSets(views);
       checkPlateau(views, graphics);
+      checkUnderstory(views, graphics);
       writeJson(`desktop-${graphics}-views`, { profile, source, views });
 
       await page.evaluate(() => window.kq!.setEra('today'));

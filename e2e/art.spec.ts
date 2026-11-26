@@ -61,6 +61,7 @@ test.describe('art foundation', () => {
     await expect(list).toContainText('Tree Stump 01');
     await expect(list).toContainText('CC0-1.0');
     await expect(list).toContainText('Bänke und Sandstein am Schlossplateau (FIKTION): Karlsberg Quest — CC0-1.0');
+    await expect(list).toContainText('Herbststräucher und trockene Blütenstände (FIKTION): Karlsberg Quest — CC0-1.0');
     await expect(list.locator('a').first()).toHaveAttribute('href', /^https:\/\/polyhaven\.com\//);
     const voiceSummary = page.getByTestId('voice-licences-summary');
     await expect(voiceSummary).toContainText('Stimmen von Quirin Laub, Marlene, Gerold Imhoff, Herr Soll, Jost Fendel und Mats: synthetisch, lokal erzeugt mit MOSS-TTS-v1.5 (Apache-2.0); Ausgabe CC0. Keine echte Person, keine nachgeahmte Stimme.');
