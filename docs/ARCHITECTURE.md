@@ -676,6 +676,8 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 - Unit (`tests/`): event bus, loop determinism, state/save round trip and throttling, settings,
   system ordering + error isolation, heightfield sampling, decoders (incl. real data), collision,
   forest determinism, validator (good + each failure class), ContentDB.
+- Survey unlocks (`tests/skills-runtime.test.ts`): `setupSkills` uses the real state store, event
+  bus and `CardDirector` with a small DOM stub and explicit frame steps for grants, pause and reload.
 - `tests/control-fixture.ts` records the controls that the settings form and touch overlay build.
   Node tests dispatch events to their handlers by test ID. Playwright covers layout, focus and native pointer capture.
 - Quest, story and Chronik units reuse the existing headless fixtures for quest reloads, chapter
@@ -975,7 +977,9 @@ Round-4 (polish: set dressing) integration rules:
   and at 40 m.
 - **Snow tracks** (`tracks.ts`, `trackVisuals.ts`; 1793-02 or a snowy look, `snow` overrides): boot
   prints on every `player:step`, paw / hoof prints of the pack, instanced decals that fade over
-  240 s. Your trail breaks on water, cobbles / building floors, today's roads and steep rock; the
+  240 s. A story trail can extend the lifetime of its own prints. Ordinary prints expire on
+  schedule even when a story trail passes through the same area. Your trail breaks on water,
+  cobbles / building floors, today's roads and steep rock; the
   pack follows it print by print (`hunt:tracking {on, why?}`, horn found / lost) but never across a
   break. Crouching / standing over the pack's prints reads them (Spurenleser: kind, number,
   rider, age, direction; tier 2 highlights their routes) → caption + `hunt:read`.
@@ -1108,7 +1112,7 @@ Round-4 (polish: set dressing) integration rules:
   tier pips, "Freigeschaltet" stamp, `data-testid=skill-card`), plays the stamp chime, emits
   `skill:unlocked {skill, level}` and lets Laub comment (`dialogue:say`, `skills.laub.<id>.<n>`)
   once `flags['story.laub']` is set (or without a running story). Cards wait while a modal or a
-  story card is open.
+  story card is open. A settled standalone unlock appears once the card director grants the slot.
 - **Free survey**: without a running story (sandbox, `?notitle` tests) every tool is open;
   `?skills=strict` forces gating, `?skills=all` opens everything. Locked keys leave a toast.
 - Survey checks the active scan and map against the incoming game's skills on its first tick.

@@ -264,6 +264,7 @@ did not move on).
 
 - Combat is on in every era, but **enemies only exist where content spawns them** (quest objectives,
   story `enemy` actions, ambient groups declared by chapters). The present (today) is calm by default.
+  Removing an encounter also clears its airborne attacks and their landing warnings.
 - **Safe zones** (no spawns, attacks do nothing, enemies leash out after 4.5 s): the home at the Karlsbergquelle (r 40 m; until tour WP-01 the field station),
   memorials (`memorial:set`), conversations, NPC talk radius (6 m), and `flags['combat.disabled']`
   (story sets it, e.g. the finale W8 and the endings).
@@ -1075,6 +1076,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Attacks linger after an encounter disappears (TASK-028, 2026-11-26) | Removing an encounter clears its airborne attacks with its warnings. The regression tests also cover reloading earned kills and reached boss phases, restoring Bannlicht charges and capping healing. |
 | The Wegweiser can draw through a wall or miss a reachable detour (TASK-026, 2026-11-26) | The solver checks grid edges during search and can try more than one approach to a free off-grid goal. It uses player clearance (less a little for a player pressed against a wall) and the wading limit to leave the start, keeps the quick straight route when clear, and stops at a reachable approach when it cannot finish. An enclosed start with no reachable leg hides the trail. |
 | Legacy garden saves can have every required objective credited after Continue without a turn-in topic (TASK-037, 2026-11-26) | After restoring counts, Continue marks the quest ready when its required objectives are complete. Hanne then offers the normal turn-in and pays once. Laub's exit lines queue first. The quests start on entry and queue their offers before the autosave. |
 | A Chapter 3 autosave can strand the player before a mandatory quest starts (TASK-037, 2026-11-26) | „Der Festsaal“ starts on entering „Hinauf“, and „Die Hunde los“ starts on entering „Zum Zwinger“, before each beat autosaves. „Hinaus“ also records the room and choice objectives on entry. Continue repairs missing quest progress proven by the saved beat. Hanne and Jost still handle turn-ins and rewards. |

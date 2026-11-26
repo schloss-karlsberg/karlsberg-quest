@@ -71,7 +71,7 @@ export interface PackReading {
 export class TrackField {
   readonly life: number;
   readonly max: number;
-  /** All prints, oldest first (pruned by age and count). */
+  /** All prints in insertion order (authored prints may have future timestamps). */
   prints: Print[] = [];
   /** Player trail state. */
   seg = 0;

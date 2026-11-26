@@ -22,6 +22,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-26 | **Combat, hunt and skills coverage (TASK-028).** Removing an encounter clears its airborne attacks. Ordinary snow prints expire alongside the Warner’s longer-lived trail. Standalone skill unlocks wait for the shared card slot. Added unit coverage for these transitions, saved combat groups, RPG stats and rewards, and paused and reloaded unlock cards. |
 | unreleased | 2026-11-26 | **Chapter 3 garden turn-in and dialogue (TASK-037).** Continue makes „Der Festsaal“ ready for Hanne when the repaired save has every required objective. Laub's transition line precedes his quest offer at „Hinauf“ and „Zum Zwinger“, and both quests start in time for the autosave. |
 | unreleased | 2026-11-26 | **Chapter 3 autosaves (TASK-037).** The first saves at „Hinauf“ and „Zum Zwinger“ include their mandatory quests. Continue repairs missing quest state in the Festsaal, garden and kennel while preserving earned objective counts and completed rewards. |
 | unreleased | 2026-11-26 | **Corrupt save fields (TASK-053).** A save with a damaged field in the animal, combat, bottle, photo, progression, quest or walker data still loads with defaults for that field instead of breaking the system. Missing stamina, Bannlicht or deer flight radii start at their defaults, and duplicate or retired bottle IDs no longer count towards the collection. Seeded tests cover all 19 saved system slices. |
