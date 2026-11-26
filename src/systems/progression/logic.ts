@@ -398,7 +398,10 @@ export class ProgressionCore {
     const s = this.s;
     if (s.taken.includes(p.id)) return false;
     const placed = (s.placed ??= {});
-    placed[p.id] = { ...placed[p.id], ...p, drop: p.drop ?? placed[p.id]?.drop };
+    const previous = placed[p.id];
+    // Replaying a placement may move it, but the saved remainder belongs to this pickup.
+    const count = previous?.item === p.item ? previous.count : p.count;
+    placed[p.id] = { ...previous, ...p, count, drop: p.drop ?? previous?.drop };
     const drops = Object.values(placed).filter((x) => x.drop);
     for (let i = 0; i < drops.length - MAX_DROPS; i++) delete placed[drops[i]!.id];
     return true;

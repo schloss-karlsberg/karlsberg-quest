@@ -361,14 +361,18 @@ class Hunt {
     });
     // the pack belongs to the era it was configured in: a shift (or the return after being caught)
     // ends it; the story re-issues threat:configure when the beat wants it again
-    ev.on('era:change', () => {
-      this.stop('era');
+    ev.on('era:change', ({ from }) => {
+      // On a slot load the store already contains the destination era's pack.
+      const slice = this.slice();
+      if (slice.pack?.era === from) slice.pack = null;
+      this.dismissPack('era');
       this.tracks.clear();
       this.lastStep = null;
     });
     ev.on('save:loaded', () => {
       this.syncLantern(true);
-      if (this.sim) this.stop('debug', true);
+      this.endCaught();
+      if (this.sim) this.dismissPack('debug', true);
       this.restorePending = true;
     });
     // story set pieces (ch. 2): the Warner's trail in the hoarfrost; the pack holds still during W4
@@ -602,14 +606,17 @@ class Hunt {
     const sameArea = s && this.caughtT < 0 && (c.center === undefined || Math.hypot(c.center.x - s.opt.x, c.center.z - s.opt.z) < 5) && (c.radius === undefined || c.radius === s.opt.radius) && (c.hounds === undefined || Math.round(c.hounds) === s.hounds.length) && (c.pikeur === undefined || c.pikeur === !!s.pikeur);
     if (s && sameArea) {
       const mode = c.mode ?? s.mode;
+      const intensity = c.intensity ?? s.opt.intensity;
+      const saved = this.slice().pack;
       const sameTarget = !c.target || (s.opt.target && Math.hypot(c.target.x - s.opt.target.x, c.target.z - s.opt.target.z) < 1);
       if (mode === s.mode && sameTarget) {
         // same beat, new difficulty
-        s.retune({ intensity: c.intensity ?? s.opt.intensity, ...this.mode() });
+        s.retune({ intensity, ...this.mode() });
+        if (saved) saved.opts.intensity = intensity;
         return;
       }
       // same pack, new behaviour (drive → finale at the kennel): they stay where they are
-      const extra: Partial<PackOptions> = {};
+      const extra: HuntStartOptions = {};
       if (o.flankers !== undefined) extra.flankers = o.flankers;
       if (o.lunges !== undefined) extra.lunges = o.lunges;
       if (o.pikeurFar !== undefined) extra.pikeurFar = o.pikeurFar;
@@ -618,9 +625,12 @@ class Hunt {
       if (o.heel !== undefined) extra.heel = o.heel;
       if (o.burst !== undefined) extra.burst = o.burst;
       if (o.keepPace !== undefined) extra.keepPace = o.keepPace;
-      s.switchMode({ mode, target: o.target ?? s.opt.target ?? null, via: o.via ?? [], from: o.from ?? null, headStart: o.headStart, goalRadius: o.goalRadius, oneKey: this.oneKey(), intensity: c.intensity ?? s.opt.intensity, ...extra }, makeMode);
-      const saved = this.slice().pack;
-      if (saved) saved.opts = { ...saved.opts, ...o, mode };
+      const changes = {
+        ...extra, mode, intensity, target: o.target ?? s.opt.target ?? undefined,
+        via: o.via ?? [], from: o.from, headStart: o.headStart, goalRadius: o.goalRadius,
+      };
+      s.switchMode({ ...changes, target: changes.target ?? null, from: changes.from ?? null, oneKey: this.oneKey() }, makeMode);
+      if (saved) Object.assign(saved.opts, changes);
       this.escapedT = -1;
       this.clearFinalePrompt();
       return;
@@ -702,8 +712,12 @@ class Hunt {
   }
 
   stop(reason: HuntEndReason, silent = false): void {
-    const s = this.sim;
     this.slice().pack = null;
+    this.dismissPack(reason, silent);
+  }
+
+  private dismissPack(reason: HuntEndReason, silent = false): void {
+    const s = this.sim;
     this.snowOverride = null;
     this.clearFinalePrompt();
     this.escapedT = -1;

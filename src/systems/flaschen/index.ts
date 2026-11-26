@@ -26,6 +26,8 @@ import { FLASCHENGRUEN, cosmetics } from '../../player/cosmetics';
 import { h } from '../../ui/dom';
 import { addPageSection } from '../../ui/pause-pages';
 import type { Solid } from '../../world/collision';
+import type { MemorialZone } from '../barks/rules';
+import type { ThreatKind } from '../contracts';
 import { basinBase, wallBase, lookFor } from '../quelle/layout';
 import { clink } from './audio';
 import { disposeLabel, labelCanvas } from './label';
@@ -105,8 +107,8 @@ class Flaschen {
   slice: FlaschenSlice;
   readonly root = new Group();
   private readonly live = new Map<string, Live>();
-  private memorials = new Map<string, { x: number; z: number; r: number; era?: string }>();
-  private threat: { x: number; z: number; r: number } | null = null;
+  private readonly memorials = new Map<string, MemorialZone>();
+  private readonly threats = new Map<ThreatKind, { x: number; z: number; r: number }>();
   private bossUp = false;
   private clinkT = 4;
   private promptFor: string | null = null;
@@ -117,8 +119,14 @@ class Flaschen {
 
   constructor(private readonly ctx: GameContext) {
     this.slice = this.loadSlice();
+    this.restoreMemorials();
     this.root.name = 'flaschen';
     ctx.scene.add(this.root);
+  }
+
+  private restoreMemorials(): void {
+    this.memorials.clear();
+    for (const zone of this.ctx.state.state.systems.barks?.memorials ?? []) this.memorials.set(zone.id, zone);
   }
 
   loadSlice(): FlaschenSlice {
@@ -161,7 +169,6 @@ class Flaschen {
     }
     const l: Live = { spot: s, vis, cover, coverR, restY, hangY, fall: hanging ? 0 : 1, vy: 0, y: hanging ? hangY : restY, shown: true };
     this.live.set(s.id, l);
-    this.solidsKey = '';
     return l;
   }
 
@@ -175,7 +182,6 @@ class Flaschen {
       disposeCover(l.cover);
     }
     this.live.delete(id);
-    this.solidsKey = '';
   }
 
   dropAll(): void {
@@ -208,10 +214,10 @@ class Flaschen {
     if (this.bossUp) return true;
     for (const m of this.memorials.values()) {
       if (m.era && m.era !== this.ctx.era.current) continue;
-      if (Math.hypot(m.x - s.x, m.z - s.z) < m.r + 6) return true;
+      if (m.x !== undefined && m.z !== undefined && Math.hypot(m.x - s.x, m.z - s.z) < (m.r ?? 20) + 6) return true;
     }
-    const t = this.threat;
-    return !!t && t.r <= 100 && Math.hypot(t.x - s.x, t.z - s.z) < t.r;
+    for (const t of this.threats.values()) if (t.r <= 100 && Math.hypot(t.x - s.x, t.z - s.z) < t.r) return true;
+    return false;
   }
 
   private seen(s: FlaschenSpot): boolean {
@@ -410,16 +416,18 @@ class Flaschen {
       ev.on('era:change', () => {
         this.dropAll();
         this.bossUp = false;
-        this.threat = null;
+        this.threats.clear();
       }),
       ev.on('memorial:set', (m) => {
         if (m.active === false) this.memorials.delete(m.id);
-        else if (typeof m.x === 'number' && typeof m.z === 'number') this.memorials.set(m.id, { x: m.x, z: m.z, r: m.r ?? 20, era: m.era });
+        else if (m.x !== undefined && m.z !== undefined) this.memorials.set(m.id, m);
       }),
       ev.on('threat:configure', (t) => {
-        if (!t.active) this.threat = null;
-        else if (t.center) this.threat = { x: t.center.x, z: t.center.z, r: t.radius ?? 60 };
+        if (!t.active) this.threats.delete(t.kind);
+        else if (t.center) this.threats.set(t.kind, { ...t.center, r: t.radius ?? 60 });
       }),
+      ev.on('hunt:start', ({ x, z, radius }) => this.threats.set('pack', { x, z, r: radius })),
+      ev.on('hunt:end', () => this.threats.delete('pack')),
       ev.on('boss:phase', () => (this.bossUp = true)),
       ev.on('enemy:killed', (e) => {
         if (e.boss) this.bossUp = false;
@@ -439,9 +447,14 @@ class Flaschen {
       this.applyCosmetics();
     };
     this.offs.push(ev.on('game:start', reload), ev.on('save:loaded', reload));
-    this.ctx.state.subscribe((_s, reason) => {
-      if (reason === 'new' || reason === 'replace') reload();
-    });
+    this.offs.push(this.ctx.state.subscribe((_s, reason) => {
+      if (reason !== 'new' && reason !== 'replace' && reason !== 'load') return;
+      // Clear the outgoing slot's live holds before systems replay the new slot's events.
+      this.bossUp = false;
+      this.threats.clear();
+      this.restoreMemorials();
+      if (reason !== 'load') reload();
+    }));
   }
 
   hooks(): FlaschenHooks {

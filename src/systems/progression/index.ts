@@ -364,7 +364,7 @@ class Progression {
     if (!p) return 0;
     const got = this.core.take(id);
     if (got > 0) {
-      this.world.collect(id);
+      if (!this.core.slice().placed?.[id]) this.world.collect(id);
       // the first Messstab comes with two Kräuterbalsam in the bag (Marlene's radio line says
       // so; playtest: "Der Balsam ist in der Tasche" while the HUD showed ×0) — granted before the
       // save, which is forced (round 9: a reload right after the pickup lost the two Balsam, the

@@ -594,6 +594,10 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 
 ## 11. Testing
 
+- `tests/exploration-fixture.ts` supplies a game state store, event bus and in-memory save slots
+  with a fixed clock and seeded randomness. A slot load restores the era before feature listeners
+  run, including the nested `era:change`. Hunt, survey, measurement and collectible tests call
+  the registered systems' update and frame methods to advance game time and rendering independently.
 - `tests/travel-fixture.ts` runs the registered travel system on flat ground with a real game state
   store and event bus. Use `step()` for a simulation tick and Vitest's fake timers for a timed journey.
 - Pause and journal page tests use `tests/ui-fixture.ts` to run the real renderers and handlers on a
@@ -906,6 +910,8 @@ Round-4 (polish: set dressing) integration rules:
   (`settings.soundIndicators`), captions (`settings.subtitles`).
 - State `systems.hunt {alert, lantern {oil, lit, seconds}, caught, pack}`: `pack {era, opts}` is the
   active pack configuration; it comes back after a load in the same era (a story re-configure wins).
+  Loading cancels an outgoing capture. The incoming slot supplies the pack's area, composition,
+  mode and most recent intensity, including encounters that changed mode in place.
 - Visuals (`visuals.ts`, `PackVisuals`): bodies of sorted fbm smoke billboards; ember eyes as
   additive sprites with a minimum on-screen size that pierce the fog. Readable in fog at 30–60 m:
   the body keeps most of its dark silhouette out to ~55 m before sinking into the distance fog, a
@@ -1020,6 +1026,9 @@ Round-4 (polish: set dressing) integration rules:
   story card is open.
 - **Free survey**: without a running story (sandbox, `?notitle` tests) every tool is open;
   `?skills=strict` forces gating, `?skills=all` opens everything. Locked keys leave a toast.
+- Survey checks the active scan and map against the incoming game's skills on its first tick.
+  A relief find starts a four-second game-time countdown. Another find restarts it, and a
+  manual scan selection cancels it.
 - Also owns the extra settings rows (Rauhnacht under "Spiel",
   Geräusch-Untertitel and Richtungspfeile under "Barrierefreiheit") and key-help rows. The
   graphics preset itself belongs to the core (`render/quality.ts`, row "Grafik" under "Bild &
@@ -1042,7 +1051,8 @@ Round-4 (polish: set dressing) integration rules:
   medium #E69F00, low #CC79A7 striped) and shows it as a ghost where the era has none.
 - **Fährtenlinien** (Spurenleser 2): leader route and hound trails while a pack runs, read through
   the duck-typed accessor `window.kq.hunt.sim()` (no import of the hunt system).
-- Shift suspends the plan sheet; `game:start` resets the tools.
+- Shift suspends the plan sheet. An era change or slot load clears the measuring tape.
+  Terrain picking includes the final segment up to the crosshair's 600 m range. `game:start` resets the tools.
 - Hooks `kq.tools.measure.{start,stop,click,at,pick,state}`, `kq.tools.xray(on)`,
   `kq.tools.plans(view)`, `kq.tools.tracks(on)`, `kq.tools.state()`; `kq.survey.map(0|1840|1935)`.
 - On touch the Erkunden menu sends the same tool actions through virtual input.
@@ -1811,6 +1821,7 @@ pause the logic.
 - Storage (`store.ts`): IndexedDB `kq-notes` v1, stores `notes` (auto-increment) and `meta`
   (`telemetry`, written at most every 5 s while it changes and when the tab hides); memory fallback
   when IndexedDB is blocked. **No network calls, ever.**
+  Advancing or resetting the stuck clock schedules a write, even before an episode opens.
 - Pause menu (`notesPauseHooks` in `src/ui/menus.ts`): „Notizen exportieren (n)“ downloads
   `karlsberg-notizen-<date>.json` = `{ format: 'kq-notes', version: 1, exportedAt, notes: Note[],
   telemetry: { open, quests, deaths, stuck, sinceProgress, summary } }` (screenshots as data URLs);
