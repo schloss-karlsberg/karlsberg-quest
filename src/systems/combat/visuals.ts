@@ -13,6 +13,7 @@
  */
 import {
   AdditiveBlending,
+  CylinderGeometry,
   DynamicDrawUsage,
   Euler,
   Float32BufferAttribute,
@@ -22,6 +23,7 @@ import {
   InstancedMesh,
   Matrix4,
   Mesh,
+  MeshBasicMaterial,
   NormalBlending,
   BackSide,
   DoubleSide,
@@ -1028,6 +1030,7 @@ export interface VisualFrame {
   frozen: boolean;
   heightAt(x: number, z: number): number;
   reducedFlash: boolean;
+  reducedMotion?: boolean;
   /** Bannlicht flare 0..1 and its cone. */
   bann: { t: number; x: number; z: number; yaw: number; range: number; angle: number } | null;
   /**
@@ -1051,6 +1054,8 @@ export class CombatVisuals {
   private readonly vis = new Map<string, Vis>();
   private readonly parts: Particle[] = [];
   private readonly waves: Wave[] = [];
+  private readonly reflection = new Mesh(new CylinderGeometry(0.035, 0.035, 1, 6), new MeshBasicMaterial({ color: 0xaccbe7 }));
+  private reflectionLeft = 0;
   private maxParticles = 900;
   private seedN = 1;
   /** Rigged CC0 bodies (hounds, the Raffschatten, the Pikeur's horse) from medium quality up. */
@@ -1066,7 +1071,9 @@ export class CombatVisuals {
     this.shapes.set('box', this.solids);
     for (const sh of SHAPES) if (sh !== 'box') this.shapes.set(sh, new SolidPool(sh === 'rock' || sh === 'rock2' || sh === 'block' || sh === 'page' ? 420 : 260, sh, this.outlineU));
     this.ringPool = new RingPool(48);
-    this.object.add(this.ringPool.mesh, this.puffs.mesh, this.glows.mesh, this.rigs.object);
+    this.reflection.name = 'combat-reflection';
+    this.reflection.visible = false;
+    this.object.add(this.ringPool.mesh, this.puffs.mesh, this.glows.mesh, this.rigs.object, this.reflection);
     for (const pool of this.shapes.values()) {
       if (pool.outline) this.object.add(pool.outline);
       this.object.add(pool.mesh);
@@ -1160,6 +1167,8 @@ export class CombatVisuals {
   clearParticles(): void {
     this.parts.length = 0;
     this.waves.length = 0;
+    this.reflectionLeft = 0;
+    this.reflection.visible = false;
   }
 
   /** The dissolve: the body comes apart along its own parts, everything rises. */
@@ -1331,8 +1340,16 @@ export class CombatVisuals {
     this.wave(x, y - 0.8, z, 0.4, 2.4, 0.4);
   }
 
-  /** The mirror throws the Bannlicht back: a bright line of motes from it to you. */
-  reflectBeam(fx: number, fy: number, fz: number, tx: number, ty: number, tz: number, reducedFlash: boolean): void {
+  /** The mirror throws the Bannlicht back along a steady beam or a line of motes. */
+  reflectBeam(fx: number, fy: number, fz: number, tx: number, ty: number, tz: number, reducedFlash: boolean, reducedMotion: boolean): void {
+    const beam = this.reflection;
+    const direction = _p.set(tx - fx, ty - fy, tz - fz);
+    const length = direction.length();
+    beam.position.set((fx + tx) / 2, (fy + ty) / 2, (fz + tz) / 2);
+    beam.scale.y = length;
+    beam.quaternion.setFromUnitVectors(_s.set(0, 1, 0), direction.normalize());
+    this.reflectionLeft = length > 0 ? 0.45 : 0;
+    if (reducedMotion) return;
     const n = Math.round(30 * (this.maxParticles / 900));
     for (let i = 0; i < n; i++) {
       const k = this.rnd();
@@ -1607,7 +1624,7 @@ export class CombatVisuals {
         continue;
       }
       const ease = 1 - (1 - k) * (1 - k);
-      this.ringPool.push(w.x, w.y, w.z, w.r0 + (w.r1 - w.r0) * ease, w.cold ? 1 : 0, (1 - k) * (f.reducedFlash ? 0.5 : 0.95), 7);
+      this.ringPool.push(w.x, w.y, w.z, f.reducedMotion ? w.r1 : w.r0 + (w.r1 - w.r0) * ease, w.cold ? 1 : 0, (1 - k) * (f.reducedFlash ? 0.5 : 0.95), 7);
     }
     // projectiles
     for (const p of f.projectiles) {
@@ -1642,7 +1659,10 @@ export class CombatVisuals {
       const y = f.heightAt(b.x, b.z) + 0.15;
       this.ringPool.push(b.x, y, b.z, b.range, b.t, (f.reducedFlash ? 0.35 : 0.6) * b.t, 4, b.yaw, ((b.angle * Math.PI) / 180) / 2);
     }
-    this.particles(dt, f);
+    if (f.reducedMotion) this.parts.length = 0;
+    else this.particles(dt, f);
+    this.reflection.visible = !!f.reducedMotion && this.reflectionLeft > 0;
+    this.reflectionLeft = Math.max(0, this.reflectionLeft - dt);
     this.puffs.end(cam);
     this.glows.end();
     for (const pool of this.shapes.values()) pool.end();
@@ -1876,7 +1896,7 @@ export class CombatVisuals {
     }
     // a mirror: the core flares cold-white while uncracked, dims and flickers once cracked
     if (e.def.reflectsBann && !dissolving) {
-      const I = e.cracked ? 0.4 + 0.4 * Math.max(0, Math.sin(f.time * 23)) : 1.2 + 0.3 * Math.sin(f.time * 4);
+      const I = mirrorCoreGlow(f.time, e.cracked, f.reducedFlash);
       this.glows.push(e.x, e.y, e.z, 0.2, (f.reducedFlash ? Math.min(I, 1) : I) * 0.9, 0.92, 0.97, 1, 4);
     }
     // gebannt: a turning pale ring under it
@@ -1934,6 +1954,7 @@ export class CombatVisuals {
     });
     this.puffMat.dispose();
     this.glowMat.dispose();
+    this.reflection.material.dispose();
     for (const pool of this.shapes.values()) pool.dispose();
     this.ringPool.mat.dispose();
   }
@@ -1943,4 +1964,9 @@ export class CombatVisuals {
 export function sealClosedPulse(time: number, reducedFlash = false): number {
   const w = 0.5 + 0.5 * Math.sin(time * 4.5);
   return reducedFlash ? 0.6 + 0.25 * w : 0.5 + 0.9 * w;
+}
+
+export function mirrorCoreGlow(time: number, cracked: boolean, steady: boolean): number {
+  if (steady) return cracked ? 0.4 : 1;
+  return cracked ? 0.4 + 0.4 * Math.max(0, Math.sin(time * 16)) : 1.2 + 0.3 * Math.sin(time * 4);
 }

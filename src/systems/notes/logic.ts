@@ -231,6 +231,7 @@ export class Telemetry {
       open.seconds = r1(this.s.sinceProgress);
       this.dirty = true;
     }
+    if (this.s.sinceProgress !== 0) this.dirty = true;
     this.s.sinceProgress = 0;
   }
 
@@ -241,6 +242,7 @@ export class Telemetry {
   tick(dt: number, at: Situation, hasObjective: boolean): StuckEpisode | null {
     if (!hasObjective) return null;
     this.s.sinceProgress += dt;
+    if (dt !== 0) this.dirty = true;
     const open = this.openStuck();
     if (open) {
       open.seconds = r1(this.s.sinceProgress);

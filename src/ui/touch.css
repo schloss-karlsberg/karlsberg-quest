@@ -551,15 +551,12 @@ html[data-kq-reduced-motion] .kq-rotate-phone {
   animation: none;
   transform: rotate(90deg);
 }
-@media (prefers-reduced-motion: reduce) {
-  .kq-rotate-phone {
-    animation: none;
-    transform: rotate(90deg);
-  }
-}
-
 html[data-kq-reduced-motion] .kq-t-btn {
   transition: none;
+}
+html[data-kq-reduced-motion] .kq-t-btn.down .kq-t-ring {
+  animation-timing-function: steps(1, end);
+  background: conic-gradient(rgba(217, 130, 43, 0.9) var(--kq-fill, 0%), rgba(217, 130, 43, 0.3) 0);
 }
 
 /* key hints on the HUD docks mean nothing on touch: the buttons carry the icons */

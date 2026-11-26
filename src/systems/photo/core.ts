@@ -31,7 +31,8 @@
  *
  * In any era but today the phone has no signal: nothing is judged, the image comes out white.
  */
-import type { Era } from '../../core/era';
+import { type Era, isEra } from '../../core/era';
+import { numberRecord } from '../../core/saved';
 
 export interface Vec3 {
   x: number;
@@ -433,12 +434,15 @@ export function normaliseSlice(s: Partial<PhotoSlice> | null | undefined): Photo
   const e = emptySlice();
   if (!s || typeof s !== 'object') return e;
   const strs = (a: unknown) => (Array.isArray(a) ? a.filter((x): x is string => typeof x === 'string') : []);
-  e.album = Array.isArray(s.album) ? s.album.filter((a) => a && typeof a.id === 'string').slice(-ALBUM_MAX) : [];
+  // A corrupt album entry is dropped (the album page reads every field).
+  const shot = (a: AlbumEntry | null) => !!a && typeof a.id === 'string' && isEra(a.era) && typeof a.at === 'string'
+    && Number.isFinite(a.play) && Number.isFinite(a.stars);
+  e.album = Array.isArray(s.album) ? s.album.filter(shot).slice(-ALBUM_MAX) : [];
   e.good = strs(s.good);
   e.granted = strs(s.granted);
   e.cards = strs(s.cards);
-  e.best = s.best && typeof s.best === 'object' ? { ...s.best } : {};
-  e.near = s.near && typeof s.near === 'object' ? { ...s.near } : {};
+  e.best = { ...numberRecord(s.best) };
+  e.near = { ...numberRecord(s.near) };
   return e;
 }
 

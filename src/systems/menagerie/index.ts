@@ -8,7 +8,7 @@
  *   (switching back brings it back). Spawns persist in the 'menagerie' state slice.
  * - Behaviour: logic.ts (pure). Visuals: models.ts (procedural low-poly rigs). Sound: audio.ts.
  * - No combat, never "caught": the cassowary's charge or the jaguar's shove KNOCK YOU DOWN for a
- *   few seconds (frozen, prone, the view tips towards the sky; reduced motion: no roll), then you
+ *   few seconds (frozen, prone, the view tips towards the sky; reduced motion holds the view), then you
  *   get up. Dromedaries block (collision) and give way only to patience.
  * - gentleMode: slower cassowary, shorter knockdowns, the jaguar never shoves.
  *
@@ -18,6 +18,7 @@
 import './strings';
 import { Color } from 'three';
 import type { GameContext } from '../../core/context';
+import { screenFlashScale } from '../../core/motion';
 import { defineSystem } from '../../core/systems';
 import { atmosphere } from '../../world/atmosphere';
 import type { MenagerieAnimal } from '../contracts';
@@ -449,7 +450,7 @@ class MenagerieSystem {
     if (d) {
       const k = d.t < 0.35 ? d.t / 0.35 : d.t > d.dur - 0.6 ? Math.max(0, (d.dur - d.t) / 0.6) : 1;
       const e = k * k * (3 - 2 * k);
-      ctx.player.pitch = d.pitch0 + (0.85 - d.pitch0) * e;
+      ctx.player.pitch = reduced ? d.pitch0 : d.pitch0 + (0.85 - d.pitch0) * e;
       if (!reduced) {
         ctx.camera.rotation.set(ctx.player.pitch, ctx.player.yaw, 0.45 * d.side * e, 'YXZ');
         if (d.t < 0.5) {
@@ -461,8 +462,7 @@ class MenagerieSystem {
     }
     if (this.flashT >= 0) {
       this.flashT += dt;
-      // reduced motion: a short dim instead of the hard flash
-      const peak = reduced ? 0.45 : 0.85;
+      const peak = 0.85 * screenFlashScale(reduced, ctx.settings.state.reducedFlash);
       const f = this.flashT < 0.08 ? (this.flashT / 0.08) * peak : Math.max(0, peak * (1 - (this.flashT - 0.08) / 0.7));
       this.flash.style.opacity = f.toFixed(3);
       if (this.flashT > 0.8) {

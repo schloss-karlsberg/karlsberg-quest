@@ -383,5 +383,15 @@ test('story: ending, epilogue and credits', async ({ page }) => {
   await expect(fallback).toContainText('Testautor A, Testautor B');
   await page.keyboard.press('Escape');
   await expect(fallback).toHaveCount(0);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.ctx.settings.update((settings) => { settings.reducedMotion = false; });
+    k.story!.credits();
+  });
+  await expect(fallback).toHaveClass(/\bkqs-static\b/);
+  expect(await fallback.evaluate((el) => el.scrollTop)).toBe(0);
+  await page.keyboard.press('Escape');
+  await expect(fallback).toHaveCount(0);
   expect(errors).toEqual([]);
 });

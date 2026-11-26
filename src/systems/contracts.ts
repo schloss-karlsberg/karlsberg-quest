@@ -99,8 +99,9 @@ declare module '../core/events' {
        */
       lore?: boolean;
     };
-    'story:chapter': { id: string };
-    'story:beat': { chapter: string; beat: string };
+    /** `resume`: the chapter / beat is entered again after a load or a capture, not reached anew. */
+    'story:chapter': { id: string; resume?: true };
+    'story:beat': { chapter: string; beat: string; resume?: true };
     'story:ending': { id: 'museum' | 'burn' | 'keep' };
     'hub:enter': Record<string, never>;
     'hub:leave': Record<string, never>;

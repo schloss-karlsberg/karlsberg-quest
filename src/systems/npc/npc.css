@@ -230,10 +230,8 @@ body:has(.kqn-modal) .kq-dock-feed {
     transform: translateY(6px);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .kqn-qcard {
-    animation: none;
-  }
+html[data-kq-reduced-motion] .kqn-qcard {
+  animation: none;
 }
 .kqn-qc-head {
   display: flex;

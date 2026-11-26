@@ -5,6 +5,7 @@ import type { GameContext } from '../src/core/context';
 import { EventBus } from '../src/core/events';
 import { MemoryStorage, SaveManager } from '../src/core/save';
 import { createInitialState, GameStateStore } from '../src/core/state';
+import { t } from '../src/i18n';
 import type { Input } from '../src/player/input';
 import { Player } from '../src/player/player';
 import travel, { type TravelHooks } from '../src/systems/travel';
@@ -34,7 +35,7 @@ export function setupTravel() {
   vi.stubGlobal('window', { kq });
   const createElement = () => ({
     dataset: {}, classList: { add: vi.fn(), remove: vi.fn(), toggle: vi.fn() },
-    append: vi.fn(), remove: vi.fn(),
+    append: vi.fn(), remove: vi.fn(), setAttribute: vi.fn(),
   });
   const body = { append: vi.fn<(element: ReturnType<typeof createElement>) => void>() };
   vi.stubGlobal('document', { createElement, head: { append: vi.fn() }, body });
@@ -44,7 +45,7 @@ export function setupTravel() {
   vi.spyOn(save, 'autosave');
   const loop = { manual: true };
   const ctx = {
-    events, state, player, loop, save, scene: new Scene(), era: { current: 'today' },
+    events, state, player, loop, save, scene: new Scene(), era: { current: 'today' }, t,
     settings: { state: { reducedMotion: true } }, params: new URLSearchParams(),
     input,
     pause: { push: (r: string) => pauseReasons.add(r), pop: (r: string) => pauseReasons.delete(r) },
