@@ -5,6 +5,7 @@
  */
 import {
   BackSide,
+  type BufferGeometry,
   Color,
   type Mesh,
   Mesh as ThreeMesh,
@@ -22,13 +23,15 @@ import { makeScreenPass, pointScale } from '../gl';
 import { patchPalace } from '../palacePatch';
 import { lerp, smoothstep } from '../geom';
 import type { Quality } from '../quality';
-import { buildTerrainCloud, palaceCloudGeometry, palaceSamples } from '../shift/pointcloud';
+import { TerrainCloudJob, palaceCloudGeometry, palaceSamples } from '../shift/pointcloud';
 import { ruinForCut } from '../shift/timeline';
 import type { FxUI } from '../ui';
 import { EdgeDust } from './dust';
 import { OblivionSim, oblivionRadius } from './sim';
 
 const ASH = new Color('#9c9a94');
+const RELIEF_BUDGET_MS = 2;
+const RELIEF_RECENTER_DISTANCE = 140;
 /** Spatial dissolve: walls between NEAR·R and FAR·R from the player sink by up to DROP m. */
 const DROP = 6;
 const NEAR = '0.3';
@@ -172,6 +175,16 @@ export interface OblivionSlice {
   seconds: number;
 }
 
+interface ReliefLayout {
+  x: number;
+  z: number;
+  high: boolean;
+}
+
+function coversRelief(layout: ReliefLayout | null, x: number, z: number, high: boolean): boolean {
+  return layout !== null && layout.high === high && Math.hypot(x - layout.x, z - layout.z) <= RELIEF_RECENTER_DISTANCE;
+}
+
 export class OblivionController {
   sim: OblivionSim | null = null;
   private lastProgress = -1;
@@ -181,7 +194,8 @@ export class OblivionController {
   private dust: EdgeDust | null = null;
   private readonly offQuality: () => void;
   private relief: Points | null = null;
-  private readonly reliefCenter = new Vector3(1e9, 0, 1e9);
+  private reliefLayout: ReliefLayout | null = null;
+  private pendingRelief: { layout: ReliefLayout; job: TerrainCloudJob } | null = null;
   private readonly vignette: Mesh;
   private loop: Loop | null = null;
   /** Smoothed visual amount (0..1) so remembering eases the grey back instead of snapping. */
@@ -259,8 +273,6 @@ export class OblivionController {
       const count = g.getAttribute('position').count;
       g.setDrawRange(0, this.quality.high ? count : Math.floor(count * 0.45));
     }
-    // Rebuild the terrain cloud at the next frame's camera position with the new ring density.
-    this.reliefCenter.set(1e9, 0, 1e9);
   }
 
   private buildGrains(): void {
@@ -283,30 +295,57 @@ export class OblivionController {
     this.ctx.scene.add(this.grains);
   }
 
-  private buildRelief(x: number, z: number): void {
-    const w = this.ctx.world;
-    if (this.relief) {
-      this.ctx.scene.remove(this.relief);
-      this.relief.geometry.dispose();
+  private cancelPendingRelief(): void {
+    this.pendingRelief?.job.geometry.dispose();
+    this.pendingRelief = null;
+  }
+
+  private updateRelief(x: number, z: number): void {
+    const high = this.quality.high;
+    if (coversRelief(this.reliefLayout, x, z, high)) {
+      if (this.pendingRelief) this.cancelPendingRelief();
+      return;
     }
-    const hf = w.heightfields['2025'];
-    const g = buildTerrainCloud(hf, hf, x, z, 380, this.quality.high ? 600 : 320, this.quality.high ? 1.03 : 1.05, 21);
-    const mat = this.relief?.material as ShaderMaterial | undefined;
+    let pending = this.pendingRelief;
+    if (!pending || !coversRelief(pending.layout, x, z, high)) {
+      this.cancelPendingRelief();
+      const hf = this.ctx.world.heightfields['2025'];
+      pending = this.pendingRelief = {
+        layout: { x, z, high },
+        job: new TerrainCloudJob(hf, hf, x, z, 380, high ? 600 : 320, high ? 1.03 : 1.05, 21),
+      };
+    }
+    // Show the first scan immediately. Keep it on screen while subsequent scans are built.
+    pending.job.step(this.relief ? RELIEF_BUDGET_MS : Infinity, 0);
+    if (pending.job.done) {
+      this.setReliefGeometry(pending.job.geometry);
+      this.reliefLayout = pending.layout;
+      this.pendingRelief = null;
+    } else {
+      const loop = this.ctx.loop;
+      if (loop.paused && !loop.manual && loop.pace() === 0) loop.requestRender();
+    }
+  }
+
+  private setReliefGeometry(geometry: BufferGeometry): void {
+    if (this.relief) {
+      this.relief.geometry.dispose();
+      this.relief.geometry = geometry;
+      return;
+    }
     this.relief = new Points(
-      g,
-      mat ??
-        new ShaderMaterial({
-          vertexShader: RELIEF_VERT,
-          fragmentShader: RELIEF_FRAG,
-          uniforms: { uCenter: { value: new Vector3() }, uR: { value: 700 }, uAlpha: { value: 0 }, uScale: { value: 500 } },
-          transparent: true,
-          depthWrite: false,
-          blending: NormalBlending,
-        }),
+      geometry,
+      new ShaderMaterial({
+        vertexShader: RELIEF_VERT,
+        fragmentShader: RELIEF_FRAG,
+        uniforms: { uCenter: { value: new Vector3() }, uR: { value: 700 }, uAlpha: { value: 0 }, uScale: { value: 500 } },
+        transparent: true,
+        depthWrite: false,
+        blending: NormalBlending,
+      }),
     );
     this.relief.frustumCulled = false;
     this.relief.renderOrder = 46;
-    this.reliefCenter.set(x, 0, z);
     this.ctx.scene.add(this.relief);
   }
 
@@ -324,7 +363,8 @@ export class OblivionController {
     this.grains = this.relief = null;
     this.dust?.dispose();
     this.dust = null;
-    this.reliefCenter.set(1e9, 0, 1e9);
+    this.cancelPendingRelief();
+    this.reliefLayout = null;
     this.loop?.stop(2);
     this.loop = null;
     this.ui.setGauge('oblivion', null);
@@ -423,7 +463,7 @@ export class OblivionController {
     // the ground comes apart at the rim of the grey (it moves in with the meter)
     this.dust?.frame(dt, t, R, cam.x, cam.z, scale, ctx.settings.state.reducedMotion);
     // the 2025 relief shows through inside the grey zone
-    if (Math.hypot(cam.x - this.reliefCenter.x, cam.z - this.reliefCenter.z) > 140) this.buildRelief(cam.x, cam.z);
+    this.updateRelief(cam.x, cam.z);
     if (this.relief) {
       const u = (this.relief.material as ShaderMaterial).uniforms;
       (u.uCenter!.value as Vector3).copy(cam);

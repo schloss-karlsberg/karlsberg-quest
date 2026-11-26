@@ -38,6 +38,10 @@ density or WebGL context changes. Fix defects demonstrated by the new tests.
 - [x] Update the relevant docs and the PRD changelog.
 - [ ] Pass the four gates as written. The validator CLI could not bind its IPC socket.
 - [x] Run the locked smoke spec on port 5448 if allowed, or record the command and blocker.
+- [ ] Review round: restore the cached tree silhouettes before shadow and scene draws, and restore sky lighting before water reflections.
+- [ ] Review round: build the replacement Steinfraß terrain cloud across frames and keep the existing cloud visible until the swap.
+- [ ] Review round: apply viewport dimensions and pixel ratio in one buffer update and skip unchanged sizes.
+- [ ] Review round: replace the stale commit handoff, verify the findings with regression checks, and rerun the gates and locked smoke spec.
 
 ## Plan
 
@@ -45,6 +49,13 @@ density or WebGL context changes. Fix defects demonstrated by the new tests.
 - [x] Exercise the runtime objects using in-memory settings, explicit frame times, bounded pools and GPU-free render calls.
 - [x] Reproduce failures on the original implementation, apply minimal corrections and rerun each regression.
 - [x] Document results, run all gates, check smoke availability and record follow-ups.
+
+### Review round (2026-11-26)
+
+- [ ] Verify the branch and baseline, then cover first-frame WebGL recovery with recorded draws of the tree atlas, shadows, sky and water reflection.
+- [ ] Extend the active Steinfraß test to observe bounded work, staged geometry replacement and cancellation.
+- [ ] Record the drawing-buffer call count for density changes and duplicate resize events.
+- [ ] Update the render docs, replace the stale handoff, and record gates and commits.
 
 ## Progress
 

@@ -139,7 +139,6 @@ export class AutoQuality {
 }
 
 export interface QualityDeps {
-  renderer: { setPixelRatio(r: number): void; getPixelRatio(): number };
   post: PostFX;
   world: World;
   settings: SettingsStore;
@@ -195,12 +194,8 @@ export class QualityManager {
     const s = this.d.settings.state;
     const p = this.preset;
     const save = s.powerSave === true;
-    const want = this.pixelRatio;
     this.d.post.setSamples(this.noMsaa ? 0 : p.msaa);
-    if (Math.abs(this.d.renderer.getPixelRatio() - want) > 1e-3) {
-      this.d.renderer.setPixelRatio(want);
-      this.d.resize();
-    }
+    this.d.resize();
     this.d.world.terrain.lodScale = p.lodScale;
     this.d.world.forest.setDistances(p.treeNear, p.treeFar);
     this.d.post.setFeatures({ bloom: p.bloom, ao: p.ao && !save, grade: p.grade });

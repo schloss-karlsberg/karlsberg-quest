@@ -20,7 +20,7 @@ import { Input, isTyping } from './player/input';
 import { Player } from './player/player';
 import { actionPose } from './player/pose';
 import { applySeeThrough, type SeeInput } from './player/seeThrough';
-import { bindRenderContext } from './render/context';
+import { bindRenderContext, renderWorldMaps } from './render/context';
 import { PerfMonitor } from './render/perf';
 import { PostFX } from './render/post';
 import { QualityManager, gpuName, isSoftwareGpu, parseQualityParam, suggestLevel } from './render/quality';
@@ -147,7 +147,6 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   const world = new World(data, scene, post);
   mark('world');
   quality = new QualityManager({
-    renderer,
     post,
     world,
     settings,
@@ -395,10 +394,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
       // ?manual / bullet time, whose frames can lie many simulated steps apart, nor in a fight
       // (lunging enemies, dodges: every caster's shadow on time)
       const fresh = loop.manual || cameraHints.fight.length > 0 || cameraHints.boss > 0;
-      const shadowsDrawn = world.shadows.stats.drawn;
-      world.shadows.update(renderer, scene, shadowFocus, fresh ? Infinity : frameDt);
-      world.water.renderReflection(renderer, scene, camera, world.shadows.stats.drawn !== shadowsDrawn);
-      env.update(renderer, world.lookVersion);
+      renderWorldMaps(renderer, scene, camera, world, env, shadowFocus, fresh ? Infinity : frameDt);
       post.render(renderer, scene, camera, loop.time);
       perf.end();
       // (not in bullet time: its frames lie many simulated steps apart and say nothing about speed)

@@ -1,4 +1,6 @@
+import type { PerspectiveCamera, Scene, Vector3, WebGLRenderer } from 'three';
 import type { ReflectionSchedule } from '../world/water';
+import type { World } from '../world/world';
 import type { PerfMonitor } from './perf';
 import type { ShadowReuse } from './shadows';
 import type { EnvLight } from './standard';
@@ -20,4 +22,15 @@ export function bindRenderContext(canvas: EventTarget, state: {
     state.perf.resetClock();
     state.redraw();
   });
+}
+
+export function renderWorldMaps(
+  renderer: WebGLRenderer, scene: Scene, camera: PerspectiveCamera,
+  world: Pick<World, 'nature' | 'shadows' | 'water' | 'lookVersion'>, env: EnvLight,
+  shadowFocus: Vector3, shadowDt: number,
+): void {
+  const shadowsDrawn = world.shadows.stats.drawn;
+  world.shadows.update(renderer, scene, shadowFocus, shadowDt);
+  world.water.renderReflection(renderer, scene, camera, world.shadows.stats.drawn !== shadowsDrawn);
+  env.update(renderer, world.lookVersion);
 }

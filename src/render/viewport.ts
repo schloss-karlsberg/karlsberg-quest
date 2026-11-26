@@ -6,16 +6,22 @@ export function bindViewport(
   renderer: WebGLRenderer, post: PostFX, camera: PerspectiveCamera,
   pixelRatio: () => number, requestRender: () => void,
 ): () => void {
+  let width = 0;
+  let height = 0;
+  let ratio = 0;
   const resize = () => {
     const w = window.innerWidth;
     const h = window.innerHeight;
     if (w <= 0 || h <= 0) return;
-    const ratio = pixelRatio();
-    if (Math.abs(renderer.getPixelRatio() - ratio) > 1e-3) renderer.setPixelRatio(ratio);
-    renderer.setSize(w, h, false);
-    post.setSize(w, h, renderer.getPixelRatio());
+    const dpr = pixelRatio();
+    if (w === width && h === height && dpr === ratio) return;
+    renderer.setDrawingBufferSize(w, h, dpr);
+    post.setSize(w, h, dpr);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    width = w;
+    height = h;
+    ratio = dpr;
     requestRender();
   };
   // Moving the window to another display can change density without a CSS resize.
