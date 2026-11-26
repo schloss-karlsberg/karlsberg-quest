@@ -938,6 +938,11 @@ spring → Bleiche → lawn → gate ≈ 430 m, about 4–5 min with the talks; 
 e2e `chapter-k1-disguise.spec.ts` (helper `playDisguise`, used by `playK1` and the long walk in
 `openAtSpring`), unit `tests/k1-disguise.test.ts`, `tests/story.test.ts`.
 
+**Die Enge** (`k1_14b`, Kaskade in 1789): three Streuner are followed by four reinforcements.
+On resume, if the first group is cleared and the second is missing, the story schedules the
+reinforcements using the saved kill counts. If the second group already exists, combat restores
+its survivors. A saved second-wave clear advances to „Zum Wasser“. Earned XP and loot carry over.
+
 | Id | Kind | Giver → turn-in | Objectives (place) | Enemies | Rewards | History taught |
 | --- | --- | --- | --- | --- | --- | --- |
 | `q.k1.ankunft` "Zu Fuß, außer einem" | main | Laub → auto | E at the Karlsbergquelle (`quelle`, event `quelle:touch`); on foot up to the Ehrenhof gate in 1789 (`wechsel`, id kept for saves, 1200/−1116 r 14); the guard's echo (`clue.k1.wache`); the wings (`clue.k1.fluegel`) | — | 60 XP | cx.11 Zu Fuß, außer einem |
@@ -1096,6 +1101,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | Invalid shared positions and interrupted gameplay events (TASK-060, 2026-11-26) | Both URL coordinates must be finite before teleporting. Each event observer can fail independently, so later listeners still receive the era change, reward or pause event. |
 | Fast travel can save the departure pose or leave a curtain on a newly opened game (TASK-030, 2026-11-26) | The autosave captures the arrival pose before the travel pause is released. Loading a slot or starting a game clears the curtain during its fade. |
 | Travel effects can outlast the action that started them (TASK-030, 2026-11-26) | A loaded game cancels pending fast travel. The outdoor sprint boost clears on combat entry. Regression tests also exercise one-time lore XP and the 120-second Wegstein cooldown across a reload. |
+| Saving between the waves of Die Enge strands Chapter 1 (TASK-038, 2026-11-26) | The story restores the wave transition from saved group counts. A partial second wave resumes with its survivors, and a completed second wave advances the beat. Only actual kills award XP and roll loot. Coverage lives in `tests/story-enge.test.ts` and `e2e/enge-save.spec.ts`. |
 | Accepting „Der Jaguar“ while Hanne’s conversation is open delays saved calm credit (TASK-040 review, 2026-11-26) | The acceptance autosave includes the payout. For a save recovered at the title, „Weiter“ presents the reward dialogue and notice. „Neues Spiel“ drops that presentation. A quest finished on acceptance shows no „Nebenaufgabe“ banner after its payout. |
 | Driving the jaguar away early strands Hanne’s quest at 0/1 (TASK-040, 2026-11-26) | „Der Jaguar“ credits the saved calm on acceptance or when an active save loads, and automatically grants its 200 base XP and two Lampenöl once. |
 | A skipped subsecond survival bonus can look complete in Aufgaben (TASK-047) | The journal uses the quest engine's target for ticks and progress counts. Survival targets round to whole seconds with a minimum of one. |

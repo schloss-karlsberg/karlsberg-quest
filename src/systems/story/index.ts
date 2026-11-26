@@ -47,6 +47,7 @@ import type { CinematicPlay } from '../cinematic/types';
 import type { GameEvents } from '../../core/events';
 import type { DialogueItem } from './dialogue/presenter';
 import { knownPoints } from '../travel/points';
+import { isCleared } from '../combat/rules';
 
 /** The nearest Vermessungspunkt the player has measured in (or knows) to x/z. */
 function nearestSurveyed(travel: unknown, x: number, z: number): { name: string; x: number; z: number; d: number } | null {
@@ -684,7 +685,7 @@ class StoryRuntime {
       const waitFor = a.do === 'say' && a.wait ? (a.id ?? a.line) : undefined;
       const rest = waitFor && i + 1 < actions.length ? actions.slice(i + 1) : null;
       const exec = () => {
-        this.exec(a);
+        this.exec(a, resume);
         if (!waitFor || !rest) return;
         const ready = () => !this.presenter.hasLine(waitFor, scope.beat);
         const continueRun = () => this.run(rest, resume, scope);
@@ -806,7 +807,7 @@ class StoryRuntime {
     ctx.events.emit('npc:spawn', p);
   }
 
-  private exec(a: Action): void {
+  private exec(a: Action, resume = false): void {
     const ctx = this.ctx;
     const s = this.slice;
     switch (a.do) {
@@ -894,6 +895,16 @@ class StoryRuntime {
         }
         return;
       case 'cue':
+        if (a.id === 'k1.enge.resume') {
+          if (resume) {
+            const groups = ctx.state.state.systems.combat?.groups;
+            // An existing second wave already restores its survivors through combat.
+            const wave = groups?.['k1.enge.2'] ?? groups?.['k1.enge'];
+            // Restore only the story latch so combat and progression keep the original rewards.
+            if (wave && isCleared(wave)) this.engine.onEvent('enemy:cleared', { group: wave.group, kind: wave.kind });
+          }
+          return;
+        }
         ctx.events.emit('story:cue', { id: a.id, data: a.data });
         return;
       case 'chronik':

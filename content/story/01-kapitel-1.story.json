@@ -3356,6 +3356,11 @@
       },
       "enter": [
         {
+          "do": "cue",
+          "id": "k1.enge.resume",
+          "onResume": true
+        },
+        {
           "do": "say",
           "id": "laub.k1.enge",
           "speaker": "laub",
