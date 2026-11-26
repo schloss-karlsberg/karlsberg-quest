@@ -35,6 +35,11 @@ the effective bindings, including keyboard-layout labels.
 - [x] Movement and look groups retain direction order, and scan shows Umschalt with the current scan key.
 - [x] Registered survey rows use the shared formatter, and reset restores the current defaults.
 - [x] Unit tests assert displayed default, remapped and unbound row values and a supplied layout label.
+- [x] Pause lists Escape, the fixed menu shortcut.
+- [x] Printable keys use the supplied layout, and either bound Shift key is shown as a standalone reverse scan shortcut.
+- [x] The phone row describes the toggle in all eras.
+- [x] The skills spec uses a deterministic layout and exact Back navigation to check remapping and reset.
+- [ ] The skills and smoke specs pass in a browser.
 
 ## Plan
 
@@ -70,6 +75,16 @@ Steuerung views and exercises rebinding and reset.
 The browser's layout map can arrive after the first render. Alternate bindings can
 increase the width of the keys column.
 
+### Review round, 2026-11-26
+
+The goal is to resolve all six review findings and unblock the skills spec.
+
+- [x] Restore the fixed Escape label and add regression assertions for it, printable layout labels,
+  Shift-only and mixed scan bindings, and the phone toggle description.
+- [x] Seed the keyboard layout before navigation and use the exact Back button name in the skills spec.
+- [x] Update the controls and photo documentation and both changelogs.
+- [x] Run the four gates and attempt the skills and smoke specs under the machine-wide lock.
+
 ## Progress
 
 - Branch `dev/task-027`.
@@ -85,8 +100,33 @@ increase the width of the keys column.
   `node --import tsx scripts/validate-content.ts` reported `✓ content valid (1 warning(s))`.
 - 2026-11-26 both locked browser runs stopped before test execution. The sandbox denied the
   preview server socket at `127.0.0.1:5415`.
-- 2026-11-26 Git could not create this worktree's `index.lock`. Implementation, tests and
-  documentation remain in the worktree.
+- 2026-11-26 the initial Git attempt could not create this worktree's `index.lock`.
+- 2026-11-26 the original implementation is now committed as `4d01755`.
+- 2026-11-26 fixed the Pause, keyboard layout, scan and phone labels. Focused controls and photo
+  tests reported `Tests  46 passed (46)`.
+- 2026-11-26 the skills spec seeds the digit labels before navigation and targets the exact Back
+  button while the bindings editor is expanded.
+- 2026-11-26 `pnpm typecheck`, `pnpm test` and `pnpm build` passed. Vitest reported
+  `Test Files  119 passed (119)` and `Tests  1580 passed (1580)` with zero failures.
+- 2026-11-26 `pnpm validate` stopped at `listen EPERM` on the `tsx` IPC socket.
+  The validator ran directly with `node --import tsx scripts/validate-content.ts` and reported
+  `✓ content valid (1 warning(s))`.
+- 2026-11-26 attempted `e2e/skills.spec.ts` and `e2e/smoke.spec.ts` separately under the shared lock.
+  The sandbox denied the preview server bind at `127.0.0.1:5415` before either spec ran.
+- 2026-11-26 committed the controls, photo copy, unit tests and documentation as `08c02e6`.
+- 2026-11-26 Git denied creation of this worktree's `index.lock` while staging the skills spec
+  and this task update. Both edits are in the worktree.
+
+### Review findings
+
+| # | Status | Resolution |
+| --- | --- | --- |
+| 1 | Fixed | The Pause row shows `[Esc]` even with a saved override. |
+| 2 | Fixed | The skills spec uses exact Back navigation while the reset button is visible and retains the remap and reset assertions. Browser verification is pending. |
+| 3 | Fixed | The shared formatter uses the supplied Backquote, Comma and Period labels and preserves localized control-key names. The formatter priority predates this branch and is in scope. |
+| 4 | Fixed | The skills spec installs the expected Digit2, Digit4 and Digit5 labels before navigation. Unit tests cover layout-specific digit labels. Browser verification is pending. |
+| 5 | Fixed | Both Shift keys are shown explicitly as standalone reverse bindings, including alongside other scan keys. |
+| 6 | Fixed | The phone toggle copy applies in every era. The photo system still shows „Kein Netz“ in the past. |
 
 ## Follow-ups
 
@@ -98,16 +138,10 @@ increase the width of the keys column.
   KQ_E2E_PORT=5415 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line
   ```
 
-- [ ] Commit the implementation and docs from a session with write access to the worktree index.
+- [ ] Commit the skills spec and task update from a session with worktree index access.
 
   ```sh
-  git add -- src/ui/menus.ts src/ui/settings.ts src/ui/styles.css src/i18n/de.content.ts src/i18n/de.ts \
-    src/systems/notes/index.ts src/systems/photo/index.ts src/systems/skills/settings.ts \
-    src/systems/skills/strings.ts tests/controls.test.ts e2e/skills.spec.ts
-  git commit -m 'fix(ui): show current key bindings in Steuerung' \
-    -m 'Refs: TASK-027' -m 'Co-Authored-By: Codex <noreply@openai.com>'
-  git add -- docs/PERFORMANCE.md docs/ACTION-RPG.md docs/PRD.md \
-    .mc/tasks/todo/TASK-027-show-actual-key-bindings-in-steuerung.md
-  git commit -m 'docs(ui): document current bindings in Steuerung' \
-    -m 'Refs: TASK-027' -m 'Co-Authored-By: Codex <noreply@openai.com>'
+  git add -- e2e/skills.spec.ts .mc/tasks/todo/TASK-027-show-actual-key-bindings-in-steuerung.md
+  git commit -m 'test(ui): stabilize the Steuerung browser regression' \
+    -m 'Co-Authored-By: Codex <noreply@openai.com>'
   ```
