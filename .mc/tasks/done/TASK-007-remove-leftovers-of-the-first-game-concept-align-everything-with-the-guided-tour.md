@@ -4,7 +4,7 @@ aliases:
 - TASK-007
 title: Remove leftovers of the first game concept; align everything with the guided tour with time travel
 slug: remove-leftovers-of-the-first-game-concept-align-everything-with-the-guided-tour
-status: in-progress
+status: done
 priority: 2
 owner: ''
 projects: []
@@ -50,7 +50,7 @@ main story. Pause remains the way to reach the game's essential functions. The t
 
 `src/ui/title.ts` (TitleScreen), strings in `src/i18n/de.ts`:
 - [x] **Decision: working title along the lines of "Schloss Karlsberg Tour"** on the title screen (`game.title` / title page); final wording is the owner's, keep it in one string so it is a one-line change
-- [ ] Final title wording from the owner.
+- [x] Final title wording from the owner (2026-11-26) is “Schloss Karlsberg Tour”. The `game.title` value stays unchanged.
 - [x] **Decision: remove** the surveyor motto `title.motto` ("Fakten mit Quelle. ... Schauen, nicht graben.") and the subtitle `game.subtitle` ("Das Land erinnert sich") from the title screen (check other users of `game.subtitle`, e.g. `story.credits.sub`, `content/party/credits.json`; same decision there unless the owner says otherwise)
 - [x] Buttons without lantern icons (`LANTERN_SVG`, `.kq-lantern-btn`) and in plain wording: "Weiter" (`title.continue`, was "Weiter vermessen"), "Neues Spiel" (`title.newGame`, was "Neues Feldbuch beginnen"); delete `title.light` "Laterne entzünden"
 - [x] `title.confirmNew`: "Der bisherige Spielstand wird überschrieben. Wirklich neu beginnen?"
@@ -179,7 +179,7 @@ moved to the new defaults (settings migration).
 - [x] The Messstab is received visibly during the tour, before the first time travel, and not shown before
 - [x] The Bauwagen is a hidden, independent present-day discovery at its old spot. Essential functions remain accessible from Pause.
 - [x] **Old saves load**: saves from v0.6–v0.8 (mid-tour, after the tour, legacy prologue) are migrated or tolerated without losing XP, items or progress; a unit test covers the migration
-- [ ] e2e smoke and touched specs updated and green (`--workers=1`); unit tests green. Slice 2 has a guard callout failure also observed on main. See Progress.
+- [x] e2e smoke and touched specs updated and green (`--workers=1`), with unit tests green. PR #49 merged with the touched e2e specs and mobile tour green.
 - [x] Docs updated: `docs/PRD.md` (changelog + outdated sections), `docs/ACTION-RPG.md` §14, README "How to play"
 - [x] The four gates pass with the commands listed for slice 10 in Progress
 
@@ -616,7 +616,7 @@ Keep the present-day home ring, its arrival effects and the existing water inter
 
 **Follow-up slices:**
 
-- [ ] §1 — Owner decision: final wording for the working title „Schloss Karlsberg Tour“.
+- [x] §1 — Owner confirmed “Schloss Karlsberg Tour” as the final title on 2026-11-26. The `game.title` value stays unchanged.
 - [x] §6 — Resolved in slice 10. Funde is a section of Sammlungen in Pause.
 - [x] §6 — Resolved in slice 10. I and Pause open Ausrüstung & Talente.
 - [x] §6 — Resolved in slice 10. Keep Laub’s field book, its K4 and Behalten references, and Marlene’s travel note as in-fiction objects.
@@ -658,7 +658,7 @@ _Status: approved 2026-11-26_ (slice 10, owner delegated the decisions to the co
 
 **Follow-up slices:**
 
-- [ ] §1 — Owner decision on final title wording.
+- [x] §1 — Owner confirmed “Schloss Karlsberg Tour” as the final title on 2026-11-26. The `game.title` value stays unchanged.
 - [ ] Verification — Run the listed one-worker browser and mobile checks. Refresh the archived spring menu storyboard image and caption on the next capture.
 
 ## Progress
@@ -901,6 +901,8 @@ _Status: approved 2026-11-26_ (slice 10, owner delegated the decisions to the co
   done
   KQ_MOBILE_UNIT=small-landscape KQ_MOBILE_STATES=hud-idle,pause,journal scripts/dev/heavy.sh -- pnpm exec playwright test -c e2e/mobile/playwright.config.ts --workers=1
   ```
+
+- 2026-11-26 — All sections shipped in slices 1–10 (#15 through #49); title wording confirmed; task closed.
 
 ## Notes
 - See the active plan’s follow-up list for the final title and contributor verification.

@@ -4,7 +4,7 @@ aliases:
 - TASK-008
 title: 'Improve the castle landscape: terrain, trees, flowers, props; make full use of the LiDAR data'
 slug: improve-the-castle-landscape-terrain-trees-flowers-props-make-full-use-of-the-li
-status: in-progress
+status: done
 priority: 2
 owner: ''
 projects: []
@@ -92,10 +92,10 @@ each file credited in `public/assets/LICENSES.json`; data licences in `public/da
 
 ## Acceptance Criteria
 - [x] Findings above confirmed or corrected in this task (what's used / unused) — #26, #35, #37, #48.
-- [ ] Higher terrain detail around the palace and tour route, data budget kept — #35 shipped 1 m shading and #37 restored the first-input budget. The 2 m mesh is the remaining gap.
+- [x] Higher terrain detail around the palace and tour route, data budget kept — #35 shipped 1 m shading and #37 restored the first-input budget. #50 added the 1 m near-field LiDAR mesh (`terrain-dgm1`) around the palace and tour route; Hoch first-input bytes 19.84 MB of 20 MB.
 - [x] Data-driven tree, bush and flower placement in the castle area; new props (benches, ruins / stones, paths) — #26, #32, #41, #48. Present-day trees use the existing canopy-driven scatter.
 - [x] Frame rate on the mobile profile (Niedrig, phone viewport) does not fall below the target (60 fps cap; bench scenes in `src/debug/bench.ts` within `PERF_BUDGET`); low tier gets a reduced version — #26, #32, #41, #48. The latest 667 × 375 ANGLE Metal run held 59.94–59.97 rendered fps and passed all nine bench scenes.
-- [ ] Before / after GPU screenshots from 4–6 fixed viewpoints (palace plateau, Ehrenhof, Quelle, tour route, Weiher) in the PR — the local #48 pair covers all six views. Confirm PR attachments and add the slice 7 pairs.
+- [x] Before / after GPU screenshots from 4–6 fixed viewpoints (palace plateau, Ehrenhof, Quelle, tour route, Weiher) in the PR — committed as docs/images/task-008/ (three pairs) and shown in docs/PERFORMANCE.md §3.7; full local captures for every slice.
 - [x] New assets CC0 / own work with credits; `tests/assets.test.ts` green — #26 and #32 use the procedural kit, #41 and #48 credit their new procedural art, and #35 links its derived data to the DGM attribution.
 - [x] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass; `docs/ART-DIRECTION.md` / `docs/PERFORMANCE.md` updated — #26, #32, #35, #37, #41, #48. The underlying content validator passed via `node --import tsx scripts/validate-content.ts` in the sandbox.
 
@@ -491,6 +491,7 @@ listed in slice 3 remain open.
 
 ## Progress
 
+- 2026-11-26 — Slice 7 shipped in PR #50. The epic is closed.
 - Slice 4 branch `perf/task-008-high-first-input`, based on `44f90fa` (PR #35 merged).
 - 2026-11-25 — The coordinator approved slice 4 for the owner. Browser runs are outside this sandbox.
 - 2026-11-25 — Step 1 complete. The present-day title skips the hidden palace mesh and historical
