@@ -44,7 +44,8 @@ describe('urgent dialogue presentation', () => {
     const { presenter, shown } = setup();
     const continuations = Array.from({ length: MAX_QUEUE }, (_, i) => `continuation-${i + 1}`);
     presenter.enqueue(line('opening', { group: 1 }));
-    for (const id of continuations) presenter.enqueue(line(id, { group: 1 }));
+    for (const id of continuations.slice(0, -1)) presenter.enqueue(line(id, { group: 1 }));
+    presenter.enqueue(line(continuations.at(-1)!, { group: 1, priority: 'low' }));
     expect(presenter.pending).toBe(MAX_QUEUE);
 
     presenter.enqueue(line('laub.tut.dodge', { priority: 'now', text: 'Weich zur Seite aus!' }));
@@ -53,12 +54,29 @@ describe('urgent dialogue presentation', () => {
     expect(presenter.current?.id).toBe('laub.tut.dodge');
     expect(presenter.pending).toBe(MAX_QUEUE);
     expect(presenter.dropped).toBe(0);
+    presenter.enqueue(line('competing-story-line'));
+    expect(presenter.pending).toBe(MAX_QUEUE);
+    expect(presenter.dropped).toBe(1);
     for (const id of continuations) {
       presenter.skip();
       expect(presenter.current?.id).toBe(id);
     }
     presenter.skip();
     expect(presenter.busy).toBe(false);
+  });
+
+  it('keeps a queued dodge tutorial ahead of ordinary dialogue at capacity', () => {
+    const { presenter, shown } = setup();
+    presenter.enqueue(line('oil-warning', { priority: 'now' }));
+    const story = Array.from({ length: MAX_QUEUE }, (_, i) => `story-${i + 1}`);
+    for (const id of story.slice(0, -1)) presenter.enqueue(line(id));
+    presenter.enqueue(line('laub.tut.dodge', { priority: 'now' }));
+    presenter.enqueue(line(story.at(-1)!));
+
+    expect(presenter.pending).toBe(MAX_QUEUE);
+    expect(presenter.dropped).toBe(1);
+    for (let i = 0; i <= MAX_QUEUE; i++) presenter.skip();
+    expect(shown).toEqual(['oil-warning', 'laub.tut.dodge', ...story.slice(1)]);
   });
 
   it('drops waiting barks on interruption and lets later urgent lines wait their turn', () => {

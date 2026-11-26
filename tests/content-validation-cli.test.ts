@@ -11,8 +11,8 @@ describe('content validation inputs', () => {
     const root = mkdtempSync(join(tmpdir(), 'kq-validate-'));
     try {
       const content = join(root, 'content');
-      expect(findPacks(content)).toEqual([]);
-      expect(loadPacks(root)).toEqual({ packs: [], parseErrors: [] });
+      expect(findPacks(content)).toEqual({ files: [], linkedDirectories: [] });
+      expect(loadPacks(root)).toEqual({ packs: [], errors: [] });
       mkdirSync(join(content, 'b.pack.json'), { recursive: true });
       writeFileSync(join(content, 'c.pack.json'), '{"pack":"last"}');
       writeFileSync(join(content, 'a.pack.json'), '{"pack":"first"}');
@@ -24,15 +24,15 @@ describe('content validation inputs', () => {
       const nested = join('b.pack.json', 'a.pack.json');
       const malformed = join('b.pack.json', 'b.pack.json');
       const last = 'c.pack.json';
-      expect(findPacks(content).map((file) => relative(content, file))).toEqual([
+      expect(findPacks(content).files.map((file) => relative(content, file))).toEqual([
         first, nested, malformed, last,
       ]);
-      const { packs, parseErrors } = loadPacks(root);
+      const { packs, errors } = loadPacks(root);
       expect(packs.map(({ file, pack }) => [file, pack.pack])).toEqual([
         [join('content', first), 'first'], [join('content', nested), 'nested'], [join('content', last), 'last'],
       ]);
       expect(validateContent(packs).ok).toBe(true);
-      expect(parseErrors).toEqual([expect.stringContaining(`ERROR ${join('content', malformed)}: invalid JSON`)]);
+      expect(errors).toEqual([expect.stringContaining(`ERROR ${join('content', malformed)}: invalid JSON`)]);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -43,19 +43,34 @@ describe('content validation inputs', () => {
     try {
       const content = join(root, 'content');
       mkdirSync(content);
-      mkdirSync(join(content, 'archive'));
       writeFileSync(join(content, 'source.json'), '{"pack":"linked"}');
       execFileSync('mkfifo', [join(content, 'pipe.pack.json')]);
-      symlinkSync('archive', join(content, 'archive.pack.json'));
       symlinkSync('missing.json', join(content, 'missing.pack.json'));
       symlinkSync('pipe.pack.json', join(content, 'linked-pipe.pack.json'));
       symlinkSync('source.json', join(content, 'linked.pack.json'));
 
-      expect(findPacks(content)).toEqual([join(content, 'linked.pack.json')]);
+      expect(findPacks(content)).toEqual({ files: [join(content, 'linked.pack.json')], linkedDirectories: [] });
       expect(loadPacks(root)).toEqual({
         packs: [{ file: join('content', 'linked.pack.json'), pack: { pack: 'linked' } }],
-        parseErrors: [],
+        errors: [],
       });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it.skipIf(process.platform === 'win32')('reports a linked directory containing a malformed pack', () => {
+    const root = mkdtempSync(join(tmpdir(), 'kq-validate-'));
+    try {
+      const content = join(root, 'content');
+      mkdirSync(join(content, 'packs'), { recursive: true });
+      mkdirSync(join(root, 'external'));
+      writeFileSync(join(root, 'external', 'malformed.pack.json'), '{');
+      symlinkSync(join(root, 'external'), join(content, 'packs', 'linked'));
+
+      const { packs, errors } = loadPacks(root);
+      expect(packs).toEqual([]);
+      expect(errors).toEqual([`ERROR ${join('content', 'packs', 'linked')}: symbolic links to directories are not supported`]);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

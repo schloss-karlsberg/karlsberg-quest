@@ -105,6 +105,7 @@ export class DialoguePresenter {
   private skipTouch: boolean | null = null;
   /** Waiting lines (cap, stale and place rules: ./queue.ts). */
   private readonly queue: LineQueue<DialogueItem>;
+  private readonly interruptedGroups = new Set<number>();
   private cur: Active | null = null;
   private hideTimer = 0;
   private mouthTimer = 0;
@@ -113,7 +114,7 @@ export class DialoguePresenter {
   private paused = false;
   readonly voiceStats: PresenterVoiceStats = { clips: 0, murmured: 0, lastClip: null };
   constructor(private readonly o: PresenterOptions) {
-    this.queue = new LineQueue<DialogueItem>(() => this.cur?.item.group, o.valid);
+    this.queue = new LineQueue<DialogueItem>((group) => this.cur?.item.group === group || this.interruptedGroups.has(group), o.valid);
     ensurePortraitDefs();
     this.portraitEl = h('div.kqs-portrait');
     this.whoEl = h('span.kqs-who');
@@ -182,6 +183,7 @@ export class DialoguePresenter {
 
   clear(): void {
     this.queue.clear();
+    this.interruptedGroups.clear();
     this.stopClip();
     this.cur = null;
     this.el.classList.remove('kqs-show', 'kqs-speaking');
@@ -224,6 +226,16 @@ export class DialoguePresenter {
   private next(interrupt?: DialogueItem): void {
     this.stopClip();
     const item = interrupt ?? this.queue.take(this.o.held);
+    const previous = this.cur?.item;
+    if (item?.priority === 'now' && previous?.priority !== 'now' && previous?.group !== undefined) {
+      this.interruptedGroups.add(previous.group);
+    }
+    if (item?.group !== undefined) this.interruptedGroups.delete(item.group);
+    if (item?.priority !== 'now') {
+      for (const group of this.interruptedGroups) {
+        if (!this.queue.some((q) => q.group === group)) this.interruptedGroups.delete(group);
+      }
+    }
     if (!item) {
       this.cur = null;
       this.el.classList.remove('kqs-speaking');

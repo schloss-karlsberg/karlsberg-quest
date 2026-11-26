@@ -990,7 +990,8 @@ Round-4 (polish: set dressing) integration rules:
   clues; starting another echo ends the walking one as heard. Clue cards go through `ctx.ui.cards`
   (one at a time).
 - An interrupted memory emits `echo:end {id, aborted: true}` to release scene and HUD holds.
-  Quest objectives and story event conditions count completed and skipped memories.
+  Quest objectives and default story event conditions count completed and skipped memories.
+  Chapter 2 also listens for the interrupted departure to let the lantern choice resolve.
 - Pause and `chronik:open` open the Codex page. `check()` re-evaluates case state for older saves
   (`state.chronik` stays readable). `player:caught` finishes a running echo and preserves progress.
 - Uses real packs; placeholder packs (`content/test/chronik-test.pack.json`, `ct.*`) only when no
@@ -1099,11 +1100,12 @@ Round-4 (polish: set dressing) integration rules:
   delayed actions of other beats retire: presentation (`say`, `toast`, `sound`, `card`, `prompt`,
   `echo`, `choice`) is dropped, state changes run at once. A line that will not be spoken (said
   once already) costs no reading time in a run. The dialogue queue (`dialogue/queue.ts`, pure)
-  caps waiting lines at 6 (evicting unplayed barks / skill remarks first, including an incoming
-  bark). A playable `now` line can interrupt ordinary dialogue directly, without taking a waiting
-  slot. Further urgent lines can queue while an urgent line is showing. The queue drops barks
-  after 14 s, gives lines of an
-  ended beat or a left place `STALE_GRACE` = 3 s, beat lines `NORMAL_TTL` = 20 s and lore
+  caps waiting lines at 6. It evicts unplayed barks / skill remarks first and ordinary lines ahead
+  of queued `now` lines. A playable `now` line can interrupt ordinary dialogue directly, without
+  taking a waiting slot. Further urgent lines can queue while an urgent line is showing. An
+  interrupted sequence keeps its queue protection until it resumes. The queue drops barks after
+  14 s, gives lines of an ended beat or a left place `STALE_GRACE` = 3 s, beat lines
+  `NORMAL_TTL` = 20 s and lore
   (`dialogue:say {lore}`, sourced lines) `LORE_TTL` = 50 s, never cuts a playing sequence; while
   `hud.acting('combat')` lore and lines over 120 chars are held (`take(held)`), barks pass; while
   `hud.acting('reveal')` (a boss's reveal, combat) every line but `now` is held; a beat's own

@@ -21,6 +21,32 @@ test('chapter 2: Die Flucht, played through', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test('chapter 2: leaving during the departure unlocks the lantern choice without discovering the echo', async ({ page }) => {
+  await boot(page);
+  const departure = 'clue.k2.fackeln';
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.story!.goto('k2', 'k2_8');
+    k.setEra('1793-02');
+    k.teleport(1222, -1118, 270, 0);
+    k.lantern!.toggle(false);
+    k.step(4);
+    k.story!.flush();
+  });
+  expect(await page.evaluate(() => window.kq!.chronik!.echo().id)).toBe(departure);
+  expect(await page.evaluate(() => window.kq!.story!.choice())).toBe('k2.tor');
+  expect(await payloads(page, 'story:choice')).toEqual([]);
+
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.setEra('today');
+    k.step(4);
+  });
+  expect(await payloads(page, 'echo:end')).toContainEqual({ id: departure, aborted: true });
+  expect(await payloads(page, 'story:choice')).toContainEqual({ id: 'k2.tor', option: 'dunkel' });
+  expect((await story(page)).beat).toBe('k2_9');
+  expect(await clues(page)).not.toContain(departure);
+});
 
 test('chapter 2: caught in the hunt → home, nothing lost, anchor B back into the hunt', async ({ page }) => {
   test.setTimeout(600_000);

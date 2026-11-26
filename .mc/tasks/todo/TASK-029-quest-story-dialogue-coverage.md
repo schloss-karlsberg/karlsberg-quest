@@ -36,7 +36,7 @@ guided walk), Chronik and content validation. Fix demonstrated bugs within that 
 - [x] Reproduce each bug with a failing test first and fix it minimally. Record design questions as test TODOs.
 - [x] Keep parallel work and voiced text out of the diff. Update affected documentation and the PRD changelog.
 - [x] Attempt all four gates and the locked smoke spec on port 5417. Record exact results or the blocker.
-- [ ] Preserve the combined implementation commit `d8d6cdd` and commit the review fixes in focused changes with the requested conventional format and trailer. Report the branch, HEAD and follow-ups.
+- [x] Preserve the combined implementation commit `d8d6cdd` and record the first review commit and follow-ups.
 
 ## Plan
 
@@ -66,7 +66,7 @@ to regular files. Strengthen the review's CLI, quest and echo regressions.
 - [x] Reproduce the urgent-line loss through the presenter and the pack discovery issue using filesystem fixtures.
 - [x] Fix both runtime issues, correct the existing test fixtures and update the behavior docs.
 - [x] Run the focused tests, attempt all four gates and the locked smoke spec, and record the results.
-- [ ] Commit the review fixes locally.
+- [x] Land the first review fixes in `0e6bbef`.
 
 **Test plan:** Run targeted Vitest files, then typecheck, test, validate and build. Run the
 locked Playwright smoke spec at 5417 and any specs edited by this task.
@@ -93,9 +93,8 @@ spoken lines outside changes.
   stopped before running the validator because the sandbox denied the tsx IPC socket.
   The locked `e2e/smoke.spec.ts` command stopped before browser launch because the sandbox
   denied the preview server's bind on `127.0.0.1:5417`.
-- 2026-11-26: The review started on a clean `dev/task-029` at `d8d6cdd`. That commit combined
-  the original fixes with the requested conventional format and trailer. The review round retains
-  that commit and plans focused follow-up commits.
+- 2026-11-26: The first review started on `dev/task-029` at `d8d6cdd`, the combined implementation
+  commit. The first review fixes are in `0e6bbef`.
 - 2026-11-26: The review baseline showed the presenter advancing to the first continuation after
   either a discarded tutorial or an expired urgent line. Pack discovery returned a linked directory,
   a dangling link, a pipe and a linked pipe alongside the valid pack.
@@ -109,9 +108,17 @@ spoken lines outside changes.
   `node --import tsx scripts/validate-content.ts` checked 12 packs and ended with
   `✓ content valid (1 warning(s))`. The locked `e2e/smoke.spec.ts` run hit `listen EPERM` at
   `127.0.0.1:5417` before launching a browser.
-- 2026-11-26: The sandbox denied `git add` when it tried to create the worktree's `index.lock`.
-  HEAD remains `d8d6cdd` and the review changes are unstaged. The original fixes are already in
-  the branch's combined commit. The review fixes are ready for the three local commits below.
+- 2026-11-26: PR #58 review fixes protect queued urgent dialogue and interrupted sequences at
+  capacity, release the Chapter 2 lantern choice when the departure scene closes, and reject
+  symlinked content directories with a path diagnostic. Added focused regression coverage and a
+  browser case for leaving during the departure. This round is unstaged at `0e6bbef`.
+- 2026-11-26: The requested pnpm commands stopped during dependency preflight because the sandbox
+  denied writes through the shared `node_modules` link. The installed TypeScript checker passed.
+  Vitest with Vite's runner config loader and two workers passed all 120 files, with 1,594 tests
+  passed and two TODOs. `tests/content-validation-cli.test.ts` also passed individually, including
+  the filesystem fixtures. `node --import tsx scripts/validate-content.ts` passed with one pack
+  warning. The Vite build passed with the runner config loader. Playwright listed the specs, and
+  preview hit `listen EPERM` on `127.0.0.1:5417` before browser launch.
 
 ## Baseline coverage map
 
@@ -173,18 +180,6 @@ is identified separately where useful.
   survive a round-trip.
 - Decide how the queue should handle an already playing sequence with more continuations than all
   six waiting slots.
-- Re-run `pnpm validate` and `KQ_E2E_PORT=5417 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line`
-  in an environment that permits both sockets.
-- Create the review commits in a session that can write the worktree index.
-
-## Pending review commits
-
-Each commit includes `Refs: TASK-029` followed by a blank line and
-`Co-Authored-By: Codex <noreply@openai.com>`.
-
-1. `fix(story): play urgent dialogue without a waiting slot` with the presenter, queue,
-   presenter regressions and the architecture and action-RPG docs.
-2. `fix(content): validate only regular pack files` with the validator, its filesystem and
-   path regressions, and the content README.
-3. `test(story): tighten quest and echo regressions` with the quest and echo fixtures, the PRD
-   changelog and this handoff.
+- Run `pnpm validate` in an environment that permits the tsx IPC socket.
+- Run the browser specs with one worker where preview can bind. The affected specs are `smoke`,
+  `combat`, `story`, `touch`, `chapter-k2`, `stage-k2k4`, `chronik` and `quests` under `e2e/`.

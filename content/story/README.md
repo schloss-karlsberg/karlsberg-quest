@@ -60,8 +60,9 @@ clue already said it) but reserves its reading time, so the next grant does not 
 ## Conditions
 
 Exactly one key per condition object. Event-like conditions are latched while the beat runs.
-An `echo:end` condition counts a heard or skipped memory. Interrupted playback leaves the
-condition pending.
+An `echo:end` condition counts a heard or skipped memory by default. Use a separate condition
+with `match: { "aborted": true }` to respond to an interruption, as the Chapter 2 lantern choice
+does when the departure scene closes. Clue discovery and quest credit require a heard or skipped memory.
 
 | Condition | True when |
 | --- | --- |

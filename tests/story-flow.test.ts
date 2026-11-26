@@ -166,7 +166,7 @@ describe('validator: wake, variants, cooldown, follow pack', () => {
 
 describe('dialogue queue rules', () => {
   type L = QueuedLine & { id: string };
-  const mk = (playing: () => number | undefined = () => undefined, valid?: (l: L) => boolean) => new LineQueue<L>(playing, valid);
+  const mk = (playing: () => number | undefined = () => undefined, valid?: (l: L) => boolean) => new LineQueue<L>((group) => playing() === group, valid);
   const drain = (q: LineQueue<L>) => {
     const out: string[] = [];
     for (let l = q.take(); l; l = q.take()) out.push(l.id);
@@ -351,6 +351,20 @@ describe('ending C: the follow pack', () => {
 describe('chapter content using the flow features', () => {
   const k1 = storyFile('01-kapitel-1');
   const k2 = storyFile('02-kapitel-2');
+
+  it.each([false, true])('k2: opens the lantern choice when the departure echo closes (aborted: %s)', (aborted) => {
+    const { engine, runs } = engineWith(k2);
+    const choiceReady = () => runs.some((run) => run.src === 'k2/b:k2_8-vorbei' && run.texts.includes('flag'));
+    engine.goto('k2', 'k2_8');
+    engine.tick(1, env({ era: '1793-02' }));
+    engine.onEvent('echo:end', { id: 'clue.k2.landremont', aborted: true });
+    engine.tick(1, env({ era: '1793-02' }));
+    expect(choiceReady()).toBe(false);
+
+    engine.onEvent('echo:end', { id: 'clue.k2.fackeln', ...(aborted ? { aborted: true } : {}) });
+    engine.tick(1, env({ era: aborted ? 'today' : '1793-02' }));
+    expect(choiceReady()).toBe(true);
+  });
 
   it('k1: the guard calls out runners in the 1789 Ehrenhof, at most every 30 s, with escalating lines', () => {
     const r = k1.on!.find((x) => x.id === 'wache-rennen')!;

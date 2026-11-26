@@ -2,18 +2,18 @@
  * The waiting lines behind the one on screen (pure, no DOM: tests/story-flow.test.ts). Rules so
  * that Laub never lags behind a fast player:
  * - at most MAX_QUEUE lines wait; low-priority lines (barks, hints) are dropped first, then the
- *   oldest waiting line that is not part of the sequence already playing;
+ *   oldest waiting ordinary line outside a sequence that has started, then urgent lines;
  * - a low-priority line that waited longer than LOW_TTL seconds is dropped;
  * - when a beat begins, waiting lines of other beats retire: low ones at once, the rest get
  *   STALE_GRACE seconds to start (`retireBeat`);
- * - the rest of a sequence (same `group`) whose first line is showing is never dropped;
+ * - a sequence (same `group`) retains protection while it plays or is interrupted by an urgent line;
  * - `valid` (the host: is the player still near the place the line is about?) is asked when a
  *   line's turn comes;
  * - a line with `expired` (its `until` condition: the objective it explains is done, the beat it
  *   prepares has passed) is dropped once that holds;
  * - a 'now' line (a tutorial that blocks an action: "Leertaste – zur Seite!") can play immediately
- *   without a waiting slot. If it must wait, it jumps ahead of non-urgent lines. Waiting low
- *   priority lines are dropped (playtest round 2: tips arrived 13 s after the moment);
+ *   without a waiting slot. If it must wait, it jumps ahead of non-urgent lines. Low-priority
+ *   lines outside protected sequences are dropped (playtest round 2: tips arrived 13 s late);
  * - playtest round 3 (lines 10 s late, lectures in fights): a beat's leftovers get STALE_GRACE (3 s);
  *   a normal line that has not started within NORMAL_TTL is dropped (its moment is gone); `lore`
  *   lines (history, long remarks) are HELD while the host says a fight is on (`held`), the lines
@@ -57,8 +57,8 @@ export class LineQueue<T extends QueuedLine> {
   dropped = 0;
 
   constructor(
-    /** Group of the line now on screen (its sequence is never cut off). */
-    private readonly playingGroup: () => number | undefined,
+    /** Whether a group is playing or waiting to resume after an urgent line. */
+    private readonly protectsGroup: (group: number) => boolean,
     private readonly valid?: (item: T) => boolean,
   ) {}
 
@@ -78,9 +78,10 @@ export class LineQueue<T extends QueuedLine> {
   push(item: T, playImmediately = false): T | undefined {
     item.queuedAt = this.clock;
     if (item.priority === 'now') {
-      // ahead of everything but other 'now' lines; waiting low lines are stale already
+      // Queue behind other urgent lines and clear unstarted barks.
       for (let i = this.items.length - 1; i >= 0; i--) {
-        if (this.items[i]!.priority === 'low') {
+        const waiting = this.items[i]!;
+        if (waiting.priority === 'low' && !this.started(waiting)) {
           this.items.splice(i, 1);
           this.dropped++;
         }
@@ -102,8 +103,9 @@ export class LineQueue<T extends QueuedLine> {
     } else this.items.push(item);
     while (this.items.length > MAX_QUEUE) {
       let i = this.items.findIndex((q) => q.priority === 'low' && !this.started(q));
-      if (i < 0) i = this.items.findIndex((q) => !this.started(q) && q !== item);
-      if (i < 0 && !this.started(item)) i = this.items.indexOf(item);
+      if (i < 0) i = this.items.findIndex((q) => q.priority !== 'now' && q !== item && !this.started(q));
+      if (i < 0 && item.priority !== 'now' && !this.started(item)) i = this.items.indexOf(item);
+      if (i < 0) i = this.items.findIndex((q) => !this.started(q));
       this.items.splice(Math.max(0, i), 1);
       this.dropped++;
     }
@@ -158,9 +160,9 @@ export class LineQueue<T extends QueuedLine> {
     this.items.length = 0;
   }
 
-  /** The line's group has already begun (its first line is showing). */
+  /** The line belongs to a sequence that is playing or waiting to resume. */
   private started(q: T): boolean {
-    return q.group !== undefined && this.playingGroup() === q.group;
+    return q.group !== undefined && this.protectsGroup(q.group);
   }
 
   /** Drop waiting lines whose `until` holds now (called every tick by the presenter). */
