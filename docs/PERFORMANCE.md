@@ -678,8 +678,10 @@ re-rendered every frame. What changed:
 5. **Energiesparen**, see above.
 
 The browser regression check waits for queued redraws to drain and observes the draw counter over
-a fixed number of animation callbacks. Pause and bullet time hold the last frame. Leaving bullet
-time must produce further draws after the badge redraw.
+60 animation callbacks. Pause and bullet time hold the last frame: at most two draws from
+asynchronous requests (a streamed asset, the delayed camera-zoom save) may fall in the window,
+while a redraw on every callback fails. Leaving bullet time must produce further draws after the
+badge redraw.
 
 Measured on the real GPU (Apple M5 Pro, ANGLE Metal, headless Chromium, 1512 × 982 at device
 pixel ratio 2 like a 14" MacBook Pro, `--disable-gpu-vsync --disable-frame-rate-limit` so the

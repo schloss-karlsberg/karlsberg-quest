@@ -53,7 +53,8 @@ assertions for asynchronous work such as asset loading and browser UI transition
 In the normal e2e suite, check fixed work such as draw calls, triangles or ticks. Check the
 active render cap in the browser and test the cadence with synthetic animation-frame timestamps.
 Check held and resumed drawing over a fixed number of browser animation callbacks after queued
-render requests drain. For workload deltas, load the fixture first and pair measurements at the
+render requests drain. Allow a couple of draws from asynchronous requests (a streamed asset, a
+delayed settings save) in a held view; a redraw on every callback must still fail. For workload deltas, load the fixture first and pair measurements at the
 same camera pose and simulation tick.
 If a check needs elapsed time, calibrate against a baseline from the same run or log why the
 check is skipped under load. Absolute fps targets belong in dedicated GPU benchmarks.

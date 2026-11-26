@@ -13,11 +13,15 @@ import { observeRenderFrames } from './helpers/render-pacing';
  */
 
 // Drain the queued requests (normally one or two frames) before measuring unprompted draws.
-const OBSERVATION = { drain: 4, callbacks: 12 };
+const OBSERVATION = { drain: 4, callbacks: 60 };
+// Asynchronous redraw requests can each draw one frame while the view is held: a streamed asset
+// arriving after the teleport, or the delayed camera-zoom settings save. A redraw requested on
+// every animation frame draws about 60 times in the window.
+const STRAY_DRAWS = 2;
 
 async function expectHeldFrame(page: Page, state: string): Promise<void> {
   const { before, after } = await page.evaluate(observeRenderFrames, OBSERVATION);
-  expect(after, `${state} should hold its last frame`).toBe(before);
+  expect(after - before, `${state} should hold its last frame`).toBeLessThanOrEqual(STRAY_DRAWS);
 }
 
 async function boot(page: Page, query: string): Promise<void> {
