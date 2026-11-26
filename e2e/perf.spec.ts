@@ -20,6 +20,7 @@ const LABEL = process.env.PERF_LABEL ?? 'after';
 const historicSurfaceIds = new Set(SURFACE_SETS.filter((s) => s.historic).flatMap((s) => [surfAssetId(s, 'col'), surfAssetId(s, 'nrm')]));
 const afterStartPaths = [
   '/data/terrain/surface2025.rgba.deflate',
+  '/data/terrain/relief2025.u8.deflate',
   '/data/palace/buildings.glb',
   ...architecture.filter((asset) => historicSurfaceIds.has(asset.id)).map((asset) => `/assets/${asset.url}`),
 ];

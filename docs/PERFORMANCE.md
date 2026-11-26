@@ -88,7 +88,18 @@ the e2e test fails when a scene is over.
   one batch is visible. The main pass adds one draw and up to 780 triangles on Niedrig or 2,680
   on Mittel and Hoch. The plants are excluded from reflections and the shadow pass. Check the
   phone's rendered fps, CPU p95 and all-pass peaks in `phone-route.json`, and all nine scenes
-  in `phone-bench.json`. Hardware captures are pending.
+  in `phone-bench.json`. The slice 6 after capture held 59.94–59.97 rendered fps and passed all
+  nine phone bench scenes. The Hoch title transferred 19,833,613 bytes before first input.
+- **DGM1 near mesh (TASK-008, slice 7).** Mittel and Hoch stream an optional 220,832-byte
+  compressed crop (833 × 769 one-byte samples, 384 KiB ceiling) after play starts. Rebuild it
+  with `node --import tsx scripts/prepare-data.ts --mesh-detail`. Up to four visible 128 m LOD0
+  chunks split into 32 m tiles. At most nine nearby tiles use a 1 m mesh. The terrain submits up
+  to two additional instanced draws and 28,416 additional triangles per pass, including skirts.
+  The terrain skips the shadow pass. A Hoch reflection can repeat the terrain draws. Niedrig
+  uses its 2 m batches and skips the crop request. Historic and survey views use the base mesh.
+  Compare `slice7-before` and `slice7-after` in the same GPU spec at all six poses on each tier.
+  Recheck the Niedrig route and nine-scene bench, the Mittel and Hoch route peaks and the first-input
+  bytes on Hoch (19,833,613 bytes in the slice 6 capture, 20 MiB cap). Hardware results are pending.
 
 ## 3. Results
 

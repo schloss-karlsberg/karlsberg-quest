@@ -12,8 +12,10 @@ const OUT = `test-results/contribute/TASK-008/${LABEL}`;
 const STARTUP_VIEWS = LABEL === 'slice4-before' || LABEL === 'slice4-after';
 const PLATEAU_VIEWS = LABEL === 'slice5-before' || LABEL === 'slice5-after';
 const UNDERSTORY_VIEWS = LABEL === 'slice6-before' || LABEL === 'slice6-after';
-const TOUR_PROP_VIEWS = STARTUP_VIEWS || PLATEAU_VIEWS || UNDERSTORY_VIEWS || LABEL === 'slice2-before' || LABEL === 'slice2-after';
-const TERRAIN_DETAIL_VIEWS = STARTUP_VIEWS || PLATEAU_VIEWS || UNDERSTORY_VIEWS || LABEL === 'slice3-before' || LABEL === 'slice3-after';
+const MESH_VIEWS = LABEL === 'slice7-before' || LABEL === 'slice7-after';
+const PLATEAU_POSE = PLATEAU_VIEWS || UNDERSTORY_VIEWS || MESH_VIEWS;
+const TOUR_PROP_VIEWS = STARTUP_VIEWS || PLATEAU_POSE || LABEL === 'slice2-before' || LABEL === 'slice2-after';
+const TERRAIN_DETAIL_VIEWS = STARTUP_VIEWS || PLATEAU_POSE || LABEL === 'slice3-before' || LABEL === 'slice3-after';
 const VIEWS = [
   { id: '01-karlsberger-hof', era: 'today', x: 524, z: -770, yaw: 253 },
   { id: '02-felsenpfad', era: 'today', x: 683, z: -596, yaw: 90 },
@@ -23,7 +25,7 @@ const VIEWS = [
   { id: '06-ehrenhof', era: '1789', x: 1138, z: -1120, yaw: 90 },
 ] as const;
 const PLATEAU_VIEW = { ...VIEWS[4], x: 1199, z: -1115.2, yaw: 96 } as const;
-const CAPTURE_VIEWS = PLATEAU_VIEWS || UNDERSTORY_VIEWS ? [...VIEWS.slice(0, 4), PLATEAU_VIEW, VIEWS[5]] : VIEWS;
+const CAPTURE_VIEWS = PLATEAU_POSE ? [...VIEWS.slice(0, 4), PLATEAU_VIEW, VIEWS[5]] : VIEWS;
 type View = (typeof CAPTURE_VIEWS)[number];
 const PROP_YAWS: Partial<Record<View['id'], number>> = {
   '01-karlsberger-hof': 312,
@@ -34,6 +36,13 @@ const UNDERSTORY_STOPS: Partial<Record<View['id'], { site: string; yaw: number }
   '03-weiher': { site: 'weiher', yaw: 74 },
   '04-quelle': { site: 'quelle', yaw: 68 },
   '05-palace-plateau': { site: 'plateau', yaw: 78 },
+};
+const BANK_YAWS: Partial<Record<View['id'], number>> = {
+  '01-karlsberger-hof': 195,
+  '02-felsenpfad': 72,
+  '03-weiher': 255,
+  '04-quelle': 196,
+  '05-palace-plateau': 338,
 };
 const LONG_FRAME_MS = 25; // 1.5 frames at the 60 fps cap
 
@@ -86,7 +95,7 @@ async function shootViews(page: Page, prefix: string, terrainDetail = false) {
     const understory = UNDERSTORY_VIEWS ? UNDERSTORY_STOPS[view.id] : undefined;
     const still = {
       ...view,
-      yaw: understory?.yaw ?? (TOUR_PROP_VIEWS ? (PROP_YAWS[view.id] ?? view.yaw) : view.yaw),
+      yaw: (MESH_VIEWS ? BANK_YAWS[view.id] : undefined) ?? understory?.yaw ?? (TOUR_PROP_VIEWS ? PROP_YAWS[view.id] : undefined) ?? view.yaw,
       pitch: terrainDetail && view.era === 'today' ? -18 : -6,
     };
     await page.evaluate(({ era, x, z, yaw, pitch }) => {
@@ -108,15 +117,24 @@ async function shootViews(page: Page, prefix: string, terrainDetail = false) {
       const tourSets = k.scenery!.built().filter((id) => id.startsWith('tour-'));
       const plateau = k.ctx.scene.getObjectByName('scenery-palace-plateau') as InstancedMesh | undefined;
       const plants = k.ctx.scene.getObjectByName('scenery-castle-understory')?.children.filter((mesh) => mesh.visible) as InstancedMesh[] | undefined;
+      const relief = k.ctx.world.terrain.object.getObjectByName('terrain-dgm1');
       return {
         clock: k.ctx.loop.time, calls, triangles, cover: { ...k.ctx.world.nature.cover.stats }, tourSets, plateauParts: plateau?.count ?? 0,
         understory: plants?.map(({ name, count }) => ({ name, count })) ?? [],
+        meshDetail: !!relief?.visible,
       };
     });
     await page.screenshot({ path: `${OUT}/${prefix}-${view.id}.png` });
     results.push({ ...still, ...result });
   }
   return results;
+}
+
+function checkMeshDetail(views: Awaited<ReturnType<typeof shootViews>>, graphics: GraphicsLevel) {
+  if (!MESH_VIEWS) return;
+  for (const view of views) {
+    expect.soft(view.meshDetail, view.id).toBe(LABEL === 'slice7-after' && graphics !== 'low' && view.era === 'today');
+  }
 }
 
 function checkUnderstory(views: Awaited<ReturnType<typeof shootViews>>, graphics: GraphicsLevel) {
@@ -232,7 +250,7 @@ function checkWalk(sample: Awaited<ReturnType<typeof walkAndTurn>>, label: strin
 test.describe.configure({ timeout: 300_000 });
 
 test('Hoch opening from the title at Karlsberger Hof', async ({ page }) => {
-  test.skip(!STARTUP_VIEWS, 'use a slice4 capture label');
+  test.skip(!STARTUP_VIEWS && !MESH_VIEWS, 'use a slice4 or slice7 capture label');
   const errors = trackErrors(page);
   await page.goto('./?nosave&fresh&q=high&cam=third');
   const newGame = page.getByTestId('title-new');
@@ -254,6 +272,9 @@ test('Hoch opening from the title at Karlsberger Hof', async ({ page }) => {
   });
   expect(opening).toMatchObject({ graphics: 'high', chapter: 'tour', era: 'today' });
   expect(opening.fromCheckpoint).toBeLessThan(5);
+  if (LABEL === 'slice7-after') {
+    await page.waitForFunction(() => !!window.kq!.ctx.world.terrain.uniforms.uRelief?.value, null, { timeout: 30_000 });
+  }
   await page.screenshot({ path: `${OUT}/desktop-high-opening.png` });
   // The byte spec checks request timing. Here the palace must arrive after entry through the title.
   await page.waitForFunction(() => window.kq!.ctx.world.palace.triangles > 0, null, { timeout: 120_000 });
@@ -268,6 +289,7 @@ test('six matched Niedrig ground-cover views', async ({ page }) => {
   checkTourSets(views);
   checkPlateau(views, 'low');
   checkUnderstory(views, 'low');
+  checkMeshDetail(views, 'low');
   expect(views.at(-1)!.cover).toMatchObject({ grass: 0, flowers: 0, reeds: 0 });
   if (LABEL === 'before' || LABEL === 'pr26-before') {
     for (const view of views) expect(view.cover, view.id).toMatchObject({ grass: 0, flowers: 0, reeds: 0 });
@@ -290,11 +312,12 @@ test.describe('667×375 landscape touch', () => {
     checkTourSets(views);
     checkPlateau(views, 'low');
     checkUnderstory(views, 'low');
+    checkMeshDetail(views, 'low');
     await page.evaluate(() => window.kq!.ctx.settings.update((s) => { s.reducedMotion = false; }, 'reducedMotion'));
     const liveProfile = { ...profile, reducedMotion: false };
 
     const route = [];
-    for (const view of CAPTURE_VIEWS.slice(0, PLATEAU_VIEWS || UNDERSTORY_VIEWS ? 5 : 4)) {
+    for (const view of CAPTURE_VIEWS.slice(0, PLATEAU_POSE ? 5 : 4)) {
       await page.evaluate(() => window.kq!.setEra('today'));
       const sample = await walkAndTurn(page, view);
       route.push(sample);
@@ -302,7 +325,7 @@ test.describe('667×375 landscape touch', () => {
       if (LABEL === 'slice5-after' && view.id === PLATEAU_VIEW.id) {
         expect.soft(sample.renderedFps, 'Niedrig palace plateau at the 60 fps cap').toBeGreaterThanOrEqual(57);
       }
-      if (LABEL === 'slice6-after' && UNDERSTORY_STOPS[view.id]) {
+      if (MESH_VIEWS || (LABEL === 'slice6-after' && UNDERSTORY_STOPS[view.id])) {
         expect.soft(sample.renderedFps, `Niedrig ${view.id} at the 60 fps cap`).toBeGreaterThanOrEqual(57);
       }
     }
@@ -322,12 +345,13 @@ test.describe('667×375 landscape touch', () => {
     expect(bench.scenes).toHaveLength(9);
     for (const scene of bench.scenes) expect.soft(scene.withinBudget, scene.id).toBe(true);
     expect(await page.evaluate(() => !!window.kq!.ctx.world.terrain.uniforms.uSurfDetail?.value)).toBe(false);
+    expect(await page.evaluate(() => !!window.kq!.ctx.world.terrain.uniforms.uRelief?.value)).toBe(false);
     expect(errors).toEqual([]);
   });
 });
 
-test.describe('DGM1 surface on desktop', () => {
-  test.skip(!TERRAIN_DETAIL_VIEWS, 'use a slice3 through slice6 capture label');
+test.describe('DGM1 terrain on desktop', () => {
+  test.skip(!TERRAIN_DETAIL_VIEWS, 'use a slice3 through slice7 capture label');
 
   for (const graphics of ['medium', 'high'] as const) {
     test(`${graphics}: six matched terrain views and five live route samples`, async ({ page }) => {
@@ -338,15 +362,19 @@ test.describe('DGM1 surface on desktop', () => {
         const { terrain, nature } = window.kq!.ctx.world;
         return terrain.splat && nature.status.trees === 'on' && (!hasDetail || !!terrain.uniforms.uSurfDetail?.value);
       }, hasDetail, { timeout: 120_000 });
+      if (LABEL === 'slice7-after') {
+        await page.waitForFunction(() => !!window.kq!.ctx.world.terrain.uniforms.uRelief?.value, null, { timeout: 30_000 });
+      }
       const source = await page.evaluate(() => {
         const { terrain } = window.kq!.ctx.world;
         return terrain.uniforms.uSurfDetail?.value ? terrain.uniforms.uSurfDetailGrid!.value as number[] : null;
       });
       expect(source).toEqual(hasDetail ? [448, -1248, 896, 832] : null);
       const views = await shootViews(page, `desktop-${graphics}`, true);
-      if (STARTUP_VIEWS || PLATEAU_VIEWS || UNDERSTORY_VIEWS) checkTourSets(views);
+      if (STARTUP_VIEWS || PLATEAU_POSE) checkTourSets(views);
       checkPlateau(views, graphics);
       checkUnderstory(views, graphics);
+      checkMeshDetail(views, graphics);
       writeJson(`desktop-${graphics}-views`, { profile, source, views });
 
       await page.evaluate(() => window.kq!.setEra('today'));

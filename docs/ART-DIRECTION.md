@@ -81,9 +81,11 @@ objects, enemies, UI focus).
 The present-day tour and palace use 1 m DGM normals and local relief on Mittel and Hoch (TASK-008,
 slice 3). The crop spans Karlsberger Hof, Felsenpfad, the Weiher, the Quelle ravine and the palace
 plateau. Fine banks, hollows and terrace edges can catch the light along the walk. The shading fades
-toward the wet shore and into the base 2 m surface at distance. The same 2 m terrain mesh sets the
-silhouette across presets. The source is the existing GeoBasis-DE/LVGL-SL DGM1 export, credited in
-`public/data/attribution.json`.
+toward the wet shore and into the base 2 m surface at distance. Slice 7 gives dry banks and terrace
+edges near the camera a 1 m mesh on Mittel and Hoch. Low ridges and shallow cuts can break the
+silhouette, with up to 32 cm of vertical relief fading out between 12 and 24 m. The route tread,
+spring basin and brook, shores and ground beneath the fittings use the base surface. The source is
+the existing GeoBasis-DE/LVGL-SL DGM1 export, credited in `public/data/attribution.json`.
 
 ## 5. Vegetation style
 

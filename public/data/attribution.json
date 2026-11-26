@@ -9,7 +9,8 @@
    "url": "https://www.govdata.de/dl-de/by-2-0",
    "files": [
     "data/terrain/h2025.u16.deflate",
-    "data/terrain/surface2025.rgba.deflate"
+    "data/terrain/surface2025.rgba.deflate",
+    "data/terrain/relief2025.u8.deflate"
    ]
   },
   {

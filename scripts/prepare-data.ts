@@ -6,6 +6,7 @@
  *   KQ_SISTER=/path/to/saar-lidar-explorer pnpm prepare-data
  *   pnpm prepare-data --palace   only the palace (glb, footprints, pinned rooms) + manifest sizes
  *   pnpm prepare-data --surface-detail   only the 1 m present-day shading crop + metadata
+ *   pnpm prepare-data --mesh-detail      only the 1 m present-day mesh offsets + metadata
  *   KQ_ROOMS=catalogue …         regenerate rooms.json from the catalogue (breaks quests that name
  *                                rooms the catalogue has since dropped or moved; see lib/palace-data.ts)
  *
@@ -14,6 +15,7 @@
  *   terrain/h2025.u16.deflate        2 m heights today, uint16 cm above hMin, left-delta coded, zlib
  *   terrain/h1789.u16.deflate        2 m heights 1789 hypothesis, int16 cm difference to 2025, zlib
  *   terrain/surface2025.rgba.deflate 1 m normals and relief along the present-day tour, left-delta coded, zlib
+ *   terrain/relief2025.u8.deflate    1 m mesh height offsets in cm, biased by 128, zlib
  *   terrain/ground.u8.deflate        2 m land-cover classes (catalogue classes 0..7)
  *   terrain/canopy.u8.deflate        2 m canopy height today (DOM − DGM, max-pooled), 0.25 m units
  *   maps/hist1840.jpg                Bavarian survey 1836–41, 2 m/px, crop-aligned
@@ -36,9 +38,11 @@ import jpeg from 'jpeg-js';
 import { PNG } from 'pngjs';
 import proj4 from 'proj4';
 import type { GameData, TerrainMeta, TerrainSurfaceMeta } from '../src/data/types.ts';
+import { Heightfield } from '../src/world/heightfield.ts';
 import { buildSurface } from '../src/world/rasters.ts';
 import { type P2 } from './lib/frame.ts';
 import { preparePalace } from './lib/palace-data.ts';
+import { bakeTerrainRelief, RELIEF_CROP, type ReliefBakeMeta } from './lib/terrain-relief.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SISTER = resolve(process.env.KQ_SISTER ?? join(ROOT, '..', 'saar-lidar-explorer'));
@@ -75,10 +79,11 @@ const r2 = (v: number) => Math.round(v * 100) / 100;
 
 const PALACE_ONLY = process.argv.includes('--palace');
 const SURFACE_ONLY = process.argv.includes('--surface-detail');
+const MESH_ONLY = process.argv.includes('--mesh-detail');
 const ROOMS = process.env.KQ_ROOMS === 'catalogue' ? 'catalogue' : 'pinned';
 
-if (PALACE_ONLY && SURFACE_ONLY) throw new Error('choose one data subset');
-for (const p of PALACE_ONLY ? [SRC.recon, SRC.catalogue] : SURFACE_ONLY ? [SRC.terrain] : Object.values(SRC)) {
+if ([PALACE_ONLY, SURFACE_ONLY, MESH_ONLY].filter(Boolean).length > 1) throw new Error('choose one data subset');
+for (const p of PALACE_ONLY ? [SRC.recon, SRC.catalogue] : SURFACE_ONLY || MESH_ONLY ? [SRC.terrain] : Object.values(SRC)) {
   if (!existsSync(p)) throw new Error(`missing sister input: ${p} (set KQ_SISTER)`);
 }
 
@@ -112,7 +117,8 @@ const west = g.west as number;
 const north = g.north as number;
 const z = (a: ArrayBufferView) => deflateSync(Buffer.from(a.buffer, a.byteOffset, a.byteLength), { level: 9 });
 const detailPath = 'terrain/surface2025.rgba.deflate';
-const dgmFiles = ['data/terrain/h2025.u16.deflate', `data/${detailPath}`];
+const relief2025 = { ...RELIEF_CROP, encoding: 'zlib(uint8 offset in cm, zero at 128)' };
+const dgmFiles = ['data/terrain/h2025.u16.deflate', `data/${detailPath}`, `data/${relief2025.path}`];
 
 function readF32(name: string): Float32Array {
   const b = readFileSync(join(SRC.terrain, name));
@@ -144,18 +150,29 @@ function bakeSurface2025(src: Float32Array) {
   return { ...crop, encoding: 'zlib(left-delta RGBA8 normal X/Z and coarse/fine local relief)' };
 }
 
-if (SURFACE_ONLY) {
+function writeTerrainRelief(meta: ReliefBakeMeta, src: Float32Array): void {
+  const dgm = new Heightfield({ x0: west - E0 + 0.5, z0: N0 - north + 0.5, cols: cols1, rows: rows1, cell: 1 }, src);
+  write(relief2025.path, bakeTerrainRelief(OUT, meta, dgm));
+}
+
+if (SURFACE_ONLY || MESH_ONLY) {
   const meta = readJson<TerrainMeta>(join(OUT, 'terrain/meta.json'));
   const attribution = readJson<GameData['attribution']>(join(OUT, 'attribution.json'));
   const dgm = attribution.items.find((item) => item.id === 'dgm');
   if (!dgm) throw new Error('missing DGM attribution');
   const files = readJson<{ files: Record<string, number> }>(join(OUT, 'manifest.json')).files;
   const { hist1840, hist1935, pointcloud, ...terrain } = meta;
-  const surface2025 = bakeSurface2025(readF32(tmeta.files.dtm2025));
-  write('terrain/meta.json', JSON.stringify({ ...terrain, surface2025, hist1840, hist1935, pointcloud }, null, 1));
-  dgm.files = dgmFiles;
+  const src = readF32(tmeta.files.dtm2025);
+  if (SURFACE_ONLY) terrain.surface2025 = bakeSurface2025(src);
+  if (MESH_ONLY) {
+    writeTerrainRelief(meta, src);
+    terrain.relief2025 = relief2025;
+  }
+  write('terrain/meta.json', JSON.stringify({ ...terrain, hist1840, hist1935, pointcloud }, null, 1));
+  const changed = MESH_ONLY ? relief2025.path : detailPath;
+  dgm.files = [...new Set([...(dgm.files ?? ['data/terrain/h2025.u16.deflate']), `data/${changed}`])];
   write('attribution.json', JSON.stringify(attribution, null, 1));
-  writeManifest([...new Set([...Object.keys(files), detailPath])]);
+  writeManifest([...new Set([...Object.keys(files), changed])]);
   process.exit(0);
 }
 
@@ -645,6 +662,7 @@ const terrainMeta = {
     canopy: { path: 'terrain/canopy.u8.deflate', encoding: 'zlib(uint8 canopy height in 0.25 m)', note: 'today (ALS 2025 DOM - DGM), max of 1 m cells, LoD2 building cells removed' },
   },
   surface2025,
+  relief2025,
   hist1840: { path: 'maps/hist1840.jpg', covered: histCovered / (cols * rows), note: 'georeferencing off by tens of metres in places' },
   hist1935: { path: 'maps/hist1935.jpg', covered: h35Covered / (cols * rows), note: 'TK25 1935–40, ≈ 10–15 m off near the palace' },
   ...(pointMeta ? { pointcloud: pointMeta } : {}),
@@ -652,6 +670,7 @@ const terrainMeta = {
 write('terrain/meta.json', JSON.stringify(terrainMeta, null, 1));
 write('pois.json', JSON.stringify({ format: 'kq-pois-v1', attribution: poiGeo.attribution, pois }));
 write('paths.json', JSON.stringify(paths));
+writeTerrainRelief(terrainMeta, dtm2025);
 
 const attribution = {
   generated: new Date().toISOString(),
@@ -677,6 +696,7 @@ const files = [
   'terrain/ground.u8.deflate',
   'terrain/canopy.u8.deflate',
   detailPath,
+  relief2025.path,
   'maps/hist1840.jpg',
   'maps/hist1935.jpg',
   ...(pointMeta ? ['pointcloud/ground.kqp.deflate'] : []),

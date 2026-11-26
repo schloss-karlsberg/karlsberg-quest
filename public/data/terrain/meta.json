@@ -110,6 +110,14 @@
   "rows": 832,
   "encoding": "zlib(left-delta RGBA8 normal X/Z and coarse/fine local relief)"
  },
+ "relief2025": {
+  "path": "terrain/relief2025.u8.deflate",
+  "x0": 471,
+  "z0": -1189,
+  "cols": 833,
+  "rows": 769,
+  "encoding": "zlib(uint8 offset in cm, zero at 128)"
+ },
  "hist1840": {
   "path": "maps/hist1840.jpg",
   "covered": 1,

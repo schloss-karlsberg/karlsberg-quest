@@ -175,7 +175,9 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   });
   const loadTerrainDetail = () => {
     if (!started || quality.level === 'low') return;
-    void world.loadTerrainDetail().then((loaded) => { if (loaded) loopRef?.requestRender(); });
+    for (const detail of world.loadTerrainDetail()) {
+      void detail.then((loaded) => { if (loaded) loopRef?.requestRender(); });
+    }
   };
   // nature track: CC0 ground / bark sets, grass, props and water detail follow the tier
   quality.listeners.push((_p, level) => {
