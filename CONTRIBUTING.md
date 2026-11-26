@@ -68,19 +68,31 @@ The preview server uses port 5281 by default. To run suites from several checkou
 time, give each its own port, e.g. `KQ_E2E_PORT=5301 pnpm e2e --workers=1`.
 
 On a machine shared by several sessions, wrap heavy jobs (e2e, real-GPU screenshots, local model
-runs) in `scripts/dev/heavy.sh`. It is a machine-wide lock with a first-come-first-served queue;
-`scripts/dev/heavy.sh --status` shows the holder and the queue. Hold it for one spec file or one
-screenshot set at a time, never a whole multi-spec batch, so short jobs can interleave:
+runs) in `scripts/dev/heavy.sh`. It is a machine-wide lock with three slots (`KQ_HEAVY_SLOTS`,
+default 3) and a first-come-first-served queue, so up to three normal jobs, such as SwiftShader
+e2e specs, run at once. `scripts/dev/heavy.sh --status` shows each slot's holder and the queue.
+Hold a slot for one spec file or one screenshot set at a time, never a whole multi-spec batch, so
+short jobs can interleave:
 
 ```sh
 for s in e2e/a.spec.ts e2e/b.spec.ts; do scripts/dev/heavy.sh -- pnpm exec playwright test "$s" --workers=1; done
+```
+
+Jobs that need a quiet machine pass `--exclusive`, which takes every slot: the walk, framerate
+and perf specs, the real-GPU config (`playwright.gpu.config.ts`), real-GPU screenshot sets and
+local model runs (MOSS / TTS). An exclusive job waits until all slots are free, and jobs queued
+behind it wait as well, so it cannot starve:
+
+```sh
+scripts/dev/heavy.sh --exclusive --max-hold 10 -- pnpm exec playwright test e2e/framerate.spec.ts --workers=1
+scripts/dev/heavy.sh --exclusive --max-hold 15 -- pnpm exec playwright test -c playwright.gpu.config.ts --workers=1
 ```
 
 Pass `--max-hold 15` or less. The merge gate (`KQ_HEAVY_OWNER=kq-integrate` or `kq-integrate-*`)
 has a priority lane: it goes ahead of the queue, but after 2 priority holds in a row the oldest
 waiting normal job gets the next hold. A priority job without `--max-hold` of 15 or less is refused
 (exit 2); for everyone else a larger value only prints a warning. `--status` marks priority tickets
-with `P` and shows who is next.
+with `P` and exclusive tickets with `X`, and shows who is next.
 
 ## Project rules
 

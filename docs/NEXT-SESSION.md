@@ -270,20 +270,22 @@ collectibles, is in §5). The spring is called "Karlsbergquelle".
   `pnpm build`. E2E with `--workers=1` only as a regression net; the full `campaign.spec.ts`
   takes about 1–1.2 h. The round-9 fixes are committed, but their final full campaign e2e
   never finished, so run it once.
-- **Heavy jobs: one at a time per machine.** About five sessions share this Mac, so wrap every
-  heavy job in `scripts/dev/heavy.sh` (alias `pnpm heavy`). It takes a machine-wide lock
-  (`/tmp/kq-heavy.lock`). Waiters line up first come, first served in a ticket queue
-  (`/tmp/kq-heavy.lock.queue/`) and print who holds the lock, which command and for how long.
-  Then it runs your command and passes its exit code through. Heavy jobs
-  are Playwright e2e, real-GPU screenshots (`scripts/dev/shot*.mjs`, `look.mjs`) and local
-  TTS/model runs. Set `KQ_HEAVY_OWNER=<session name>` so the others can see who holds the lock.
+- **Heavy jobs: three slots per machine, quiet-machine jobs exclusive.** About five sessions share
+  this Mac, so wrap every heavy job in `scripts/dev/heavy.sh` (alias `pnpm heavy`). Up to three
+  normal jobs run at once (`KQ_HEAVY_SLOTS`, default 3; slot 0 is `/tmp/kq-heavy.lock`, slot k
+  `/tmp/kq-heavy.lock.slot<k>`). `--exclusive` takes every slot, for the walk, framerate and perf
+  specs, the real-GPU config, real-GPU screenshot sets and local model runs. Waiters line up first
+  come, first served in a ticket queue (`/tmp/kq-heavy.lock.queue/`) and print how many slots are
+  busy. Then it runs your command and passes its exit code through. Heavy jobs are Playwright e2e,
+  real-GPU screenshots (`scripts/dev/shot*.mjs`, `look.mjs`) and local TTS/model runs. Set
+  `KQ_HEAVY_OWNER=<session name>` so the others can see who holds a slot.
 
   ```sh
   KQ_HEAVY_OWNER=voice scripts/dev/heavy.sh -- pnpm exec playwright test e2e/voice.spec.ts --workers=1
-  scripts/dev/heavy.sh -- node scripts/dev/shots.mjs            # GPU screenshots
-  scripts/dev/heavy.sh --nice --check-load -- python tts_run.py  # CPU model run at background QoS
-  scripts/dev/heavy.sh --max-hold 5 -- node scripts/dev/shots.mjs  # hint: expect <= 5 min
-  scripts/dev/heavy.sh --status                                  # holder (or "free") and the queue
+  scripts/dev/heavy.sh --exclusive -- node scripts/dev/shots.mjs             # GPU screenshots
+  scripts/dev/heavy.sh --exclusive --check-load -- python tts_run.py          # local model run
+  scripts/dev/heavy.sh --exclusive --max-hold 5 -- node scripts/dev/shots.mjs # hint: expect <= 5 min
+  scripts/dev/heavy.sh --status                     # every slot's holder (or "free") and the queue
   ```
 
   - **One spec file or one screenshot set per lock hold, never a whole multi-spec batch.** A
@@ -301,8 +303,9 @@ collectibles, is in §5). The spring is called "Karlsbergquelle".
     normal ticket gets the next hold (2:1), so nobody starves. A priority ticket must pass
     `--max-hold 15` or less, or heavy.sh refuses with exit code 2. Everyone else should also keep
     `--max-hold` at 15 or less; a larger value only prints a warning. `--status` marks priority
-    tickets with `P` and prints `next: <owner> (pid …)`. Waiters still running an older heavy.sh
-    keep their FIFO place and are never deadlocked (see the comment in the script).
+    tickets with `P`, exclusive tickets with `X` and prints `next: <owner> (pid …)`. Waiters
+    still running an older heavy.sh keep their FIFO place and slot 0, and are never deadlocked
+    (see the comments in the script).
 
   - `KQ_HEAVY_TIMEOUT=600` gives up after 10 min of waiting, with exit 75.
   - `--check-load` warns when less than 20 % of memory is free (`memory_pressure -Q`).
