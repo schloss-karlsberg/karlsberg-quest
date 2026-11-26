@@ -8,6 +8,7 @@
  * frames; the game loop, the player's walking and every other system keep running.
  */
 import { ELITES, ENEMIES, enemyDef } from '../../rpg/enemies';
+import { isCleared } from '../../rpg/enemy-groups';
 import { BASE_STATS } from '../../rpg/stats';
 import type { CombatSlice, DerivedStats, EnemyAttackDef, EnemyDef, EnemyGroupState } from '../../rpg/types';
 import { callOf, eliteIndex, escortHost, escortsOf, hazardOf, packWorthy, waveOf } from './packs';
@@ -60,7 +61,6 @@ import {
   heavyCharge,
   hitDamage,
   inCone,
-  isCleared,
   isPerfectDodge,
   leashBroken,
   nextCombo,
@@ -433,6 +433,8 @@ export interface SimInput {
   moveZ: number;
   attackDown: boolean;
   attackPressed: boolean;
+  /** Focus loss dropped a held attack without a normal release. */
+  attackCancelled?: boolean;
   bannPressed: boolean;
   dodgePressed: boolean;
   /** Sprinting and moving (Atem drain in combat). */
@@ -978,6 +980,11 @@ export class CombatSim {
     p.bufAtk = Math.max(0, p.bufAtk - dt);
     p.bufDodge = Math.max(0, p.bufDodge - dt);
     p.stumbleCd = Math.max(0, p.stumbleCd - dt);
+    if (inp.attackCancelled) {
+      this.endCharge();
+      p.bufAtk = 0;
+      p.queued = false;
+    }
     if (inp.blocked) {
       p.bufAtk = 0;
       p.bufDodge = 0;

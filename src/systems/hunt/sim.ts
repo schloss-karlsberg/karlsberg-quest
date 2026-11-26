@@ -618,6 +618,9 @@ export class PackSim {
       if (pr) this.beginTrail(pr.seg, pr.seq, pr.x, pr.z);
       return;
     }
+    // sentries walking their beats (the K2 sneak) watch and listen, as their sight cones show; they
+    // keep their noses up, so a beat walked back over your prints does not betray you
+    if (this.state === 'calm' && this.onBeats) return;
     for (const a of this.hounds) {
       const pr = this.freshPrintNear(a.x, a.z, 1.4, now, this.tune.pickupAge, live);
       if (!pr) continue;
@@ -807,7 +810,7 @@ export class PackSim {
       case 'calm':
         // sentry beats (K2 sneak, playtest round 5): with `beats`, each hound walks its own line
         // across the way and back, so a straight walk meets a cone and has to wait or go round
-        if (!pik && !this.ctl && this.opt.beats && this.opt.beats.length) this.sentry(a, dt, T.speed.patrol);
+        if (!pik && this.onBeats) this.sentry(a, dt, T.speed.patrol);
         else if (a === this.leader) this.patrol(a, dt, pik ? T.pikeurSpeed.patrol : T.speed.patrol);
         else this.follow(a, dt);
         break;
@@ -855,6 +858,11 @@ export class PackSim {
         break;
       }
     }
+  }
+
+  /** Calm hounds walk sentry beats (`opt.beats`, plain patrol only) instead of the path graph. */
+  private get onBeats(): boolean {
+    return !this.ctl && !!this.opt.beats?.length;
   }
 
   /** A sentry: back and forth on its beat (`opt.beats[idx]`), a look-round at each end. */

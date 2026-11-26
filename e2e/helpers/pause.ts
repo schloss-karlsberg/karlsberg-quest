@@ -1,14 +1,17 @@
 import { type Page, expect } from '@playwright/test';
 import type { KqHooks } from '../../src/debug/hooks';
 
-export async function waitForHooks(page: Page, hooks: (keyof KqHooks)[], timeout = 180_000): Promise<void> {
-  await page.waitForFunction((names) => {
+export async function waitForHooks(page: Page, hooks: (keyof KqHooks)[], timeout = 180_000, mode: 'step' | 'render' = 'step'): Promise<void> {
+  await page.waitForFunction(({ names, mode }) => {
     const k = window.kq;
     if (!k) return false;
-    if (k.ctx.loop.manual && names.some((name) => !k[name])) k.step(1);
+    if (k.ctx.loop.manual && names.some((name) => !k[name])) {
+      if (mode === 'render') k.ctx.loop.renderOnce();
+      else k.step(1);
+    }
     if (k.ctx.params.has('notitle') && k.ctx.pause.reasons.has('title')) return false;
     return names.every((name) => !!k[name]);
-  }, hooks, { timeout });
+  }, { names: hooks, mode }, { timeout });
 }
 
 export async function openPause(page: Page): Promise<void> {
