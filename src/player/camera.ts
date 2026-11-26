@@ -15,7 +15,8 @@ import { finiteOr, safeDt } from './guards';
  *   through a door, the Durchfahrt or a stair block, F-35); the camera stops in front of the first
  *   hit (pulls in at once, lets out slowly). Terrain is not a wall: a slope or the hohe Stufe behind
  *   the character **cranes** the boom up over the ground instead of shortening it into the head
- *   (F-07). Tree trunks, ferns and rocks are not collided with at all: they dither away where they
+ *   (F-07). A final sweep keeps the framed lens on the player's side of steep terrain and solid
+ *   scenery. Tree trunks, ferns and decorative scattered rocks dither away where they
  *   stand between the lens and the character, the target or a speaker, or press against the lens
  *   (`seeThrough.ts`, SEE_GLSL in world/atmosphere.ts; F-03 / F-15 / F-21);
  * - **never inside the head**: a boom pulled in under 1.2 m **rises over the shoulder** (up to
@@ -96,6 +97,7 @@ export const PITCH_REST_3P = -0.21;
 const LIFT = 0.18;
 /** Closest the camera may come to a wall / the ground (m). */
 const CLEAR = 0.28;
+const GROUND_CLEAR = CLEAR + 0.12;
 /** Shortest boom: closer than this and the character's head would fill the view (it fades). */
 export const BOOM_MIN = 0.55;
 /** A boom shorter than this rises over the shoulder instead of pressing into the head (round 10, F-07). */
@@ -424,7 +426,7 @@ export class CameraRig {
       const z = _s.z - _f.z * t;
       if (!this.free(world, x, z, feetY, space)) return { free: Math.max(BOOM_MIN, t - 0.2), craneK };
       if (t > 0.5) {
-        const def = world.heightAt(x, z, feetY) + CLEAR + 0.12 - y;
+        const def = world.heightAt(x, z, feetY) + GROUND_CLEAR - y;
         if (def > 0) craneK = Math.max(craneK, def / t);
         if (craneK * t > CRANE_MAX) return { free: Math.max(BOOM_MIN, Math.min(t - 0.2, CRANE_MAX / craneK)), craneK };
       }
@@ -432,13 +434,17 @@ export class CameraRig {
     return { free: boom, craneK };
   }
 
-  /** Free fraction (0..1) of the straight line a → b for the lens, with optional extra backoff. */
-  private sweep(world: CameraWorld, ax: number, az: number, bx: number, bz: number, feetY: number, space0: number, backoff = STEP): number {
+  /** Free fraction (0..1) of the straight line a → b for the lens, with optional extra backoff and,
+   *  for outdoor shots, a terrain check along the lens heights `heights`. */
+  private sweep(world: CameraWorld, ax: number, az: number, bx: number, bz: number, feetY: number, space0: number, backoff = STEP, heights?: readonly [number, number]): number {
     const L = Math.hypot(bx - ax, bz - az);
     const n = Math.max(1, Math.ceil(L / STEP));
     for (let i = 1; i <= n; i++) {
       const t = i / n;
-      if (!this.free(world, ax + (bx - ax) * t, az + (bz - az) * t, feetY, space0)) return Math.max(0, (i - 1) / n - backoff / Math.max(L, STEP));
+      const x = ax + (bx - ax) * t;
+      const z = az + (bz - az) * t;
+      const below = heights && heights[0] + (heights[1] - heights[0]) * t < world.heightAt(x, z, feetY) + GROUND_CLEAR - 0.001;
+      if (below || !this.free(world, x, z, feetY, space0)) return Math.max(0, (i - 1) / n - backoff / Math.max(L, STEP));
     }
     return 1;
   }
@@ -613,7 +619,7 @@ export class CameraRig {
     this.enemyLift = ease(this.enemyLift, wantEnemy, 7, 1.5, dt, instant);
     _c.y += this.enemyLift;
     // never below the ground (slopes behind you lift the camera instead), never through the ceiling
-    const g = world.heightAt(_c.x, _c.z, o.y) + CLEAR + 0.12;
+    const g = world.heightAt(_c.x, _c.z, o.y) + GROUND_CLEAR;
     if (_c.y < g) _c.y = g;
     if (ceil !== null && _c.y > ceil - CLEAR) _c.y = Math.max(o.y + 0.4, ceil - CLEAR);
     // the view: the player's look, tilted just enough to keep the head in frame
@@ -638,6 +644,22 @@ export class CameraRig {
       yaw += dy * k;
       pitch += (this.shot.pitch - pitch) * k;
     } else if (!focus) this.shotInit = false;
+    // Shoulder offset, lift and the dialogue blend all move the lens after the boom sweep.
+    // Check the sightline to that final spot, including a ridge between two clear endpoints.
+    if (space0 === -1) {
+      const P = this.pivot;
+      const clear = this.sweep(world, P.x, P.z, px, pz, o.y, space0, STEP, [P.y, pyC]);
+      if (clear < 1) {
+        px = P.x + (px - P.x) * clear;
+        pz = P.z + (pz - P.z) * clear;
+        const rise = squeezeRise(Math.hypot(px - P.x, pz - P.z));
+        pyC = Math.max(P.y + (pyC - P.y) * clear, P.y + rise, world.heightAt(px, pz, o.y) + GROUND_CLEAR);
+        if (!this.shotInit) {
+          const pullTilt = frameTilt(px, pyC, pz, P.x, P.y, P.z, yaw, o.pitch, fov, -0.5);
+          pitch = Math.max(PITCH_MIN_3P - 0.45, Math.min(PITCH_MAX_3P + 0.2, o.pitch + pullTilt));
+        }
+      }
+    }
     // a NaN that slipped through (the world's heights, a probe): keep the last good camera (F-15)
     if (!Number.isFinite(px + pyC + pz + pitch + yaw)) {
       this.fallBack(camera);
@@ -667,7 +689,7 @@ export class CameraRig {
   private shotRoom(world: CameraWorld, focus: { x: number; z: number }, fy: number, side: number, feetY: number, space0: number, fov: number): number {
     const P = this.pivot;
     twoShot(P.x, P.y, P.z, focus.x, fy, focus.z, side, fov, _shot);
-    return this.sweep(world, P.x, P.z, _shot.x, _shot.z, feetY, space0);
+    return this.sweep(world, P.x, P.z, _shot.x, _shot.z, feetY, space0, STEP, space0 === -1 ? [P.y, _shot.y] : undefined);
   }
 
   /** The conversation's camera (this.shot): the two-shot on the side with room, else over the shoulder. */
@@ -709,7 +731,7 @@ export class CameraRig {
     const k = Math.max(0.35, Math.min(1, f));
     _shot.x = P.x + (_shot.x - P.x) * k;
     _shot.z = P.z + (_shot.z - P.z) * k;
-    const g = world.heightAt(_shot.x, _shot.z, o.y) + CLEAR + 0.12;
+    const g = world.heightAt(_shot.x, _shot.z, o.y) + GROUND_CLEAR;
     if (_shot.y < g) _shot.y = g;
     if (ceil !== null && _shot.y > ceil - CLEAR) _shot.y = Math.max(o.y + 0.4, ceil - CLEAR);
     const s = this.shot;

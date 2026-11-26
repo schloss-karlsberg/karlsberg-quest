@@ -170,6 +170,20 @@ describe('third-person camera rig', () => {
     expect(cam.position.y).toBeGreaterThan(slope.heightAt(cam.position.x, cam.position.z) + 0.3);
   });
 
+  it('pulls the framed lens in when a ridge crosses the diagonal from the player to the shoulder camera', () => {
+    const rig = new CameraRig();
+    const cam = new PerspectiveCamera();
+    const ridge: CameraWorld = {
+      heightAt: (x, z) => x < 0.28 && z > 0.9 && z < 1.7 ? 4 : 0,
+      blocked: () => false,
+    };
+    settle(rig, cam, flat);
+    expect(cam.position.z).toBeGreaterThan(3);
+    rig.update(cam, input(), ridge, noHints());
+    expect(cam.position.z).toBeLessThan(0.9);
+    expect(cam.position.y).toBeGreaterThan(1.65);
+  });
+
   it('indoors the camera stays under the ceiling', () => {
     const rig = new CameraRig();
     const cam = new PerspectiveCamera();
