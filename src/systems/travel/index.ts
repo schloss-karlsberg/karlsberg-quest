@@ -164,6 +164,7 @@ class Travel {
   private lastBase = 1;
   private curtain: HTMLElement | null = null;
   private journeyTimer?: ReturnType<typeof setTimeout>;
+  private fadingCurtain?: { element: HTMLElement; timer: ReturnType<typeof setTimeout> };
   private goalStory: { x: number; z: number } | null = null;
   readonly trail = new Trail();
   private deepToastAt = -1e9;
@@ -333,7 +334,15 @@ class Travel {
 
   // ---- journeys ------------------------------------------------------------------------------
 
+  private removeFadingCurtain(): void {
+    if (!this.fadingCurtain) return;
+    clearTimeout(this.fadingCurtain.timer);
+    this.fadingCurtain.element.remove();
+    this.fadingCurtain = undefined;
+  }
+
   private endJourney(fade = false): void {
+    this.removeFadingCurtain();
     const curtain = this.curtain;
     if (!curtain) return;
     clearTimeout(this.journeyTimer);
@@ -341,7 +350,7 @@ class Travel {
     this.curtain = null;
     if (fade) {
       curtain.classList.remove('on');
-      setTimeout(() => curtain.remove(), 500);
+      this.fadingCurtain = { element: curtain, timer: setTimeout(() => this.removeFadingCurtain(), 500) };
     } else curtain.remove();
     this.ctx.pause.pop('travel');
   }

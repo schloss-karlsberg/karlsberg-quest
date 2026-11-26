@@ -33,7 +33,7 @@ Identify player-visible behaviour without unit coverage and fix defects demonstr
 - [x] Record each module's player-facing contract and existing unit coverage, including exclusions.
 - [x] Add at least 25 deterministic assertions across the four areas, with the focused set under about three seconds.
 - [x] Reproduce each confirmed defect before changing its behaviour. Record unresolved design decisions as test todos.
-- [ ] Commit each fix separately. The worktree index lock was denied. The intended commit sequence is below.
+- [ ] Commit the review fixes separately by behavior. The save fix is in `369e0b6`. The curtain commit is pending because Git denied the index lock.
 - [x] Update affected documentation and the PRD changelog.
 - [ ] Pass all four gates as written. Typecheck, unit tests and build passed. The validator CLI was sandbox-blocked.
 - [x] Check whether the smoke spec can run and record the human-run command if the sandbox blocks its port.
@@ -62,13 +62,38 @@ Keep changes focused on independent gameplay logic.
 
 ## Progress
 
-- Started from `d2d1f48` on 2026-11-26. The index lock was denied on the first staging attempt.
+### Review round on `dev/task-030` (2026-11-26)
+
+**Goal:** Preserve the arrival pose in the travel autosave, clear old curtains on session changes,
+and exercise the production save and load paths in the travel regressions.
+
+- [x] Verify the arrival pose in an autosave backed by `MemoryStorage`.
+- [x] Verify that loading a slot cancels a pending journey through `save:loaded`.
+- [x] Verify that lore and shrine behavior uses the loaded slot and writes the next change to its state.
+- [x] Verify immediate curtain removal during a fade on load, game start and disposal.
+- [x] Update the travel docs and changelog, run the gates and attempt the locked smoke spec.
+- [ ] Commit the curtain fix, its regression tests and the review documentation.
+
+**Plan:** Add the regression assertions first and reproduce the arrival and fade failures. Update
+the arrival state before saving and keep the fading curtain and its timer available for cleanup.
+Run the focused travel tests, all four gates and the locked smoke spec.
+
+Both arrival cases reproduced the stale pose from `origin/main` before the fix. The pending
+journey, lore and shrine regressions each failed with the `save:loaded` listener temporarily removed.
+With the listener restored and the pose synced before saving, all eight focused tests passed.
+The fade regressions reproduced the lingering curtain on all three exits. Tracking its removal
+timer separately keeps the normal fade and lets the same exits clear it immediately. The six
+focused files passed with 20 tests, one todo and zero failures in 296 ms.
+
+- The initial sweep started from `d2d1f48` on 2026-11-26 and is recorded in `671172e`.
 - Cross-checked the inventory against all 58 module paths, including the excluded route solver.
-- Six focused test files contain 92 assertions. The registered travel system runs on an in-memory store and event bus. Journey tests advance fake timers, shift tests advance effect time, and terrain fixtures use fixed inputs and seeds.
+- The initial sweep added 92 assertions across six focused test files. The registered travel system runs on an in-memory store and event bus. Journey tests advance fake timers, shift tests advance effect time, and terrain fixtures use fixed inputs and seeds.
 
 | Area | Failure observed before the fix | Result |
 | --- | --- | --- |
 | Travel curtain | A pending trip replaced a newly loaded position (75, 20) with the spring arrival (1074.2, −822.8). Loading after arrival also kept the old travel pause. | Cancel the journey timer and release its curtain and pause on state replacement, game start, load and disposal. |
+| Travel autosave | The autosave kept the departure pose in manual and timed journeys. | Copy the live arrival pose into the store before autosaving. |
+| Curtain fade | Loading, starting a game or disposing the travel system during the fade left the old curtain mounted until its timer fired. | Track the fading element and cancel its removal timer during cleanup. |
 | Laufschritt | After a minute running and three seconds off sprint the multiplier was still 1.45. Entering combat multiplied a requested speed of 0.7 up to 1.015. | Cap stored run-up at the end of the ramp and drop the boost immediately when ineligible. |
 | Shift | Finishing a non-instant capture return raised a saved count of 7 to 8. | Apply the documented capture exception in the effect just as in the instant path. |
 | Interiors | Clearing one of two collapsed rooms made its shared door traversable. | Derive the blocked doors from the set of collapsed rooms. |
@@ -80,47 +105,31 @@ Keep changes focused on independent gameplay logic.
 ```text
 pnpm typecheck  →  tsc --noEmit (exit 0)
 Focused Vitest  →  Test Files  6 passed (6)
-                   Tests  16 passed | 1 todo (17)
-                   Duration  369ms
+                   Tests  20 passed | 1 todo (21)
+                   Duration  296ms
 pnpm test       →  Test Files  124 passed (124)
-                   Tests  1589 passed | 1 todo (1590)
+                   Tests  1593 passed | 1 todo (1594)
 pnpm validate   →  listen EPERM on the tsx IPC socket (exit 1)
 node --import tsx scripts/validate-content.ts  →  ✓ content valid (1 warning(s))
 pnpm build      →  ✓ 469 modules transformed.
-                   ✓ built in 508ms
+                   ✓ built in 558ms
 ```
 
-Both Vitest runs had 0 failed. MissionControl validation passed. The smoke server cannot bind
-`127.0.0.1:5418` in this sandbox (`listen EPERM`), so Playwright was skipped.
+Both Vitest runs had 0 failed. MissionControl validation passed. The locked smoke attempt stopped
+before Playwright could run its tests because the preview server could not bind `127.0.0.1:5418`
+in the sandbox (`listen EPERM`). No voiced lines require new text.
 
 ### Follow-ups
 
 - Decide whether a full-health traveller with a partly empty lantern should consume the Wegstein’s cooldown. The design question is an `it.todo` in `tests/travel-runtime.test.ts`.
 - Outside the sandbox, run `pnpm validate` and
   `KQ_E2E_PORT=5418 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line`.
-- Commit locally with a writable worktree index. The following commands use a common message trailer.
-  For the interactive staging step, accept the journey/curtain hunks and skip both Laufschritt hunks.
-  No voiced lines require new text.
+- Stage and commit the curtain fix locally. Git accepted `369e0b6` but denied the worktree's
+  `index.lock` when staging the curtain fix.
 
 ```sh
-commit030() {
-  git commit -m "$1" -m 'Refs: TASK-030' -m 'Co-Authored-By: Codex <noreply@openai.com>'
-}
-git add tests/travel-fixture.ts tests/travel-journey.test.ts
-git add -p src/systems/travel/index.ts
-commit030 'fix: cancel pending fast travel on load'
-git add src/systems/travel/index.ts tests/travel-runtime.test.ts
-commit030 'fix: bound the outdoor sprint boost'
-git add src/systems/fx/shift/shift.ts tests/shift-lifecycle.test.ts
-commit030 'fix: exclude capture returns from the animated shift count'
-git add src/systems/interiors/collide.ts tests/interior-door-state.test.ts
-commit030 'fix(env): keep shared doors blocked by collapsed rooms'
-git add src/world/water.ts tests/world-wading.test.ts
-commit030 'fix(env): sample overlapping shores for wading'
-git add src/world/collision.ts tests/world-ground-logic.test.ts
-commit030 'fix(env): use circular clearance at scenery corners'
-git add docs/ARCHITECTURE.md docs/ACTION-RPG.md docs/PRD.md .mc/tasks/todo/TASK-030-travel-shift-interiors-world-tests.md
-commit030 'docs: record the travel and world test sweep'
+git add src/systems/travel/index.ts tests/travel-journey.test.ts docs/ARCHITECTURE.md docs/ACTION-RPG.md docs/PRD.md .mc/tasks/todo/TASK-030-travel-shift-interiors-world-tests.md
+git commit -m 'fix(ui): clear fading fast travel curtains' -m 'Co-Authored-By: Codex <noreply@openai.com>'
 ```
 
 ## Coverage inventory

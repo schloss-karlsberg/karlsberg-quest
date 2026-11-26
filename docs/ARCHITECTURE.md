@@ -1608,10 +1608,12 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
 - Map (`map.ts`): M (no modal open) or Pause → „Karte“ — the 1836–41 sheet with inked
   footprints, seen POIs, the goal, known / unknown points, the player; "Hinreisen" per point
   (`travel-go-<id>`), keys 1–9 / Enter, wheel zoom, drag; layer buttons for the terrain overlay
-  (`survey:show-map`). Travel: a curtain, pause `travel`, teleport beside the tripod facing the
-  goal, `travel:arrived`, autosave (synchronous under `?manual`).
-  Loading another save or starting a game during the curtain cancels the pending arrival and
-  releases the travel pause. The new game keeps its own position and save.
+  (`survey:show-map`). During fast travel, a curtain covers the scene and `travel` pauses the
+  loop. The player teleports beside the tripod facing the goal, `travel:arrived` fires, and the
+  arrival pose is written into the store before autosaving. Arrival is synchronous under
+  `?manual`. Loading another save or starting a game cancels a pending arrival, releases the
+  travel pause and removes any curtain immediately, including during its fade. Disposal also
+  clears the journey and curtain.
 - Route POIs (`pois.ts`, deterministic): along 18 chapter routes every ~120 m a cache (2–4 era
   guards via `enemy:spawn`, group `poi:<id>`, only with a weapon in hand; `enemy:cleared` opens it:
   `loot:place` + EP), a Fundstück (`lore.ts`, 26 fictional letters / notes / tokens / coins, card +

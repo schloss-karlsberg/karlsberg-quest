@@ -78,3 +78,21 @@ it('keeps a replacement journey paused when the earlier curtain would have opene
   expect(player.teleport).toHaveBeenCalledTimes(2);
   expect(save.autosave).toHaveBeenCalledTimes(2);
 });
+
+it.each(['load', 'game start', 'disposal'] as const)('removes a fading travel curtain immediately on %s', (action) => {
+  const { hooks, events, pauseReasons, save, loop, body } = setupTravel();
+  loop.manual = false;
+  expect(hooks.go('karlsbergquelle')).toBe(true);
+  const [curtain] = body.append.mock.lastCall!;
+  vi.advanceTimersByTime(700);
+  expect(pauseReasons.has('travel')).toBe(false);
+  expect(curtain.classList.remove).toHaveBeenCalledWith('on');
+  expect(curtain.remove).not.toHaveBeenCalled();
+
+  if (action === 'load') expect(save.load()).toBe(true);
+  else if (action === 'game start') events.emit('game:start', { resumed: false });
+  else disposeTravel();
+
+  expect(curtain.remove).toHaveBeenCalledTimes(1);
+  expect(vi.getTimerCount()).toBe(0);
+});
