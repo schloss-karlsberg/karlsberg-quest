@@ -396,13 +396,13 @@ export class CameraRig {
     return true;
   }
 
-  /** Free fraction (0..1) of the straight line a → b for the lens (walls and spaces only). */
-  private sweep(world: CameraWorld, ax: number, az: number, bx: number, bz: number, feetY: number, space0: number): number {
+  /** Free fraction (0..1) of the straight line a → b for the lens, with optional extra backoff. */
+  private sweep(world: CameraWorld, ax: number, az: number, bx: number, bz: number, feetY: number, space0: number, backoff = STEP): number {
     const L = Math.hypot(bx - ax, bz - az);
     const n = Math.max(1, Math.ceil(L / STEP));
     for (let i = 1; i <= n; i++) {
       const t = i / n;
-      if (!this.free(world, ax + (bx - ax) * t, az + (bz - az) * t, feetY, space0)) return Math.max(0, (i - 1) / n - 0.25 / Math.max(L, 0.25));
+      if (!this.free(world, ax + (bx - ax) * t, az + (bz - az) * t, feetY, space0)) return Math.max(0, (i - 1) / n - backoff / Math.max(L, STEP));
     }
     return 1;
   }
@@ -520,17 +520,11 @@ export class CameraRig {
     // the shoulder: shrink it when a wall stands right beside the head, and as the boom gets short
     // (a short boom at full offset would park the lens beside the ear)
     wantShoulder *= 0.45 + 0.55 * smooth01(BOOM_MIN, NEAR_COMFORT + 0.4, this.distance);
-    const probeShoulder = Math.max(this.shoulder, wantShoulder);
-    for (let k = 1; k >= 0; k -= 0.25) {
-      const allowed = probeShoulder * k;
-      const sx = this.pivot.x + _r.x * allowed;
-      const sz = this.pivot.z + _r.z * allowed;
-      if (k === 0 || this.free(world, sx, sz, o.y, space0)) {
-        wantShoulder = Math.min(wantShoulder, allowed);
-        this.shoulder = Math.min(this.shoulder, allowed);
-        break;
-      }
-    }
+    // Sweep outward from the pivot so a clear sample beyond a thin wall cannot hide the wall.
+    const reach = Math.max(this.shoulder, wantShoulder);
+    const allowed = reach * this.sweep(world, this.pivot.x, this.pivot.z, this.pivot.x + _r.x * reach, this.pivot.z + _r.z * reach, o.y, space0, 0);
+    wantShoulder = Math.min(wantShoulder, allowed);
+    this.shoulder = Math.min(this.shoulder, allowed);
     this.shoulder += (wantShoulder - this.shoulder) * Math.min(1, dt * 6);
     _s.copy(this.pivot).addScaledVector(_r, this.shoulder);
     _s.y += LIFT + this.lift + INDOOR_LIFT * ind;

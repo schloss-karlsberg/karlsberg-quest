@@ -90,6 +90,27 @@ describe('third-person camera rig', () => {
     expect(cam.position.x).toBeCloseTo(openX);
   });
 
+  it('keeps the shoulder on the pivot side of a thin wall when leaving combat', () => {
+    const rig = new CameraRig();
+    const cam = new PerspectiveCamera();
+    const wall: CameraWorld = { ...flat, blocked: (x, _z, radius) => x + radius >= 0.72 && x - radius <= 0.84 };
+    const fight = { ...noHints(), fight: [{ x: 0, z: -4, r: 0.5, top: 1.8 }] };
+    settle(rig, cam, flat, input(), fight);
+    expect(cam.position.x).toBeCloseTo(1.1);
+    expect(wall.blocked(cam.position.x, cam.position.z, 0.224)).toBe(false);
+
+    rig.update(cam, input(), wall, noHints());
+    const squeezedX = cam.position.x;
+    expect.soft(squeezedX).toBeLessThan(0.72);
+    expect.soft(wall.blocked(squeezedX, cam.position.z, 0.224)).toBe(false);
+    expect(rig.distance).toBeGreaterThanOrEqual(rig.zoom);
+
+    settle(rig, cam, wall, input(), fight);
+    expect(cam.position.x).toBeLessThan(0.72);
+    expect(wall.blocked(cam.position.x, cam.position.z, 0.224)).toBe(false);
+    expect(rig.distance).toBeGreaterThan(rig.zoom);
+  });
+
   it('smooths a small height change and snaps the pivot when placed at another location', () => {
     const rig = new CameraRig();
     const cam = new PerspectiveCamera();
