@@ -1,18 +1,16 @@
 /**
  * Camera-facing billboards of one built interior: candle flames, fire tongues, ember streams
- * (additive) and smoke puffs (alpha). All animation runs in the shader on uTime; fire and smoke
- * spots are always present and shown by their room's fire / smoke uniform, so a `fire:room`
- * change costs nothing but a uniform write.
+ * (additive) and smoke puffs (alpha). All animation runs in the shader on uTime. Ember streams
+ * use tightly fitted quads for their sparks, and each blend pass submits only its own geometry.
  */
 import {
   AdditiveBlending,
   InstancedBufferAttribute,
-  InstancedBufferGeometry,
   Mesh,
   NormalBlending,
-  PlaneGeometry,
   ShaderMaterial,
 } from 'three';
+import { quadInstanced } from '../fx/gl';
 import type { FlameSpot } from './builder';
 import { MAX_ROOMS } from './material';
 
@@ -22,6 +20,7 @@ attribute vec2 iSize;
 attribute float iKind;
 attribute float iRoom;
 attribute float iSeed;
+attribute float iSpark;
 uniform float uTime;
 uniform float uRoomFire[${MAX_ROOMS}];
 uniform float uRoomSmoke[${MAX_ROOMS}];
@@ -32,26 +31,25 @@ varying vec2 vUv;
 varying float vKind;
 varying float vSeed;
 varying float vAmt;
+varying vec2 vSparkDelta;
+varying float vSparkFade;
+float hh(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 void main() {
   int room = int(iRoom + 0.5);
   float amt = 1.0;
-  if (iKind > 0.5) {
-    float fire = 0.0;
-    float smoke = 0.0;
-    float heat = 0.0;
-    for (int i = 0; i < ${MAX_ROOMS}; i++) {
-      if (i == room) { fire = uRoomFire[i]; smoke = uRoomSmoke[i]; heat = uRoomHeat[i]; }
-    }
-    // embers drift up through the floorboards before the flames come; smoke seeps in with the heat
+  if (iKind > 0.5 && room >= 0 && room < ${MAX_ROOMS}) {
+    float fire = uRoomFire[room];
+    float smoke = uRoomSmoke[room];
+    float heat = uRoomHeat[room];
     amt = iKind > 2.5 ? max(max(smoke, fire * 0.8), heat * 0.5) : iKind > 1.5 ? max(fire, heat * (iSeed > 1.5 ? 0.0 : 0.55)) : fire;
   } else {
-    amt = uCandles;
+    amt = iKind < 0.5 ? uCandles : 0.0;
   }
+  if (amt < 0.01) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
   vAmt = amt;
   vKind = iKind;
   vSeed = iSeed;
-  vUv = uv;
-  if (amt < 0.01) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
+  vUv = position.xy + 0.5;
   // cylindrical billboard (flames stay upright), smoke spherical
   vec3 right = normalize(vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]));
   vec3 up = vec3(0.0, 1.0, 0.0);
@@ -69,8 +67,23 @@ void main() {
     base.z += 0.8 * cos(t * 0.11 + iSeed * 23.0);
     sz *= 0.85 + 0.3 * sin(t * 0.21 + iSeed * 5.0);
   }
-  vec3 p = base + right * (position.x * sz.x) + up * ((position.y + (iKind > 2.5 ? 0.0 : 0.5)) * sz.y);
-  if (iKind < 0.5) p += right * 0.004 * sin(t * 7.0 + iSeed * 30.0) * (position.y + 0.5);
+  if (iKind > 1.5 && iKind < 2.5) {
+    float fall = step(1.5, iSeed);
+    float sd = fract(iSeed);
+    float sx = hh(vec2(iSpark, sd * 17.0 + fall));
+    float sp = (0.15 + 0.25 * hh(vec2(iSpark, sd * 3.0 + 1.0))) * (1.0 + fall * 0.8);
+    float ph = fract(hh(vec2(iSpark + 4.0, sd)) + t * sp);
+    float sy = mix(ph, 1.0 - ph * ph, fall);
+    vec2 center = vec2(sx + (0.05 + 0.04 * fall) * sin(t * 2.0 + iSpark), sy);
+    vec2 aspect = vec2(1.0, mix(0.45, 0.35, fall));
+    vec2 halfSize = (0.012 + 0.004 * fall) / aspect;
+    // Keep the same ellipse and clip to the parent stream's UV bounds.
+    vUv = mix(clamp(center - halfSize, 0.0, 1.0), clamp(center + halfSize, 0.0, 1.0), vUv);
+    vSparkDelta = (vUv - center) * aspect;
+    vSparkFade = mix(1.0 - sy, 0.4 + 0.6 * sy, fall);
+  }
+  vec3 p = base + right * ((vUv.x - 0.5) * sz.x) + up * ((vUv.y - (iKind > 2.5 ? 0.5 : 0.0)) * sz.y);
+  if (iKind < 0.5) p += right * 0.004 * sin(t * 7.0 + iSeed * 30.0) * vUv.y;
   gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
 }
 `;
@@ -79,11 +92,12 @@ const FRAG = /* glsl */ `
 precision highp float;
 uniform float uTime;
 uniform float uMotion;
-uniform float uSmokeLayer;
 varying vec2 vUv;
 varying float vKind;
 varying float vSeed;
 varying float vAmt;
+varying vec2 vSparkDelta;
+varying float vSparkFade;
 float hh(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float vn(vec2 p) {
   vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
@@ -93,8 +107,7 @@ float fbm(vec2 p) { return 0.5 * vn(p) + 0.25 * vn(p * 2.03 + 1.7) + 0.125 * vn(
 void main() {
   float t = uTime * uMotion;
   vec2 uv = vUv;
-  bool smoke = vKind > 2.5;
-  if (smoke != (uSmokeLayer > 0.5)) discard;
+  #ifndef SMOKE_LAYER
   if (vKind < 0.5) {
     // candle flame: a teardrop, white-yellow core, orange rim
     vec2 q = vec2((uv.x - 0.5) * 2.0, uv.y);
@@ -123,101 +136,126 @@ void main() {
     gl_FragColor = vec4(c * body * (0.38 + 0.8 * core) * vAmt, body);
     return;
   }
-  if (vKind < 2.5) {
-    // embers: sparks rising through the area (seed ≥ 2: glowing bits falling from the ceiling)
-    float fall = step(1.5, vSeed);
-    float sd = fract(vSeed);
-    float acc = 0.0;
-    for (int i = 0; i < 9; i++) {
-      float fi = float(i);
-      float sx = hh(vec2(fi, sd * 17.0 + fall));
-      float sp = (0.15 + 0.25 * hh(vec2(fi, sd * 3.0 + 1.0))) * (1.0 + fall * 0.8);
-      float ph = fract(hh(vec2(fi + 4.0, sd)) + t * sp);
-      float sy = mix(ph, 1.0 - ph * ph, fall);
-      vec2 c = vec2(sx + (0.05 + 0.04 * fall) * sin(t * 2.0 + fi), sy);
-      float d = length((uv - c) * vec2(1.0, mix(0.45, 0.35, fall)));
-      acc += (1.0 - smoothstep(0.0, 0.012 + 0.004 * fall, d)) * mix(1.0 - sy, 0.4 + 0.6 * sy, fall);
-    }
-    gl_FragColor = vec4(vec3(1.0, 0.5, 0.12) * acc * (2.0 + 1.5 * fall) * vAmt, acc);
-    return;
-  }
+  // embers: rising sparks or glowing bits falling from the ceiling
+  float fall = step(1.5, vSeed);
+  float a = (1.0 - smoothstep(0.0, 0.012 + 0.004 * fall, length(vSparkDelta))) * vSparkFade;
+  gl_FragColor = vec4(vec3(1.0, 0.5, 0.12) * a * (2.0 + 1.5 * fall) * vAmt, a);
+  #else
   // smoke puff: billowing, lit orange from below by the fire
   vec2 q = uv - 0.5;
   float n = fbm(uv * 3.0 + vec2(vSeed * 7.0, -t * 0.25));
+  float edge = length(q) + (n - 0.5) * 0.35;
+  if (edge >= 0.56) discard; // even the darkest second noise layer leaves zero alpha
   float n2 = fbm(uv * 6.0 - vec2(t * 0.1, vSeed * 3.0));
-  float a = (1.0 - smoothstep(0.12, 0.5, length(q) + (n - 0.5) * 0.35 + (n2 - 0.5) * 0.12)) * 0.62 * vAmt;
+  float a = (1.0 - smoothstep(0.12, 0.5, edge + (n2 - 0.5) * 0.12)) * 0.62 * vAmt;
   vec3 sc = vec3(0.06, 0.055, 0.05) * (0.6 + 0.6 * n);
   sc += vec3(0.32, 0.09, 0.015) * smoothstep(0.6, 0.0, uv.y) * vAmt * (0.6 + 0.4 * n2);
   gl_FragColor = vec4(sc, a);
+  #endif
 }
 `;
 
-export class FlameLayer {
-  readonly additive: Mesh;
-  readonly smoke: Mesh;
-  private readonly matA: ShaderMaterial;
-  private readonly matS: ShaderMaterial;
-  private readonly geo: InstancedBufferGeometry;
+const SPARKS_PER_STREAM = 9;
 
-  constructor(spots: FlameSpot[], roomFire: number[], roomSmoke: number[], roomHeat: number[]) {
-    const plane = new PlaneGeometry(1, 1);
-    const g = new InstancedBufferGeometry();
-    g.index = plane.index;
-    g.setAttribute('position', plane.getAttribute('position'));
-    g.setAttribute('uv', plane.getAttribute('uv'));
-    const n = Math.max(1, spots.length);
-    const pos = new Float32Array(n * 3);
-    const size = new Float32Array(n * 2);
-    const kind = new Float32Array(n);
-    const room = new Float32Array(n);
-    const seed = new Float32Array(n);
-    spots.forEach((s, i) => {
+/** Each slot describes one quad. Spark slots share a stream's position and carry their spark index. */
+function flameGeometry(spots: readonly FlameSpot[]) {
+  const g = quadInstanced();
+  g.translate(-0.5, -0.5, 0);
+  const n = spots.reduce((count, s) => count + (s.kind === 2 ? SPARKS_PER_STREAM : 1), 0);
+  const pos = new Float32Array(n * 3);
+  const size = new Float32Array(n * 2);
+  const kind = new Float32Array(n);
+  const room = new Float32Array(n);
+  const seed = new Float32Array(n);
+  const spark = new Float32Array(n);
+  let i = 0;
+  for (const s of spots) {
+    const count = s.kind === 2 ? SPARKS_PER_STREAM : 1;
+    for (let j = 0; j < count; j++, i++) {
       pos.set([s.x, s.y, s.z], i * 3);
       size.set([s.w, s.h], i * 2);
       kind[i] = s.kind;
       room[i] = s.room;
       seed[i] = s.seed;
-    });
-    if (!spots.length) room[0] = -1;
-    g.setAttribute('iPos', new InstancedBufferAttribute(pos, 3));
-    g.setAttribute('iSize', new InstancedBufferAttribute(size, 2));
-    g.setAttribute('iKind', new InstancedBufferAttribute(kind, 1));
-    g.setAttribute('iRoom', new InstancedBufferAttribute(room, 1));
-    g.setAttribute('iSeed', new InstancedBufferAttribute(seed, 1));
-    g.instanceCount = spots.length;
-    this.geo = g;
-    const uniforms = () => ({
+      spark[i] = j;
+    }
+  }
+  g.setAttribute('iPos', new InstancedBufferAttribute(pos, 3));
+  g.setAttribute('iSize', new InstancedBufferAttribute(size, 2));
+  g.setAttribute('iKind', new InstancedBufferAttribute(kind, 1));
+  g.setAttribute('iRoom', new InstancedBufferAttribute(room, 1));
+  g.setAttribute('iSeed', new InstancedBufferAttribute(seed, 1));
+  g.setAttribute('iSpark', new InstancedBufferAttribute(spark, 1));
+  g.instanceCount = n;
+  return g;
+}
+
+// Match the vertex cutoff so a cold building submits no smoke or ember work.
+const AMOUNT_CUTOFF = Math.fround(0.01);
+
+export class FlameLayer {
+  readonly additive;
+  readonly smoke;
+  private readonly candleCount: number;
+  private readonly additiveCount: number;
+  private readonly uniforms;
+
+  constructor(
+    spots: FlameSpot[],
+    private readonly roomFire: number[],
+    private readonly roomSmoke: number[],
+    private readonly roomHeat: number[],
+  ) {
+    const candles = spots.filter((s) => s.kind === 0);
+    const fire = spots.filter((s) => s.kind === 1 || s.kind === 2);
+    const smoke = spots.filter((s) => s.kind === 3);
+    const addGeo = flameGeometry([...candles, ...fire]);
+    this.candleCount = candles.length;
+    this.additiveCount = addGeo.instanceCount;
+    this.uniforms = {
       uTime: { value: 0 },
       uRoomFire: { value: roomFire },
       uRoomSmoke: { value: roomSmoke },
       uRoomHeat: { value: roomHeat },
       uCandles: { value: 1 },
       uMotion: { value: 1 },
-      uSmokeLayer: { value: 0 },
-    });
-    this.matA = new ShaderMaterial({ vertexShader: VERT, fragmentShader: FRAG, uniforms: uniforms(), transparent: true, depthWrite: false, blending: AdditiveBlending });
-    this.matS = new ShaderMaterial({ vertexShader: VERT, fragmentShader: FRAG, uniforms: uniforms(), transparent: true, depthWrite: false, blending: NormalBlending });
-    this.matS.uniforms.uSmokeLayer!.value = 1;
-    this.additive = new Mesh(g, this.matA);
-    this.smoke = new Mesh(g, this.matS);
-    for (const m of [this.additive, this.smoke]) {
-      m.frustumCulled = false;
-      m.renderOrder = 5;
-    }
+    };
+    this.additive = new Mesh(addGeo, new ShaderMaterial({
+      vertexShader: VERT, fragmentShader: FRAG, uniforms: this.uniforms,
+      transparent: true, depthWrite: false, blending: AdditiveBlending,
+    }));
+    this.smoke = new Mesh(flameGeometry(smoke), new ShaderMaterial({
+      vertexShader: VERT, fragmentShader: FRAG, uniforms: this.uniforms, defines: { SMOKE_LAYER: 1 },
+      transparent: true, depthWrite: false, blending: NormalBlending,
+    }));
+    this.additive.frustumCulled = this.smoke.frustumCulled = false;
+    this.additive.renderOrder = 5;
     this.smoke.renderOrder = 4;
+    this.update(0, false, 1);
   }
 
   update(time: number, reducedMotion: boolean, candles: number): void {
-    for (const m of [this.matA, this.matS]) {
-      m.uniforms.uTime!.value = time;
-      m.uniforms.uMotion!.value = reducedMotion ? 0.25 : 1;
-      m.uniforms.uCandles!.value = candles;
+    let embers = false;
+    let smoke = false;
+    for (let i = 0; i < this.roomFire.length; i++) {
+      const fire = this.roomFire[i]!;
+      const heat = this.roomHeat[i]!;
+      embers ||= Math.max(fire, heat * 0.55) >= AMOUNT_CUTOFF;
+      smoke ||= Math.max(this.roomSmoke[i]!, fire * 0.8, heat * 0.5) >= AMOUNT_CUTOFF;
+      if (embers && smoke) break;
     }
+    this.additive.geometry.instanceCount = embers ? this.additiveCount : this.candleCount;
+    this.additive.visible = (embers && this.additiveCount > this.candleCount) || (this.candleCount > 0 && candles >= AMOUNT_CUTOFF);
+    this.smoke.visible = smoke && this.smoke.geometry.instanceCount > 0;
+    this.uniforms.uTime.value = time;
+    this.uniforms.uMotion.value = reducedMotion ? 0.25 : 1;
+    this.uniforms.uCandles.value = candles;
   }
 
   dispose(): void {
-    this.geo.dispose();
-    this.matA.dispose();
-    this.matS.dispose();
+    this.additive.geometry.dispose();
+    this.smoke.geometry.dispose();
+    this.additive.material.dispose();
+    this.smoke.material.dispose();
   }
 }

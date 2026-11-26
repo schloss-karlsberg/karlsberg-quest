@@ -90,6 +90,15 @@ test.describe('interiors', () => {
       k.step(2);
     });
     await shot(page, 'festsaal-fire');
+    for (const graphics of ['medium', 'high', 'low'] as const) {
+      const active = await page.evaluate(async (graphics) => {
+        const k = window.kq!;
+        k.ctx.settings.update((s) => { s.graphics = graphics; }, 'graphics');
+        await k.screenshotReady();
+        return { graphics: k.ctx.quality.level, room: k.interiors!.room()?.roomId };
+      }, graphics);
+      expect(active).toEqual({ graphics, room: 'B01.2.og-festsaal' });
+    }
     // a collapsed room blocks its doors once the player is out
     const blocked = await page.evaluate(() => {
       const k = window.kq!;

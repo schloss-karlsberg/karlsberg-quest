@@ -35,6 +35,7 @@ import { FestsaalObjects, type FestsaalKey, festsaalSpots } from './festsaal';
 import { FESTSAAL_ROOM, festsaalSpots as dressedFestsaalSpots } from '../scenery/worldsets';
 import { passageFloor } from '../scenery/passage';
 import { FlameLayer } from './flames';
+import { FireLightSelection } from './fireLights';
 import { type FullPlan, buildPlan } from './layout';
 import { bakeLight, lightTexture } from './lightmap';
 import { MAX_LIGHTS, MAX_ROOMS, makeInteriorMaterial } from './material';
@@ -489,31 +490,6 @@ function updateRoom(ctx: GameContext, force = false): void {
   }
 }
 
-/** Up to 4 flickering lights at the flame spots of burning rooms nearest the camera. */
-function fireLightsOf(b: BRT, cam: { x: number; y: number; z: number }, time: number, reduced: boolean): { x: number; y: number; z: number; r: number; g: number; b: number; radius: number; room: number }[] {
-  if (!b.built) return [];
-  const out: { x: number; y: number; z: number; r: number; g: number; b: number; radius: number; room: number; d: number }[] = [];
-  for (const s of b.built.flames) {
-    if (s.kind !== 1 || s.room < 0) continue;
-    const f = b.fire[s.room] ?? 0;
-    if (f < 0.05) continue;
-    const d = (s.x - cam.x) ** 2 + (s.y - cam.y) ** 2 + (s.z - cam.z) ** 2;
-    if (d > 30 * 30) continue;
-    out.push({ x: s.x, y: s.y + 1.2, z: s.z, r: 0, g: 0, b: 0, radius: 9, room: s.room, d });
-  }
-  out.sort((p, q) => p.d - q.d);
-  const top = out.slice(0, 4);
-  top.forEach((l, i) => {
-    const f = b.fire[l.room] ?? 0;
-    const fl = reduced ? 0.9 : 0.7 + 0.2 * Math.sin(time * 9.7 + i * 2.1) + 0.12 * Math.sin(time * 23.1 + i * 5.3) + 0.08 * Math.sin(time * 3.1 + i);
-    const k = f * fl * 1.1;
-    l.r = 1.0 * k;
-    l.g = 0.36 * k;
-    l.b = 0.08 * k;
-  });
-  return top;
-}
-
 // ---- per frame: builds, shell, lights ---------------------------------------------------------------
 
 function frame(ctx: GameContext, dt: number): void {
@@ -584,19 +560,19 @@ function frame(ctx: GameContext, dt: number): void {
     const LP = b.mat.uniforms.uLightPos!.value as { set: (a: number, b: number, c: number, d: number) => void }[];
     const LC = b.mat.uniforms.uLightCol!.value as { set: (a: number, b: number, c: number, d: number) => void }[];
     // the fire lights the room: the nearest burning flame spots become flickering lights
-    const fireLights = fireLightsOf(b, cam, rt.time, reduced);
+    const fireLights = fireLightSelection.update(b.built!.flames, b.fire, cam);
     const nFire = fireLights.length;
     for (let i = 0; i < nFire; i++) {
       const f = fireLights[i]!;
-      LP[i]!.set(f.x, f.y, f.z, f.radius);
-      LC[i]!.set(f.r, f.g, f.b, f.room);
+      const fl = reduced ? 0.9 : 0.7 + 0.2 * Math.sin(rt.time * 9.7 + i * 2.1) + 0.12 * Math.sin(rt.time * 23.1 + i * 5.3) + 0.08 * Math.sin(rt.time * 3.1 + i);
+      const k = b.fire[f.room]! * fl * 1.1;
+      LP[i]!.set(f.x, f.y + 1.2, f.z, 9);
+      LC[i]!.set(k, 0.36 * k, 0.08 * k, f.room);
     }
-    for (let i = nFire; i < MAX_LIGHTS; i++) {
-      const l = sorted[i - nFire];
-      if (!l) {
-        LP[i]!.set(0, 0, 0, 0);
-        continue;
-      }
+    const nLights = Math.min(MAX_LIGHTS, nFire + sorted.length);
+    b.mat.uniforms.uLightCount!.value = nLights;
+    for (let i = nFire; i < nLights; i++) {
+      const l = sorted[i - nFire]!;
       const fl = reduced ? 1 : 0.93 + 0.05 * Math.sin(rt.time * 9.1 + i * 1.7) + 0.03 * Math.sin(rt.time * 23.3 + i);
       LP[i]!.set(l.x, l.y, l.z, l.radius);
       LC[i]!.set(l.r * fl, l.g * fl, l.b * fl, l.room);
@@ -653,6 +629,7 @@ const dist = new Map<BRT, number>();
 const openPool = Array.from({ length: MAX_OPEN }, () => ({ index: 0, fade: 0, y0: 0, y1: 0 }));
 const openList: { index: number; fade: number; y0: number; y1: number }[] = [];
 const lightCache = new WeakMap<BRT, { src: Built['lights']; sorted: Built['lights']; x: number; y: number; z: number }>();
+const fireLightSelection = new FireLightSelection();
 const shellSel = { key: '', x: Infinity, z: Infinity, cuts: [] as ShellBox[], clips: [] as ShellBox[] };
 const shellCache = new WeakMap<BRT, { plan: FullPlan; mode: InteriorMode; cuts: ShellBox[]; clips: ShellBox[] }>();
 
@@ -988,6 +965,13 @@ export default defineSystem({
     };
     installWorldHooks(ctx);
     registerEraMaterials('interiors.shell', '*', () => { const g = new GeoBuf(); g.tri([0, 0, 0], [0.01, 0, 0], [0, 0.01, 0], [0, 0, 1], { col: [1, 1, 1], mat: 0, room: 0 }); return new Mesh(g.toGeometry(), makeInteriorMaterial(new DataTexture(new Uint8Array(4), 1, 1), new Vector4(), 0)); });
+    registerEraMaterials('interiors.fire', '1793-07', () => {
+      const room = new Array<number>(MAX_ROOMS).fill(0);
+      room[0] = 1;
+      const spot = { x: 0, y: 0, z: 0, w: 1, h: 1, room: 0, seed: 0 };
+      const layer = new FlameLayer([{ ...spot, kind: 1 }, { ...spot, kind: 3 }], room, room, room);
+      return [layer.additive, layer.smoke];
+    });
     ctx.events.on('era:change', ({ from, to }) => {
       if (!(from === '1793-07' && to === '1793-07')) clearFires(ctx);
       if (rt?.ready) switchMode(ctx);
