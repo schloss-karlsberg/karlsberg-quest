@@ -597,8 +597,10 @@ and 112,431 triangles at 20 m. These are body mesh counts from `tests/people.tes
 uses the smaller mesh at 20 m and the solid stand-ins skip the alpha-hash shader path.
 
 Frustum culling stays active in the camera and shadow passes. The wider shared bounds can keep a
-body drawn slightly longer at a frustum edge. The maximum camera range stays at 60 m. The 58 m
-re-entry threshold prevents toggling near that limit. The story also keeps the departing group
+body drawn slightly longer at a frustum edge. Each skinned part and ghost depth twin also starts
+with a mesh-local sphere for render-list sorting, avoiding CPU skinning on its first visible frame.
+The maximum camera range stays at 60 m. The 58 m re-entry threshold prevents toggling near that
+limit. The story also keeps the departing group
 drawn during the Bussole beat while it is still within range. Phone frame times need a rendered
 run.
 

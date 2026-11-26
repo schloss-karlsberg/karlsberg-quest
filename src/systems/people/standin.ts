@@ -555,6 +555,9 @@ export class StandInPerson implements Person {
         rig.holder.scale.x *= build;
         rig.holder.scale.z *= build;
       }
+      // The model faces +z while the person's root faces −z.
+      rig.root.rotation.y = Math.PI;
+      rig.root.updateMatrixWorld(true);
       for (const m of rig.meshes) {
         const mat = (Array.isArray(m.material) ? m.material[0] : m.material) as MeshStandardMaterial | undefined;
         const slot = mat?.name ?? '';
@@ -568,6 +571,9 @@ export class StandInPerson implements Person {
         if (lod === 1) this.hasLod1 = true;
         m.frustumCulled = true;
         m.intersectsFrustum = this.intersectsBody;
+        // Render-list sorting still uses the mesh-local sphere. A ghost depth clone copies it.
+        const skinned = m as SkinnedMesh;
+        if (skinned.isSkinnedMesh) skinned.boundingSphere = this.bodyBound.clone().applyMatrix4(_m.copy(m.matrixWorld).invert());
         m.material = solid;
         const g = m.geometry;
         const tris = Math.round((g.index ? g.index.count : g.getAttribute('position').count) / 3);
@@ -593,8 +599,6 @@ export class StandInPerson implements Person {
       }
       this.neck = rig.bone(kit.neck) ?? null;
       this.head = rig.info.head ? (rig.bones.get(rig.info.head) ?? null) : null;
-      // the model faces +z, the contract's root faces −z: the body turns round inside the root
-      rig.root.rotation.y = Math.PI;
       this.rig = rig;
       this.applyLook();
       this.root.add(rig.root);

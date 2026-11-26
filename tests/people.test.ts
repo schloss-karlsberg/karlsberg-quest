@@ -694,6 +694,35 @@ describe('stand-in on the rigged Quaternius humans', () => {
     reg.clear();
   });
 
+  it('seeds local sort spheres before the first render, including ghost depth twins and hidden mesh levels', async () => {
+    const reg = await realRegistry();
+    for (const spec of ['guide', 'child.compass']) {
+      const p = reg.spawn(spec, { x: 120, y: 5, z: -40, yaw: 1.1, look: 'solid' });
+      expect(await p.ready).toBe(true);
+      p.root.updateMatrixWorld(true);
+      const meshes = () => meshesOf(p.root).filter((m): m is SkinnedMesh => (m as SkinnedMesh).isSkinnedMesh);
+      const parts = meshes().filter((m) => m.frustumCulled);
+      expect(parts.length).toBeGreaterThan(0);
+      if (spec === 'guide') expect(parts.some((m) => !m.visible)).toBe(true);
+      const center = p.root.position.clone().add(new Vector3(0, p.info.height * 0.5, 0));
+      for (const part of parts) {
+        expect(part.boundingSphere).not.toBeNull();
+        expect(part.localToWorld(part.boundingSphere!.center.clone()).distanceTo(center)).toBeLessThan(1e-5);
+        expect(part.boundingSphere!.radius).toBeGreaterThan(0);
+      }
+      p.setLook('ghost');
+      const twins = meshes().filter((m) => m.renderOrder === 6);
+      expect(twins).toHaveLength(parts.length);
+      for (const twin of twins) {
+        const part = parts.find((m) => m.name === twin.name && m.parent === twin.parent)!;
+        expect(twin.boundingSphere).not.toBeNull();
+        expect(twin.boundingSphere).toEqual(part.boundingSphere);
+        expect(twin.intersectsFrustum).toBe(part.intersectsFrustum);
+      }
+    }
+    reg.clear();
+  });
+
   it('draws solid visitors at conversational distances from their first visible frame', async () => {
     const reg = await realRegistry();
     const p = reg.spawn('double.jost', { x: 0, z: 0 });
