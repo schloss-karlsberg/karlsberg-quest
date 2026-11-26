@@ -20,7 +20,7 @@ describe('German string lookup', () => {
   });
 
   it('resolves both labels for every control after feature initialization', async () => {
-    const [{ hasString }, { CONTROL_KEYS }, { default: skills }, { default: photo }, { default: notes }] = await Promise.all([
+    const [{ hasString }, { controlKeyRows }, { default: skills }, { default: photo }, { default: notes }] = await Promise.all([
       import('../src/i18n'),
       import('../src/ui/menus'),
       import('../src/systems/skills'),
@@ -52,11 +52,13 @@ describe('German string lookup', () => {
     const features = [skills, photo, notes];
     try {
       for (const feature of features) feature.init(ctx);
-      expect(CONTROL_KEYS).toEqual(expect.arrayContaining(['relief_off', 'xray', 'plans', 'photo', 'notes']));
-      for (const id of CONTROL_KEYS) {
+      const rows = controlKeyRows({});
+      expect(rows.map(({ id }) => id)).toEqual(expect.arrayContaining(['relief_off', 'xray', 'plans', 'photo', 'notes']));
+      for (const { id, keys } of rows) {
         const key = `ui.keys.${id}`;
         expect(hasString(key), key).toBe(true);
-        expect(hasString(`${key}.key`), `${key}.key`).toBe(true);
+        // rows without rebindable actions show their fixed `.key` label
+        expect(keys, `${key}.key`).not.toBe(`${key}.key`);
       }
     } finally {
       for (const feature of features.reverse()) feature.dispose();
