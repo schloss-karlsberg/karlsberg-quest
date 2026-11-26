@@ -1,6 +1,7 @@
 import contributorsFile from '../../../content/credits.json';
 import creditsFile from '../../../content/party/credits.json';
-import type { LicenceRecord, LicencesFile, VoiceCredit } from '../../assets/types';
+import { SPEAKER_PERMISSION_NOTICE, type LicenceRecord, type LicencesFile, type VoiceCredit } from '../../assets/types';
+import { t } from '../../i18n';
 
 interface Contributors {
   people: readonly { name: string; role: string; links?: readonly string[] }[];
@@ -20,7 +21,7 @@ interface CreditSection {
 
 type CreditManifest = {
   assets: readonly Pick<LicenceRecord, 'source' | 'author' | 'licence'>[];
-  voices?: readonly Pick<VoiceCredit, 'name' | 'realPerson' | 'tool' | 'toolLicence' | 'outputLicence'>[];
+  voices?: readonly Pick<VoiceCredit, 'name' | 'tool' | 'toolLicence' | 'outputLicence'>[];
   libraries?: LicencesFile['libraries'];
 };
 
@@ -53,11 +54,11 @@ const rows = (lines: readonly string[]): CreditRow[] => lines.map((text) => ({ t
 
 /** The same ordered credits for the party strip and the ending's credits page. */
 export function creditSections(manifest: CreditManifest | null, contributors: Contributors = contributorsFile): CreditSection[] {
-  const voices = new Set(manifest?.voices?.map(({ name, realPerson, tool, toolLicence, outputLicence }) =>
-    realPerson
-      ? `${name} · Stimme mit Einwilligung, nur zur Verwendung in Karlsberg Quest.`
-      : `Synthetische Stimmen: ${tool} (${toolLicence}), Aufnahmen: ${outputLicence}`,
-  ));
+  const voices = new Set(manifest?.voices?.map(({ name, tool, toolLicence, outputLicence }) => {
+    if (outputLicence === SPEAKER_PERMISSION_NOTICE) return t('licences.voices.speakerPermission', { name });
+    const label = outputLicence === 'CC0-1.0' ? 'Synthetische Stimmen' : name;
+    return `${label}: ${tool} (${toolLicence}), Aufnahmen: ${outputLicence}`;
+  }));
   const libraries = manifest?.libraries?.map(({ name, licence }) => `${name.split(' (')[0]} (${licence})`) ?? ['three.js (MIT)'];
   const assets = [...assetCredits(manifest?.assets ?? []), ...voices];
   return [

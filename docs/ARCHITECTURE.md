@@ -133,6 +133,9 @@ model and works through the jobs. Code: `scripts/voice/mossService.ts`, tests in
   written consent with public scope, which only the owner records. The game reserves `guest-test`
   for the `player` mapping. Writing its clips into `public/voice/` also requires a matching named
   consent credit in `LICENSES.json` and records `licence: "speaker-permission"` in the manifest.
+  The in-game licence summary and credits read `voices[].outputLicence` in `LICENSES.json`.
+  Synthetic voices use CC0. Speaker-permission recordings are excluded from CC0 and may only
+  be used in Karlsberg Quest with the speaker's permission.
 - `--dry-run` in service mode prints the plan plus each line's state (submit / still queued / collect),
   read from the client's result files, and the registry check; it submits nothing. Whether a job will
   be answered from the service cache is known only after submitting ("M cached").

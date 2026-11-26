@@ -22,6 +22,7 @@ import {
 } from '../scripts/voice/assetRules.ts';
 import { MOSS_ENGINE, type VoicesConfig } from '../scripts/voice/lib.ts';
 import type { LicencesFile, VoiceCredit } from '../src/assets/types';
+import { voiceLicencesSummary } from '../src/ui/menus';
 
 const REPO = resolve(__dirname, '..');
 const VOICE_DIR = join(REPO, 'public/voice');
@@ -95,6 +96,26 @@ describe('voice credits in LICENSES.json', () => {
     const voices = JSON.parse(readFileSync(join(REPO, 'scripts/voice/voices.json'), 'utf8')) as VoicesConfig;
     expect(voices.speakers.player).toMatchObject({ serviceVoice: 'guest-test', refSha256: player.referenceSha256, licence: 'speaker-permission', seed: 7 });
     for (const c of credits) expect(voices.speakers[c.speaker]?.seed, c.speaker).toBe(c.seed);
+  });
+});
+
+describe('voice licence summary', () => {
+  it('credits the synthetic voices and the player under their respective output licences', () => {
+    expect(voiceLicencesSummary(credits)).toBe([
+      'Stimmen von Quirin Laub, Marlene, Gerold Imhoff, Herr Soll, Jost Fendel und Mats: synthetisch, lokal erzeugt mit MOSS-TTS-v1.5 (Apache-2.0); Ausgabe CC0. Keine echte Person, keine nachgeahmte Stimme.',
+      'Die Stimme von Jan Eric Rippel wird mit Erlaubnis des Sprechers verwendet, ist nicht unter CC0 lizenziert und darf außerhalb von Karlsberg Quest nicht weiterverwendet werden.',
+    ].join(' '));
+  });
+
+  it('credits each speaker-permission voice by its manifest name even without synthetic voices', () => {
+    const voices = [
+      { ...player, speaker: 'speaker-a', name: 'Beispiel A', realPerson: undefined },
+      { ...player, speaker: 'speaker-b', name: 'Beispiel B', realPerson: undefined },
+    ];
+    expect(voiceLicencesSummary(voices)).toBe([
+      'Die Stimme von Beispiel A wird mit Erlaubnis des Sprechers verwendet, ist nicht unter CC0 lizenziert und darf außerhalb von Karlsberg Quest nicht weiterverwendet werden.',
+      'Die Stimme von Beispiel B wird mit Erlaubnis des Sprechers verwendet, ist nicht unter CC0 lizenziert und darf außerhalb von Karlsberg Quest nicht weiterverwendet werden.',
+    ].join(' '));
   });
 });
 
