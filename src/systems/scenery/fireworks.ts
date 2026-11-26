@@ -393,13 +393,14 @@ export class Fireworks {
   private turnView(dt: number): void {
     if (this.lookT <= 0) return;
     this.lookT -= dt;
+    if (this.ctx.settings.state.reducedMotion) return;
     const pl = this.ctx.player;
     const dx = LAUNCH.x - pl.position.x;
     const dz = LAUNCH.z - pl.position.z;
     const want = Math.atan2(-dx, -dz);
     let d = want - pl.yaw;
     d = Math.atan2(Math.sin(d), Math.cos(d));
-    const k = Math.min(1, dt * (this.ctx.settings.state.reducedMotion ? 6 : 2.6));
+    const k = Math.min(1, dt * 2.6);
     pl.yaw += d * k;
     const burstY = this.launchY + 105 - pl.position.y - 1.6;
     const pitch = Math.max(0.05, Math.min(0.75, Math.atan2(burstY * 0.82, Math.hypot(dx, dz))));
@@ -545,6 +546,8 @@ export class Fireworks {
     this.time += dt;
     this.phaseT += dt;
     const reduced = this.reduced();
+    const motion = !this.ctx.settings.state.reducedMotion;
+    this.sparks.visible = this.smoke.visible = motion;
     this.turnView(dt);
     // ---- schedule
     if (this.phase === 'festive') {
@@ -679,14 +682,14 @@ export class Fireworks {
     const lampsOn = this.phase === 'festive' ? Math.min(1, this.phaseT / 2) : this.phase === 'climax' ? Math.max(0, 1 - this.phaseT / 2.5) : 0;
     (this.lamps.material as ShaderMaterial).uniforms.uOn!.value = lampsOn;
     this.crowd?.set(this.phase === 'festive' ? Math.min(1, this.phaseT / 3) : 0);
-    this.fall += dt * (this.snowUp < 0 ? 1.1 * -this.snowUp : -2.4 * this.snowUp);
+    if (motion) this.fall += dt * (this.snowUp < 0 ? 1.1 * -this.snowUp : -2.4 * this.snowUp);
     const su = (this.snow.material as ShaderMaterial).uniforms;
     su.uFall!.value = this.fall;
     su.uScale!.value = scale;
     su.uAlpha!.value = 0.85 * Math.min(1, this.winter * 1.5) * (this.phase === 'dark' ? 0.35 : 1);
     // ---- light on the land: the last bursts tint terrain, trees, snow and fog (shared glow)
     this.light.multiplyScalar(Math.exp(-dt * (this.phase === 'climax' ? 2.0 : 2.6)));
-    atmosphere.uGlowColor.value.copy(this.light);
+    atmosphere.uGlowColor.value.copy(this.light).multiplyScalar(motion ? 1 : 0);
     atmosphere.uGlowPos.value.copy(this.lightPos);
     // white flash (post), off in reduced flash
     this.flash *= Math.exp(-dt * 3.5);

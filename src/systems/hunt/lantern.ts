@@ -20,6 +20,14 @@ import {
 import { atmosphere } from '../../world/atmosphere';
 
 const WARM = new Vector3(1.0, 0.58, 0.24);
+
+export function lanternFlicker(time: number, oil: number, steady: boolean): number {
+  if (steady) return 0.92;
+  const flame = 0.92 + 0.05 * Math.sin(time * 9.1) + 0.03 * Math.sin(time * 23.7 + 1.3);
+  const sputter = oil < 0.15 ? 0.85 + 0.15 * Math.max(0, Math.sin(time * 31) * Math.sin(time * 4.3)) : 1;
+  return flame * sputter;
+}
+
 const FLAME_FRAG = /* glsl */ `
 uniform float uTime;
 uniform float uLevel;
@@ -156,17 +164,13 @@ export class LanternView {
    */
   private lower = 0;
 
-  frame(o: { dt: number; time: number; camera: PerspectiveCamera; lit: boolean; oil: number; fog: boolean; prone: boolean; moving: number; reducedMotion: boolean; snap: boolean }): void {
+  frame(o: { dt: number; time: number; camera: PerspectiveCamera; lit: boolean; oil: number; fog: boolean; prone: boolean; moving: number; reducedMotion: boolean; reducedFlash: boolean; snap: boolean }): void {
     const dt = Math.min(0.1, o.dt);
     const target = o.lit ? 1 : 0;
-    this.raise += (target - this.raise) * (o.snap ? 1 : Math.min(1, dt * 6));
+    this.raise += (target - this.raise) * (o.snap || o.reducedMotion ? 1 : Math.min(1, dt * 6));
     if (Math.abs(this.raise - target) < 0.002) this.raise = target;
     const low = o.oil < 0.15 ? 0.55 + 0.45 * (o.oil / 0.15) : 1;
-    // flicker: two incommensurate sines + a little stutter when the oil runs low
-    const t = o.time;
-    let flick = 0.92 + 0.05 * Math.sin(t * 9.1) + 0.03 * Math.sin(t * 23.7 + 1.3);
-    if (o.oil < 0.15) flick *= 0.85 + 0.15 * Math.max(0, Math.sin(t * 31.0) * Math.sin(t * 4.3));
-    this.level = this.raise * flick * low;
+    this.level = this.raise * lanternFlicker(o.time, o.oil, o.reducedMotion || o.reducedFlash) * low;
     const cam = o.camera;
     // light: held at hip height, a bit right and ahead
     const L = atmosphere;
@@ -189,13 +193,14 @@ export class LanternView {
     const sw = o.reducedMotion ? 0 : Math.sin(this.sway) * (0.006 + o.moving * 0.01);
     // in a fight the lantern drops lower: small enemies come in from the lower edge of the view
     const fight = typeof document !== 'undefined' && document.body.classList.contains('kq-in-combat') ? 1 : 0;
-    this.lower += (fight - this.lower) * Math.min(1, dt * 4);
+    this.lower += (fight - this.lower) * (o.reducedMotion ? 1 : Math.min(1, dt * 4));
     const y = -0.6 + 0.29 * easeOut(this.raise) + 0.12 * lanternPose.lift - 0.1 * this.lower;
-    this.off.set(0.27 * lanternPose.side + sw, y + Math.abs(Math.cos(this.sway)) * o.moving * 0.008, -0.58).applyQuaternion(cam.quaternion);
+    const bob = o.reducedMotion ? 0 : Math.abs(Math.cos(this.sway)) * o.moving * 0.008;
+    this.off.set(0.27 * lanternPose.side + sw, y + bob, -0.58).applyQuaternion(cam.quaternion);
     this.prop.position.copy(cam.position).add(this.off);
     this.prop.quaternion.copy(cam.quaternion);
     this.prop.rotateZ(sw * 2);
-    this.flameMat.uniforms.uTime!.value = t;
+    this.flameMat.uniforms.uTime!.value = o.reducedMotion || o.reducedFlash ? 0 : o.time;
     this.flameMat.uniforms.uLevel!.value = this.level;
     this.glassMat.opacity = 0.05 + 0.22 * this.level;
     // the brass frame catches its own light

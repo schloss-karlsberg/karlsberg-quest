@@ -231,7 +231,7 @@ export function buildTripod(x: number, y: number, z: number, seed: number): Trip
  * Per frame: a found point shows a tall thin beam (seen from far away), an unknown one a short
  * pulsing glimmer; the burst after activation shoots the beam up and runs two rings out.
  */
-export function animateTripod(t: TripodVisual, dt: number, time: number, reducedFlash: boolean, camDist = 0): void {
+export function animateTripod(t: TripodVisual, dt: number, time: number, reducedFlash: boolean, camDist = 0, reducedMotion = false): void {
   const bm = t.beam.material as ShaderMaterial;
   let h: number;
   let alpha: number;
@@ -239,16 +239,16 @@ export function animateTripod(t: TripodVisual, dt: number, time: number, reduced
     h = 46;
     alpha = 0.75;
   } else {
-    h = 5 + Math.sin(time * 2.2) * 1.2;
-    alpha = 0.35 + 0.15 * Math.sin(time * 3.1);
+    h = 5 + (reducedMotion ? 0 : Math.sin(time * 2.2) * 1.2);
+    alpha = 0.35 + (reducedMotion ? 0 : 0.15 * Math.sin(time * 3.1));
   }
   if (t.burst >= 0) {
     t.burst += dt;
     const b = t.burst;
-    h = 46 + 80 * Math.exp(-b * 1.5) * Math.min(1, b * 6);
-    alpha = 0.75 + (reducedFlash ? 0.15 : 0.9) * Math.exp(-b * 1.2);
-    t.ring.visible = true;
-    (t.glow.material as ShaderMaterial).uniforms.uAlpha!.value = 1 + (reducedFlash ? 1 : 5) * Math.exp(-b * 2.5);
+    h = reducedMotion ? 46 : 46 + 80 * Math.exp(-b * 1.5) * Math.min(1, b * 6);
+    alpha = reducedMotion ? 0.75 : 0.75 + (reducedFlash ? 0.15 : 0.9) * Math.exp(-b * 1.2);
+    t.ring.visible = !reducedMotion && b <= 2.2;
+    (t.glow.material as ShaderMaterial).uniforms.uAlpha!.value = reducedMotion ? 1 : 1 + (reducedFlash ? 1 : 5) * Math.exp(-b * 2.5);
     const rr = 1 + b * 16;
     t.ring.scale.set(rr, 1, rr);
     (t.ring.material as ShaderMaterial).uniforms.uAlpha!.value = Math.max(0, 1 - b / 1.8) * (reducedFlash ? 0.5 : 1);
@@ -370,6 +370,10 @@ export function setCacheOpen(v: PoiVisual, open: number): void {
   if (v.ring) (v.ring.material as ShaderMaterial).uniforms.uAlpha!.value = open >= 1 ? 0 : 0.7;
 }
 
+export function cacheLidStep(open: number, dt: number, reducedMotion: boolean): number {
+  return reducedMotion ? 1 : Math.min(1, open + dt * 1.6);
+}
+
 export function buildShrine(x: number, y: number, z: number, yaw: number, seed: number): PoiVisual {
   const group = new Group();
   group.name = 'travel-shrine';
@@ -443,9 +447,11 @@ export function animatePoi(v: PoiVisual, dt: number, time: number, reducedMotion
       // the lid springs: the column shoots up and goes out
       v.burst! += dt;
       const b = v.burst!;
-      h = 18 + 50 * Math.min(1, b * 3);
-      alpha = (0.5 + (reducedFlash ? 0.2 : 0.9) * Math.exp(-b * 2)) * Math.max(0, 1 - b / 1.8);
-      if (b > 1.8) v.beam.visible = false;
+      const duration = reducedMotion ? 0.2 : 1.8;
+      h = reducedMotion ? 18 : 18 + 50 * Math.min(1, b * 3);
+      const light = reducedMotion ? 0.5 : 0.5 + (reducedFlash ? 0.2 : 0.9) * Math.exp(-b * 2);
+      alpha = light * Math.max(0, 1 - b / duration);
+      if (b >= duration) v.beam.visible = false;
     }
     // stays a few pixels wide from afar, a landmark rather than a hair
     const w = Math.max(1, camDist / 45);
@@ -454,14 +460,14 @@ export function animatePoi(v: PoiVisual, dt: number, time: number, reducedMotion
   }
   if (v.bob) {
     v.bob.position.y = 0.75 + (reducedMotion ? 0 : Math.sin(time * 1.8) * 0.08);
-    v.bob.rotation.y += dt * (reducedMotion ? 0.3 : 0.9);
+    if (!reducedMotion) v.bob.rotation.y += dt * 0.9;
   }
   if (v.pulse > 0) {
     v.pulse = Math.max(0, v.pulse - dt * 0.6);
     if (v.ring) {
-      const s = 1 + (1 - v.pulse) * 2.5;
+      const s = reducedMotion ? 1 : 1 + (1 - v.pulse) * 2.5;
       v.ring.scale.set(s, 1, s);
-      (v.ring.material as ShaderMaterial).uniforms.uAlpha!.value = 0.4 + v.pulse;
+      (v.ring.material as ShaderMaterial).uniforms.uAlpha!.value = reducedMotion ? 0.4 : 0.4 + v.pulse;
     }
   }
 }

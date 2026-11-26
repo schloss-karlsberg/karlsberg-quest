@@ -5,7 +5,6 @@
  * scrolling credits page with sources and data licences stays for `kq.story.credits()`.
  */
 import type { AttributionItem } from '../../../data/types';
-import { prefersReducedMotion } from '../../../core/save';
 import { t } from '../../../i18n';
 import { h, svg } from '../../../ui/dom';
 import type { ModalHandle, ModalManager } from '../../../ui/modal';
@@ -215,7 +214,7 @@ export class EndingScreen {
         h('ul', creditData(this.d.attribution()).map(({ label, text, licence }) => h('li', [h('b', `${label}: `), text, ` — ${licence}`]))),
       ] : []),
     ])));
-    const reduced = this.d.reducedMotion() || prefersReducedMotion();
+    const reduced = this.d.reducedMotion();
     const viewport = h('div.kqs-cr-view', { 'data-testid': 'credits', tabindex: 0, 'aria-label': 'Abspann', role: 'region' }, roll);
     if (reduced) viewport.classList.add('kqs-static');
     const scrub = (s: number) => {

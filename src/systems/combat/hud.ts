@@ -37,6 +37,7 @@ const CSS = `
 .kqc-st.denied .kqc-track { border-color: #ffd9a0; box-shadow: 0 0 0 1px #ffd9a0; }
 @keyframes kqc-pulse { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.45); } }
 html[data-kq-reduced-motion] .kqc-hp.low .fill, html[data-kq-reduced-flash] .kqc-hp.low .fill { animation: none; }
+html[data-kq-reduced-motion] .kqc-track .ghost { transition: none; }
 .kqc-bann { display: flex; align-items: center; gap: 7px; padding: 5px 10px; border-radius: 3px;
   background: linear-gradient(180deg, rgba(20,16,11,0.7), rgba(20,16,11,0.5)); transition: opacity 0.6s; }
 .kqc-bann.calm { opacity: 0.55; }
@@ -603,7 +604,7 @@ export class CombatHud {
       // never on the boss bar: outgoing numbers stay below its bottom edge
       const floor = !n.screen && this.bossEl.style.display !== 'none' ? this.bossEl.getBoundingClientRect().bottom + 22 : 24;
       if (n.screen || !p.ok) {
-        n.el.style.left = `${p.x + n.dx * t}px`;
+        n.el.style.left = `${p.x + n.dx * (o.reducedMotion ? 0 : t)}px`;
         n.el.style.top = `${Math.max(floor, p.y - lift)}px`;
       } else {
         // beside the body, not on it (round 6): its projected half width from the camera distance
@@ -615,7 +616,7 @@ export class CombatHud {
         const topY = project(n.x, span.top, n.z).y;
         const baseY = project(n.x, span.base, n.z).y;
         const w = Math.max(24, n.el.offsetWidth || 40);
-        const q = placeNumber({ cx: p.x, cy: p.y, half, topY, baseY, side: n.dx, t, lift, W, H, floor, w });
+        const q = placeNumber({ cx: p.x, cy: p.y, half, topY, baseY, side: n.dx, t: o.reducedMotion ? 0 : t, lift, W, H, floor, w });
         n.el.style.left = `${q.x}px`;
         n.el.style.top = `${q.y}px`;
       }
@@ -688,13 +689,13 @@ export class CombatHud {
     }
     // frost vignette when hit; low Lebenskraft darkens the edges (≤ 25 % with reduced flash)
     this.vig = Math.max(0, this.vig - o.dt * 2.2);
-    const cap = o.reducedFlash ? 0.25 : 1;
+    const cap = o.reducedMotion || o.reducedFlash ? 0.25 : 1;
     this.vignette.style.opacity = String(Math.min(cap, this.vig));
     const pulse = o.reducedMotion || o.reducedFlash ? 1 : 0.8 + 0.2 * Math.sin(performance.now() / 160);
     this.low.style.opacity = String(Math.min(cap, o.lowHp * 0.9 * pulse));
     // dazzled by a mirror: a white bloom that fades (≤ 25 % with reduced flash)
     // (round 9: a near-white frame; now a cold glare at the centre that leaves the edges readable)
-    this.dazzleEl.style.opacity = String(Math.min(o.reducedFlash ? 0.2 : 0.38, (o.dazzle ?? 0) * 0.35));
+    this.dazzleEl.style.opacity = String(Math.min(o.reducedMotion ? 0 : o.reducedFlash ? 0.2 : 0.38, (o.dazzle ?? 0) * 0.35));
   }
 
   clearWorld(): void {

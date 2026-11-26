@@ -1507,12 +1507,12 @@ class Hunt {
         dt,
         camera: ctx.camera,
         viewportH: window.innerHeight,
-        hornGlow: this.hornGlowT > 0 ? Math.min(1, this.hornGlowT / Math.min(0.4, this.hornGlowDur)) * (ctx.settings.state.reducedFlash ? 0.8 : 0.6 + 0.4 * Math.sin(ctx.loop.time * 30)) : 0,
+        hornGlow: this.hornGlowT > 0 ? Math.min(1, this.hornGlowT / Math.min(0.4, this.hornGlowDur)) * (reducedMotion || ctx.settings.state.reducedFlash ? 0.8 : 0.6 + 0.4 * Math.sin(ctx.loop.time * 16)) : 0,
         caught: this.caughtT >= 0 && this.caughtT < 2.2 && !this.caughtSoft ? { t: this.caughtT } : null,
         mist: sim?.mode === 'kennel' ? 0 : ctx.era.current === '1793-02' ? 1 : ctx.era.info.night ? 0.55 : 0.3,
         real: sim?.mode === 'kennel',
         reducedMotion,
-        reducedFlash: ctx.settings.state.reducedFlash,
+        reducedFlash: ctx.settings.state.reducedFlash || reducedMotion,
         heightAt: (x: number, z: number) => ctx.world.heightAt(x, z),
         snap,
         settle: sim?.ctl instanceof FinaleMode ? sim.ctl.calm : 0,
@@ -1569,6 +1569,7 @@ class Hunt {
       prone: pl.stance === 'prone',
       moving: Math.min(1, pl.stats.speed / 4),
       reducedMotion,
+      reducedFlash: ctx.settings.state.reducedFlash,
       snap,
     });
     const showGauge = L.lit || L.oil < 0.999 || !!sim || ctx.era.info.night;

@@ -415,7 +415,7 @@ class Flaschen {
         const d = g.length();
         const cos = d > 0 ? g.dot(this.fwd) / d : 0;
         const litHere = l.spot.verb === 'dark' ? !ctx.player.stats.lanternLit : lit;
-        if (d < GLINT_R && cos > GLINT_COS && litHere) target = 0.35 + 0.35 * Math.sin(ctx.loop.time * 5 + l.spot.x);
+        if (d < GLINT_R && cos > GLINT_COS && litHere) target = ctx.settings.state.reducedMotion ? 0.35 : 0.35 + 0.35 * Math.sin(ctx.loop.time * 5 + l.spot.x);
       }
       m.opacity += (target - m.opacity) * Math.min(1, dt * 8);
       l.vis.glint.visible = m.opacity > 0.01;

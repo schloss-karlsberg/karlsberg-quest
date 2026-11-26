@@ -64,10 +64,10 @@ body {
   height: 100%;
   display: block;
 }
-/* the game canvas takes keyboard focus (tabIndex 0) but never draws a browser focus ring */
-#app canvas:focus,
+/* Draw the keyboard focus ring inside the full-screen game canvas. */
 #app canvas:focus-visible {
-  outline: none;
+  outline: 2px solid #ffd23f;
+  outline-offset: -2px;
 }
 .kq-root {
   position: fixed;
@@ -947,6 +947,9 @@ body.kq-in-combat .kq-prompt.show {
   outline: 2.5px solid var(--accent);
   outline-offset: 2px;
 }
+.kq-modal :is(.kqj-qrow, .kqj-card):focus-visible {
+  outline-offset: -3px;
+}
 .kq-modal input[type='checkbox']:focus-visible,
 .kq-modal input[type='radio']:focus-visible {
   outline-offset: 3px;
@@ -1048,6 +1051,9 @@ html[data-kq-contrast] .kq-modal {
 html[data-kq-reduced-motion] .kq-subtitles .line,
 html[data-kq-reduced-motion] .kq-modal-layer {
   animation: none;
+}
+html[data-kq-reduced-motion] .kq-btn {
+  transition: none;
 }
 html[data-kq-reduced-motion] .kq-loader-display[role="progressbar"] .kq-loader-needle {
   animation: none;

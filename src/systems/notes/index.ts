@@ -303,7 +303,7 @@ class Notes {
     if (this.ctx.pause.reasons.has('title')) return false;
     // the moment is taken when F8 is pressed, not when the note is done
     const snap = this.snapshot(this.screenshot());
-    const area = h('textarea.kq-notes-text', { 'data-testid': 'notes-text', rows: '4', maxlength: '4000', placeholder: t('notes.placeholder'), style: 'width:100%;box-sizing:border-box;font:inherit;resize:vertical;min-height:6em' });
+    const area = h('textarea.kq-notes-text', { 'aria-label': t('notes.title'), 'data-testid': 'notes-text', rows: '4', maxlength: '4000', placeholder: t('notes.placeholder'), style: 'width:100%;box-sizing:border-box;font:inherit;resize:vertical;min-height:6em' });
     const status = h('p.kq-notes-status', { style: 'min-height:1.2em;margin:0.3em 0 0;opacity:0.8' });
     const body = [
       area,
@@ -337,8 +337,6 @@ class Notes {
       }
       // F8 in the field: nothing (no second field)
     });
-    // after the modal's own focus (first button)
-    queueMicrotask(() => area.focus());
     return true;
   }
 

@@ -1058,6 +1058,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Involuntary motion and lost keyboard focus (TASK-032, 2026-11-26) | Reduced motion uses still title and map views, camera cuts and short fades. Survey activations, the lantern and staged effects retain steady cues. Menus keep Tab inside the active dialog and restore focus after a page closes or a journal filter changes. |
 | Storage failures can stall play or leave a stale checkpoint after a cinematic (TASK-031, 2026-11-26) | The first failure allows an immediate retry. From the second consecutive failure onward, autosaves back off for one second of elapsed time. The game retries queued forced checkpoints, and hiding the tab or returning to the title gives one immediate attempt when there is no active cinematic hold. |
 | A failed checkpoint or interrupted input can affect the next play session (TASK-031, 2026-11-26) | A rejected save preserves the last checkpoint time and retry eligibility. Pause and focus changes clear pending input. Switching touch off cancels queued taps. Fingers and keyboard or assistive technology activations on Hieb share one attack until all holds end. |
 | Several autosave requests in one update can stall play if storage keeps failing (TASK-031, 2026-11-26) | The first failure allows an immediate retry. From the second consecutive failure onward, autosaves wait one second between attempts. |

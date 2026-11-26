@@ -574,8 +574,7 @@ export class CameraRig {
       }
     }
     // in at once, out gently (no pumping when the boom grazes a corner)
-    if (free < this.distance || snap) this.distance = free;
-    else this.distance += (free - this.distance) * Math.min(1, dt * (o.reducedMotion ? 6 : 2.5));
+    this.distance = Math.min(free, ease(this.distance, free, 2.5, 2.5, dt, instant));
     this.crane = ease(this.crane, Math.min(CRANE_MAX, craneK * this.distance), 10, 2, dt, instant);
     // never inside the head: a short boom rises over the shoulder
     this.rise = ease(this.rise, squeezeRise(this.distance), 8, 2.5, dt, instant);

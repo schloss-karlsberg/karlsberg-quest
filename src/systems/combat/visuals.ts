@@ -1028,6 +1028,7 @@ export interface VisualFrame {
   frozen: boolean;
   heightAt(x: number, z: number): number;
   reducedFlash: boolean;
+  reducedMotion?: boolean;
   /** Bannlicht flare 0..1 and its cone. */
   bann: { t: number; x: number; z: number; yaw: number; range: number; angle: number } | null;
   /**
@@ -1607,7 +1608,7 @@ export class CombatVisuals {
         continue;
       }
       const ease = 1 - (1 - k) * (1 - k);
-      this.ringPool.push(w.x, w.y, w.z, w.r0 + (w.r1 - w.r0) * ease, w.cold ? 1 : 0, (1 - k) * (f.reducedFlash ? 0.5 : 0.95), 7);
+      this.ringPool.push(w.x, w.y, w.z, f.reducedMotion ? w.r1 : w.r0 + (w.r1 - w.r0) * ease, w.cold ? 1 : 0, (1 - k) * (f.reducedFlash ? 0.5 : 0.95), 7);
     }
     // projectiles
     for (const p of f.projectiles) {
@@ -1642,7 +1643,8 @@ export class CombatVisuals {
       const y = f.heightAt(b.x, b.z) + 0.15;
       this.ringPool.push(b.x, y, b.z, b.range, b.t, (f.reducedFlash ? 0.35 : 0.6) * b.t, 4, b.yaw, ((b.angle * Math.PI) / 180) / 2);
     }
-    this.particles(dt, f);
+    if (f.reducedMotion) this.parts.length = 0;
+    else this.particles(dt, f);
     this.puffs.end(cam);
     this.glows.end();
     for (const pool of this.shapes.values()) pool.end();
@@ -1876,7 +1878,7 @@ export class CombatVisuals {
     }
     // a mirror: the core flares cold-white while uncracked, dims and flickers once cracked
     if (e.def.reflectsBann && !dissolving) {
-      const I = e.cracked ? 0.4 + 0.4 * Math.max(0, Math.sin(f.time * 23)) : 1.2 + 0.3 * Math.sin(f.time * 4);
+      const I = mirrorCoreGlow(f.time, e.cracked, f.reducedFlash);
       this.glows.push(e.x, e.y, e.z, 0.2, (f.reducedFlash ? Math.min(I, 1) : I) * 0.9, 0.92, 0.97, 1, 4);
     }
     // gebannt: a turning pale ring under it
@@ -1943,4 +1945,9 @@ export class CombatVisuals {
 export function sealClosedPulse(time: number, reducedFlash = false): number {
   const w = 0.5 + 0.5 * Math.sin(time * 4.5);
   return reducedFlash ? 0.6 + 0.25 * w : 0.5 + 0.9 * w;
+}
+
+export function mirrorCoreGlow(time: number, cracked: boolean, steady: boolean): number {
+  if (steady) return cracked ? 0.4 : 1;
+  return cracked ? 0.4 + 0.4 * Math.max(0, Math.sin(time * 16)) : 1.2 + 0.3 * Math.sin(time * 4);
 }

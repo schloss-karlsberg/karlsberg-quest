@@ -489,16 +489,16 @@ export class TorchStage {
    * Per frame. `t` = seconds since the throw (< 0: not thrown, the panes dark); `all` = every
    * window burns (the fire runs). `hand` = where the torch leaves from.
    */
-  update(t: number, all: number, hand: XZ & { y: number }, pointScale: number, reducedFlash: boolean): void {
+  update(t: number, all: number, hand: XZ & { y: number }, pointScale: number, reducedFlash: boolean, reducedMotion = false): void {
     this.uT.value = t;
     this.uAll.value = all;
     this.uGain.value = reducedFlash ? 0.8 : 1;
     const tgt = this.target();
     const visible = all > 0.001 || t > -0.5;
-    for (const m of [this.panes, this.sheets, this.smoke]) if (m) m.visible = visible;
-    const flying = tgt !== null && t >= 0 && t < FLIGHT + 2.5 && all < 0.5;
+    for (const m of [this.panes, this.sheets, this.smoke]) if (m) m.visible = visible && (!reducedMotion || m === this.panes);
+    const flying = !reducedMotion && tgt !== null && t >= 0 && t < FLIGHT + 2.5 && all < 0.5;
     this.sparks.visible = flying;
-    this.torch.visible = tgt !== null && t >= 0 && t < FLIGHT;
+    this.torch.visible = !reducedMotion && tgt !== null && t >= 0 && t < FLIGHT;
     if (!tgt) return;
     if (t < 0 || t < FLIGHT) this.from.set(hand.x, hand.y, hand.z);
     this.to.set(tgt.x, tgt.y, tgt.z);

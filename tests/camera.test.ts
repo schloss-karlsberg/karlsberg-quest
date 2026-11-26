@@ -53,6 +53,17 @@ describe('third-person camera rig', () => {
     expect(rig.distance).toBeGreaterThanOrEqual(BOOM_MIN);
   });
 
+  it('restores the boom in one frame after an obstruction clears with reduced motion', () => {
+    const wall: CameraWorld = { heightAt: () => 0, blocked: (_x, z, r) => z + r > 1.5 };
+    const rig = new CameraRig();
+    const cam = new PerspectiveCamera();
+    rig.update(cam, input(), wall, noHints());
+    rig.update(cam, input(), flat, noHints());
+    expect(rig.distance).toBeLessThan(rig.zoom);
+    rig.update(cam, input({ reducedMotion: true }), flat, noHints());
+    expect(rig.distance).toBeCloseTo(rig.zoom);
+  });
+
   it('a thin trunk on the boom does not pull the camera into the head (it dithers instead, round 10)', () => {
     const rig = new CameraRig();
     const cam = new PerspectiveCamera();

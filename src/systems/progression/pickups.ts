@@ -375,7 +375,7 @@ export class PickupWorld {
    */
   frame(dt: number, time: number, camera: PerspectiveCamera, viewportHeight: number, player: Vector3, shown: (p: PlacedPickup) => boolean, reducedMotion: boolean): void {
     shared.uTime.value = time;
-    shared.uMotion.value = reducedMotion ? 0.35 : 1;
+    shared.uMotion.value = reducedMotion ? 0 : 1;
     const vh = Math.max(200, viewportHeight);
     shared.uPix.value = vh / (2 * Math.tan((camera.fov * Math.PI) / 360));
     for (const [id, v] of this.items) {

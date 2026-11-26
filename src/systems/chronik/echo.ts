@@ -210,9 +210,9 @@ export class EchoDirector {
       const m = f.mark;
       const walkAt = m?.walkAt ?? intro * 0.5;
       const prog = m?.walkAt !== undefined ? Math.min(1, Math.max(0, (t - walkAt) / 2.2)) : Math.min(1, Math.max(0, (t - walkAt) / Math.max(4, linesEnd)));
-      const target = f.from.clone().lerp(f.to, reduced && !m ? 0.5 : prog);
+      const target = f.from.clone().lerp(f.to, reduced ? (m ? 0 : 0.5) : prog);
       const moving = (m?.walkAt !== undefined || !speaking) && !reduced && prog > 0 && prog < 1 && t < linesEnd && !m?.sit;
-      f.pos.lerp(target, Math.min(1, dt * (moving ? 1.2 : 0.4)));
+      f.pos.lerp(target, reduced ? 1 : Math.min(1, dt * (moving ? 1.2 : 0.4)));
       f.ghost.walkAmt += ((moving ? 1 : 0) - f.ghost.walkAmt) * k;
       f.ghost.walk += dt * 5.2 * f.ghost.walkAmt;
       // face the walk direction, or the listener while speaking
@@ -229,7 +229,7 @@ export class EchoDirector {
       f.ghost.object.position.set(f.pos.x, fy - (m?.sit ? 0.42 : 0), f.pos.z);
       f.ghost.object.rotation.y = f.facing;
       f.ghost.fade = Math.min(fadeIn * 1.05, fadeOut);
-      f.ghost.alpha = 0.8 + 0.2 * Math.sin(t * 0.9 + i);
+      f.ghost.alpha = reduced ? 0.9 : 0.8 + 0.2 * Math.sin(t * 0.9 + i);
       f.ghost.apply();
     });
     if (this.mist) (this.mist.material as ShaderMaterial).uniforms.uAlpha!.value = 0.6 * Math.min(fadeIn, fadeOut);
