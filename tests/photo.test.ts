@@ -1,12 +1,18 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { t } from '../src/i18n';
+import '../src/systems/photo';
 import { ALBUM_MAX, type GrantSink, PhotoCore, type PhotoSlice, type PhotoTargetDef, type PhotoView, type PhotoWorld, STEADY_RAD_S, SteadyMeter, debugDeerBlocker, emptySlice, goodEvents, judgeShot, judgeTarget, normaliseSlice, project } from '../src/systems/photo/core';
 import { targetFromData, validatePhotoTargets } from '../src/systems/photo/data';
 import { validateQuests } from '../src/systems/quests/validate';
 import { eventMatches } from '../src/systems/story/engine';
 import type { EventCond } from '../src/systems/story/types';
 import { QuestBook, type QuestDefIn, type QuestEnv, createQuestSlice } from '../src/systems/quests/logic';
+
+it('describes the phone toggle without an era restriction in the controls reference', () => {
+  expect(t('ui.keys.photo')).toBe('Handy-Kamera öffnen oder wegstecken');
+});
 
 /** A flat world, nothing in the way. */
 const flat: PhotoWorld = { heightAt: () => 0 };

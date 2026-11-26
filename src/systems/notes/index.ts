@@ -203,7 +203,7 @@ class Notes {
     notesPauseHooks.count = () => this.n;
     notesPauseHooks.exportAll = () => void this.download();
     notesPauseHooks.clearAll = () => this.clear();
-    addControlKeys('notes');
+    addControlKeys({ id: 'notes' });
   }
 
   /** The quest the HUD leads to (null without the quests system). */

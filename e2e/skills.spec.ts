@@ -78,6 +78,11 @@ async function clearDialogue(page: Page): Promise<void> {
 
 test.describe('skills and survey tools', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'keyboard', {
+        value: { getLayoutMap: async () => new Map([['Digit2', '2'], ['Digit4', '4'], ['Digit5', '5']]) },
+      });
+    });
     // the survey tools aim from the eye: first person (cam=first) keeps the crosshair maths exact
     await page.goto('./?notitle&nosave&fresh&manual&skills=strict&cam=first');
     await page.waitForFunction(() => window.kq !== undefined && window.kq.tools !== undefined && window.kq.skills !== undefined, null, { timeout: 120_000 });
@@ -416,6 +421,7 @@ test.describe('skills and survey tools', () => {
 
   test('settings: Rauhnacht, captions, indicators, graphics; key help', async ({ page }) => {
     const errors = trackErrors(page);
+    const back = page.getByRole('button', { name: 'Zurück', exact: true });
     await page.keyboard.press('Escape');
     await page.getByTestId('pause-settings').click();
     await expect(page.getByTestId('set-rauhnacht')).toBeVisible();
@@ -427,15 +433,40 @@ test.describe('skills and survey tools', () => {
     expect(await page.evaluate(() => window.kq!.ctx.renderer.getPixelRatio())).toBe(1);
     expect(await page.evaluate(() => window.kq!.fx!.state().quality)).toBe('low');
     await shot(page, 'settings');
-    await page.getByRole('button', { name: 'Zurück' }).click();
+    await back.click();
     await page.getByTestId('pause-controls').click();
     const help = page.getByTestId('key-help');
+    const scanKeys = help.getByRole('row').filter({ hasText: 'Relief-Blick wechseln' }).locator('.k');
+    const xrayKeys = help.getByRole('row').filter({ hasText: 'Röntgenblick' }).locator('.k');
     await expect(help).toContainText('Messen: Strecke und Höhenprofil');
-    await expect(help).toContainText('Röntgenblick');
     await expect(help.getByRole('row').filter({ hasText: 'Planblatt' })).toContainText('[5]');
-    await expect(help.getByRole('row').filter({ hasText: 'Relief-Blick wechseln' })).toContainText('[Umschalt+2]');
+    await expect(scanKeys).toHaveText('[2] / [Umschalt+2]');
+    await expect(xrayKeys).toHaveText('[4]');
     await help.locator('tr').last().scrollIntoViewIfNeeded();
     await shot(page, 'key-help');
+
+    await back.click();
+    await page.getByTestId('pause-settings').click();
+    const bindings = page.getByTestId('bindings');
+    await bindings.locator('summary').click();
+    await page.getByTestId('bind-scan').click();
+    await page.keyboard.press('F6');
+    await bindings.getByRole('row').filter({ has: page.getByTestId('bind-xray') })
+      .getByRole('button', { name: '4 entfernen' }).click();
+    await expect(page.getByTestId('bind-reset')).toBeVisible();
+    await back.click();
+    await page.getByTestId('pause-controls').click();
+    await expect(scanKeys).toHaveText('[2] / [F6] / [Umschalt+2] / [Umschalt+F6]');
+    await expect(xrayKeys).toHaveText('—');
+
+    await back.click();
+    await page.getByTestId('pause-settings').click();
+    await bindings.locator('summary').click();
+    await page.getByTestId('bind-reset').click();
+    await back.click();
+    await page.getByTestId('pause-controls').click();
+    await expect(scanKeys).toHaveText('[2] / [Umschalt+2]');
+    await expect(xrayKeys).toHaveText('[4]');
     expect(errors).toEqual([]);
   });
 });

@@ -52,8 +52,7 @@ addStrings('de', {
   'photo.album.session': 'Bilder dieser Sitzung; nach dem Neuladen bleibt die Karte.',
   'photo.album.cards': 'Fotokarten',
   'photo.stars': '{n} von 3 Sternen',
-  'ui.keys.photo': 'Handy-Kamera: Foto machen (nur in der Gegenwart)',
-  'ui.keys.photo.key': '[N]',
+  'ui.keys.photo': 'Handy-Kamera öffnen oder wegstecken',
 });
 
 declare module '../../core/events' {
@@ -272,7 +271,7 @@ class Photo {
       if (reason === 'new' || reason === 'replace') this.thumbs.clear();
     });
     window.addEventListener('keydown', this.onKey, { capture: true });
-    addControlKeys('photo');
+    addControlKeys({ id: 'photo', actions: ['photo'] });
     addPausePage({ id: 'album', label: t('photo.album'), order: 70, render: (el) => this.renderAlbum(el) });
   }
 
