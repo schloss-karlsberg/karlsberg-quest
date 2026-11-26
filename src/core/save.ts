@@ -246,6 +246,6 @@ export class SaveManager {
   }
 
   delete(slot = 'auto'): void {
-    this.storage.removeItem(SAVE_KEY(slot));
+    if (this.enabled) this.storage.removeItem(SAVE_KEY(slot));
   }
 }

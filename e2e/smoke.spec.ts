@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 
 /**
@@ -69,6 +69,8 @@ async function shoot(page: Page, name: string, v: View): Promise<void> {
 
 test('title screen loads and the tour map starts the game with audio', async ({ page }) => {
   const errors = trackErrors(page);
+  const stored = readFileSync(new URL('../tests/fixtures/saves/v0.8.0.json', import.meta.url), 'utf8');
+  await page.addInitScript((raw) => localStorage.setItem('kq.save.v1.auto', raw), stored);
   await page.goto('./?nosave&fresh');
   await expect(page.getByTestId('title')).toBeVisible();
   const start = page.getByTestId('title-new');
@@ -92,6 +94,7 @@ test('title screen loads and the tour map starts the game with audio', async ({ 
 
   // new game: content warning → name → tour map (story feature's title flow)
   await start.click();
+  await page.getByRole('button', { name: 'Ja', exact: true }).click();
   await page.getByTestId('warning-accept').click();
   await page.getByTestId('name-confirm').click();
   const map = page.getByRole('dialog', { name: 'Die Route der Führung' });
@@ -104,6 +107,8 @@ test('title screen loads and the tour map starts the game with audio', async ({ 
   // (the fade-out runs on real time: generous on a busy machine with software WebGL)
   await expect(page.getByTestId('title')).toBeHidden({ timeout: 30_000 });
   await expect.poll(() => page.evaluate(() => window.kq!.ctx.audio.unlocked)).toBe(true);
+  expect(await page.evaluate(() => localStorage.getItem('kq.save.v1.auto'))).toBe(stored);
+  expect(await page.evaluate(() => window.kq!.story!.state().chapter)).toBe('tour');
   expect(await page.evaluate(() => window.kq!.ctx.pause.paused)).toBe(false);
   expect(errors).toEqual([]);
 });

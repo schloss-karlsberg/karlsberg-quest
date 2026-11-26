@@ -325,6 +325,29 @@ describe('GameState + SaveManager', () => {
     expect(saves.has('x')).toBe(false);
   });
 
+  it('preserves saved slots through a nosave new game and allows deletion when enabled', () => {
+    const storage = new MemoryStorage();
+    const store = new GameStateStore(createInitialState());
+    const saves = new SaveManager(store, storage);
+    store.mutable.flags.played = true;
+    saves.save();
+    saves.save('ending');
+    const original = storage.getItem(SAVE_KEY('auto'));
+    const ending = storage.getItem(SAVE_KEY('ending'));
+    saves.enabled = false;
+    saves.delete();
+    saves.delete('ending');
+    store.replace(createInitialState(), 'new');
+    expect(saves.autosave('start', true)).toBe(false);
+    expect(store.state.flags.played).toBeUndefined();
+    expect(storage.getItem(SAVE_KEY('auto'))).toBe(original);
+    expect(storage.getItem(SAVE_KEY('ending'))).toBe(ending);
+    saves.enabled = true;
+    saves.delete();
+    expect(saves.has()).toBe(false);
+    expect(saves.has('ending')).toBe(true);
+  });
+
   it('persists settings', () => {
     const storage = new MemoryStorage();
     const a = new SettingsStore(storage);
