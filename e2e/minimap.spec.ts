@@ -2,9 +2,12 @@ import { type Page, expect, test } from '@playwright/test';
 import { openPause, waitForHooks } from './helpers/pause';
 
 const PLAY = './?notitle&nosave&fresh&manual';
+const NOTICE = 'Codex ergänzt: Die Aufzeichnungen der Vermessungskommission';
+const PROMPT = 'Die Aufzeichnungen am Pult untersuchen';
+const DIALOGUE = 'Wir treffen uns an der Quelle. Bleib auf dem Weg und geh den Hang hinunter.';
 
-async function sampleMinimap(page: Page, frames: number) {
-  return page.getByTestId('minimap').evaluate((node, frames) => {
+async function sampleMinimap(page: Page, frames: number, shiftToPast = false) {
+  return page.getByTestId('minimap').evaluate((node, { frames, shiftToPast }) => {
     const g = (node as HTMLCanvasElement).getContext('2d')!;
     const methods = [
       'fillRect', 'strokeRect', 'drawImage', 'beginPath', 'closePath', 'moveTo', 'lineTo',
@@ -28,13 +31,23 @@ async function sampleMinimap(page: Page, frames: number) {
         },
       });
     }
+    const kq = window.kq!;
+    let shiftMs = 0;
+    let frameMs: number;
     try {
-      for (let i = 0; i < frames; i++) window.kq!.ctx.loop.renderOnce(0.1);
+      if (shiftToPast) {
+        const shiftStart = performance.now();
+        kq.setEra('1789');
+        shiftMs = performance.now() - shiftStart;
+      }
+      const frameStart = performance.now();
+      for (let i = 0; i < frames; i++) kq.ctx.loop.renderOnce(0.1);
+      frameMs = performance.now() - frameStart;
     } finally {
       for (const method of methods) Reflect.deleteProperty(g, method);
     }
-    return { calls, ms };
-  }, frames);
+    return { calls, ms, shiftMs, frameMs };
+  }, { frames, shiftToPast });
 }
 
 test('minimap hides in other views and remembers the German setting', async ({ page }) => {
@@ -125,6 +138,38 @@ test('minimap measures local Canvas 2D draws, routes the Registratur lead and yi
   await expect(minimap).toBeVisible();
 });
 
+test.describe('tall landscape touch layout', () => {
+  test.use({ viewport: { width: 1024, height: 550 }, isMobile: true, hasTouch: true });
+
+  test('fits a wrapped toast below the minimap and clear of the unlocked skills', async ({ page }) => {
+    await page.goto(PLAY);
+    await waitForHooks(page, ['progression']);
+    const notice = `${NOTICE}. Die Unterlagen sind jetzt in der Chronik unter Vermessung verzeichnet.`;
+    await page.evaluate((notice) => {
+      const k = window.kq!;
+      k.progression!.level(6);
+      // Place the notice in the live dock independently of the queued level-up cards.
+      k.ctx.ui.hud.showToast(notice);
+    }, notice);
+
+    const minimap = page.getByTestId('minimap');
+    const toast = page.locator('.kq-toast', { hasText: notice });
+    await expect(minimap).toBeVisible();
+    await expect(toast).toBeVisible();
+    const mapBox = (await minimap.boundingBox())!;
+    const toastBox = (await toast.boundingBox())!;
+    expect(toastBox.height).toBeGreaterThan(40);
+    expect(toastBox.y - (mapBox.y + mapBox.height)).toBeGreaterThanOrEqual(8);
+    expect(toastBox.y - (mapBox.y + mapBox.height)).toBeLessThan(24);
+    for (const n of [1, 2, 3]) {
+      const skill = page.getByTestId(`touch-skill${n}`);
+      await expect(skill).toBeVisible();
+      const skillBox = (await skill.boundingBox())!;
+      expect(toastBox.x + toastBox.width).toBeLessThanOrEqual(skillBox.x - 4);
+    }
+  });
+});
+
 test.describe('small landscape phone', () => {
   test.use({ viewport: { width: 667, height: 375 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 });
 
@@ -136,20 +181,18 @@ test.describe('small landscape phone', () => {
     const minimap = page.getByTestId('minimap');
     await expect(minimap).toBeVisible();
 
-    const notice = 'Codex ergänzt: Die Aufzeichnungen der Vermessungskommission';
-    const prompt = 'Die Aufzeichnungen am Pult untersuchen';
     await page.evaluate(({ notice, prompt }) => {
       const k = window.kq!;
       k.ctx.ui.hud.prompt('E', prompt, 'minimap-test');
       k.ctx.ui.toast(notice, 30_000);
       k.step();
-    }, { notice, prompt });
-    const toast = page.locator('.kq-toast', { hasText: notice });
+    }, { notice: NOTICE, prompt: PROMPT });
+    const toast = page.locator('.kq-toast', { hasText: NOTICE });
     const action = page.getByTestId('touch-interact');
     await expect(toast).toBeVisible();
     await expect(action).toBeVisible();
     await expect(action).toHaveClass(/\blit\b/);
-    await expect(action).toContainText(prompt);
+    await expect(action).toContainText(PROMPT);
     const toastBox = (await toast.boundingBox())!;
     const actionBox = (await action.boundingBox())!;
     expect(actionBox.width).toBeGreaterThan(160);
@@ -170,11 +213,11 @@ test.describe('small landscape phone', () => {
     await expect(minimap).toBeVisible();
     expect((await sampleMinimap(page, 1)).calls.fillText).toBe(1);
 
-    await page.evaluate(() => {
+    await page.evaluate((line) => {
       const k = window.kq!;
-      k.story!.say('laub', 'Wir treffen uns an der Quelle. Bleib auf dem Weg und geh den Hang hinunter.');
+      k.story!.say('laub', line);
       k.step();
-    });
+    }, DIALOGUE);
     const dialogue = page.getByTestId('dialogue');
     await expect(dialogue).toHaveClass(/kqs-show/);
     const box = (await minimap.boundingBox())!;
@@ -188,5 +231,58 @@ test.describe('small landscape phone', () => {
         box.y < other.y + other.height && box.y + box.height > other.y;
       expect(overlaps, `minimap overlaps ${await target.getAttribute('data-testid')}`).toBe(false);
     }
+  });
+
+  test('draws the prepared terrain layer on the first historical frame', async ({ page }) => {
+    await page.goto(`${PLAY}&era=today&q=low`);
+    await waitForHooks(page, ['story']);
+    await expect(page.getByTestId('minimap')).toBeVisible();
+    await expect.poll(async () => (await sampleMinimap(page, 1)).calls.drawImage).toBe(1);
+
+    const { calls, ms, shiftMs, frameMs } = await sampleMinimap(page, 1, true);
+    expect(calls.drawImage).toBe(2); // survey sheet and prepared paths on the first historical frame
+    expect(calls.fillText).toBe(1);
+    console.log(`[minimap] 667 × 375 touch, cold era change ${shiftMs.toFixed(3)} ms, first frame ${frameMs.toFixed(3)} ms including ${ms.toFixed(3)} ms of minimap Canvas 2D submission`);
+  });
+});
+
+test.describe('shortest landscape phone', () => {
+  test.use({ viewport: { width: 568, height: 320 }, isMobile: true, hasTouch: true });
+
+  test('a lit action hides the map and returns its space to dialogue and notices', async ({ page }) => {
+    await page.goto(PLAY);
+    await waitForHooks(page, ['story']);
+    await page.evaluate(({ line, notice }) => {
+      const k = window.kq!;
+      k.story!.say('laub', line);
+      k.ctx.ui.hud.prompt('Q', 'Epoche wechseln', 'minimap-test');
+      k.ctx.ui.hud.showToast(notice);
+    }, { line: DIALOGUE, notice: NOTICE });
+
+    const minimap = page.getByTestId('minimap');
+    const dialogue = page.getByTestId('dialogue');
+    const toast = page.locator('.kq-toast', { hasText: NOTICE });
+    const action = page.getByTestId('touch-interact');
+    await expect(minimap).toBeVisible();
+    await expect(dialogue).toHaveClass(/kqs-show/);
+    await expect(toast).toBeVisible();
+    const withMap = { dialogue: (await dialogue.boundingBox())!, toast: (await toast.boundingBox())! };
+
+    await page.evaluate((prompt) => window.kq!.ctx.ui.hud.prompt('E', prompt, 'minimap-test'), PROMPT);
+    await expect(action).toHaveClass(/\blit\b/);
+    await expect(minimap).toBeHidden();
+    expect((await sampleMinimap(page, 1)).calls.fillText).toBe(0);
+    const wider = (await dialogue.boundingBox())!;
+    const raised = (await toast.boundingBox())!;
+    const pill = (await action.boundingBox())!;
+    expect(wider.x).toBeCloseTo(withMap.dialogue.x);
+    expect(wider.width - withMap.dialogue.width).toBeCloseTo(84);
+    expect(raised.y).toBeLessThan(withMap.toast.y - 50);
+    expect(raised.x + raised.width).toBeLessThanOrEqual(pill.x - 4);
+
+    await page.evaluate(() => window.kq!.ctx.ui.hud.prompt('Q', 'Epoche wechseln', 'minimap-test'));
+    await expect(minimap).toBeVisible();
+    expect((await dialogue.boundingBox())!.width).toBeCloseTo(withMap.dialogue.width);
+    expect((await toast.boundingBox())!.y).toBeCloseTo(withMap.toast.y);
   });
 });

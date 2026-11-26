@@ -532,9 +532,9 @@ Every unit stays under the 15-min hold; the test itself times out at 14 min. All
 ### 8.4 Minimap (TASK-015)
 
 On short landscape touch screens the 72 px map sits below the compass, left of the top and skill
-rows and above the thumb arc. The dialogue band leaves room for this slot while the map is up.
-The survey pop-up takes the slot while open and suspends map redraws. While the action pill is lit,
-the notice dock sits to its left using the pill's maximum reach and the HUD zoom. On the shortest
-screens the lit pill also hides the map. `e2e/minimap.spec.ts` checks the 667 × 375 layout against
-the live touch targets and dialogue with the §8.3 safe-area insets, including a visible toast beside
-a long action label.
+rows and above the thumb arc. While the map is visible, the dialogue band leaves room for its slot
+and the notice dock sits lower. Opening the survey pop-up or lighting the action pill at heights
+up to 365 px hides the map, suspends its redraws and releases that space. The notice dock clears
+the lit pill using its maximum reach and the HUD zoom. Above 500 px, notices sit below the 104 px
+map and to the left of the unlocked skills. `e2e/minimap.spec.ts` checks the live layout at
+568 × 320, 667 × 375 with the §8.3 safe-area insets, and 1024 × 550 with all three skills unlocked.

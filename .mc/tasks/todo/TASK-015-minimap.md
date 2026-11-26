@@ -78,27 +78,21 @@ _Status: approved 2026-11-26_
 - 2026-11-26. `pnpm typecheck`, `pnpm test` (1578 passed, 0 failed) and `pnpm build` passed.
 - 2026-11-26. `pnpm validate` was blocked by the sandbox at the tsx IPC socket. The validator itself passed with `node --import tsx scripts/validate-content.ts`.
 - 2026-11-26. The locked minimap spec was blocked before the browser launched by `listen EPERM 127.0.0.1:5401`. Playwright discovered both minimap tests.
-- 2026-11-26. The initial implementation is on this branch as `921d6e6` and `601c062`.
+- 2026-11-26. The initial implementation is in `0fc182c` and `1bfc2dc` in the PR checkout.
 - 2026-11-26. Review fixes reuse the routed objective, add terrain-aligned historical paths, move the notice dock clear of the lit action pill and skip off-screen redraws and footprints. The focused unit suite passed (13 tests). The browser spec now counts Canvas 2D calls at the tour car park and checks the Registratur approach, staged mode, survey menu and phone notices.
 - 2026-11-26. `pnpm typecheck`, `pnpm test` (`Tests  1584 passed (1584)`, 0 failed), `pnpm build` and `mc validate` passed. The `pnpm validate` wrapper hit `listen EPERM` on the tsx IPC socket.
 - 2026-11-26. Playwright discovered all three minimap tests. The locked minimap and smoke runs both stopped before launching the browser because the preview server could not listen on `127.0.0.1:5401`.
-- 2026-11-26. Git could not create the worktree's `index.lock` under the sandbox. The review fixes are in the worktree.
+- 2026-11-26. The first review round is in `19ff905` in the PR checkout.
+- 2026-11-26. PR #54 review fix. The notice dock clears the unlocked skills on tall touch layouts. Dialogue and notices reclaim the map slot when the shortest layout hides it. The historical path canvas is prepared before the first redraw, and the north label has clear space above the markers. Playwright covers the live layouts and logs the cold 667 × 375 touch shift. The standalone Node benchmark measured 7.988 ms for terrain-buffer preparation and 0.010 ms per warmed present-day redraw with a stub canvas.
+- 2026-11-26. Typecheck, Vitest (119 files, 1,586 tests), direct content validation and the production build passed. Playwright discovered all six minimap tests. The locked browser run stopped at `listen EPERM 127.0.0.1:5401`, leaving the layout and cold-shift timings unverified. The fixes are unstaged.
 
 ## Follow-ups
 
-- Run `pnpm validate` in an environment that permits the tsx IPC socket. Run the two browser specs after building, and record the logged Canvas 2D draw-cost figure in the performance notes.
+- Run `pnpm validate` in an environment that permits the tsx IPC socket. Run the browser specs after building and record the logged Canvas 2D timings in the performance notes.
 
   ```sh
-  KQ_E2E_PORT=5401 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/minimap.spec.ts --workers=1 --reporter=line
-  KQ_E2E_PORT=5401 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line
-  ```
-
-- Commit the review changes locally.
-
-  ```sh
-  git add -- e2e/minimap.spec.ts src/systems/minimap/{index.ts,minimap.css,paths.ts} \
-    src/systems/quests/index.ts src/systems/travel/map-art.ts src/ui/{hud.ts,touch.css} tests/minimap.test.ts
-  git commit -m 'fix(ui): address minimap review findings' -m 'Refs: TASK-015' -m 'Co-Authored-By: Codex <noreply@openai.com>'
-  git add -- .mc/tasks/todo/TASK-015-minimap.md docs/{ACTION-RPG,ARCHITECTURE,MOBILE-UI-PASS,NEXT-SESSION,PERFORMANCE,PRD}.md
-  git commit -m 'docs(ui): record minimap review fixes' -m 'Refs: TASK-015' -m 'Co-Authored-By: Codex <noreply@openai.com>'
+  pnpm build
+  for spec in minimap touch smoke progression chapter-prolog; do
+    KQ_E2E_PORT=5401 scripts/dev/heavy.sh --max-hold 15 -- pnpm exec playwright test "e2e/$spec.spec.ts" --workers=1 --reporter=line
+  done
   ```

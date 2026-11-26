@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { GameContext } from '../src/core/context';
 import { EventBus } from '../src/core/events';
 import { MemoryStorage, SETTINGS_KEY, SettingsStore } from '../src/core/save';
@@ -119,25 +119,30 @@ it('inks the historical terrain path cells and centres their pixels on the terra
   expect(drawImage).toHaveBeenCalledWith(layer, 1, 0, 2, 2, 0, 0, 4, 4);
 });
 
-it('keeps the staged and survey visibility rules on the canvas', () => {
-  const css = readFileSync('src/systems/minimap/minimap.css', 'utf8');
-  expect(css).toMatch(/\.kq-hud:is\([^)]*\[data-kq-mode='staged'\][^)]*\)\)\s*> \.kq-minimap,[^{]*\{\s*display: none;/);
-  expect(css).toMatch(/survey\[aria-expanded='true'\]\)\s+\.kq-minimap\s*\{\s*display: none;/);
-});
-
-it('skips canvas commands while CSS hides the minimap and resumes when visible', () => {
-  const fillRect = vi.fn();
+function stubMinimap() {
   const noop = () => {};
-  const g = { fillRect, beginPath: noop, stroke: noop, save: noop, translate: noop, rotate: noop,
-    moveTo: noop, lineTo: noop, closePath: noop, fill: noop, restore: noop, strokeText: noop, fillText: noop };
+  const g = {
+    fillRect: vi.fn(), drawImage: vi.fn(), translate: vi.fn<CanvasRenderingContext2D['translate']>(),
+    strokeText: vi.fn<CanvasRenderingContext2D['strokeText']>(), strokeRect: noop,
+    beginPath: noop, stroke: noop, save: noop, rotate: noop, moveTo: noop, lineTo: noop, closePath: noop,
+    fill: noop, restore: noop, fillText: noop,
+  };
   const canvas = { hidden: true, offsetWidth: 0, getContext: () => g, setAttribute: noop, remove: noop };
-  const hud = { staged: false };
+  const hud = { staged: false, objectiveTarget: null as { x: number; z: number } | null };
+  const grid = { cols: 2, rows: 2, cell: 2, x0: 0, z0: 0 };
+  const createImageData = vi.fn(() => ({ data: new Uint8ClampedArray(16) }));
+  const putImageData = vi.fn();
+  const layer = { getContext: () => ({ createImageData, putImageData }), setAttribute: noop };
   vi.stubGlobal('Node', class {});
-  vi.stubGlobal('document', { documentElement: { hasAttribute: () => false }, createElement: () => canvas });
+  vi.stubGlobal('document', {
+    documentElement: { hasAttribute: () => false },
+    createElement: vi.fn().mockReturnValueOnce(canvas).mockReturnValue(layer),
+  });
   vi.stubGlobal('Image', class {
     complete = true;
     removeEventListener() {}
   });
+  const era: { current: GameContext['era']['current'] } = { current: 'today' };
   const ctx = {
     t: (key: string) => key,
     settings: new SettingsStore(new MemoryStorage()),
@@ -146,10 +151,23 @@ it('skips canvas commands while CSS hides the minimap and resumes when visible',
     loop: { requestRender: noop },
     ui: { add: noop, hud },
     player: { position: { x: 0, z: 0 }, yaw: 0 },
-    era: { current: 'today' },
-    data: { baseUrl: '/', meta: { hist1840: { path: 'historic.png' } }, paths: { nodes: [], edges: [] }, footprints: { buildings: [] } },
+    era,
+    world: { grid },
+    data: { baseUrl: '/', meta: { hist1840: { path: 'historic.png' } }, paths: { nodes: [], edges: [] },
+      footprints: { buildings: [] }, ground: Uint8Array.of(GROUND.gravel, GROUND.forest, GROUND.forest, GROUND.forest) },
   } as unknown as GameContext;
-  try {
+
+  return { ctx, canvas, layer, createImageData, putImageData, g, hud, era };
+}
+
+describe('minimap rendering', () => {
+  afterEach(() => {
+    minimap.dispose();
+    vi.unstubAllGlobals();
+  });
+
+  it('skips canvas commands while CSS hides the minimap and resumes when visible', () => {
+    const { ctx, canvas, g: { fillRect }, hud } = stubMinimap();
     minimap.init(ctx);
     expect(canvas.hidden).toBe(false);
     minimap.frame(0.1);
@@ -164,20 +182,41 @@ it('skips canvas commands while CSS hides the minimap and resumes when visible',
     canvas.offsetWidth = 0;
     minimap.frame(0.1);
     expect(fillRect).toHaveBeenCalledTimes(2);
-  } finally {
-    minimap.dispose();
-    vi.unstubAllGlobals();
-  }
-});
+  });
 
-it('reserves the full touch pill reach in the lit notice-dock rule', () => {
-  // Check the stylesheet's shared geometry. The phone spec checks the resulting browser boxes.
-  const touch = readFileSync('src/ui/touch.css', 'utf8');
-  const css = readFileSync('src/systems/minimap/minimap.css', 'utf8');
-  expect(touch).toMatch(/--kq-t-action-reach: calc\(var\(--kq-t-arc-inset\) \+ \(var\(--kq-t-action-right\) \+ var\(--kq-t-action-max-width\)\) \* var\(--kq-t-arc-scale\)\)/);
-  const litDock = css.match(/\.interact\.lit\)[^{]*\.kq-toasts\s*\{([^}]+)\}/)?.[1];
-  expect(litDock).toContain('var(--kq-safe-r) + var(--kq-t-action-reach) + 8px) / var(--kq-t-hud-zoom)');
-  expect(litDock).toMatch(/^\s*right: var\(--kq-minimap-notice-right\);/m);
+  it.each([true, false])('prepares the path layer outside the first historical frame (enabled at boot: %s)', (enabled) => {
+    const { ctx, canvas, layer, createImageData, putImageData, g, era } = stubMinimap();
+    ctx.settings.update((s) => (s.minimap = enabled), 'minimap');
+    canvas.offsetWidth = MAP_SIZE;
+    minimap.init(ctx);
+    expect(putImageData).toHaveBeenCalledTimes(enabled ? 1 : 0);
+    minimap.frame(0.1);
+    expect(g.drawImage).not.toHaveBeenCalled();
+
+    era.current = '1789';
+    ctx.events.emit('era:change', { from: 'today', to: '1789' });
+    if (!enabled) ctx.settings.update((s) => (s.minimap = true), 'minimap');
+    expect(createImageData).toHaveBeenCalledExactlyOnceWith(2, 2);
+    expect(putImageData).toHaveBeenCalledTimes(1);
+    minimap.frame(0.1);
+    expect(g.drawImage).toHaveBeenCalledExactlyOnceWith(layer, -44.5, -44.5, 90, 90, 0, 0, MAP_SIZE, MAP_SIZE);
+    expect(createImageData).toHaveBeenCalledTimes(1);
+    expect(putImageData).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a distant northwest goal below the north label and on its bearing', () => {
+    const { ctx, canvas, g, hud } = stubMinimap();
+    hud.objectiveTarget = { x: -1000, z: -1000 };
+    canvas.offsetWidth = MAP_SIZE;
+    minimap.init(ctx);
+    minimap.frame(0.1);
+    const [x, y] = g.translate.mock.calls[0]!;
+    expect(y).toBeCloseTo(28);
+    expect(x).toBeCloseTo(y);
+    const [, , baseline] = g.strokeText.mock.calls[0]!;
+    const diamondTop = y - (4.5 + 0.75) * Math.SQRT2;
+    expect(diamondTop).toBeGreaterThan(baseline + 2);
+  });
 });
 
 it('draws each layer at the tour car park and culls all but the nearby footprint', () => {
@@ -220,31 +259,4 @@ it('draws each layer at the tour car park and culls all but the nearby footprint
   expect(ops.lineTo).toHaveBeenLastCalledWith(-6, 7);
   expect(ops.fill).toHaveBeenCalledTimes(2);
   expect(ops.stroke).toHaveBeenCalledTimes(4);
-});
-
-it('reports informational minimap CPU time with the shipped map data', () => {
-  const graph = JSON.parse(readFileSync('public/data/paths.json', 'utf8')) as PathGraphFile;
-  const { buildings } = JSON.parse(readFileSync('public/data/palace/footprints.json', 'utf8')) as GameData['footprints'];
-  const sheet = { complete: true, naturalWidth: 1075 } as HTMLImageElement;
-  const noop = () => {};
-  const g = {
-    fillRect: noop, drawImage: noop, strokeRect: noop, beginPath: noop, closePath: noop,
-    moveTo: noop, lineTo: noop, fill: noop, stroke: noop, save: noop, restore: noop,
-    translate: noop, rotate: noop,
-  } as unknown as CanvasRenderingContext2D;
-  const view = { cx: 1000, cz: -1000, width: MAP_SIZE, height: MAP_SIZE, mpp: MAP_MPP };
-  const style = mapStyle('today');
-  const draw = (i: number) => {
-    view.cx = 800 + i % 850;
-    drawMapPaper(g, sheet, view, style.sheetAlpha);
-    drawModernPaths(g, graph, view);
-    drawMapFootprints(g, buildings, view, style.footprintAlpha);
-    drawMapGoal(g, 80, 50, 9);
-    drawMapPlayer(g, 72, 72, i / 20);
-  };
-  for (let i = 0; i < 500; i++) draw(i);
-  const start = performance.now();
-  for (let i = 0; i < 1000; i++) draw(i);
-  const ms = (performance.now() - start) / 1000;
-  console.info(`minimap CPU with a stub canvas: ${ms.toFixed(3)} ms/redraw`);
 });

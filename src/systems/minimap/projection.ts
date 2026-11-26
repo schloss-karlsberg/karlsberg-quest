@@ -16,12 +16,12 @@ export interface MarkerPixel {
 }
 
 /** Project into the inset rectangle, preserving the bearing of off-screen markers. */
-export function projectMarker(out: MarkerPixel, view: MapView, x: number, z: number, inset: number): void {
+export function projectMarker(out: MarkerPixel, view: MapView, x: number, z: number, inset: number, topInset = inset): void {
   const dx = (x - view.cx) / view.mpp;
   const dy = (z - view.cz) / view.mpp;
   const halfW = view.width / 2;
   const halfH = view.height / 2;
-  const scale = Math.max(1, Math.abs(dx) / (halfW - inset), Math.abs(dy) / (halfH - inset));
+  const scale = Math.max(1, Math.abs(dx) / (halfW - inset), Math.abs(dy) / (halfH - (dy < 0 ? topInset : inset)));
   out.x = halfW + dx / scale;
   out.y = halfH + dy / scale;
 }

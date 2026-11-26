@@ -351,8 +351,18 @@ html[data-kq-touch] .kq-hud {
   inset: var(--kq-safe-t) var(--kq-safe-r) var(--kq-safe-b) var(--kq-safe-l);
 }
 html[data-kq-touch] .kq-hud .kq-toasts {
-  top: 70px;
-  right: 18px;
+  --kq-t-notice-base-right: 18px;
+  /* The tall layout puts the map above the dock and the three skill buttons to its right. */
+  --kq-t-notice-map-inset: 158px;
+  --kq-t-notice-right: max(var(--kq-t-notice-action-right, 0px),
+    calc(var(--kq-t-notice-base-right) + var(--kq-t-notice-map-inset) * var(--kq-minimap-slot, 0)));
+  top: calc(70px + 90px * var(--kq-minimap-slot, 0));
+  right: var(--kq-t-notice-right);
+  max-width: min(360px, 37vw, calc(100% - var(--kq-t-notice-right)));
+}
+/* A notice can share the lit action pill's band. Clear its maximum reach. */
+html[data-kq-touch]:has(.kq-touch:not(.kq-hidden) .kq-t-btn.interact.lit) .kq-hud .kq-toasts {
+  --kq-t-notice-action-right: calc((var(--kq-safe-r) + var(--kq-t-action-reach) + 8px) / var(--kq-t-hud-zoom) - var(--kq-safe-r));
 }
 html[data-kq-touch] .kq-hud .kq-prompt {
   bottom: 18px;
@@ -441,9 +451,10 @@ html[data-kq-touch] .kq-crosshair {
   /* The dock fits between the tracker and the skills, below the top buttons. The extra inset
      compensates for the HUD zoom while the controls use the full device safe area. */
   html[data-kq-touch] .kq-hud .kq-toasts {
-    top: calc(78px + var(--kq-safe-t) / 3);
-    right: calc(218px + var(--kq-safe-r) / 3);
-    max-width: min(320px, 39vw);
+    --kq-t-notice-base-right: calc(218px + var(--kq-safe-r) / 3);
+    --kq-t-notice-map-inset: 0px;
+    top: calc(78px + var(--kq-safe-t) / 3 + 78px * var(--kq-minimap-slot, 0));
+    max-width: min(320px, 39vw, calc(100% - var(--kq-t-notice-right)));
   }
   html[data-kq-touch] .kq-hud .kq-notice {
     font-size: 17px;
@@ -578,8 +589,8 @@ html[data-kq-touch] .kqp-q-key {
 @media (max-height: 500px) {
   html[data-kq-touch] body .kqs-dlg {
     left: calc(8px + var(--kq-safe-l));
-    /* Leave room for the top row (Erkunden, phone, Pause) and the skill row under it (§8.3). */
-    right: calc(170px + var(--kq-safe-r));
+    /* Leave room for the touch rows and, while visible, the minimap. */
+    right: calc(170px + var(--kq-safe-r) + 84px * var(--kq-minimap-slot, 0));
     top: calc(6px + var(--kq-safe-t));
     bottom: auto;
     width: auto;

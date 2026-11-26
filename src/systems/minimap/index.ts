@@ -10,6 +10,8 @@ import { MAP_MPP, MAP_SIZE, mapStyle, playerHeading, projectMarker } from './pro
 const PERIOD = 0.1;
 const CENTER = MAP_SIZE / 2;
 const MARKER_INSET = 9;
+const NORTH_BASELINE = 17;
+const MARKER_TOP_INSET = 28; // Clear the stroked north label even at the tip of a diamond.
 
 class Minimap {
   private readonly canvas: HTMLCanvasElement;
@@ -31,6 +33,7 @@ class Minimap {
     });
     this.g = this.canvas.getContext('2d', { alpha: false });
     ctx.ui.add(this.canvas);
+    this.prepareHistoricPaths();
     this.offs = [
       ctx.events.on('game:pause', this.syncVisibility),
       ctx.events.on('photo:open', this.syncVisibility),
@@ -42,11 +45,24 @@ class Minimap {
       ctx.events.on('era:change', this.refresh),
       ctx.events.on('player:teleport', this.refresh),
       ctx.settings.subscribe((_, key) => {
+        this.prepareHistoricPaths();
         this.syncVisibility();
         if (key === 'reducedMotion') this.refresh();
       }),
     ];
     this.syncVisibility();
+  }
+
+  /** Prepare during loading or settings changes, before the first historical redraw. */
+  private prepareHistoricPaths(): void {
+    if (this.historicPaths || !this.g || !this.ctx.settings.state.minimap) return;
+    const { data, world: { grid } } = this.ctx;
+    const layer = h('canvas', { width: grid.cols, height: grid.rows });
+    const paths = layer.getContext('2d');
+    if (paths) {
+      paintHistoricPaths(paths, data.ground, grid);
+      this.historicPaths = layer;
+    }
   }
 
   private readonly syncVisibility = (): void => {
@@ -64,7 +80,7 @@ class Minimap {
 
   private readonly drawMember = (x: number, z: number, guide: boolean): void => {
     const g = this.g!;
-    projectMarker(this.pixel, this.view, x, z, MARKER_INSET);
+    projectMarker(this.pixel, this.view, x, z, MARKER_INSET, MARKER_TOP_INSET);
     g.beginPath();
     g.arc(this.pixel.x, this.pixel.y, guide ? 4.8 : 2.5, 0, 2 * Math.PI);
     g.fillStyle = guide ? '#f4a259' : '#366c68';
@@ -91,30 +107,21 @@ class Minimap {
     const style = mapStyle(era.current);
     drawMapPaper(g, this.sheet, this.view, style.sheetAlpha);
     if (style.modernPaths) drawModernPaths(g, data.paths, this.view);
-    else {
-      const grid = world.grid;
-      if (!this.historicPaths) {
-        const layer = h('canvas', { width: grid.cols, height: grid.rows });
-        const paths = layer.getContext('2d');
-        if (paths) paintHistoricPaths(paths, data.ground, grid);
-        this.historicPaths = layer;
-      }
-      drawHistoricPaths(g, this.historicPaths, grid, this.view);
-    }
+    else if (this.historicPaths) drawHistoricPaths(g, this.historicPaths, world.grid, this.view);
     drawMapFootprints(g, data.footprints.buildings, this.view, style.footprintAlpha);
     visitTourMembers(this.drawMember);
     const goal = ui.hud.objectiveTarget;
     if (goal?.x !== undefined && goal.z !== undefined) {
-      projectMarker(this.pixel, this.view, goal.x, goal.z, MARKER_INSET);
+      projectMarker(this.pixel, this.view, goal.x, goal.z, MARKER_INSET, MARKER_TOP_INSET);
       drawMapGoal(g, this.pixel.x, this.pixel.y, 9);
     }
     drawMapPlayer(g, CENTER, CENTER, playerHeading(player.yaw, settings.state.reducedMotion));
     g.font = 'bold 12px Georgia, serif';
     g.lineWidth = 3;
     g.strokeStyle = '#f3ead6';
-    g.strokeText(this.north, 8, 17);
+    g.strokeText(this.north, 8, NORTH_BASELINE);
     g.fillStyle = '#2a2118';
-    g.fillText(this.north, 8, 17);
+    g.fillText(this.north, 8, NORTH_BASELINE);
   }
 
   dispose(): void {
