@@ -58,6 +58,8 @@ export interface BenchOptions {
   frames?: number;
   /** Frames rendered before recording (shader compile, uploads; default 20). */
   warmup?: number;
+  /** Minimum wall-clock warmup per scene, in seconds (default 0). */
+  warmupSeconds?: number;
   /** Only these scene ids. */
   only?: string[];
   /** Log a table to the console (default true). */
@@ -170,6 +172,23 @@ export const BENCH_SCENES: BenchScene[] = [
   },
 ];
 
+/** Additional palace views are opt-in to keep the regular nine-scene route stable. */
+const PALACE_SCENES: BenchScene[] = [
+  {
+    id: '1789-festsaal',
+    label: '1789, Festsaal (innen)',
+    era: '1789',
+    setup: (k) => {
+      k.step(1);
+      k.interiors?.enter('B01.2.og-festsaal', { u: 0.1, v: 0.5, toU: 1, toV: 0.5, pitch: 6 });
+      k.step(3);
+    },
+    sweep: [60, 130],
+  },
+  { id: '1789-palace-front', label: '1789, Schlossfront', era: '1789', setup: (k) => k.teleport(1184, -1126, 90, -6) },
+  { id: '1789-palace-plateau', label: '1789, Schlossplateau', era: '1789', setup: (k) => k.teleport(1216, -1114, 180, -6) },
+];
+
 const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
 
 /** Run the route. `setCamera` installs a per-frame camera override in boot's render callback. */
@@ -182,7 +201,8 @@ export async function runBench(
   const ctx = k.ctx;
   const frames = Math.max(2, opts.frames ?? 150);
   const warmup = Math.max(1, opts.warmup ?? 20);
-  const scenes = BENCH_SCENES.filter((s) => !opts.only || opts.only.includes(s.id));
+  const { only } = opts;
+  const scenes = only ? [...BENCH_SCENES, ...PALACE_SCENES].filter((s) => only.includes(s.id)) : BENCH_SCENES;
   const saved = { era: ctx.era.current, x: ctx.player.position.x, z: ctx.player.position.z, yaw: ctx.player.yaw, pitch: ctx.player.pitch, flying: ctx.player.flying };
   const gpuWas = perf.gpuEnabled;
   perf.enableGpuTimer(true);
@@ -220,10 +240,11 @@ export async function runBench(
       let tris = 0;
       let trisMax = 0;
       // every animation frame drawn, whatever the cap or idle pacing (the bench measures throughput)
-      while (i < warmup) {
+      const warmUntil = performance.now() + (opts.warmupSeconds ?? 0) * 1000;
+      while (i < warmup || performance.now() < warmUntil) {
         ctx.loop.requestRender();
         await nextFrame();
-        i++;
+        if (i < warmup) i++;
       }
       perf.resetClock();
       perf.onFrame = (f, c, dc, tr) => {
