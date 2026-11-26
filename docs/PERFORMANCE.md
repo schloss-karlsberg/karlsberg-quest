@@ -446,13 +446,14 @@ sweep for comparison.
 - **Room lighting and materials.** The window light map is already baked. A building uses up to
   12 shader lights, including up to four flickering fire spots, with zero point-light shadow
   maps. The existing light budget and falloff are preserved. Fire spots use four reusable
-  selection slots. The shader indexes room state directly and skips empty or out-of-range light
-  slots. Mittel and Hoch skip the procedural parquet calculation that their textured finish
-  replaces. Niedrig keeps the procedural parquet.
+  selection slots with a separate active count. The shader indexes room state directly and skips
+  empty or out-of-range light slots. Mittel and Hoch skip the procedural parquet calculation that
+  their textured finish replaces. Niedrig keeps the procedural parquet.
 - **Fire and transparency.** The interior submitted the same billboards twice and discarded
   the wrong blend mode in each fragment shader. Smoke now has a separate batch and keeps its
   order relative to the additive flames. Cold buildings submit candles only. Ember streams now use
   nine tightly fitted spark quads, moving their animation and hashes to the vertex shader.
+  The interior builder writes each spark position and size directly into its instance buffers.
   At most 2.7% of a stream's original quad area is covered by those quads, before overlap and
   clipping. Peak triangles may rise while fragment work falls. The spark shape and trajectories
   are preserved. Sparks that overlap within one stream blend individually, so their combined
@@ -464,12 +465,13 @@ sweep for comparison.
   per contributing room and skips the texture upload when its input bytes match. Roof smoke
   cards, the smoke screen and fullscreen post FX remain potential fill costs.
 
-Run the two labelled builds in the task worktree after the TASK-021 changes are committed.
-The first commit adds the benchmark to the original rendering code. Leave the forest baseline
-toggle off so that both runs use the same forest settings.
+Run the two labelled builds in a clean task worktree. Apply `eaff169` to the benchmark-only
+baseline `a1082bb` so both builds use the corrected harness. Leave the forest baseline toggle
+off so that both runs use the same forest settings.
 
 ```sh
 git switch --detach a1082bb
+git cherry-pick eaff169
 pnpm build && PERF_LABEL=before KQ_E2E_PORT=5361 scripts/dev/heavy.sh --max-hold 15 -- pnpm exec playwright test -c playwright.gpu.config.ts e2e/gpu/palace-fire.gpu.ts --workers=1 --reporter=line
 git switch dev/task-021
 pnpm build && PERF_LABEL=after KQ_E2E_PORT=5361 scripts/dev/heavy.sh --max-hold 15 -- pnpm exec playwright test -c playwright.gpu.config.ts e2e/gpu/palace-fire.gpu.ts --workers=1 --reporter=line
@@ -478,15 +480,28 @@ pnpm build && PERF_LABEL=after KQ_E2E_PORT=5361 scripts/dev/heavy.sh --max-hold 
 The spec uses headed Chromium with ANGLE Metal, uncapped frame timing and a pixel ratio of 1.
 Hoch and Mittel run at 1440 × 900. The 667 × 375 Niedrig profile uses touch and reduced motion.
 The script calls `kq.bench` with 240 measured frames per view after at least 90 frames and eight
-seconds of warm-up. Manual mode freezes the simulation and forces fresh sun shadows. The
-benchmark records a fixed fire clock and camera route for both builds. The default nine-scene
-route is unchanged. The palace front, plateau and 1789 Festsaal are available through `only`.
+seconds of warm-up. It reports 239 frame intervals after dropping the first timing. Manual mode
+freezes the simulation and forces fresh sun shadows. The front and plateau teleports take a
+simulation step and check that room tracking clears the Corps de logis before warm-up. The palace
+front, plateau and 1789 Festsaal are available through `only`, alongside the default nine scenes.
+
+The two fire poses use the same camera sweep and hold the fire at 120 s during warm-up in both
+builds. Each pose is measured once at 120 s and once with the fire schedule advancing by 1/60 s
+before each measured render, through 124 s. The advancing run includes facade raster rewrites and
+texture uploads when burn and soot bytes change. The `after` Hoch run checks each palace and fire
+sample against the 16.7 ms target on the reference GPU.
 
 Compare `test-results/palace-fire-gpu/{before,after}/{high,medium,low}.json` for frame p95 and
-average, CPU p95, GPU time when available, calls and triangles. Compare the paired interior and
-exterior PNGs for fire size, smoke, candle light, surface detail and window or door clipping.
-Repeat the runs on an idle machine if the p95 varies. Use a physical phone to confirm the
-Niedrig result before closing the mobile criterion.
+average, CPU p95, GPU time when available, calls and triangles. `scenes` contains the fixed fire
+samples and the control views. `advancing` contains the second set of fire samples. Each fire
+sample reports its clock range. Repeat the runs on an idle machine if the p95 varies.
+
+Each still loads a fresh page with `?manual&holdvisuals`, sets the pose and advances visual time
+by 80 renders of 0.1 s. Automatic renders have zero visual delta. The script then stops the loop
+and takes the screenshot of the held frame. Compare the paired interior and exterior PNGs for
+fire size, smoke, candle light, surface detail and window or door clipping. On a physical phone,
+compare Niedrig on both builds at the same resolution and settings. Check the palace views and
+fire in motion using touch and compare frame p95 and visual quality with reduced motion enabled.
 
 | Hoch scene | Frame p95 before | Frame p95 after |
 |---|---:|---:|
@@ -496,9 +511,13 @@ Niedrig result before closing the mobile criterion.
 | `1789-palace-plateau` | pending | pending |
 | `1789-ehrenhof` | pending | pending |
 | `1793-07-fire-outside` | pending | pending |
+| `1793-07-festsaal-fire` (advancing) | pending | pending |
+| `1793-07-fire-outside` (advancing) | pending | pending |
 | `today-forest` (control) | pending | pending |
 
-The target is p95 ≤ 16.7 ms. If the target is missed, isolate the remaining cost by timing
+The corrected GPU run was blocked by `listen EPERM` when Playwright tried to start the preview
+server. The paired p95, matched visual review and physical-phone check remain open. If the
+16.7 ms target is missed, isolate the remaining cost by timing
 roof smoke, the interior smoke bank, the sun pass and the post passes independently before
 changing effect density or detail by tier.
 ### 3.8 Minimap (TASK-015)

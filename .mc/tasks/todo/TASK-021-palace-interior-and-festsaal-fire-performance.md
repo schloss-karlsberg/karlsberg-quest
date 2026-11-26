@@ -38,6 +38,8 @@ palace while reducing rendering work across tiers.
   under the machine lock if the browser can start.
 - [x] Document the expected effects, remaining costs and exact paired benchmark procedure.
   Add a PRD changelog row.
+- [x] Verify the exterior poses clear the Festsaal, pair fixed and advancing fire samples,
+  capture matched fire frames, and cover the benchmark and allocation fixes with unit tests.
 
 ## Plan
 
@@ -62,6 +64,16 @@ and 1789 palace views on hardware on Hoch, then recheck Mittel and Niedrig with 
 **Risks:** A change in transparency ordering or in the lighting at room boundaries may be visible.
 Only hardware timing and matched views can confirm the frame-time and visual criteria.
 
+### Review fixes
+
+- [x] Step the exterior teleports and check room tracking before warm-up.
+- [x] Add paired advancing fire samples and deterministic, held visual captures. Check
+  the 16.7 ms target explicitly on the reference profile.
+- [x] Keep four fire-light slots allocated and fill ember buffers by component. Add
+  Vitest regression assertions for the benchmark and allocation fixes.
+- [x] Run the available gates and check whether the locked Playwright specs can start.
+- [ ] Record paired reference measurements, matched visuals and the physical-phone result.
+
 ## Progress
 
 - Branch `dev/task-021`.
@@ -82,12 +94,24 @@ Only hardware timing and matched views can confirm the frame-time and visual cri
 - 2026-11-26: The benchmark-only commit succeeded. Git later reported `Operation not
   permitted` for the worktree's `index.lock`; the rendering, test and documentation changes
   remain in the worktree.
+- 2026-11-26: The original rendering and documentation commits are now on `dev/task-021`.
+  The review fixes step and check the two exterior poses, measure both fire clocks, enforce
+  the Hoch frame target, hold captures at eight visual seconds, and remove the remaining
+  fire-light and ember writes that allocate. The focused Vitest run passed 49 tests.
+- 2026-11-26: `pnpm typecheck` and `pnpm build` passed. `pnpm test` reported
+  `Test Files  120 passed (120)` and `Tests  1587 passed (1587)`, with zero failures.
+  `mc validate` passed. `pnpm validate` was blocked by `listen EPERM` on the TSX IPC socket.
+- 2026-11-26: Playwright discovered all three corrected GPU profiles. The locked GPU and
+  smoke runs were blocked at preview startup by `listen EPERM` on localhost ports 5368 and
+  5367. The interiors spec was skipped after confirming the same preview dependency.
+- 2026-11-26: The benchmark and allocation fixes are committed. The final documentation and
+  task update remain in the worktree after Git was denied access to `index.lock`.
 
 ## Follow-ups
 
 - Run `e2e/smoke.spec.ts` and `e2e/interiors.spec.ts` under the machine lock where preview
-  can bind. Rerun the standard `pnpm validate` command where TSX can open its IPC socket.
-- Commit the rendering and documentation changes before checking out the benchmark baseline.
-- Run the paired real-GPU spec in PERFORMANCE §3.8, compare p95 and matched stills on Hoch
-  and Mittel, and verify Niedrig on a physical phone. If p95 still exceeds 16.7 ms, isolate the
-  smoke and fullscreen passes and the remaining sun-shadow cost before changing effect quality.
+  can bind. Rerun `pnpm validate` where TSX can open its IPC socket.
+- Review finding 3 remains open. Run `e2e/gpu/palace-fire.gpu.ts` on the reference GPU as
+  documented in PERFORMANCE §3.8. Record paired p95 values, compare the held stills on Hoch
+  and Mittel, and verify Niedrig on a physical phone. If p95 still exceeds 16.7 ms, isolate
+  the smoke and fullscreen passes and the remaining sun-shadow cost before changing effect quality.
