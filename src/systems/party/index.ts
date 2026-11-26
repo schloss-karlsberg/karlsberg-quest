@@ -30,7 +30,8 @@ import { PartyRuntime, type PartyBus, CREDITS_CINEMATIC } from './runtime';
 import { FestPartySet } from './fest';
 import type { PartySet } from './set';
 import { CreditsStrip } from './strip';
-import { PARTY_VARIANTS, type PartySlice, type PartyVariant } from './types';
+import { isOneOf } from '../../core/saved';
+import { PARTY_CREDITS, PARTY_VARIANTS, type PartySlice, type PartyVariant } from './types';
 import './types';
 
 export type { PartyCreditsRequest, PartySetRequest, PartySlice, PartyVariant } from './types';
@@ -102,7 +103,7 @@ class PartySystem {
 
   get slice(): PartySlice {
     const s = this.ctx.state.slice('party', () => ({ variant: null, credits: 'none' }));
-    if (s.credits !== 'playing' && s.credits !== 'done') s.credits = 'none';
+    if (!isOneOf(PARTY_CREDITS, s.credits)) s.credits = 'none';
     if (!PARTY_VARIANTS.includes(s.variant as PartyVariant)) s.variant = null;
     return s;
   }

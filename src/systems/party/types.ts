@@ -9,9 +9,12 @@
  *  - `party:clear` removes everything.
  * Events out carry scalar fields only.
  */
+import { allOf } from '../../core/saved';
 
 export type PartyVariant = 'museum' | 'burn' | 'keep';
-export const PARTY_VARIANTS: readonly PartyVariant[] = ['museum', 'burn', 'keep'];
+export const PARTY_VARIANTS = allOf<PartyVariant>()(['museum', 'burn', 'keep']);
+export type PartyCredits = 'none' | 'playing' | 'done';
+export const PARTY_CREDITS = allOf<PartyCredits>()(['none', 'playing', 'done']);
 
 export interface PartySetRequest {
   variant: PartyVariant;
@@ -27,7 +30,7 @@ export interface PartyCreditsRequest {
 export interface PartySlice {
   variant: PartyVariant | null;
   /** 'playing' at save time → after a load `credits:done {skipped: true}` once. */
-  credits: 'none' | 'playing' | 'done';
+  credits: PartyCredits;
 }
 
 declare module '../../core/events' {

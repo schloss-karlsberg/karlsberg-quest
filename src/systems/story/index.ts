@@ -17,6 +17,7 @@ import { ERA_LOOKS, type EraLook } from '../../world/eraPresets';
 import type { NpcPlacement, ThreatConfig, ThreatKind } from '../contracts';
 import { creditSections } from '../party/creditContent';
 import { isBarkLine, pickSequence } from '../../content/triggers';
+import { isCleared } from '../../rpg/enemy-groups';
 import { assembleEpilogue } from './endings/assemble';
 import { isWrapped, newMeter, tickMeter } from './meters';
 import { Voice } from './dialogue/voice';
@@ -440,7 +441,7 @@ class StoryRuntime {
       // boot does — e1's onResume opens the choice at the table (playtest round 4: it never came)
       if (this.started && !ctx.pause.reasons.has('title') && this.slice.active) {
         this.presenter.clear();
-        this.engine.resume(false);
+        this.resumeFromSave();
       }
     });
     ctx.events.on('player:caught', ({ by, soft, family, boss }) => {
@@ -539,7 +540,16 @@ class StoryRuntime {
       return;
     }
     this.resync();
-    if (resumed && this.slice.active) this.engine.resume(false);
+    if (resumed && this.slice.active) this.resumeFromSave();
+  }
+
+  private resumeFromSave(): void {
+    this.engine.resume(false);
+    const s = this.slice;
+    // The modal is transient, but e2 already saved the ending and is waiting for its button.
+    if (s.chapter === 'enden' && s.beat === 'e2' && s.ending && !s.finished && !this.ctx.state.state.flags['story.party']) {
+      this.endings.showEpilogue(s.ending);
+    }
   }
 
   /** Re-apply persistent presentation after a load. */
@@ -675,7 +685,7 @@ class StoryRuntime {
       const waitFor = a.do === 'say' && a.wait ? (a.id ?? a.line) : undefined;
       const rest = waitFor && i + 1 < actions.length ? actions.slice(i + 1) : null;
       const exec = () => {
-        this.exec(a);
+        this.exec(a, resume);
         if (!waitFor || !rest) return;
         const ready = () => !this.presenter.hasLine(waitFor, scope.beat);
         const continueRun = () => this.run(rest, resume, scope);
@@ -797,7 +807,7 @@ class StoryRuntime {
     ctx.events.emit('npc:spawn', p);
   }
 
-  private exec(a: Action): void {
+  private exec(a: Action, resume = false): void {
     const ctx = this.ctx;
     const s = this.slice;
     switch (a.do) {
@@ -885,6 +895,16 @@ class StoryRuntime {
         }
         return;
       case 'cue':
+        if (a.id === 'k1.enge.resume') {
+          if (resume) {
+            const groups = ctx.state.state.systems.combat?.groups;
+            // An existing second wave already restores its survivors through combat.
+            const wave = groups?.['k1.enge.2'] ?? groups?.['k1.enge'];
+            // Restore only the story latch so combat and progression keep the original rewards.
+            if (wave && isCleared(wave)) this.engine.onEvent('enemy:cleared', { group: wave.group, kind: wave.kind });
+          }
+          return;
+        }
         ctx.events.emit('story:cue', { id: a.id, data: a.data });
         return;
       case 'chronik':

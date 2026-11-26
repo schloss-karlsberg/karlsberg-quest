@@ -684,8 +684,8 @@ down) and the Festsaal object (`k3.objekt`, which also becomes a charm).
 | `quests` | `src/systems/quests/` | quest state machine, offers / turn-ins, objective tracking, spawns + pickups for objectives, rewards, codex unlocks, Pause pages (Aufgaben / Codex / Sammlungen), tracker, giver markers, beacons, compass markers | `QuestSlice` |
 
 Pure shared modules (no three.js, no DOM): `src/rpg/types.ts` (all shapes), `src/rpg/enemies.ts`
-(roster), `src/rpg/items.ts` (items, loot, collections), `src/rpg/stats.ts` (level curve, talents,
-`deriveStats`). Systems may import these; they never import each other.
+(roster), `src/rpg/enemy-groups.ts` (group clearance), `src/rpg/items.ts` (items, loot, collections),
+`src/rpg/stats.ts` (level curve, talents, `deriveStats`). Systems may import these; they never import each other.
 
 ### 9.2 Events (`src/systems/contracts.ts`)
 
@@ -938,6 +938,13 @@ spring → Bleiche → lawn → gate ≈ 430 m, about 4–5 min with the talks; 
 e2e `chapter-k1-disguise.spec.ts` (helper `playDisguise`, used by `playK1` and the long walk in
 `openAtSpring`), unit `tests/k1-disguise.test.ts`, `tests/story.test.ts`.
 
+**Die Enge** (`k1_14b`, Kaskade in 1789): three Streuner are followed by four reinforcements.
+On resume, if the first group is cleared and the second is missing, the story schedules the
+reinforcements using the saved kill counts. When the player resumes at the present-day wake point,
+Laub's reinforcement warning and the spawn wait for the return to 1789. If the second group already
+exists, combat restores its survivors. A saved second-wave clear advances to „Zum Wasser“. Combat
+holds autosaves until it has dispatched the tick's kill events and applied their XP and loot rewards.
+
 | Id | Kind | Giver → turn-in | Objectives (place) | Enemies | Rewards | History taught |
 | --- | --- | --- | --- | --- | --- | --- |
 | `q.k1.ankunft` "Zu Fuß, außer einem" | main | Laub → auto | E at the Karlsbergquelle (`quelle`, event `quelle:touch`); on foot up to the Ehrenhof gate in 1789 (`wechsel`, id kept for saves, 1200/−1116 r 14); the guard's echo (`clue.k1.wache`); the wings (`clue.k1.fluegel`) | — | 60 XP | cx.11 Zu Fuß, außer einem |
@@ -1000,6 +1007,8 @@ first-person story, credits, "Ende noch einmal wählen" (title and, after the cr
 menu). The last K4 beat (`k4_15` "Das Feldbuch") has Laub say that what you did and what you left
 both count. After the credits the HUD points to Sammlungen, Codex and the ending replay action in
 Pause. The ending card presents the ending's own lines, and the presenter is cleared at the credits.
+Weiter restores the chosen epilogue when the save is waiting for Abspann and keeps the mouse free
+while the epilogue is open. Ende noch einmal wählen loads the separate save from before the choice.
 `flags['combat.disabled']` is set from the finale on (`k4_11` … `e2`; cleared after the credits).
 The fallback epilogue keys accept the pack's value spellings (`herzog_selbst` ≡ `herzog` …).
 
@@ -1060,6 +1069,8 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Pointer lock can intercept Abspann after desktop Weiter (TASK-039, 2026-11-26) | Boot requests pointer lock after the startup handlers run and only when the modal stack is empty. |
+| The epilogue disappears on continue (TASK-039, 2026-11-26) | Weiter restores the saved ending's epilogue and its Abspann button. The button starts that ending's party and credits. |
 | Motion and focus regressions (TASK-032 review, 2026-11-26) | Verify shoulder clearance before extending the reduced-motion camera. Keep steady cues for the torch, reflected Bannlicht, fireworks, survey markers, loot and party lights. Both credits views honor the OS preference. Release notes open at the top, and inline pilot choices apply through the story API. |
 | Involuntary motion and lost keyboard focus (TASK-032, 2026-11-26) | Reduced motion uses still title and map views, camera cuts and short fades. Survey activations, the lantern and staged effects retain steady cues. Menus keep Tab inside the active dialog and restore focus after a page closes or a journal filter changes. |
 | Storage failures can stall play or leave a stale checkpoint after a cinematic (TASK-031, 2026-11-26) | The first failure allows an immediate retry. From the second consecutive failure onward, autosaves back off for one second of elapsed time. The game retries queued forced checkpoints, and hiding the tab or returning to the title gives one immediate attempt when there is no active cinematic hold. |
@@ -1084,12 +1095,17 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | A playtest overwrites a stored game or spends most of a chapter drawing intermediate steps (TASK-019, 2026-11-26) | `?nosave` protects save slots during „Neues Spiel“. The campaign uses `?manual&faststep` for subtitle timing and batched draws while still testing quest state, save and continue, and all three endings. |
 | The minimap leads through the Nordflügel wall or away from historical paths, and notices collide with touch controls (TASK-015, 2026-11-26) | The minimap follows the entrance route for the story lead and prepares the historical path overlay during loading. The touch notice dock clears the action pill and unlocked skills. Dialogue and notices reclaim the space when the map hides. |
 | The next turn or the tour group is hard to find at a glance (TASK-015, 2026-11-26) | The local minimap uses a steady north-up view, live tour dots and the compass objective. Map layers follow the era, distant markers retain their bearing along the edge, and reduced motion snaps the heading arrow. |
+| Cinematic hand-back and court transitions can leave stale state (TASK-055, 2026-11-26) | Consecutive shots restore the gameplay field of view. Cinematic disposal clears its marker before flushing the autosave. A load, era change or system disposal releases an interrupted court escort's movement lock. |
+| Returning home during an escort or loading after cinematic disposal can stop play (TASK-055 review, 2026-11-26) | The shift takes over movement after the court releases the escort and restores it at the end. A deferred autosave retains the interrupted cinematic's ID for one skipped completion on load. |
+| Cinematic hand-back and court transitions can leave stale state (TASK-055, 2026-11-26) | Consecutive shots restore the gameplay field of view. A load, era change or system disposal releases an interrupted court escort's movement lock. Loading clears the inspection ring and letter hold timer. |
 | Indoor and scenery state can outlive its room, era or save slot (TASK-059, 2026-11-26) | Restore the saved storey (also from a doorway); while the palace streams, the room catalogue holds the floor and walls. A shift away from the Festsaal choice hides its objects and prompt until the player returns; a fire that ends releases them. A shift drops the previous scenery obstacles, and slot loads restore the gate, coat and lit windows. |
 | A load during a hunt or while collecting can carry an encounter or reward across slots (TASK-058, 2026-11-26) | The incoming slot restores the pack configuration, bottle count, lantern glass and codex receipt. Tests cover partial pickups, a bottle saved mid-fall, and loading a peaceful slot during a capture. |
 | Very large headings in shared links can freeze horizontal look (TASK-060, 2026-11-26) | Wrap the starting heading within one turn before converting it to radians so look input can adjust it. |
 | Invalid shared positions and interrupted gameplay events (TASK-060, 2026-11-26) | Both URL coordinates must be finite before teleporting. Each event observer can fail independently, so later listeners still receive the era change, reward or pause event. |
 | Fast travel can save the departure pose or leave a curtain on a newly opened game (TASK-030, 2026-11-26) | The autosave captures the arrival pose before the travel pause is released. Loading a slot or starting a game clears the curtain during its fade. |
 | Travel effects can outlast the action that started them (TASK-030, 2026-11-26) | A loaded game cancels pending fast travel. The outdoor sprint boost clears on combat entry. Regression tests also exercise one-time lore XP and the 120-second Wegstein cooldown across a reload. |
+| A combat autosave records Die Enge kills before their rewards, or Laub warns from the present-day wake point (TASK-038 review, 2026-11-26) | Combat releases the autosave after all rewards from the tick have been applied. The reinforcement reaction waits for 1789. Unit and browser coverage check the survivors' regular and elite XP. |
+| Saving between the waves of Die Enge strands Chapter 1 (TASK-038, 2026-11-26) | The story restores the wave transition from saved group counts. A partial second wave resumes with its survivors, and a completed second wave advances the beat. Only actual kills award XP and roll loot. Coverage lives in `tests/story-enge.test.ts` and `e2e/enge-save.spec.ts`. |
 | Accepting „Der Jaguar“ while Hanne’s conversation is open delays saved calm credit (TASK-040 review, 2026-11-26) | The acceptance autosave includes the payout. For a save recovered at the title, „Weiter“ presents the reward dialogue and notice. „Neues Spiel“ drops that presentation. A quest finished on acceptance shows no „Nebenaufgabe“ banner after its payout. |
 | Driving the jaguar away early strands Hanne’s quest at 0/1 (TASK-040, 2026-11-26) | „Der Jaguar“ credits the saved calm on acceptance or when an active save loads, and automatically grants its 200 base XP and two Lampenöl once. |
 | A skipped subsecond survival bonus can look complete in Aufgaben (TASK-047) | The journal uses the quest engine's target for ticks and progress counts. Survival targets round to whole seconds with a minimum of one. |
