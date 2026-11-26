@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { EnemyGroupState } from '../src/rpg/types';
-import { CombatSim, type SimInput } from '../src/systems/combat/sim';
+import { CombatSim, type SimEvent, type SimInput } from '../src/systems/combat/sim';
 
 const DT = 1 / 60;
 const input: SimInput = {
@@ -13,19 +13,80 @@ describe('combat encounter lifecycle', () => {
   it.each(['despawn', 'dematerialise'] as const)('%s clears the encounter’s airborne attack', (remove) => {
     const sim = new CombatSim({ heightAt: () => 0 }, {});
     const caster = sim.spawnAt('irrlicht', 0, -8, { group: 'caster', era: input.era })!;
-    sim.spawnAt('nebelling', 0, -25, { group: 'bystander', era: input.era });
-    for (let n = 0; n < 240 && !sim.projectiles.length; n++) sim.step(DT, input);
-    const owner = sim.live().find((enemy) => enemy.group === caster.group)!;
-    expect(sim.projectiles).toContainEqual(expect.objectContaining({ owner: owner.id }));
+    caster.time = 'night';
+    const bystander = sim.spawnAt('irrlicht', 0, 8, { group: 'bystander', era: input.era })!;
+    sim.sync(input.era, input.time, input.x, input.z);
+    // Start both at the end of their windups so the shared attack cadence cannot stagger the shots.
+    for (const enemy of sim.live()) {
+      enemy.state = 'windup';
+      enemy.attack = enemy.def.attacks[0]!;
+      enemy.windup = enemy.attack.telegraph;
+      enemy.t = enemy.windup;
+    }
+    sim.step(DT, input);
+    const casterId = sim.live().find((enemy) => enemy.group === caster.group)!.id;
+    const bystanderId = sim.live().find((enemy) => enemy.group === bystander.group)!.id;
+    const removed = sim.projectiles.find((shot) => shot.owner === casterId);
+    const surviving = sim.projectiles.find((shot) => shot.owner === bystanderId);
+    expect(removed).toBeDefined();
+    expect(surviving).toBeDefined();
 
     sim[remove](caster.group);
     expect(sim.live().map((enemy) => enemy.group)).toEqual(['bystander']);
     expect(sim.groups[caster.group]).toBe(remove === 'despawn' ? undefined : caster);
-    expect(sim.projectiles).toHaveLength(0);
+    expect(sim.projectiles.map((shot) => shot.id)).toEqual([surviving!.id]);
 
-    const events = sim.step(DT, { ...input, era: 'today' });
-    expect(events).not.toContainEqual(expect.objectContaining({ type: 'playerHit' }));
-    expect(sim.p.hp).toBe(sim.p.max);
+    // Stay in the line of fire. Daytime keeps the dematerialised caster from respawning.
+    const events: SimEvent[] = [];
+    for (let n = 0; n < 90; n++) events.push(...sim.step(DT, { ...input, time: 'day' }));
+    expect(events).toContainEqual(expect.objectContaining({ type: 'impact', p: expect.objectContaining({ id: surviving!.id }), hitPlayer: true }));
+    expect(events.filter((event) => event.type === 'playerHit')).toEqual([expect.objectContaining({ src: bystanderId })]);
+    expect(events).not.toContainEqual(expect.objectContaining({ type: 'impact', p: expect.objectContaining({ id: removed!.id }) }));
+  });
+
+  it.each(['despawn', 'dematerialise', 'despawn all'] as const)('%s cancels a pack’s pending falling stone', (remove) => {
+    const sim = new CombatSim({ heightAt: () => 0 }, {});
+    const stoneInput = { ...input, era: '1796' };
+    const pack = sim.spawnAt('grusling', 0, -8, { group: 'pack', era: stoneInput.era, count: 4 })!;
+    pack.time = 'night';
+    sim.p.god = true;
+    for (let n = 0; n < 720 && !sim.hazards.length; n++) sim.step(DT, stoneInput);
+    expect(sim.hazards).toHaveLength(1);
+    const hazard = sim.hazards[0]!;
+    expect(hazard.kind).toBe('stone');
+    expect(sim.rings).toContainEqual(expect.objectContaining({ id: hazard.ring }));
+    expect(sim.projectiles).toContainEqual(expect.objectContaining({ kind: 'hazard.stein' }));
+
+    // Removing an unrelated, materialised encounter leaves the warning active.
+    sim.spawnAt('grusling', 0, -30, { group: 'bystander', era: stoneInput.era });
+    sim.sync(stoneInput.era, stoneInput.time, stoneInput.x, stoneInput.z);
+    expect(sim.live().some((enemy) => enemy.group === 'bystander')).toBe(true);
+    sim.despawn('bystander');
+    expect(sim.hazards).toEqual([hazard]);
+    expect(sim.rings).toContainEqual(expect.objectContaining({ id: hazard.ring }));
+    expect(sim.projectiles).toContainEqual(expect.objectContaining({ kind: 'hazard.stein' }));
+
+    if (remove === 'dematerialise') {
+      const other = sim.spawnAt('grusling', 0, -14, { group: 'other-pack', era: stoneInput.era, count: 3 })!;
+      other.time = 'night';
+      other.aggro = true;
+      other.escorts = [];
+      sim.sync(stoneInput.era, stoneInput.time, stoneInput.x, stoneInput.z);
+      expect(sim.live().filter((enemy) => enemy.group === other.group && enemy.aggro)).toHaveLength(3);
+    }
+
+    if (remove === 'despawn all') sim.despawn('*');
+    else sim[remove](pack.group);
+    expect(new Set(sim.live().map((enemy) => enemy.group))).toEqual(new Set(remove === 'dematerialise' ? ['other-pack'] : []));
+    const pending = { hazards: [...sim.hazards], rings: [...sim.rings], projectiles: [...sim.projectiles] };
+
+    sim.p.god = false;
+    const hp = sim.p.hp;
+    const events: SimEvent[] = [];
+    for (let n = 0; n < 120; n++) events.push(...sim.step(DT, { ...stoneInput, time: 'day' }));
+    expect(sim.p.hp).toBe(hp);
+    expect(events.some((event) => event.type === 'hazardHit' || event.type === 'playerHit')).toBe(false);
+    expect(pending).toEqual({ hazards: [], rings: [], projectiles: [] });
   });
 
   it('rebuilds saved groups with the earned kills and reached boss phase', () => {

@@ -398,6 +398,8 @@ A group of **three or more** in the past (not today, not a boss) is a pack:
   rings fill for 1.4 s with embers falling into them, then burn (10 to you, 30 % of their HP to
   enemies, elites half); **1796 Steinschlag** — one 2.1 m ring for 1.5 s, a dressed block falls onto
   it (14, 45 %). Rings land near you and near the pack; enemies are fair game (lure them in).
+  Removing the pack that triggered a hazard cancels its warning rings, any falling stone and the
+  pending damage. Other encounters keep their attacks.
 
 **Balance (`tests/combat-balance.test.ts`, bots in `tests/combat-bots.ts`):** per chapter, at the
 intended build (§6), a standard encounter (prologue 4 Nebelinge today; K1 3 Streuner 1789; K2 4
@@ -1076,6 +1078,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Falling stones outlive the pack that triggered them (TASK-028, 2026-11-26) | Despawning or dematerialising the responsible pack cancels the era hazard and its warning and stone. Regression tests cover the impact window and preserve unrelated encounters' attacks. |
 | Attacks linger after an encounter disappears (TASK-028, 2026-11-26) | Removing an encounter clears its airborne attacks with its warnings. The regression tests also cover reloading earned kills and reached boss phases, restoring Bannlicht charges and capping healing. |
 | The Wegweiser can draw through a wall or miss a reachable detour (TASK-026, 2026-11-26) | The solver checks grid edges during search and can try more than one approach to a free off-grid goal. It uses player clearance (less a little for a player pressed against a wall) and the wading limit to leave the start, keeps the quick straight route when clear, and stops at a reachable approach when it cannot finish. An enclosed start with no reachable leg hides the trail. |
 | Legacy garden saves can have every required objective credited after Continue without a turn-in topic (TASK-037, 2026-11-26) | After restoring counts, Continue marks the quest ready when its required objectives are complete. Hanne then offers the normal turn-in and pays once. Laub's exit lines queue first. The quests start on entry and queue their offers before the autosave. |
