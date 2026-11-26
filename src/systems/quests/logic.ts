@@ -512,7 +512,7 @@ export class QuestBook {
     const slip = this.openObjectives(quest).find((objective) => objective.id === 'zettel')?.item;
     if (!slip) return;
     if ((progression?.inventory?.[slip] ?? 0) > 0) this.progress(quest.id, 'zettel');
-    else if (!Object.values(progression?.placed ?? {}).some((pickup) => pickup.item === slip)) {
+    else if (!Object.values(progression?.placed ?? {}).some((pickup) => pickup?.item === slip)) {
       this.env.emit('loot:place', { id: `${quest.id}.zettel.recovered`, item: slip, x: boss.x, z: boss.z, era: boss.era, quest: quest.id });
     }
   }

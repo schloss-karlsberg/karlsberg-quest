@@ -250,6 +250,25 @@ describe('Chapter 1 save recovery', () => {
     expect(progression.pickups()).toEqual(remaining);
   });
 
+  it('loads a first-drop Schuldbuch save with a corrupt bestiary or taken list without throwing', () => {
+    const quest = 'q.k1.lohn';
+    const group = `${quest}.buch`;
+    const state = createInitialState();
+    state.systems.quests = { ...createQuestSlice(), quests: { [quest]: { state: 'active', counts: { soll: 1, zeichen: 1 }, t: 0 } } };
+    state.systems.combat = { hp: 100, stamina: 100, bann: 2, deaths: 0, groups: {
+      [group]: { group, kind: 'schuldbuch', era: '1789', x: 1300, z: -1254, count: 1, killed: 1, quest, objective: 'buch' },
+    } };
+    state.systems.progression = { ...createProgressionSlice(), drops: 8, placed: {
+      'drop.7.0': { id: 'drop.7.0', item: 'item.balsam', count: 1, x: 1301, z: -1255, era: '1789', drop: true },
+    } };
+    for (const corrupt of [{ bestiary: 5 }, { taken: 'drop.7.1' }]) {
+      const raw = JSON.parse(serializeState(state));
+      if ('bestiary' in corrupt) raw.systems.quests.bestiary = corrupt.bestiary;
+      else raw.systems.progression.taken = corrupt.taken;
+      expect(() => deserializeState(JSON.stringify(raw))).not.toThrow();
+    }
+  });
+
   it('lets the gardener pay once for the Kasuar led home before quest acceptance, after the story cleared it', () => {
     const quest = 'q.k1.kasuar';
     const { quests } = questsInPlay([{ data: k1File }], false);

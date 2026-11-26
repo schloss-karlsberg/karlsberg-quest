@@ -3,6 +3,10 @@ import { enemyDef } from '../../rpg/enemies';
 import { itemDef, lootTable } from '../../rpg/items';
 import { ProgressionCore, dropSpot, normalizeSlice } from '../progression/logic';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /** Finish the legacy Schuldbuch reward batch before the loaded systems see it. */
 export function migrateSchuldbuchRewards(state: GameState): void {
   const { combat, progression, quests } = state.systems;
@@ -10,7 +14,7 @@ export function migrateSchuldbuchRewards(state: GameState): void {
   const boss = combat?.groups?.['q.k1.lohn.buch'];
   if (!quests || !progression || quest?.state !== 'active' || (quest.counts?.buch ?? 0) > 0 ||
     boss?.kind !== 'schuldbuch' || boss.quest !== 'q.k1.lohn' || boss.objective !== 'buch' || boss.count !== 1 || boss.killed !== 1 ||
-    (quests.bestiary?.schuldbuch ?? 0) > 0) return;
+    (quests.bestiary !== undefined && !isRecord(quests.bestiary)) || (quests.bestiary?.schuldbuch ?? 0) > 0) return;
 
   // The old loot listener incremented the roll counter and saved at the first loot:place,
   // before the other drops, bestiary credit, quest progress or XP had been applied.
@@ -22,7 +26,8 @@ export function migrateSchuldbuchRewards(state: GameState): void {
   if (!first?.drop || first.id !== firstId || first.item !== 'item.balsam' || first.count !== 1 || first.era !== boss.era ||
     Math.hypot(first.x - boss.x, first.z - boss.z) > (boss.leash ?? 45) + 10) return;
   if (Object.keys(progression.placed ?? {}).some((id) => id.startsWith(prefix) && id !== first.id) ||
-    progression.taken?.some((id) => id.startsWith(prefix))) return;
+    (progression.taken !== undefined && !Array.isArray(progression.taken)) ||
+    progression.taken?.some((id) => typeof id === 'string' && id.startsWith(prefix))) return;
 
   const def = enemyDef(boss.kind);
   const table = def?.loot ? lootTable(def.loot) : undefined;
