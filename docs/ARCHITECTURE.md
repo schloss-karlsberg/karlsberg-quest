@@ -65,7 +65,7 @@ Code: `scripts/voice/moss.ts` (config, guard, batching, lock), `providers.ts` `m
   resolve inside `KQ_MOSS_VOICES` and never under `/casting/clips/` (ElevenLabs clips); the runner
   checks every reference before the model loads. Reference WAVs and clips are never committed.
 - **Lock:** at most 6 lines per runner process (one model load, 25–37 GB peak), each process wrapped in
-  `KQ_HEAVY_OWNER=kq-voice-moss scripts/dev/heavy.sh --check-load --strict --max-hold 10 -- <venv>/bin/python -I scripts/voice/moss/runner.py <job>`
+  `KQ_HEAVY_OWNER=kq-voice-moss scripts/dev/heavy.sh --exclusive --check-load --strict --max-hold 10 -- <venv>/bin/python -I scripts/voice/moss/runner.py <job>`
   (a `KQ_HEAVY_OWNER` in the env relabels the owner, e.g. `kq-voice-gate` for a gate run).
   No batch starts while `/tmp/kq-quiet-window` exists (the runner also exits 76 if it appears inside the
   lock, and the batch is retried); `--strict` refusing (exit 75) stops the run. WAVs are post-processed
@@ -594,6 +594,11 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 - Unit (`tests/`): event bus, loop determinism, state/save round trip and throttling, settings,
   system ordering + error isolation, heightfield sampling, decoders (incl. real data), collision,
   forest determinism, validator (good + each failure class), ContentDB.
+- Campaign encounters: `encounter()` in `tests/npc-encounter.test.ts` and `pen()` in
+  `tests/menagerie-encounter.test.ts` drive real systems with an `EventBus`, a `GameStateStore`
+  and explicit ticks. Replace the store with a JSON snapshot and emit `save:loaded` to test a
+  rewind in the same running game. Despawn the NPC before loading to exercise placement rebuilds.
+  Neither fixture needs a renderer, audio device or real timers.
 - Art polish (`e2e/polish-art.spec.ts`): ghost costumes by day / night, forest LOD stats and the
   eras' seasons, the Festsaal on arrival (heat) and burning, hounds in fog at 30–60 m; screenshots
   `pol-art-*.png`.
@@ -614,7 +619,7 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   `skill` action (Kartograf 3 card) → measuring the gallery in 1793-07 (`measure:done`, the
   Chronik's measuring clue) → the story's pack in 1793-02 leaving snow tracks
   (`int-r2-*.png`). Unit rules of the integration: `tests/integration-round2.test.ts`.
-  `KQ_E2E_PORT` picks the preview port (default 5281; an existing server on it is reused).
+  `KQ_E2E_PORT` picks the preview port (default 5281, or 5281 + k inside `scripts/dev/heavy.sh` slot k; an existing server on it is reused).
 - E2E (`e2e/smoke.spec.ts`, Chromium + SwiftShader WebGL): title → content note → name → paper map → "Tour starten" → game
   starts; every era and scan mode render with no console errors / failed requests; walking,
   crouch, spirit view rules and a save round trip.
@@ -878,6 +883,9 @@ Round-4 (polish: set dressing) integration rules:
   pack follows it print by print (`hunt:tracking {on, why?}`, horn found / lost) but never across a
   break. Crouching / standing over the pack's prints reads them (Spurenleser: kind, number,
   rider, age, direction; tier 2 highlights their routes) → caption + `hunt:read`.
+  The Warner's scripted boot trail is for the player to follow, not the hounds. Its hold extends
+  only its own lifetime. A cue with no valid positive stride uses the usual 1.4 m spacing.
+  Each segment uses at most 1800 terrain samples, spread across its full length.
 - Emits `hunt:alert`, `hunt:horn {signal, x, z, mode}`, `hunt:finale`, `hunt:start`, `hunt:end {reason}`,
   `hunt:tracking`, `hunt:goal`, `hunt:rest`, `hunt:read`, `lantern:toggle/oil/empty`,
   `player:caught {by:'pack', soft?}` (2.0 s into the caught sequence). Writes `flags.lanternLit`
@@ -905,9 +913,13 @@ Round-4 (polish: set dressing) integration rules:
   path (solid), grumble when shoved, amble aside after ~14 s of calm waiting (`menagerie:yield`).
   Jaguar circles outside the lantern light, creeps in when it's dark, shoves you over, retreats;
   light drives it off. No catching: a knockdown freezes you prone for 1.8–3.2 s (view tips to the
-  sky; reduced motion: no roll) → `menagerie:knockdown`. Gentle: slower, shorter, the jaguar never shoves.
+  sky; reduced motion: no roll) → `menagerie:knockdown`. Gentle: slower, shorter; the jaguar never
+  shoves, even if gentle mode is enabled during its pounce. Overlapping animals move apart on
+  walkable ground, using the available side or sliding along the bank when the direct push is blocked.
 - Procedural low-poly rigs (`models.ts`, kqLight / kqFog), eyeshine sprites, Web Audio calls with captions.
-- State `systems.menagerie {animals: [{animal, x, z, id, heading?, count?, era}]}`.
+- State `systems.menagerie` stores spawns in `animals`, permanently calmed group ids in `calmed`,
+  and progress by animal id in the optional `misses` and `flares` maps. A load restores the saved
+  counts, with missing entries starting at zero. Three saved misses keep the lead-home action ready.
 - Hooks `kq.menagerie.spawn/spawnInView/clear/state/down/setState/place/freeze/events/places`.
 - Example beats (test only, not loaded): `content/test/hunt-menagerie.test.story.json`.
 
@@ -1450,6 +1462,8 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   absent, active once it lands. `kq.animals.stats()` reports which.
 - State `systems.animals` (`AnimalSave {v: 1, deer, dogs}`), written at 4 Hz and after every
   request. Restore (init, `save:loaded`) re-spawns the bodies and emits nothing.
+  A saved `leave` follows the chain to a departing leader with a saved destination. Cycles and
+  chains without such a leader restore as `gone`.
 - Hooks `kq.animals`: `ready` (true once the `animal:request` listener is attached; kq-story's
   temporary stand-in checks it), `spawn(op)`, `request(a)`, `list()` → `{id, kind, state, x, z,
   dist}`, `state(id)`, `startle(id)`, `calm(id, s)`, `leave(id)`, `clear()`, `demo()` (the deer pair
@@ -2147,7 +2161,8 @@ Each RPG track adds its own subsection here when it fills its system in.
   `lanternPose {side, lift}` — combat holds the lantern on the left and lifts it during a flare.
 - **Menagerie**: attacks pass through animals (combat never targets them). A cassowary that
   charged past three times can be led home with E → `menagerie:calmed`; three Bannlicht flares
-  drive a jaguar off for good → `menagerie:calmed`; calmed ids persist in `MenagerieSlice.calmed`.
+  drive a jaguar off for good → `menagerie:calmed`. The save records the counted misses and flares
+  as well as completed calming.
 - **Debug** `window.kq.combat`: `state() spawn(kind, opts) kill(groupOrId?) hit(n) bann() dodge()
   god(on) groups() enemies() place() windup() freeze() skill(id) hurt() heal() events() shake() sim()`.
 - **e2e** `e2e/combat.spec.ts` (screenshots `test-results/screens/rpg-combat-*.png`),

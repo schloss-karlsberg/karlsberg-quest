@@ -373,6 +373,31 @@ describe('registry', () => {
     expect(reg.list()).toEqual([]);
   });
 
+  it('grounds only the invalid coordinates and still spawns when terrain has no height', () => {
+    const warn = vi.fn();
+    const ground = vi.fn(() => NaN);
+    const registry = new PeopleRegistry((args) => new FakePerson(args), ground, warn);
+    const person = registry.spawn('extra.1', { x: Infinity, z: 12, y: NaN });
+    expect(ground).toHaveBeenCalledWith(0, 12);
+    expect(person.root.position.toArray()).toEqual([0, 0, 12]);
+    const upstairs = registry.spawn('extra.2', { x: -7, z: NaN, y: 20 });
+    expect(upstairs.root.position.toArray()).toEqual([-7, 20, 0]);
+    expect(ground).toHaveBeenCalledTimes(1);
+  });
+
+  it('resumes a hidden body on return and drops its LOD stats when disposed', () => {
+    const { reg } = fakeRegistry();
+    const speaker = reg.spawn('double.soll', { x: 0, y: 0, z: 0, speaker: 'soll' });
+    const env = { reducedMotion: true, reducedFlash: true, drawLimit: 45 };
+    reg.tick(0.1, { x: 0, y: 46, z: 0 }, env);
+    expect(reg.stats()).toMatchObject({ visible: 0, lod: { hidden: 1 } });
+    expect(reg.bySpeaker('soll')).toBe(speaker);
+    reg.tick(0.1, { x: 0, y: 20, z: 0 }, env);
+    expect(reg.stats()).toMatchObject({ visible: 1, lod: { hidden: 0, full: 1 } });
+    speaker.dispose();
+    expect(reg.stats()).toMatchObject({ visible: 0, count: 0, lod: { full: 0 } });
+  });
+
   it('bySpeaker finds the newest live person with that speaker (v0.1)', () => {
     const { reg } = fakeRegistry();
     expect(reg.bySpeaker('imhoff')).toBeUndefined();

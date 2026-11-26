@@ -426,8 +426,8 @@ export function stepFollower(f: Deer, leader: Deer, dt: number, input: DeerInput
 }
 
 /** The leader id of a follower ('animal:ricke' → 'ricke'), or '' for a self-led deer. */
-export function leaderId(d: Deer): string {
-  return d.follow.startsWith('animal:') ? d.follow.slice(7) : '';
+export function leaderId(d: Pick<Deer, 'follow'>): string {
+  return d.follow?.startsWith('animal:') ? d.follow.slice(7) : '';
 }
 
 /** Step all deer: self-led first, then followers whose leader has been stepped (chains allowed). */
@@ -495,7 +495,20 @@ export function serializeDeer(d: Deer): DeerSave {
 
 const DEER_STATES: readonly DeerState[] = ['graze', 'alert', 'flee', 'settled', 'leave', 'gone'];
 
-export function restoreDeer(s: DeerSave): Deer {
+function hasDeparture(deer: DeerSave, herd: readonly DeerSave[]): boolean {
+  const seen = new Set<string>();
+  let current = deer;
+  while (current.state === 'leave' && !seen.has(current.id)) {
+    seen.add(current.id);
+    const id = leaderId(current);
+    const leader = id && id !== current.id ? herd.find((other) => other.id === id) : undefined;
+    if (!leader) return Boolean(current.away);
+    current = leader;
+  }
+  return false;
+}
+
+export function restoreDeer(s: DeerSave, herd: readonly DeerSave[] = []): Deer {
   const d = createDeer({ op: 'spawn', id: s.id, kind: 'reh', look: s.look, x: s.x, z: s.z, follow: s.follow, spacing: s.spacing, shy: s.shy });
   d.yaw = s.yaw;
   d.state = DEER_STATES.includes(s.state as DeerState) ? (s.state as DeerState) : 'graze';
@@ -505,7 +518,7 @@ export function restoreDeer(s: DeerSave): Deer {
   d.flee = s.flee ? { ...s.flee } : null;
   d.away = s.away ? { ...s.away } : null;
   if (d.state === 'flee' && !d.flee) d.state = 'settled';
-  if (d.state === 'leave' && !d.away) d.state = 'gone';
+  if (d.state === 'leave' && !hasDeparture(s, herd)) d.state = 'gone';
   d.motion.yaw = d.yaw;
   return d;
 }

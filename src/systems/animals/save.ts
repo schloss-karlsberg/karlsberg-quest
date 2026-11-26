@@ -10,5 +10,6 @@ export function serializeAnimals(deer: readonly Deer[], dogs: readonly Dog[]): A
 /** Unknown versions or a missing slice restore as empty (the story re-spawns its animals). */
 export function restoreAnimals(s: Partial<AnimalSave> | null | undefined): { deer: Deer[]; dogs: Dog[] } {
   if (!s || s.v !== 1) return { deer: [], dogs: [] };
-  return { deer: (s.deer ?? []).map(restoreDeer), dogs: (s.dogs ?? []).map(restoreDog) };
+  const herd = s.deer ?? [];
+  return { deer: herd.map((deer) => restoreDeer(deer, herd)), dogs: (s.dogs ?? []).map(restoreDog) };
 }
