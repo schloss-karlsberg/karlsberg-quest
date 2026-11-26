@@ -22,13 +22,33 @@ export function explorationSession() {
     },
   };
   events.on('save:loaded', () => era.set(state.state.era));
-  vi.stubGlobal('window', { kq: {} });
-  const element = () => ({
-    style: {}, dataset: {}, classList: { add: vi.fn(), remove: vi.fn(), toggle: vi.fn() },
-    setAttribute: vi.fn(), append: vi.fn(), replaceChildren: vi.fn(), remove: vi.fn(),
+  vi.stubGlobal('window', {
+    kq: {}, innerHeight: 720, setTimeout, clearTimeout,
+    addEventListener: vi.fn(), removeEventListener: vi.fn(), setInterval: vi.fn(),
   });
+  class Element {
+    private classes = new Set<string>();
+    style = {};
+    dataset = {};
+    classList = {
+      add: (...names: string[]) => names.forEach((name) => this.classes.add(name)),
+      remove: (...names: string[]) => names.forEach((name) => this.classes.delete(name)),
+      contains: (name: string) => this.classes.has(name),
+      toggle: vi.fn(),
+    };
+    setAttribute = vi.fn();
+    append = vi.fn();
+    appendChild = vi.fn();
+    prepend = vi.fn();
+    replaceChildren = vi.fn();
+    remove = vi.fn();
+    addEventListener = vi.fn();
+  }
+  vi.stubGlobal('Node', Element);
+  const element = () => new Element();
   vi.stubGlobal('document', {
-    createElement: element, getElementById: () => null, querySelector: () => null,
+    createElement: element, createTextNode: element, getElementById: () => null, querySelector: () => null,
+    addEventListener: vi.fn(), removeEventListener: vi.fn(),
     head: { append: vi.fn(), querySelector: () => null },
   });
   return { events, state, save, era, element };

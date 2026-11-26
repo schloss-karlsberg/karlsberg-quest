@@ -51,6 +51,21 @@ bottles and collectible persistence. Fix defects demonstrated by those tests.
 
 Started on `dev/task-058` at `79c5718`.
 
+## Review fix round (2026-11-26)
+
+Goal: resolve the seven review findings on `dev/task-058` while preserving session state and
+keeping per-frame bottle visibility checks cheap.
+
+### Acceptance criteria and plan
+
+- [ ] Cover loading both sides of the capture handoff and clear outgoing staged or fading hounds.
+- [ ] Exercise Notes through Story replay and retain the saved inactivity clock until real progress.
+- [ ] Preserve the relief countdown through Continue and recheck survey skill access.
+- [ ] Restore phase-two bottle restrictions and use Hunt's effective bounds for pack coverage.
+- [ ] Recompute bottle coverage on arena changes and assert frame updates reuse it.
+- [ ] Record the findings against `origin/main`, update the docs and run the four gates and locked smoke spec.
+- [ ] Commit the fixes in reviewable groups.
+
 ## Coverage inventory
 
 Baseline at `79c5718`. Checked system imports, exported function names and the events that

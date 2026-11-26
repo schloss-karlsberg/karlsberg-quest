@@ -1,8 +1,11 @@
-import { Scene, Vector3 } from 'three';
+import { PerspectiveCamera, Scene, Vector3 } from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { GameContext } from '../src/core/context';
 import hunt from '../src/systems/hunt';
+import story from '../src/systems/story';
+import { createStorySlice } from '../src/systems/story/engine';
 import { explorationSession } from './exploration-fixture';
+import { initStory } from './story-session-fixture';
 
 function setup() {
   const { events, state, save, era, element } = explorationSession();
@@ -10,31 +13,36 @@ function setup() {
   const player = {
     frozen: false, lookLocked: false, position: new Vector3(), stance: 'stand', yaw: 0, flying: false,
     stats: { speed: 0, noise: 0, visibility: 1, lanternLit: false },
+    teleport: vi.fn((x: number, z: number) => player.position.set(x, 0, z)),
   };
   const ceilingAt = vi.fn<() => number | null>(() => null);
   const loop = { time: 0, tick: 0 };
   const ctx = {
-    state, events, save, era, loop, player, scene: new Scene(), audio: { bus: () => null, noise: () => null },
-    systems: { get: () => undefined }, post: { uniforms: { uDesaturate: { value: 0 } } },
+    state, events, save, era, loop, player, scene: new Scene(), camera: new PerspectiveCamera(),
+    audio: { bus: () => null, noise: () => null },
+    systems: { get: vi.fn() }, post: { uniforms: { uDesaturate: { value: 0 } } },
     data: { paths: { nodes: [], edges: [], kinds: [] } },
-    ui: { layer: element, modals, toast: vi.fn(), hud: { busy: vi.fn() }, cards: { soft: vi.fn() } },
+    ui: { layer: element, modals, toast: vi.fn(), hud: { busy: vi.fn(), setThreat: vi.fn(), setLantern: vi.fn() }, cards: { soft: vi.fn() } },
     world: {
       heightAt: () => 0, ceilingAt, surfaceAt: () => 'meadow', coverAt: () => 0,
       bounds: () => ({ x0: -500, x1: 500, z0: -500, z1: 500 }),
       collider: { enabled: false, resolve: (x: number, z: number) => ({ x, z, hit: false }) },
+      heightfield: { normalAt: () => new Vector3(0, 1, 0) },
       look: { snow: 0 },
     },
     t: (key: string) => key, input: { wasPressed: () => false },
     settings: { state: { gentleMode: false, subtitles: false, soundIndicators: false } },
   } as unknown as GameContext;
+  events.on('save:loaded', () => player.teleport(state.state.player.x, state.state.player.z));
   hunt.init(ctx);
   const step = (dt: number) => { loop.time += dt; loop.tick++; hunt.update(dt); };
   step(0);
-  return { events, state, save, era, modals, player, ceilingAt, step, pack: window.kq!.hunt!, lamp: window.kq!.lantern! };
+  return { ctx, element, events, state, save, era, modals, player, ceilingAt, step, pack: window.kq!.hunt!, lamp: window.kq!.lantern! };
 }
 
 afterEach(() => {
   hunt.dispose();
+  story.dispose();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -87,21 +95,67 @@ describe('the lantern during exploration', () => {
 });
 
 describe('loading a configured hunt', () => {
-  it('cancels a pending capture when the loaded slot has no hunt', () => {
-    const { era, events, save, player, step, pack } = setup();
+  it.each([false, true])('cancels capture on load (handed to Story: %s)', async (handedOff) => {
+    const { ctx, element, era, events, save, state, player, step, pack } = setup();
+    vi.mocked(ctx.systems.get).mockReturnValue(story);
+    const { layer } = await initStory(ctx, element);
     era.set('1789');
+    state.mutable.player.x = 30;
+    state.mutable.player.z = 50;
+    state.mutable.systems.story = {
+      ...createStorySlice(), meters: { oil: { id: 'oil', value: 0.6, done: true, seconds: 20, full: 'none' } },
+    };
     save.save('safe');
     const caught = vi.fn();
+    const shift = vi.fn();
+    const refill = vi.fn();
     events.on('player:caught', caught);
+    events.on('shift:request', shift);
+    events.on('lantern:request', refill);
     pack.start({ seed: 17 });
     pack.catch();
-    expect(player.frozen).toBe(true);
+    if (handedOff) {
+      step(2.2);
+      step(0); // Hunt releases its side of the handoff.
+    }
+    expect(caught).toHaveBeenCalledTimes(handedOff ? 1 : 0);
+    if (!handedOff) expect(player.frozen).toBe(true);
     save.load('safe');
-    step(2);
-    expect(caught).not.toHaveBeenCalled();
+    step(3);
+    story.update(3, ctx);
+    expect(caught).toHaveBeenCalledTimes(handedOff ? 1 : 0);
+    expect(shift).not.toHaveBeenCalled();
+    expect(refill).not.toHaveBeenCalled();
+    expect(player.teleport).toHaveBeenCalledExactlyOnceWith(30, 50);
+    expect(state.state.systems.story?.meters.oil).toMatchObject({ value: 0.6, done: true });
     expect(player.frozen).toBe(false);
     expect(player.lookLocked).toBe(false);
     expect(pack.sim()).toBeNull();
+    if (handedOff) {
+      expect(ctx.ui.hud.busy).toHaveBeenCalledWith('caught', false, 0);
+      expect(vi.mocked(layer.append).mock.lastCall?.[0].classList.contains('kqs-down')).toBe(false);
+    }
+  });
+
+  it.each(['resting', 'fading'])('clears %s hounds before the incoming slot replays its cues', (kind) => {
+    const { ctx, events, save, pack } = setup();
+    save.save('peaceful');
+    pack.start({ seed: 17 });
+    events.emit('story:cue', { id: 'hunt:tableau', data: { kind: 'rest', from: 'pack' } });
+    expect(pack.sim()).toBeNull();
+    expect(pack.tableau()?.kind).toBe('rest');
+    if (kind === 'fading') events.emit('story:cue', { id: 'hunt:tableau', data: { kind: 'off' } });
+    hunt.frame(0, ctx);
+    const hounds = ctx.scene.getObjectByName('hunt-pack')!;
+    expect(hounds.visible).toBe(true);
+    events.on('save:loaded', () => {
+      expect(pack.tableau()).toBeNull();
+      expect(hounds.visible).toBe(false);
+    });
+    save.load('peaceful');
+    hunt.frame(0, ctx);
+    expect(pack.tableau()).toBeNull();
+    expect(hounds.visible).toBe(false);
   });
 
   it.each(['same', 'different'])('restores the saved pack over a live pack in the %s era', (where) => {
