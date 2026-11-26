@@ -269,7 +269,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   // the authored MPFB player is the default; ?avatar=surveyor wears the CC0 surveyor (fallback)
   const avatarModel = (id: AvatarModelId) => () => assets.model(AVATAR_MODELS[id].asset);
   const avatarFirst = avatarModelParam(params.get('avatar'));
-  const avatar = new Avatar(scene, player, avatarModel(avatarFirst), AVATAR_MODELS[avatarFirst].height);
+  const avatar = new Avatar(scene, player, avatarModel(avatarFirst), events, AVATAR_MODELS[avatarFirst].height);
   let zoomSaved = 0;
   let capFps = 60;
   const applySettings = () => {
