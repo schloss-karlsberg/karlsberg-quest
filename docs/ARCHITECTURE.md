@@ -611,7 +611,7 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   `skill` action (Kartograf 3 card) → measuring the gallery in 1793-07 (`measure:done`, the
   Chronik's measuring clue) → the story's pack in 1793-02 leaving snow tracks
   (`int-r2-*.png`). Unit rules of the integration: `tests/integration-round2.test.ts`.
-  `KQ_E2E_PORT` picks the preview port (default 5281; an existing server on it is reused).
+  `KQ_E2E_PORT` picks the preview port (default 5281, or 5281 + k inside `scripts/dev/heavy.sh` slot k; an existing server on it is reused).
 - E2E (`e2e/smoke.spec.ts`, Chromium + SwiftShader WebGL): title → content note → name → paper map → "Tour starten" → game
   starts; every era and scan mode render with no console errors / failed requests; walking,
   crouch, spirit view rules and a save round trip.

@@ -64,8 +64,9 @@ pnpm e2e --workers=1
 ```
 
 Always use `--workers=1`: the game is GPU-heavy, and parallel workers produce flaky timings.
-The preview server uses port 5281 by default. To run suites from several checkouts at the same
-time, give each its own port, e.g. `KQ_E2E_PORT=5301 pnpm e2e --workers=1`.
+The preview server uses port 5281 by default (5281 + k inside `heavy.sh` slot k, see below). To
+run suites from several checkouts at the same time, give each its own port, e.g.
+`KQ_E2E_PORT=5301 pnpm e2e --workers=1`.
 
 On a machine shared by several sessions, wrap heavy jobs (e2e, real-GPU screenshots, local model
 runs) in `scripts/dev/heavy.sh`. It is a machine-wide lock with three slots (`KQ_HEAVY_SLOTS`,
