@@ -490,8 +490,11 @@ describe('cinematic system', () => {
       { id: 'ring', skipped: true },
       { id: 'reh', skipped: true },
     ]);
-    expect(s.save.peek()?.systems.cinematic?.playing).toBeNull();
+    // loading drops the autosave held during the discarded shot (SaveManager.load clears heldReason)
+    expect(s.save.peek()).toBeNull();
     expect(s.save.held).toBe(false);
+    expect(s.save.autosave('after-load', true)).toBe(true);
+    expect(s.save.peek()?.systems.cinematic?.playing).toBeNull();
     expect(s.player).toMatchObject({ frozen: false, lookLocked: false });
     expect(s.holds.size).toBe(0);
     expect(s.busy).toHaveBeenLastCalledWith('stage-cinematic', false, 0);
