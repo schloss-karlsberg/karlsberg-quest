@@ -34,11 +34,11 @@ the audio engine, ambience, footsteps, barks and spoken-dialogue paths.
 - [x] Record each module's player-facing contract and existing unit coverage.
 - [x] Add at least 25 deterministic assertions across the area in a focused run under about three seconds.
 - [x] Reproduce each confirmed bug before changing behaviour and record design questions as test todos.
-- [ ] Commit each fix separately. The capture fix is committed. The sandbox denied Git's worktree index lock for the remaining review fixes.
+- [x] Commit the fixes. The sweep is `5f9636d` and the capture fix `10b04ce`. The other four review fixes landed together in `b9ba89a`.
 - [x] Update the affected docs and the PRD changelog.
 - [x] Pass typecheck, the full unit suite with zero failures and the production build.
-- [ ] Pass the `pnpm validate` gate as written. Its launcher could not open its IPC socket in either round.
-- [x] Run the locked smoke spec on port 5441 or record the sandbox blocker and human-run command.
+- [x] Pass the `pnpm validate` gate as written (rerun outside the sandbox, 2026-11-26).
+- [x] Run the locked voice and smoke specs on port 5441.
 
 ### Review round acceptance criteria
 
@@ -62,7 +62,7 @@ the game docs and this task record.
 - [x] Inventory the runtime modules, related tests and coverage gaps.
 - [x] Exercise representative player-visible contracts and reproduce candidate bugs on the branch base.
 - [x] Apply targeted fixes and rerun the regressions.
-- [ ] Commit the fixes separately when the Git index is writable.
+- [x] Commit the fixes (`10b04ce`, `b9ba89a`).
 - [x] Run the gates, check smoke prerequisites, document the outcome and record follow-ups.
 
 **Test plan** — Run targeted Vitest files, then `pnpm typecheck`, `pnpm test`, `pnpm validate`
@@ -171,27 +171,22 @@ environment. No voiced lines need new text.
   expires on shift. The test todo in `tests/story-voice.test.ts` records the decision.
 - Decide the cadence of procedural speech with reduced motion, where the whole subtitle is shown
   immediately. The recorded-voice path is covered, and the fallback cadence remains a test todo.
-- Run `pnpm validate` with access to the launcher socket and run the smoke spec with
-  `KQ_E2E_PORT=5441 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line`.
 
-### Local commits
+### Final verification (2026-11-26)
 
-The original sweep is in `5f9636d`. The capture fix was committed as `10b04ce`. The next `git add`
-failed because the sandbox denied creation of the worktree's `index.lock`. The remaining review
-changes are in the worktree. Run these commands there with a writable index.
+All five review findings were checked against the code and are fixed: capture cancellation in
+`10b04ce`; playback priority, idle-bark reset, startup playback request and timed-fade assertions
+in `b9ba89a`. The capture fix also removes the curtain's base CSS transition, so a curtain
+cleared by a load or a new game disappears at once.
 
-```sh
-git add src/systems/story/dialogue/voiceClips.ts tests/voice-clips.test.ts
-git commit -m 'fix(story): preserve playback priority through voice preloading' -m 'Co-Authored-By: Codex <noreply@openai.com>'
-
-git add src/systems/barks/index.ts tests/barks-runtime.test.ts
-git commit -m 'fix(story): reset idle bark timing on session replacement' -m 'Co-Authored-By: Codex <noreply@openai.com>'
-
-git add tests/audio-fixture.ts tests/audio-mix.test.ts
-git commit -m 'test: assert timed water and score fades' -m 'Co-Authored-By: Codex <noreply@openai.com>'
-
-git add docs/ARCHITECTURE.md docs/PRD.md docs/ACTION-RPG.md .mc/tasks/todo/TASK-054-audio-coverage.md
-git commit -m 'docs: record the TASK-054 review fixes' -m 'Co-Authored-By: Codex <noreply@openai.com>'
+```text
+pnpm typecheck   ok
+pnpm test        Test Files 126 passed (126) · Tests 1630 passed | 3 todo (1633)
+pnpm validate    ✓ content valid (1 warning(s))
+pnpm build       ✓ built in 284ms
+e2e (locked, port 5441, one worker)
+  voice.spec.ts    1 passed (15.6s)
+  smoke.spec.ts    7 passed (1.9m)
 ```
 
 ## Coverage inventory
