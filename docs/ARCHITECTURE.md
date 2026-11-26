@@ -1991,8 +1991,10 @@ the ground), look at `npc:<id>` (`kq.npc.list()`, else the npc slice), `animal:<
 pitch / yaw; fov and the look keys fade / fog / sun / dark; smooth or linear easing; missing fields
 carry over. The timeline runs on fixed steps (Esc / modals stop it); `cinematic:stop {id}` ends that cinematic at once (no grace, also
 when not skippable; for features that route the input themselves, e.g. the party); skip after 0.5 s by any key
-(not Esc / P / F-keys), click or touch; the HUD steps back except subtitles (`html[data-kq-cinematic]`),
-centre cards wait, and autosaves are held (`save.hold`) until playback ends. If the system is
+(not Esc / P / F-keys), click or touch; the HUD steps back except subtitles (`html[data-kq-cinematic]`).
+The attribute is `locked` when the cinematic locks player input and `free` during the party orbit.
+Only locked cinematics hide the touch surface. Centre cards wait, and autosaves are held
+(`save.hold`) until playback ends. If the system is
 disposed during a shot, the deferred autosave retains the shot ID. On load or startup the runtime
 consumes the saved ID and emits one skipped end event. When a new shot starts during hand-back,
 the final hand-back restores the gameplay field of view from before the first shot.

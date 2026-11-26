@@ -128,6 +128,41 @@ describe('cinematic system', () => {
     expect(s.rt.userSkip()).toBe(false);
   });
 
+  it('exposes whether a cinematic locks input to the touch layout and clears it on end', () => {
+    const s = setup();
+    const attributes = new Map<string, string>();
+    class ElementStub {
+      classList = { add: vi.fn(), remove: vi.fn() };
+      dataset = {};
+      style = {};
+      offsetWidth = 0;
+      setAttribute() {}
+      appendChild() {}
+      remove() {}
+    }
+    vi.stubGlobal('Node', ElementStub);
+    vi.stubGlobal('window', new EventTarget());
+    vi.stubGlobal('document', {
+      documentElement: {
+        setAttribute: (key: string, value: string) => attributes.set(key, value),
+        removeAttribute: (key: string) => attributes.delete(key),
+      },
+      createElement: () => new ElementStub(),
+      createTextNode: (text: string) => text,
+      body: new ElementStub(),
+    });
+    try {
+      s.rt.play(ORBIT);
+      expect(attributes.get('data-kq-cinematic')).toBe('locked');
+      s.rt.play({ ...ORBIT, lockInput: false });
+      expect(attributes.get('data-kq-cinematic')).toBe('free');
+      s.rt.end(false);
+      expect(attributes.has('data-kq-cinematic')).toBe(false);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("cinematic:stop ends that id at once (no grace, even unskippable), a wrong id does nothing; default plays unchanged", () => {
     const s = setup();
     s.rt.play({ ...ORBIT, skippable: false, lockInput: false });

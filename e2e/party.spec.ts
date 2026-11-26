@@ -313,15 +313,20 @@ test.describe('landscape phone', () => {
     }
     const client = await page.context().newCDPSession(page);
     const point = (x: number) => ({ x, y: 150 });
+    expect(await touch.evaluate((el, { x, y }) => document.elementFromPoint(x, y) === el, point(360))).toBe(true);
     await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point(360)] });
     for (const x of [380, 400, 420, 440]) {
       await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [point(x)] });
     }
     await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await step(page, 0); // render consumes touch look before the fixed update checks for hand-back
+    const track = page.getByTestId('party-credits-track');
+    const transform = await track.evaluate((el) => el.style.transform);
     await step(page, 60);
     expect(await page.evaluate(() => window.kq!.cinematic!.playing())).toBeNull();
     expect(await events(page, 'credits:done')).toEqual([]);
     await expect(credits).toBeVisible();
+    expect(await track.evaluate((el) => el.style.transform)).not.toBe(transform);
   });
 
   test('OS reduced motion keeps the credits still, swipe scrolls, and tap dismisses', async ({ page }) => {
