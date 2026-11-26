@@ -202,6 +202,9 @@ Lines with `step` play in order as one sequence. Who speaks what:
 (`endings/assemble.ts`, bible 06-enden §6): one sentence per block in pack order; a flagged block
 takes the line whose `value` equals the flag (reading flags: `n.r_x` ≡ `x`), else its `offen`
 line (`nichts` for the object). Without such lines the story file's `epilogue` data is used.
+Continuing from `enden/e2` restores the chosen epilogue from the saved ending and deeds while
+`story.party` is pending. Abspann sets `story.party` to start `e3`. The `ending` save slot holds
+the pre-choice state for Ende noch einmal wählen.
 
 ## Skills and survey tools
 

@@ -1000,6 +1000,8 @@ first-person story, credits, "Ende noch einmal wählen" (title and, after the cr
 menu). The last K4 beat (`k4_15` "Das Feldbuch") has Laub say that what you did and what you left
 both count. After the credits the HUD points to Sammlungen, Codex and the ending replay action in
 Pause. The ending card presents the ending's own lines, and the presenter is cleared at the credits.
+Weiter restores the chosen epilogue when the save is waiting for Abspann. Ende noch einmal wählen
+loads the separate save from before the choice.
 `flags['combat.disabled']` is set from the finale on (`k4_11` … `e2`; cleared after the credits).
 The fallback epilogue keys accept the pack's value spellings (`herzog_selbst` ≡ `herzog` …).
 
@@ -1060,6 +1062,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| The epilogue disappears on continue (TASK-039, 2026-11-26) | Weiter restores the saved ending's epilogue and its Abspann button. The button starts that ending's party and credits. |
 | Motion and focus regressions (TASK-032 review, 2026-11-26) | Verify shoulder clearance before extending the reduced-motion camera. Keep steady cues for the torch, reflected Bannlicht, fireworks, survey markers, loot and party lights. Both credits views honor the OS preference. Release notes open at the top, and inline pilot choices apply through the story API. |
 | Involuntary motion and lost keyboard focus (TASK-032, 2026-11-26) | Reduced motion uses still title and map views, camera cuts and short fades. Survey activations, the lantern and staged effects retain steady cues. Menus keep Tab inside the active dialog and restore focus after a page closes or a journal filter changes. |
 | Storage failures can stall play or leave a stale checkpoint after a cinematic (TASK-031, 2026-11-26) | The first failure allows an immediate retry. From the second consecutive failure onward, autosaves back off for one second of elapsed time. The game retries queued forced checkpoints, and hiding the tab or returning to the title gives one immediate attempt when there is no active cinematic hold. |
