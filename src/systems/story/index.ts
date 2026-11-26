@@ -30,7 +30,7 @@ import { endingScenes } from './endings/scenes';
 import { EndingStage } from './endings/stage';
 import { EndingScreen } from './endings/ui';
 import { HOME, atHome, bringHome } from './hub/home';
-import { ObjectiveView, bearingDeg, objectivePoint } from './objectives';
+import { ObjectiveView, objectivePoint } from './objectives';
 import { StoryOverlays, cardClockDt } from './overlays';
 import { playStorySound, playStorySoundAction } from './sfx';
 import { acceptTourDeerPhoto, loadBundledStories, missingTourChestnuts, restoreTourDeerPhoto, storiesInPlay } from './stories';
