@@ -1090,18 +1090,14 @@ html[data-kq-touch] .kq-title {
 
 /* ---- M-13 / M-14: photo mode on touch. Only the phone (close) button stays in the top row, in
    its place (the others keep their room, so the toggle does not jump away from the thumb) and clear
-   of the frame's clock and battery at the ends; the combat buttons leave the viewfinder, the
-   shutter stays; the Bussole steps away. */
+   of the frame's clock and battery at the ends. The shutter stays and the play surface still
+   accepts drag to look and move. */
 html[data-kq-touch][data-kq-photo] .kq-t-top .kq-t-btn:not(.photo) {
   visibility: hidden;
 }
 html[data-kq-touch][data-kq-photo] .kq-t-survey,
+html[data-kq-touch][data-kq-photo] .kq-t-stick,
 html[data-kq-touch][data-kq-photo] .kq-t-skills,
-html[data-kq-touch][data-kq-photo] .kq-t-arc .kq-t-btn:not(.attack),
-html[data-kq-touch][data-kq-photo] .kqs-bussole {
-  display: none;
-}
-/* the HUD prompt pill sat under the 1x / 2x lens buttons */
-html[data-kq-touch][data-kq-photo] .kq-hud .kq-prompt {
+html[data-kq-touch][data-kq-photo] .kq-t-arc .kq-t-btn:not(.attack) {
   display: none;
 }

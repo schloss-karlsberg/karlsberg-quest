@@ -106,6 +106,7 @@ export class StoryOverlays {
   constructor(
     private readonly layer: HTMLElement,
     private readonly modals: ModalManager,
+    private readonly inlineChoiceChanged: (open: boolean) => void,
     hud?: Hud,
   ) {
     this.curtainText = h('p.kqs-curtain-text');
@@ -252,6 +253,7 @@ export class StoryOverlays {
       this.choice = null;
       c?.dispose();
       close();
+      if (!modal) this.inlineChoiceChanged(false);
       apply(i);
       return true;
     };
@@ -305,6 +307,7 @@ export class StoryOverlays {
       },
       dispose: () => window.removeEventListener('keydown', keys, true),
     };
+    if (!modal) this.inlineChoiceChanged(true);
     this.tickChoice(0);
   }
 
@@ -343,6 +346,7 @@ export class StoryOverlays {
     this.choice = null;
     c.dispose();
     c.close();
+    if (!c.modal) this.inlineChoiceChanged(false);
   }
 
   clear(): void {

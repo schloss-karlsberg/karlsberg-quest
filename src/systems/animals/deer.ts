@@ -9,10 +9,10 @@
  *
  * The notice meter (0..1) rises with the player's stance noise and visibility (`STANCES`) inside
  * the notice radius and in line of sight. A crouched (or prone) player at crouch speed or slower
- * shrinks the radius to `notice × SNEAK_SCALE` (30 → 10.5 m), so a sneak reaches the 14 m photo
- * range without a rise. Upright and moving inside `flee`, running or sprinting fills the meter.
- * Freezing or backing off lets it decay; upright and frozen inside `flee` only holds it (crouch or
- * back off to calm the deer). There is no fail state: fleeing deer stop again and graze.
+ * shrinks the radius to `notice × SNEAK_SCALE` (30 → 15 m), so a sneak reaches the 20–25 m photo
+ * range without a rise. The meter fills faster when running, sprinting or walking upright within
+ * `flee`. Standing still inside `flee` still builds suspicion. Freezing farther out, holding
+ * still in a low stance or backing away lets it decay. Fleeing deer stop again and graze.
  *
  * A fawn (`follow: 'animal:<doe>'`) mirrors the doe's state and keeps a slot behind her, never
  * farther than FAWN_MAX. `stepDeerHerd` steps doe(s) first, then followers.
@@ -29,7 +29,7 @@ export const DEER = {
   FLEE: 20,
   SETTLE: 25,
   /** A crouched, slow player scales the notice radius by this (C5). */
-  SNEAK_SCALE: 0.35,
+  SNEAK_SCALE: 0.5,
   /** "Crouch speed": sneaking means crouch / prone at or below this ground speed. */
   SNEAK_MAX_SPEED: STANCES.crouch.speed + 0.1,
   /** Above the upright walk (3.2) = running; above this = sprinting. */
@@ -46,8 +46,10 @@ export const DEER = {
   /** Rise rate for a perceived, moving player: RISE × stance (noise + visibility) / 2 × (0.5 + closeness). */
   RISE: 0.6,
   /** Upright + moving inside `flee`, or running. */
-  FILL: 1.0,
-  SPRINT_FILL: 2.0,
+  FILL: 1.5,
+  SPRINT_FILL: 2.5,
+  /** Standing still inside the flee radius. */
+  STAND_FILL: 0.75,
   /** Freezing / backing off. */
   DECAY: 0.5,
   /** Out of range or out of sight. */
@@ -68,8 +70,6 @@ export const DEER = {
   /** Fawn: default slot distance behind the doe and the hard limit (C5: within 2 m). */
   FAWN_SPACING: 1.5,
   FAWN_MAX: 2,
-  /** Photo range for the t6 target (C3 example maxDist). */
-  PHOTO_RANGE: 14,
   /** leave(): walk this far calmly, then gone. */
   LEAVE_DIST: 30,
 } as const;
@@ -177,8 +177,8 @@ export function meterRate(shy: ShyRadii, dist: number, radial: number, input: De
   const r = noticeRadius(shy, p);
   if (dist > r || input.los === false) return -DEER.IDLE_DECAY;
   if (radial > DEER.BACKOFF_SPEED) return -DEER.DECAY;
-  if (p.speed < DEER.FREEZE_SPEED) return p.stance === 'stand' && dist <= shy.flee ? 0 : -DEER.DECAY;
   const m = 1 - DEER.MASK_GAIN * clamp01(input.mask ?? 0);
+  if (p.speed < DEER.FREEZE_SPEED) return p.stance === 'stand' && dist <= shy.flee ? DEER.STAND_FILL * m : -DEER.DECAY;
   if (p.speed > DEER.SPRINT_SPEED) return DEER.SPRINT_FILL * m;
   if (p.speed > DEER.RUN_SPEED) return DEER.FILL * m;
   if (p.stance === 'stand' && dist <= shy.flee) return DEER.FILL * m;
