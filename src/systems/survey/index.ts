@@ -92,13 +92,17 @@ export default defineSystem({
     autoOff = -1;
     cycleAsked = false;
     recheckSkills = false;
-    const onSessionChange = () => {
+    // a load (also a new game, which loads the fresh state first) drops the outgoing find's countdown
+    ctx.events.on('save:loaded', () => {
       autoOff = -1;
       cycleAsked = false;
       recheckSkills = true;
-    };
-    ctx.events.on('save:loaded', onSessionChange);
-    ctx.events.on('game:start', onSessionChange);
+    });
+    // Continue from the title resumes the same game: a pending relief exit keeps its remaining time
+    ctx.events.on('game:start', () => {
+      cycleAsked = false;
+      recheckSkills = true;
+    });
     ctx.events.on('clue:found', () => {
       if (ctx.world.scanMode > 0) autoOff = SCAN_AUTO_OFF_S;
     });

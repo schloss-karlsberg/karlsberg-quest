@@ -144,3 +144,27 @@ it('rechecks free-survey overlays once the new story has started', () => {
   expect(world.scanMode).toBe(0);
   expect(world.mapMix).toBe(0);
 });
+
+it('keeps the remaining relief countdown through Continue from the title', () => {
+  const { events, state, world, tick } = setup();
+  state.mutable.skills.relief = 1;
+  tick(0, 'scan1');
+  events.emit('clue:found', { id: 'one', kind: 'relief' });
+  tick(3);
+  // back to the title (paused: no ticks), then „Weiter“ in the same game
+  events.emit('game:start', { resumed: true });
+  tick(SCAN_AUTO_OFF_S - 3 - 0.25);
+  expect(world.scanMode).toBe(1);
+  tick(0.25);
+  expect(world.scanMode).toBe(0);
+});
+
+it('still rechecks the skills on Continue', () => {
+  const { events, state, world, tick } = setup();
+  state.mutable.skills.relief = 1;
+  tick(0, 'scan1');
+  state.mutable.skills.relief = 0;
+  events.emit('game:start', { resumed: true });
+  tick(1 / 60);
+  expect(world.scanMode).toBe(0);
+});

@@ -1028,7 +1028,7 @@ Round-4 (polish: set dressing) integration rules:
   `?skills=strict` forces gating, `?skills=all` opens everything. Locked keys leave a toast.
 - Survey checks the active scan and map against the incoming game's skills on its first tick.
   A relief find starts a four-second game-time countdown. Another find restarts it, and a
-  manual scan selection cancels it.
+  manual scan selection cancels it. A slot load drops it; Continue from the title keeps the time left.
 - Also owns the extra settings rows (Rauhnacht under "Spiel",
   Geräusch-Untertitel and Richtungspfeile under "Barrierefreiheit") and key-help rows. The
   graphics preset itself belongs to the core (`render/quality.ts`, row "Grafik" under "Bild &
