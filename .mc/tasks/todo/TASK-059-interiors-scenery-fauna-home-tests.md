@@ -34,9 +34,9 @@ Pin down what happens to rooms, doors, scenery, animal bodies and the Bauwagen d
 - [x] Map player behaviours to existing unit coverage, including untested boundaries.
 - [x] Add at least 25 meaningful deterministic assertions across the area. Run the focused set in about three seconds or less.
 - [x] Reproduce each defect before fixing it and record unresolved design questions as Vitest todos.
-- [ ] Commit fixes individually. Git denied the worktree index lock after the initial task commit.
+- [x] Commit fixes individually. The review fix round committed its fixes; the sweep itself landed as one commit.
 - [x] Update affected docs and the PRD log, run the four gate commands and check the smoke port.
-- [ ] Pass all four gates as written. The sandbox prevented the validator CLI from starting.
+- [x] Pass all four gates as written (review fix round, 2026-11-26).
 
 ## Plan
 
@@ -61,14 +61,39 @@ _Status: user-directed, 2026-11-26_
 
 Keep indoor saves and the Festsaal choice playable across shell streaming and era shifts.
 
-- [ ] Preserve the saved floor through a fixed step and an autosave while the shell streams.
-- [ ] Restore from a passage and keep movement onto the connected upstairs floor.
-- [ ] Keep provisional palace collision active while the shell is absent.
-- [ ] Suspend the Festsaal objects and prompt during an era shift and recreate an unresolved choice on return.
-- [ ] Prove teleport cancellation directly below the saved room and probe the loaded gate's collision before changing it.
-- [ ] Update the affected docs, run the four gates and check the smoke spec under the shared lock.
+- [x] Preserve the saved floor through a fixed step and an autosave while the shell streams.
+- [x] Restore from a passage and keep movement onto the connected upstairs floor.
+- [x] Keep provisional palace collision active while the shell is absent.
+- [x] Suspend the Festsaal objects and prompt during an era shift and recreate an unresolved choice on return.
+- [x] Prove teleport cancellation directly below the saved room and probe the loaded gate's collision before changing it.
+- [x] Update the affected docs, run the four gates and check the smoke spec under the shared lock.
 
 Use the shipped room and footprint data for the interior regressions and the Ehrenhof footprint for the gate probe. Compare the reviewed paths with `origin/main`, then commit the storey, Festsaal and gate coverage changes in reviewable groups.
+
+### Review fix results
+
+| Finding | Resolution |
+| --- | --- |
+| 1 Saved floor lost in an autosave while the shell streams | No pending resume any more: a player loaded indoors is placed on the saved storey at once. Before the shell arrives a plan built from the room catalogue (no shell openings) answers floors and walls, so the pose that `writeState` serializes keeps the storey. |
+| 2 Doorway outside both room polygons | The saved height is checked with `PlanQuery.floorAt` (rooms, doorways, stoops); steps into a connected room during streaming are kept because the pose, not a room match, carries the storey. |
+| 3 Q during the Festsaal choice | A shift away removes the objects, prompt and card hold and keeps the untaken choice with its era; it returns there unless `festsaal.took` is set. A fire that ends, `festsaal:clear` or a slot load drop it. |
+| 4 Walls passable while the shell streams | The provisional overlay resolves against the catalogue plan's walls; its procedural entrances keep a way out if the palace never loads. |
+| 5 Teleport test passed without its listener | Rewritten in `5f47a56` to teleport directly below the saved Festsaal. With no pending resume left, it guards that shell completion keeps a later pose. |
+| 6 Gate test read back its own setter | Rewritten in `5f47a56` with the KB-B39 footprint; probing right after the load fails on `origin/main`'s scenery. |
+
+### Review fix verification
+
+```text
+pnpm typecheck   tsc --noEmit (exit 0)
+pnpm test        Test Files  127 passed (127)
+                 Tests  1630 passed | 2 todo (1632)
+pnpm validate    ✓ content valid (1 warning(s)) (exit 0)
+pnpm build       exit 0
+e2e (port 5446, heavy.sh, one worker)
+  interiors      6 passed
+  bauwagen       1 passed
+  smoke          7 passed
+```
 
 ## Progress
 
