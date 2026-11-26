@@ -96,10 +96,6 @@ export interface StanceCond {
 export interface LanternCond {
   lantern: boolean;
 }
-/** A hub item was used (the hub overlay at the Quelle) while the beat ran. Old ids are aliases. */
-export interface HubCond {
-  hub: HubItem | HubAlias;
-}
 export interface AllCond {
   all: Condition[];
 }
@@ -162,7 +158,6 @@ export type Condition =
   | MapCond
   | StanceCond
   | LanternCond
-  | HubCond
   | AllCond
   | AnyCond
   | NotCond
@@ -215,7 +210,6 @@ export const CONDITION_KEYS = [
   'map',
   'stance',
   'lantern',
-  'hub',
   'all',
   'any',
   'not',
@@ -234,16 +228,6 @@ export const CONDITION_KEYS = [
 // ---------------------------------------------------------------------------------------------
 // Actions
 // ---------------------------------------------------------------------------------------------
-
-/** The hub's tiles at the Quelle (contract C4): the phone replaced the radio, the bench the field bed. */
-export type HubItem = 'chronik' | 'phone' | 'shelf' | 'drawer' | 'map' | 'bench';
-/** Legacy hub aliases accepted in content (bed → bench, radio → phone). */
-export type HubAlias = 'bed' | 'radio';
-export const HUB_ALIAS: Readonly<Record<HubAlias, HubItem>> = { bed: 'bench', radio: 'phone' };
-/** A hub id from content as the tile it means now (aliases resolved). */
-export function hubItem(id: string): HubItem | string {
-  return (HUB_ALIAS as Record<string, HubItem>)[id] ?? id;
-}
 
 interface ActionBase {
   /** Seconds to wait before this action (relative to the previous action of the same list). */
@@ -543,7 +527,7 @@ export interface ReadingsAction extends ActionBase {
 export interface GrantAction extends ActionBase {
   do: 'grant';
   clue: string;
-  /** Show the Chronik's field-book card (as if examined), e.g. for the hub's items. */
+  /** Show the Chronik clue card as if the clue had been examined. */
   card?: boolean;
 }
 

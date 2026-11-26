@@ -254,30 +254,4 @@ test.describe('chronik', () => {
     await expect(map).toBeHidden();
     await expect(entry).toBeFocused();
   });
-
-  test('the Pinnwand opens Codex and returns to the same hub', async ({ page }) => {
-    const errors = trackErrors(page);
-    await boot(page);
-    await page.evaluate(() => {
-      const k = window.kq!;
-      k.setEra('today');
-      k.teleport(1059.3, -833.1, 50);
-      k.step(3);
-      k.ctx.ui.modals.closeAll();
-      k.story!.hub(true);
-    });
-    await expect(page.getByTestId('hub')).toBeVisible();
-    const pinnwand = page.getByTestId('hub-chronik');
-    await pinnwand.click();
-    await expect(page.getByTestId('page-codex')).toBeVisible();
-    expect(await page.evaluate(() => window.kq!.ctx.ui.modals.count)).toBe(2);
-    await shot(page, 'pinnwand-codex');
-    await page.keyboard.press('Escape');
-    await expect(page.getByTestId('page-codex')).toBeHidden();
-    await expect(pinnwand).toBeFocused();
-    await expect(page.getByTestId('hub')).toHaveCount(1);
-    expect(await events(page, 'chronik:opened')).toHaveLength(1);
-    expect(await events(page, 'chronik:closed')).toHaveLength(1);
-    expect(errors).toEqual([]);
-  });
 });

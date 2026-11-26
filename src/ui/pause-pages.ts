@@ -98,26 +98,3 @@ export function addPageSection(s: PageSection): void {
 export function pageSections(page: string): HTMLElement[] {
   return sections.filter((s) => s.page === page).map((s) => s.render()).filter((e): e is HTMLElement => !!e);
 }
-
-/**
- * Things a feature puts on the hub's Regal (hub overlay, story system) without importing
- * the story: `render` returns the element or null.
- */
-export interface ShelfItem {
-  id: string;
-  order: number;
-  render(): HTMLElement | null;
-}
-
-const shelf: ShelfItem[] = [];
-
-export function addShelfItem(s: ShelfItem): void {
-  const i = shelf.findIndex((x) => x.id === s.id);
-  if (i >= 0) shelf.splice(i, 1, s);
-  else shelf.push(s);
-  shelf.sort((a, b) => a.order - b.order);
-}
-
-export function shelfItems(): HTMLElement[] {
-  return shelf.map((s) => s.render()).filter((e): e is HTMLElement => !!e);
-}

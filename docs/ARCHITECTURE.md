@@ -196,7 +196,7 @@ and 30 fps every 4th (every frame / every 2nd at 60 Hz).
 | Playing | the cap: settings „Bildrate“ 30 / **60** (default) / unbegrenzt, „Energiesparen“ 30 (`frameCap`) |
 | Title | ≤ 30 |
 | Live modal (default of `modals.open`: dialogue, story choice, endings) | the cap for 1.5 s after the modal stack changed (the two-shot camera eases in), then ≤ 15 |
-| Still modal (`backdrop: 'still'`: pause menu with settings, feature pages, licences, confirms, Chronik cards, the spring hub) | 0, the last frame is held (over the title: ≤ 15) |
+| Still modal (`backdrop: 'still'`: pause menu with settings, feature pages, licences, confirms, Chronik cards) | 0, the last frame is held (over the title: ≤ 15) |
 | Other pause (travel curtain) | ≤ 15 |
 | Bullet time / `?manual` | 0, frames only on request |
 | Hidden tab | 0 (and the AudioContext is suspended) |
@@ -399,7 +399,7 @@ chain of lines must not bury a card): a spoken story line that is not low priori
 active pack outside the ending's resting tableau (`hunt`); hard holds also cover the Festsaal
 (`festsaal`) and a playing echo (`echo`, set on `echo:start` / `echo:end`; releasing a hold
 opens a waiting page at once). The level and skill cards also wait while `cards.held`. Slide-in cards also wait for the chapter title card / curtain and
-other modals. A clue page may open over the spring hub. Merging: skill
+other modals. A clue page may open over Pause. Merging: skill
 unlocks that wait as a level card comes up ride along on it (`cards.source('skill', …)` /
 `cards.drain('skill')` → "Freigeschaltet" rows, `level-card-skill`; combat's new abilities the
 same way through `cards.source('ability', …)`), unlocks that arrive together
@@ -411,7 +411,7 @@ by text. Payouts and unlock cards can take the slot from a toast. It resumes ahe
 toasts when the slot frees. In free play, Escape or a completed outside touch tap calls
 `cards.dismissNotice()`. The quest tracker strikes a done goal
 through and folds it away after 2.6 s (`DONE_LINGER_MS`). Tests: `tests/cards.test.ts`,
-`e2e/pacing.spec.ts` (one visible notice, modal priority, and the Pinnwand's two pages in sequence).
+`e2e/pacing.spec.ts` (one visible notice, modal priority, and two queued clue pages in sequence).
 
 **Title extras** (`src/ui/title.ts`): `titleHooks.extraActions()` returns more main-menu buttons
 (`{label, testid, run}`; `run` resolves true to start the game) — the story adds "Ende noch
@@ -597,7 +597,7 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   distance, lens space = character space, indoor preset, two-shot; screenshots
   `camera-<KQ_CAM_TAG>-*.png` (`before` runs it as a probe without assertions).
 - E2E per feature (`e2e/{hunt,hunt-ext,fx,chronik,story,interiors,npc,skills}.spec.ts`) and `e2e/integration.spec.ts`: the
-  cross-system flow (spring hub → Pinnwand opens Codex → survey and find clues → Q shift → echo →
+  cross-system flow (spring break → survey and find clues → water touch and shift → echo →
   pack → caught and returned home → Codex retains the clue facts), screenshots `int-*.png`; `e2e/quests.spec.ts` (Hanne's test quest, `qst-*.png`);
   and the round-2 tour over the test chapter's beats r1–r4 (`?storytest`): doorway into the
   Festsaal 1789 → story `room` condition → a ghost on the upper storey, E → conversation →
@@ -721,7 +721,7 @@ story ──story:cue 'k2-frost' / 'k2-thaw' / 'k2-candle' / 'k4-quader' / 'end-
 story ──story:cue 'bussole:jolt {x,z|bearing,hold}' / 'bussole:tick {hold}' / 'bussole:open'──▶ story ObjectiveView (the HUD Bussole)
 story ──story:cue 'hunt:tableau' {kind: lie|eyes|rest|off}──▶ hunt (W8: the pack lies down; the endings)
 story ──menagerie:spawn / story:cue 'menagerie:spawn'──▶ menagerie (escaped animals, per era)
-story (hub Pinnwand) ──chronik:open──▶ quests (opens the Codex page)
+chronik (clue card) ──chronik:open──▶ quests (opens the Codex page)
 chronik ──clue:found / echo:start──▶ fx (pushes the Steinfraß back), story (beat conditions)
 story:give ──clue:found / noun:learned (story clue ids, written to state.inventory)──▶ everyone
 story ──npc:spawn/despawn──▶ npc ──npc:talk / npc:conversation / bark:npc-near──▶ story, barks
@@ -1019,8 +1019,7 @@ Round-4 (polish: set dressing) integration rules:
   `pnpm validate`): chapters → beats with conditions, actions, delays, checkpoints. Prologue and
   endings are scripted from the bible; chapters 1–4 are placeholder skeletons.
 - Emits `story:chapter/beat/ending`, `objective:set`, `threat:configure`, `shift:request`,
-  `dialogue:say`, `hub:enter/leave`, `chronik:open`, and private `hub:use {item}`,
-  `story:cue {id,data?}`, `story:credits`. Presents every `dialogue:say` (portrait card, typing,
+  `dialogue:say`, `hub:enter/leave`, `story:cue {id,data?}` and `story:credits`. Presents every `dialogue:say` (portrait card, typing,
   voice) and ContentDB dialogue triggers. Voice: a recorded clip when `voice/manifest.json`
   (under the Vite base; contract and FNV-1a `textHash` over the raw `text_de` in
   `dialogue/voiceManifest.ts`) has a current one for the line (by id, else by text hash for id-less
@@ -1041,9 +1040,14 @@ Round-4 (polish: set dressing) integration rules:
   committed MOSS clips only; the build emits an empty manifest when there is
   none (no 404). Hook: `kq.story.voice.stats()/preload()`. The title flow asks the visitor to read the
   content note and enter a name, then „Tour starten“ on the route map unlocks audio. At the Weiher,
-  the story grants the staff through progression's regular pickup path. It also owns the current
-  spring hub overlay, the Bussole and objective HUD, the caught curtain and return, the endings,
-  epilogue and credits. Without fx it switches eras directly.
+  the story grants the staff through progression's regular pickup path. It owns the Bussole and
+  objective HUD, the caught curtain and return, the endings, epilogue and credits. Without fx it
+  switches eras directly.
+- `hub/home.ts` defines the present-day home ring and wake point. The story emits `hub:enter` /
+  `hub:leave` when the on-foot player crosses that ring or changes era. These events drive arrival
+  dialogue, healing, hunt reset, oil refill and respec. The Quelle system owns water interaction
+  and its `e.owner` flag. The chapter selector is a registered Pause page that lists the story
+  engine's chapters and confirms before jumping to a different unlocked chapter.
 - State `systems.story` (`StorySlice`: chapter, beat, timers, latches, said lines, objective,
   threats, look, ending, …), autosaved at every beat. URL `?story&name=…` starts the tour. Older tour
   saves at or past t13 receive the starter staff on load if it was still due at the final beat.
@@ -1052,7 +1056,7 @@ Round-4 (polish: set dressing) integration rules:
   `memorial`, `readings`, `grant`, `say.text_by_era`, choices with `modal:false` + `when` / `key` /
   `then` (`choice.<id>` flags, `story:choice`). Mirrors `CaseEntry.flag` on `chronik:fill`. Epilogue
   assembled from the endings pack's `epilog:line` blocks. Test chapters (`"test": true`) load only
-  with `?storytest`. Closing the Chronik opened from the Pinnwand reopens the hub.
+  with `?storytest`.
 - Flow rules (polish round): action runs carry their beat (`RunOptions.beat`: enter + beat
   reactions → the beat, `exit` → the next beat, chapter reactions → none). When a beat begins,
   delayed actions of other beats retire: presentation (`say`, `toast`, `sound`, `card`, `prompt`,
@@ -1083,7 +1087,7 @@ Round-4 (polish: set dressing) integration rules:
   keep — the dark closes in, the view turns round, eyes open behind you (`hunt:tableau eyes`), five
   prints lie before the step (`end-prints`, `ring: false`). Reduced motion: no flight, still shots
   (7 s). Look, era and view are restored before the card.
-- Hooks `kq.story.goto/state/skip/start/say/finishTyping/flush/caught/hub/ending/credits/
+- Hooks `kq.story.goto/state/skip/start/say/finishTyping/flush/caught/ending/credits/
   epilogue/choose/look/meters/meter/room/choice/stage/stageSkip/shown` (`look(time, era?)`: `day | dawn | dusk | night`; `shown()`: ids of the lines shown on screen this session).
 
 ### characters (`src/systems/characters/`) – rigged CC0 models (shared by npc and combat)
@@ -1916,7 +1920,6 @@ Lines come from the content packs by trigger, or from `say` actions. Worked exam
 | `timer` / `chapterTimer` | seconds in the beat / chapter (game time) | pacing |
 | `era`, `scan` (≥), `map`, `stance`, `lantern` | world / player state | `{stance:'prone'}`, `{lantern:true}` |
 | `have {clue\|noun\|item}`, `confirmed {case?\|prefix?, n}`, `caseComplete` | inventory, Chronik | gates on findings |
-| `hub` | a hub item was used (hub overlay at the Quelle, legacy — TASK-007) | Chronik, map |
 | `room` | in a palace room: `"B01.2.og-festsaal"`, `"KB-B01/B01.2.og-festsaal"` or `"KB-B01"` | interiors objectives |
 | `talked {npc, chapter?, topic?}` | an NPC conversation / topic happened | after a ghost |
 | `reading` (+ `eq`) | a reading was chosen (entry flag or entry id) | branch on LESARTEN |
@@ -1935,7 +1938,7 @@ card, sound, toast, cue, chronik, ending, echo, grant):
 | `flag` | `set {k: v \| null}` | flags |
 | `shift` / `anchor` | `to, instant?, reason?` / `to \| null, x, z, r` | era shift now / Q allowed here |
 | `skill` | `id: relief \| kartograf \| baumeister \| roentgen \| spurenleser, tier` | unlock card (+ Laub once `story.laub`) |
-| `give` / `grant` | `clue \| noun \| item, kind?, toast?` / `clue, card?` | inventory (no nouns!) / Chronik discovery (nouns, facts); `card: true` shows the field-book card (on top of the hub) |
+| `give` / `grant` | `clue \| noun \| item, kind?, toast?` / `clue, card?` | inventory (no nouns!) / Chronik discovery (nouns, facts); `card: true` shows the clue card |
 | `npc` | `op: spawn \| despawn, npc (hanne, jost, soll, … \| *), x?, z?, room?, era?, yaw?, chapter?, topics?, mood?` | ghost + conversation from pack `npc:talk` lines |
 | `meter` | `id: oil \| smoke \| vergessen \| <custom>, active, seconds?, label?, full?: return \| caught \| none, text?, lossless?, still?, intensity?, center?, radius?` | timers on game time |
 | `echo` | `id` | play a Chronik echo |

@@ -8,7 +8,7 @@
 | 2 | In-game cinematic | S–M | — | kq-systems | C1 |
 | 3 | Tour group that follows the guide | L | NPC path-walk op (new), characters pipeline for the doubles | kq-systems | C2 |
 | 4 | Animals: roe deer, the two dogs | M | §2 (deer close-up), §3 (dogs follow Jost) | kq-characters | C5 |
-| 5 | Quelle hub (home base) | M | — | kq-systems (systems side), kq-story (content) | C4 |
+| 5 | Karlsbergquelle home base | M | — | kq-systems (systems side), kq-story (content) | C4 |
 | 6 | Party scene | M–L | §3 (crowd placement), §4 (dogs), endings flow change | 3D subagent (set, later), kq-story (beat) | uses C1, C2, C5 |
 | 7 | Training fight flag (small) | S | — | kq-story (flag) with kq-mobile (combat) | — |
 
@@ -105,24 +105,15 @@ Storage: thumbnails in the save make it heavy; cap at 60 × 30 KB (≈ 1.8 MB) o
 
 ---
 
-## 5. Quelle hub (home base, replaces the Feldstation)
+## 5. Karlsbergquelle home base
 
-**What it does.** The Karlsbergquelle is the home in the present: chapter checkpoint, wake place when caught or out of oil, Q-hold target (decided), safe ring, and the rest-stop overlay. Tiles (re-themed `HubOverlay`): **Chronik** (opens from the Bussole lid), **Handy** (messages, album, map with chapter select — the old Kartentisch), **Mauerkante** (old Regal: finds, RPG counts, later the bottles' shelf), **Mauernische** (old Schublade: the Bussole state; Ende C's Chronik place is now the backpack, see the [ending design](../../../content/bible/06-enden.md#2-die-wahl)), **Stufe** (old Feldbett: rest → save `'auto','bench'`). The radio tile goes; Marlene speaks in person or by phone.
+The spring is the present-day chapter checkpoint, fallback wake spot and Q-hold return
+destination. Entering the 12 m home ring on foot emits `hub:enter` for healing, the hunt reset,
+oil refill, free respec and arrival dialogue. Leaving emits `hub:leave`.
 
-**Reusable code (audit §1, §2).** `src/systems/story/hub/overlay.ts` (6 tiles, `hub:use`); `story/index.ts:1302–1343` `useHub()` / `updateHub()` (swap `STATION` for `QUELLE` from `src/systems/quelle/layout.ts:20`, radius 12); the K1 pattern k1_0 / k1_0b (checkpoint and wake at 1059.3/−833.1 yaw 50, Q anchor at the spring). Remove `FieldStation` (`hub/station.ts`, 476 lines) and its colliders and `pushOut`. Move `SAFE.stationR` / `STATION_XZ` in `combat/rules.ts:196–198` to the spring. `hub:enter` keeps driving the hunt reset, the oil refill, the free respec and the full heal.
-
-**Prompt coexistence.** At the trough the Quelle's E „Wasser berühren“ (`e.owner = quelle`) wins; the hub's low prompt „Pause an der Quelle“ shows only outside the trough's 2.5 m ring. Rule: within 2.5 m of the trough → Quelle E; 2.5–12 m → hub E.
-
-**Q-hold.** Today Q-hold returns in place (`story/index.ts:1632–1650` → `requestShift('today','return')`, no teleport). **Decided (owner, 2026-11-20):** after `shift:done` with `reason === 'return'`, fade and teleport to the wake spot 1059.3/−833.1 yaw 50. Cost: one branch + texts (`ui.keys.shift`, `ui.tut.return`, `ui.hud.return_hold`, K2 objective at `02-kapitel-2.story.json:1001`).
-
-**API sketch.**
-```ts
-// src/systems/story/hub/home.ts (replaces station.ts)
-export const HOME = { x: 1061, z: -834.5, r: 12, spawn: { x: 1059.3, z: -833.1, yaw: 50 }, troughR: 2.5 } as const;
-type HubItem = 'chronik' | 'phone' | 'shelf' | 'drawer' | 'map' | 'bench';   // 'radio','bed' removed
-```
-
-**Tests.** Update `tests/story.test.ts:473–520` (home spawn inside `HOME.r`), `tests/combat.test.ts` (safe at 30 m from the spring, not at 45 m; new memorial-style test: no today-era spawn within 40 m of the spring), `tests/travel.test.ts:77–92` (`karlsbergquelle` known at start, `feldstation` gone), `tests/story-ext.test.ts:308–336` (hub barks at the spring). e2e: `e2e/story.spec.ts` hub and caught cases at the spring, `e2e/quelle.spec.ts` (owned by the spring-tests agent until merged: coordinate).
+Interaction at the trough is „Wasser berühren“ when the story sets `quelle.call` and the player
+is within reach and facing the water. Pause provides the Codex, saving, collections and chapter
+selection. See [C4](#c4-karlsbergquelle-home-contract) for the runtime contract and tests.
 
 ---
 
@@ -337,39 +328,21 @@ declare module '../../debug/hooks' {
   "grants": { "codex": "cx.T4" } }
 ```
 
-### C4. Quelle hub (systems side)
+### C4. Karlsbergquelle home contract
 
-**Owned by:** kq-systems: `src/systems/story/hub/home.ts` (new, replaces `station.ts`), `hub/overlay.ts`, and the hub parts of `story/index.ts` (`updateHub`, `useHub`, the station removal, the return teleport). kq-story: the `HubItem` union in `story/types.ts` and the `HUB` set in `story/validate.ts` (changed together with kq-systems), the strings, the content (`{hub: …}` conditions, checkpoints, wakes). kq-mobile: the safe ring and the full heal (`combat/rules.ts`, `combat/index.ts`), the hunt refill, progression respec (WP-02). 3D: `src/systems/quelle/water.ts`, `scenery/quelle.ts` are not touched.
-
-```ts
-// src/systems/story/hub/home.ts (kq-systems)
-export const HOME = {
-  x: 1061, z: -834.5,                 // QUELLE in src/systems/quelle/layout.ts:20
-  r: 12,                              // hub radius (today only)
-  spawn: { x: 1059.3, z: -833.1, yaw: 50 },  // wake spot, verified (prompt true in today and 1789)
-  troughR: 2.5,                       // inside: the Quelle owns E while quelle.call is set
-  safeR: 40,                          // combat safe ring (today), replaces SAFE.stationR / STATION_XZ
-} as const;
-
-// story/types.ts (kq-story) — replaces 'chronik'|'radio'|'shelf'|'map'|'bed'|'drawer'
-export type HubItem = 'chronik' | 'phone' | 'shelf' | 'drawer' | 'map' | 'bench';
-
-// events (kept): 'hub:enter' / 'hub:leave' (Record<string, never>), 'hub:use' { item: HubItem }
-// contracts.ts change (kq-story with kq-systems): 'shift:done' gains the request's reason
-//   'shift:done': { from: Era; to: Era; reason?: string };
-// new: 'home:arrived': { reason: 'return' | 'caught' | 'checkpoint' }
-```
-
-- **E-prompt priority:** within `HOME.troughR` of the trough stand while the flag `quelle.call` is set, the Quelle's E „Wasser berühren“ (`e.owner = quelle`) wins. Everywhere else within `HOME.r` (today era), the hub's low prompt „Pause an der Quelle“ shows and E opens the overlay. With `quelle.call` unset, the hub prompt also works at the trough.
-- **Tiles** (`hub:use { item }`): `chronik` (from the Bussole lid), `phone` (messages, album, the map with chapter select: the old Kartentisch), `shelf` (Mauerkante: finds and RPG counts; later the bottles), `drawer` (Mauernische: Bussole state), `map` (kept as an alias tile for chapter select), `bench` (rest → `save('auto', 'bench')`). `radio` and `bed` are removed; the old prologue special case "the field bed ends the chapter" goes.
-- **Q-hold teleport:** on `shift:done` with `to === 'today'` and `reason === 'return'`: a 0.4 s fade, a teleport to `HOME.spawn`, then `home:arrived { reason: 'return' }`. Being caught: the wake fallback is `HOME.spawn` (replacing `STATION.spawn`), emitting `home:arrived { reason: 'caught' }`. The pack block on Q-hold stays (`story/index.ts:1636–1644`).
-- **Validator:** `{hub: X}` uses the new union (kq-story). A test asserts that no today-era enemy spawn lies within `HOME.safeR` (kq-mobile, like the memorial test).
-- **Example (t14, the hub tutorial):**
-```json
-{ "id": "t14", "title_de": "Die Pause, Teil zwei",
-  "enter": [ { "do": "objective", "text": "Öffne die Chronik.", "x": 1061, "z": -834.5 } ],
-  "complete": { "hub": "chronik" } }
-```
+- `src/systems/story/hub/home.ts` defines `HOME` from the Quelle layout. Its center is
+  1061/−834.5, its arrival radius is 12 m, the wake pose is 1059.3/−833.1 at yaw 50° and the combat
+  safety radius is 40 m in the present.
+- `story/index.ts` emits `hub:enter` and `hub:leave` when home membership changes. After a
+  `shift:done` into today with reason `return`, the story teleports to `HOME.spawn` and emits
+  `home:arrived { reason: 'return' }`. Being caught uses its own wake logic, with `HOME.spawn`
+  as the fallback.
+- `src/systems/quelle/` handles the reach and facing checks, the E or touch prompt and the time
+  travel scene. The spring keeps its usual interaction claim through `e.owner` while the prompt is
+  up.
+- `tests/story.test.ts` covers home-ring membership, the wake pose and return shifts.
+  `e2e/quelle.spec.ts` covers the desktop interaction and Q return. `e2e/touch.spec.ts` covers
+  the water action and Pause chapter page on a landscape phone.
 
 ### C5. Animals (deer and dogs)
 

@@ -55,8 +55,9 @@ test('Karlsbergquelle: E at the trough, the still moment, the shift to 1789, Q h
     );
   // facing away (the spring's own front, compass 234): no
   expect((await at(QUELLE_STAND.x, QUELLE_STAND.z, QUELLE_STAND.yaw + 180)).prompt).toBe(false);
-  // … and the hub at home keeps its E away from the trough while the spring calls (contract C4)
-  expect(await page.evaluate(() => window.kq!.ctx.ui.hud.promptShown()?.owner ?? null)).not.toBe('hub');
+  // Pressing E while facing away leaves the world view in place.
+  await page.evaluate(() => window.kq!.press('KeyE', 2));
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   // on the slope behind the wall, turned to the water (+w = compass 234), within reach: no (the wall is between)
   const behind = await at(...toWorld(touchLocal('today')[0], PIECES.wall.w - PIECES.wall.thick - 0.45), 234);
   const [bu, bw] = toLocal(behind.x, behind.z);
@@ -167,5 +168,6 @@ test('Karlsbergquelle: E at the trough, the still moment, the shift to 1789, Q h
   expect(Math.hypot(home.x - 1059.3, home.z + 833.1)).toBeLessThan(1);
   expect(await qn(page, 'q.k1.ankunft', 'quelle')).toBe(1);
   expect(await page.evaluate(() => window.kq!.quelle!.info())).toMatchObject({ built: 'today', prompt: false, scene: null });
+  expect((await story(page)).inHub).toBe(true);
   expect(errors).toEqual([]);
 });

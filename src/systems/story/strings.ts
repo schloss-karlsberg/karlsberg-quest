@@ -1,28 +1,6 @@
 import { addStrings } from '../../i18n';
 import { DEFAULT_VISITOR_NAME } from './engine';
 
-/**
- * Marlene's general lines (bible 08-stimmen.md §2.1), on the hub's phone at the Quelle as messages
- * for now (bridge: once the radio, the forester's own lines come with WP-08 / WP-19).
- */
-export const RADIO_LINES = [
-  'Kaffee steht da. Er ist nicht gut, aber heiß.',
-  'Warst du schon auf der Nordseite? Sag Bescheid, wenn du dort eine Mauerkante siehst.',
-  'Die Bussole hat heut Nacht getickt. Ich hab sie in die Schublade gelegt. Hat nicht geholfen.',
-  'Im Relief sieht man mehr als im Wald. Im Wald sieht man dafür, wo man hintritt.',
-  'Pass auf die Gräben auf. Nicht reinfallen und nicht reingraben, das gibt Ärger mit dem Denkmalamt.',
-  'Mein Schwager sagt, auf dem Karlsberg spukt’s. Mein Schwager sagt auch, er kann Skat.',
-  'Wenn du die alte Karte drüberlegst, verrutscht alles um ein Stück. Ich glaub, die waren damals einfach müde.',
-  'Es wird früh dunkel. Nimm die Lampe mit. Und Öl.',
-  'Die Wildschweine waren wieder am Weiher. Die graben, das dürfen die.',
-  'Brauchst du was? Ich fahr nachher nach Homburg.',
-  'Du redest im Schlaf. Gestern hast du ‚Bijou‘ gesagt. Ist das ein Hund?',
-  'Schreib’s auf, sonst vergisst du’s. Hat meine Oma immer gesagt. Sie hat alles vergessen, aber aufgeschrieben.',
-  'Ich mag den Nebel hier oben. Da sieht der Wald aus, als würd er sich an was erinnern.',
-  'Der Laserscan ist ja neu. Zweitausendfünfundzwanzig geflogen, im Winter, ohne Laub. Sonst sieht man nix.',
-  'Wenn’s dir zu viel wird, mach eine Pause. Der Berg läuft nicht weg. Der ist schon weggelaufen, vor zweihundert Jahren.',
-];
-
 addStrings('de', {
   'story.name.default': DEFAULT_VISITOR_NAME,
   'story.dialogue.next': 'weiter',
@@ -33,45 +11,12 @@ addStrings('de', {
   'story.source': 'Quelle',
   'story.placeholder': 'Platzhalter',
 
-  // hub
-  'story.hub.title': 'An der Quelle',
-  'story.hub.sub': 'Der Trog im Hang, die kleine Mauer, darüber das Brunnenhaus. Das Wasser läuft, als hätte es Zeit.',
-  'story.hub.prompt': 'Pause an der Quelle',
-  'story.hub.chronik': 'Chronik',
-  'story.hub.chronik.status': 'Lageplan · Karten',
-  'story.hub.phone': 'Handy',
-  'story.hub.phone.status': 'Nachrichten von Marlene',
-  'story.hub.phone.idle': 'Das Handy liegt still in der Hand. Hier oben hat es Netz.',
-  'story.hub.phone.silent': '(Keine neue Nachricht.)',
-  'story.hub.phone.marlene': 'Marlene · Nachricht',
-  'story.echo.date': 'Erinnerung · {when}',
-  'story.hub.shelf': 'Mauerkante',
-  'story.hub.shelf.status': 'Codex {n} / {total}',
-  'story.hub.shelf.sub': 'Was sich angesammelt hat, aufgereiht auf der Mauerkante: Karten, Notizen, Fundstücke ohne Fundort.',
-  'story.hub.shelf.codex': 'Codex-Karten',
-  'story.hub.shelf.level': 'Stufe',
-  'story.hub.shelf.levelVal': '{n} · {xp} EP',
-  'story.hub.shelf.quests': 'Aufgaben erledigt',
-  'story.hub.shelf.banned': 'Geister aufgelöst',
-  'story.hub.shelf.sets': 'Sammlungen vollständig',
-  'story.hub.shelf.items': 'Gegenstände im Gepäck',
-  'story.hub.map': 'Karte',
-  'story.hub.map.sub': 'Die Kapitel, die der Berg schon preisgegeben hat. Bestätigtes bleibt bestätigt.',
-  'story.hub.map.locked': 'noch verborgen',
-  'story.hub.map.current': 'jetzt',
-  'story.hub.map.done': 'abgeschlossen',
-  'story.hub.map.confirm': '„{title}“ (neu) beginnen? Stufe, Gegenstände und Codex bleiben erhalten.',
-  'story.hub.map.continue': 'Weiter: {beat}',
-  'story.hub.bench': 'Bank',
-  'story.hub.bench.status': 'Ausruhen und speichern',
-  'story.hub.bench.saved': 'Ausgeruht. Spielstand gespeichert.',
-  'story.hub.bench.nosave': 'Ausgeruht. Speichern ist deaktiviert.',
-  'story.hub.drawer': 'Mauernische',
-  'story.hub.drawer.full': 'Etwas Schweres darin',
-  'story.hub.drawer.empty': 'Moos und Bleistiftstaub',
-  'story.hub.drawer.taken': 'Untersucht',
-  'story.hub.leave': 'Weiter',
-  'story.hub.enterToast': 'Quelle – hier ist es sicher.',
+  'story.home.enterToast': 'Quelle – hier ist es sicher.',
+  'story.chapter.title': 'Kapitel',
+  'story.chapter.locked': 'Noch verborgen',
+  'story.chapter.current': 'Jetzt',
+  'story.chapter.done': 'Abgeschlossen',
+  'story.chapter.confirm': '„{title}“ (neu) beginnen? Stufe, Gegenstände und Codex bleiben erhalten.',
 
   // objectives
   'story.objective': 'Ziel',

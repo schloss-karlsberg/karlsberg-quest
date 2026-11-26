@@ -9,8 +9,8 @@ import { syllableStarts } from '../src/systems/story/dialogue/voice';
 import { type StoryEnv, type StoryHost, StoryEngine, type StorySlice, createStorySlice, evaluate, runsOnResume } from '../src/systems/story/engine';
 import { composeEpilogue, nounToVariant } from '../src/systems/story/endings/epilogue';
 import { endingScenes, yearsSpelled } from '../src/systems/story/endings/scenes';
-import { HOME, HOME_TROUGH, bringHome, hubAt } from '../src/systems/story/hub/home';
-import { REACH, canTouch, toLocal } from '../src/systems/quelle/layout';
+import { HOME, atHome, bringHome } from '../src/systems/story/hub/home';
+import { REACH, canTouch, toLocal, toWorld, touchLocal } from '../src/systems/quelle/layout';
 import { angleDiff, bearingDeg } from '../src/systems/story/objectives';
 import { HORN_SIGNALS } from '../src/systems/story/sfx';
 import { storiesInPlay } from '../src/systems/story/stories';
@@ -77,7 +77,7 @@ const chapterA: StoryFile = {
   next: 'b',
   unlocks: ['x'],
   beats: [
-    beat('a1', { event: 'hub:use', match: { item: 'drawer' } }, { checkpoint: 'a1' }),
+    beat('a1', { event: 'quest:completed', match: { id: 'q.test.note' } }, { checkpoint: 'a1' }),
     beat('a2', { all: [{ enter: { x: 100, z: 0, r: 10 } }, { scan: 2 }] }),
     beat('a3', { timer: 5 }, { checkpoint: 'a2', enter: [say('a3'), { do: 'objective', text: 'go' }, { do: 'teleport', x: 1, z: 2 }] }),
   ],
@@ -93,10 +93,10 @@ describe('story engine', () => {
     expect(h.slice.beat).toBe('a1');
     h.engine.tick(0.1, env());
     expect(h.slice.beat).toBe('a1');
-    h.engine.onEvent('hub:use', { item: 'radio' });
+    h.engine.onEvent('quest:completed', { id: 'q.test.other' });
     h.engine.tick(0.1, env());
     expect(h.slice.beat).toBe('a1');
-    h.engine.onEvent('hub:use', { item: 'drawer' });
+    h.engine.onEvent('quest:completed', { id: 'q.test.note' });
     h.engine.tick(0.1, env());
     expect(h.slice.beat).toBe('a2');
     h.engine.tick(0.1, env({ x: 100, z: 3, scan: 1 }));
@@ -434,9 +434,9 @@ describe('dialogue', () => {
   it('matches triggers on event, era (payload.to), flags, chapter and payload keys', () => {
     expect(matchTrigger(line('a', { event: 'era:change', era: '1789' }), 'era:change', { from: 'today', to: '1789' }, ctx)).toBe(true);
     expect(matchTrigger(line('a', { event: 'era:change', era: '1789' }), 'era:change', { from: '1789', to: 'today' }, ctx)).toBe(false);
-    expect(matchTrigger(line('a', { event: 'hub:use', item: ['radio', 'bed'] }), 'hub:use', { item: 'bed' }, ctx)).toBe(true);
-    expect(matchTrigger(line('a', { event: 'hub:use', flag: 'story.laub', chapter: 'tour' }), 'hub:use', {}, ctx)).toBe(true);
-    expect(matchTrigger(line('a', { event: 'hub:use', flag: 'nope' }), 'hub:use', {}, ctx)).toBe(false);
+    expect(matchTrigger(line('a', { event: 'item:pickup', item: ['item.balsam', 'item.kastanie'] }), 'item:pickup', { item: 'item.kastanie' }, ctx)).toBe(true);
+    expect(matchTrigger(line('a', { event: 'hub:enter', flag: 'story.laub', chapter: 'tour' }), 'hub:enter', {}, ctx)).toBe(true);
+    expect(matchTrigger(line('a', { event: 'hub:enter', flag: 'nope' }), 'hub:enter', {}, ctx)).toBe(false);
   });
 
   it('picks the highest priority, honours once and the cooldown', () => {
@@ -481,11 +481,11 @@ describe('objectives, home, endings', () => {
     expect(angleDiff(350, 10)).toBeCloseTo(-20);
   });
 
-  it('home is the Quelle: the wake spot is in the hub, at the trough, in reach of the water, outside the stonework', () => {
+  it('the wake spot is inside the home ring and within reach of the water', () => {
     const sp = HOME.spawn;
     expect(Math.hypot(sp.x - HOME.x, sp.z - HOME.z)).toBeLessThan(HOME.r);
-    const d = Math.hypot(sp.x - HOME_TROUGH.x, sp.z - HOME_TROUGH.z);
-    expect(d).toBeLessThan(HOME.troughR);
+    const [x, z] = toWorld(...touchLocal('today'));
+    const d = Math.hypot(sp.x - x, sp.z - z);
     expect(d).toBeLessThan(REACH);
     expect(d).toBeGreaterThan(0.7); // in front of the log, not in the water
     // facing the water (story yaw degrees → three.js radians), in today and in 1789
@@ -494,31 +494,14 @@ describe('objectives, home, endings', () => {
     expect(canTouch(sp.x, sp.z, yaw, '1789')).toBe(true);
   });
 
-  it('hub:enter only near HOME, only today, and not flying', () => {
-    const flags = {};
-    expect(hubAt({ era: 'today', x: HOME.x + 5, z: HOME.z - 4, flags }).inside).toBe(true);
-    expect(hubAt({ era: 'today', x: HOME.spawn.x, z: HOME.spawn.z, flags }).inside).toBe(true);
-    expect(hubAt({ era: '1789', x: HOME.x + 5, z: HOME.z - 4, flags }).inside).toBe(false);
-    expect(hubAt({ era: '1793-02', x: HOME.spawn.x, z: HOME.spawn.z, flags }).inside).toBe(false);
-    expect(hubAt({ era: 'today', x: HOME.x + 13, z: HOME.z, flags }).inside).toBe(false);
-    expect(hubAt({ era: 'today', x: HOME.x, z: HOME.z, flying: true, flags }).inside).toBe(false);
-    // the old field station is no hub any more
-    expect(hubAt({ era: 'today', x: 760, z: -915, flags }).inside).toBe(false);
-  });
-
-  it('the Quelle prompt wins at the trough while quelle.call is set; the hub prompt everywhere else in the hub', () => {
-    const sp = { era: 'today', x: HOME.spawn.x, z: HOME.spawn.z };
-    expect(hubAt({ ...sp, flags: {} }).prompt).toBe(true); // no call: the hub works at the trough too
-    const called = hubAt({ ...sp, flags: { 'quelle.call': true } });
-    expect(called.inside).toBe(true); // still home: hub:enter, heal, oil
-    expect(called.quelleOwnsE).toBe(true);
-    expect(called.prompt).toBe(false);
-    // the Quelle's own prompt up (e.owner): it owns E wherever it stands
-    expect(hubAt({ ...sp, flags: { 'e.owner': 'quelle' } }).prompt).toBe(false);
-    // further than troughR from the water: the hub's low prompt again, even with the call
-    const away = { era: 'today', x: HOME_TROUGH.x - 4, z: HOME_TROUGH.z + 4, flags: { 'quelle.call': true } };
-    expect(Math.hypot(away.x - HOME_TROUGH.x, away.z - HOME_TROUGH.z)).toBeGreaterThan(HOME.troughR);
-    expect(hubAt(away).prompt).toBe(true);
+  it('counts a player on foot in the present-day spring ring as home', () => {
+    expect(atHome(HOME.x + 5, HOME.z - 4, 'today', false)).toBe(true);
+    expect(atHome(HOME.spawn.x, HOME.spawn.z, 'today', false)).toBe(true);
+    expect(atHome(HOME.x + 5, HOME.z - 4, '1789', false)).toBe(false);
+    expect(atHome(HOME.spawn.x, HOME.spawn.z, '1793-02', false)).toBe(false);
+    expect(atHome(HOME.x + 13, HOME.z, 'today', false)).toBe(false);
+    expect(atHome(HOME.x, HOME.z, 'today', true)).toBe(false);
+    expect(atHome(760, -915, 'today', false)).toBe(false);
   });
 
   it('the notes at home sit at the Quelle, never in the trough E zone (moved from the field station)', () => {
@@ -532,6 +515,7 @@ describe('objectives, home, endings', () => {
       }
     }
     expect(home.map((c) => c.id)).toEqual(expect.arrayContaining(['clue.k2.marlene', 'clue.k3.marlene', 'clue.k4.marlene', 'clue.k4.foto']));
+    const [waterX, waterZ] = toWorld(...touchLocal('today'));
     for (const c of home) {
       const { x, z, radius } = c.where;
       expect(Math.hypot(x - HOME.x, z - HOME.z), c.id).toBeLessThan(HOME.r + 1);
@@ -539,7 +523,7 @@ describe('objectives, home, endings', () => {
       // (the wall: local w 0.15 at its face, 0.55 thick, u ±2.7; the player keeps 0.6 m off it)
       const [u, w] = toLocal(x, z);
       const inWall = radius <= 0.5 && Math.abs(u) + radius < 2.7 && w + radius < 0.15 + 0.6 && w - radius > 0.15 - 0.55 - 0.6;
-      if (!inWall) expect(Math.hypot(x - HOME_TROUGH.x, z - HOME_TROUGH.z) - radius, c.id).toBeGreaterThan(HOME.troughR);
+      if (!inWall) expect(Math.hypot(x - waterX, z - waterZ) - radius, c.id).toBeGreaterThan(REACH);
     }
   });
 
@@ -557,20 +541,6 @@ describe('objectives, home, endings', () => {
     for (const reason of [undefined, 'quelle', 'anchor', 'echo', 'ending', 'oblivion', 'key']) expect(run({ to: 'today', reason }).went, String(reason)).toBe(false);
     // into the past never
     expect(run({ to: '1789', reason: 'return' }).went).toBe(false);
-  });
-
-  it('old hub ids stay aliases: bed is the bench, radio the phone', () => {
-    const f: StoryFile = { chapter: 'h', order: 0, title_de: 'H', start: 'h1', beats: [beat('h1', { hub: 'bed' }), beat('h2', { hub: 'phone' })] };
-    const g: StoryFile = { chapter: 'g', order: 1, title_de: 'G', start: 'g1', beats: [beat('g1', { manual: true })] };
-    expect(validateStories([{ file: 'h', story: f }]).errors.filter((e) => e.message.includes('hub')).length).toBe(0);
-    const h = harness([f, g]);
-    h.engine.goto('h');
-    h.engine.onEvent('hub:use', { item: 'bench' });
-    h.engine.tick(0.1, env());
-    expect(h.slice.beat).toBe('h2');
-    h.engine.onEvent('hub:use', { item: 'radio' });
-    h.engine.tick(0.1, env());
-    expect(h.slice.completed).toContain('h');
   });
 
   it('horn signals are distinct', () => {

@@ -34,7 +34,7 @@ New looks needed by `h.look()`: `tour` (golden afternoon, low sun), `pause` (low
 | 19 | `t12-training` | Three Nebelinge rise from the brook mist and Laub calls out each move. | 1030 / −852 (prüfen) | 1789 · morning | fight framing with the lesson caption pinned; spawn 3 `nebelling` tier 0 |
 | 20 | `t12-bannlicht` | The lantern flares and two flying unpaid decrees drop like dead leaves. | 1030 / −852 | 1789 · morning | Bannlicht cone mid-flare, 2 `mahnbrief` |
 | 21 | `t13-heulen` | A single hound howls far to the north and the needle jerks. | 1035 / −850 | 1789 · morning | camera turned north towards 1216/−1571, the palace roofs over the Orangerie |
-| 22 | `t14-pause-hub` | Back in the present, five minutes later, the spring is the rest stop: Chronik, phone, wall ledge, niche, step. | 1059.3 / −833.1 | today · pause | hub overlay, `ui: '[data-testid="hub"]'` re-themed |
+| 22 | `t14-pause-hub` | Back in the present, the player can open the chapter list from Pause. | 1059.3 / −833.1 | today · pause | Pause → Kapitel, `ui: '[data-testid="page-chapters"]'` |
 
 ## C. The ending choice and the three parties (today, dusk)
 

@@ -1,11 +1,11 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 import { SAVE_KEY } from '../src/core/save';
-import { openTourHub, throughTour } from './helpers/tour';
+import { throughTour } from './helpers/tour';
 import { openPause, waitForHooks } from './helpers/pause';
 
 /**
- * Story feature: new-game flow, dialogue presenter, home at the Quelle (day/night), hub overlay,
+ * Story feature: new-game flow, dialogue presenter, home at the Quelle (day/night), Pause chapters,
  * objectives + Bussole, being caught, endings and credits. Screenshots: test-results/screens/story-*.png
  */
 const SCREENS = 'test-results/screens';
@@ -91,7 +91,7 @@ test('story: new game flow (warning → name → tour map) starts the tour', asy
   expect(errors).toEqual([]);
 });
 
-test('story: save from Pause and the bench, cancel overwrite, then continue', async ({ page }) => {
+test('story: save from Pause, cancel overwrite, then continue', async ({ page }) => {
   await page.goto('./?notitle&fresh&manual&q=low');
   await waitForHooks(page, ['story', 'progression']);
   await page.evaluate(() => {
@@ -110,17 +110,6 @@ test('story: save from Pause and the bench, cancel overwrite, then continue', as
   await expect(save).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('pause-menu')).toBeHidden();
-
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.teleport(1059.3, -833.1, 50);
-    k.ctx.state.mutable.flags['test.benchSaved'] = true;
-    k.story!.hub(true);
-  });
-  const bench = page.getByTestId('hub-bench');
-  await bench.click();
-  await expect(bench).toContainText('Ausgeruht. Spielstand gespeichert.');
-  expect((await savedFlags())['test.benchSaved']).toBe(true);
 
   await page.goto('./?manual&q=low');
   const start = page.getByTestId('title-new');
@@ -142,8 +131,8 @@ test('story: save from Pause and the bench, cancel overwrite, then continue', as
   expect(await page.evaluate(() => {
     const k = window.kq!;
     const flags = k.state().flags;
-    return { pause: flags['test.pauseSaved'], bench: flags['test.benchSaved'], balsam: k.progression!.state().inventory['item.balsam'] };
-  })).toEqual({ pause: true, bench: true, balsam: 1 });
+    return { pause: flags['test.pauseSaved'], balsam: k.progression!.state().inventory['item.balsam'] };
+  })).toEqual({ pause: true, balsam: 1 });
 });
 
 test('story: home at the Quelle by day and night, dialogue portraits', async ({ page }) => {
@@ -193,35 +182,25 @@ test('story: home at the Quelle by day and night, dialogue portraits', async ({ 
   expect(errors).toEqual([]);
 });
 
-test('story: hub overlay, objective and Bussole', async ({ page }) => {
+test('story: Pause chapters, objective and Bussole', async ({ page }) => {
   const errors = trackErrors(page);
   await boot(page);
-  await waitForHooks(page, ['walk']);
   await page.evaluate(() => window.kq!.story!.start('Alex'));
-  await openTourHub(page);
-  await shot(page, 'hub');
-  await page.getByTestId('hub-chronik').click();
-  await expect(page.getByTestId('page-codex')).toBeVisible();
-  await page.getByTestId('page-codex').getByRole('button', { name: 'Zurück', exact: true }).click();
-  await expect(page.getByTestId('hub-chronik')).toBeFocused();
-  await page.getByTestId('hub-shelf').click();
-  // the Regal in RPG terms (round 3): level, quests, spirits — no "Begriffe" / "Chronik-Einträge"
-  await expect(page.getByTestId('hub')).toContainText('Aufgaben erledigt');
-  await expect(page.getByTestId('hub')).not.toContainText('Begriffe gefunden');
-  await page.screenshot({ path: `${SCREENS}/fun-quests-regal.png` });
-  await page.getByTestId('hub-back').click();
-  await page.getByTestId('hub-drawer').click();
-  await page.evaluate(() => {
-    if (document.querySelector('[data-testid="chronik-card"]')) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }));
-  });
-  await page.getByTestId('hub-phone').click();
-  await page.waitForTimeout(1500);
-  await shot(page, 'hub-phone');
-  await page.getByTestId('hub-map').click();
-  await expect(page.getByTestId('chapter-tour')).toBeVisible();
-  await expect(page.getByTestId('chapter-prolog')).toHaveCount(0);
-  await shot(page, 'hub-map');
-  await page.getByTestId('hub-continue').click();
+  await openPause(page);
+  const entry = page.getByTestId('pause-chapters');
+  const chapters = page.getByTestId('page-chapters');
+  const tour = chapters.getByTestId('chapter-tour');
+  const k1 = chapters.getByTestId('chapter-k1');
+  await entry.click();
+  await expect(tour).toHaveAttribute('aria-current', 'true');
+  await expect(k1).toBeDisabled();
+  await expect(chapters.getByTestId('chapter-prolog')).toHaveCount(0);
+  await shot(page, 'pause-chapters');
+  await chapters.getByRole('button', { name: 'Zurück', exact: true }).click();
+  await expect(entry).toBeFocused();
+  await entry.click();
+  await tour.click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 
   await waitForHooks(page, ['quelle', 'fx', 'quests']);
   await throughTour(page);
@@ -238,6 +217,20 @@ test('story: hub overlay, objective and Bussole', async ({ page }) => {
   await shot(page, 'objective');
   const glow = await page.evaluate(() => Number(getComputedStyle(document.querySelector('[data-testid="bussole"]')!).getPropertyValue('--glow')));
   expect(glow).toBeGreaterThan(0.3);
+  await openPause(page);
+  await entry.click();
+  await expect(k1).toHaveAttribute('aria-current', 'true');
+  await expect(tour).toBeEnabled();
+  await expect(tour).toContainText('Abgeschlossen');
+  const confirm = page.getByRole('dialog').filter({ hasText: '„Die Führung“ (neu) beginnen?' });
+  await tour.click();
+  await confirm.getByRole('button', { name: 'Nein', exact: true }).click();
+  await expect(k1).toHaveAttribute('aria-current', 'true');
+  await tour.click();
+  await confirm.getByRole('button', { name: 'Ja', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(await page.evaluate(() => window.kq!.story!.state())).toMatchObject({ chapter: 'tour', beat: 't1', completed: ['tour'] });
+  expect(await page.evaluate(() => window.kq!.state().inventory.items)).toContain('item.bussole');
   expect(errors).toEqual([]);
 });
 

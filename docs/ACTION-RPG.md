@@ -511,8 +511,8 @@ The tour and quests grant survey skills (`skill:grant`, unlock cards and Laub’
   (captioned with its side) and a glint when the camera faces one within 15° and 12 m in light. Some
   need a verb: a Wuchthieb shakes two out of apple trees and one out of the spring's icicles; one shows
   only in lantern light at night, one only with the lantern out. E „Fläschchen aufheben“ → toast
-  „Fläschchen n/24“, a row in Pause → Sammlungen (era counts only) and a bottle on the
-  hub's shelf (at the Quelle since tour WP-01; the hub overlay is legacy, TASK-007); Marlene at 8, Laub at 16; all 24: the lantern glass „Flaschengrün“ and the
+  „Fläschchen n/24“. Pause → Sammlungen shows era counts and one bottle per find. Marlene speaks
+  at 8 and Laub at 16. Finding all 24 awards the lantern glass „Flaschengrün“ and the
   FIKTION card cx.47 „Treibgut“. **No XP per bottle** (the doc's 15 XP would push the prologue past
   L3: its margin is 4 XP, `tests/quests-content-a.test.ts`) and no talent point; only cx.47's usual
   codex XP. The bottle carries the real beer label as the owner's swappable placeholder: the text lives
@@ -599,8 +599,8 @@ No stance cards, no answer grids: see §8.6.
   the clock stops during fights, modals and an open dialogue. `hintFor()` builds the text from the
   type, the scan key, Bannlicht for `needsBann` enemies, a time jump when the target is in another
   era, and the compass direction. Hooks `kq.quests.lead()`, `hint()`, `stall(seconds)`.
-- **Prompts name the action** ("E – Messstab nehmen"); the hub prompt at the Quelle (legacy, TASK-007) is low priority
-  and E opens the hub only when its prompt is the one shown.
+- **Prompts name the action** ("E – Messstab nehmen"). The spring offers „Wasser berühren“ while
+  the story calls for it and the player is within reach and facing the water.
 
 ### 8.4 Pause pages and tracker
 
@@ -609,9 +609,9 @@ No stance cards, no answer grids: see §8.6.
   on progress (no flash).
 - **Pause** opens separate pages for **Aufgaben** (active and completed quests, tracking and
   turn-in history), **Codex** (sources, confidence, fact or fiction labels), **Sammlungen**
-  (collections and bestiary), **Funde**, **Ausrüstung**, **Talente**, **Karte** and **Album**.
-  Back or Esc closes the page and returns focus to the Pause entry. A clue card or the Pinnwand at
-  the Quelle can open Codex directly. Closing it from the Pinnwand returns to the same hub.
+  (collections and bestiary), **Funde**, **Ausrüstung**, **Talente**, **Karte**, **Album** and
+  **Kapitel**. Back or Esc closes the page and returns focus to the Pause entry. Clue cards can
+  also open Codex. Selecting another unlocked chapter asks for confirmation before replay.
 
 ### 8.5 How history is taught — without quizzes
 
@@ -1048,6 +1048,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| The spring’s general E menu competes with the water interaction (TASK-007, 2026-11-26) | The water uses E or the touch action when the story calls for it. Pause handles saving, chapter replay and collections. Entering the present-day spring ring still heals, refills oil, resets the hunt and enables respec. Q-hold return and the wake spot stay at the spring. |
 | Following the tour group is dull (TASK-002, 2026-11-25) | 24 chestnuts (`item.kastanie`, kind `collectible`) lie in small clusters along the sections the group walks. Most are 1.5–4 m off the path, a few up to 10 m. None lie near a stop or before the deer. E, walking over one or the touch interact button picks one up, and the feed counts. Gerold, Herr Soll and Gerold again remark on the 1st, 12th and 24th. There is no XP, so collecting never delays the group: Gerold's 25 m wait and the find-the-group help are unchanged. `tests/tour-kastanien.test.ts`, `e2e/kastanien.spec.ts`. |
 | The tour deer are too far to see (TASK-001, 2026-11-25) | Ricke and Kitz graze 36 m below the `reh` stop in haze and cover a few dozen pixels in the normal view. Beat t10 opens with the skippable `reh` shot (fov 40 → 18, Kitz then Ricke). The camera stands 2.5 m ahead of the stop, clear of Gerold and the group, so the shot does not depend on where the player waits. The [C] prompt follows the shot. `e2e/animals.spec.ts` (d) measures the deer's share of the frame. |
 | Hoch first-input payload (TASK-008, slice 4) | The present-day title loads the opening scenery surfaces. The historic palace mesh and six surface pairs stream after play starts. Browser transfer and GPU checks are pending (docs/PERFORMANCE.md §2 and §4). |

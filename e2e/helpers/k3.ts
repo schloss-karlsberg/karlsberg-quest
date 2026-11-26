@@ -934,10 +934,9 @@ export async function playK3(page: Page, o: PlayOptions = {}): Promise<void> {
   expect(s.beat).toBe('k3_10');
   expect((await inv(page)).items).toContain('item.k3.uhr');
   expect(await said()).toContain('laub.k3.heute.uhr');
-  await page.evaluate(() => (window.kq as Any).story.hub(false));
   await page.evaluate(() => (window as Any).k3h.look(1061, -834.5, -10));
   await shot(page, '11-tisch-uhr');
-  // no Pinnwand: the chapter goes on by itself
+  // the chapter continues on its own
   await page.evaluate(() => {
     const k = window.kq as Any;
     k.step(17 * 60);

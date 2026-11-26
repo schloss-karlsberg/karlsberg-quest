@@ -2,7 +2,7 @@
  * THE label of the Fläschchen: ONE CanvasTexture and ONE material, drawn from
  * content/collectibles/flaschen.json → `label.lines` (the single switch; docs/IDEAS-ROUND11.md §4.1).
  * Plain text in the game's own font on cream paper — no logo artwork, no emblem, no copied layout or
- * colours. Nothing else in the code holds the text: the hub shelf shows this same canvas.
+ * colours. Nothing else in the code holds the text: the collection display shows this same canvas.
  */
 import { CanvasTexture, type ShaderMaterial, SRGBColorSpace } from 'three';
 import { flaschenMaterial } from './shader';
@@ -56,7 +56,7 @@ function draw(c: HTMLCanvasElement): void {
   });
 }
 
-/** The one label canvas (also shown on the hub shelf). */
+/** The one label canvas (also used in Sammlungen). */
 export function labelCanvas(): HTMLCanvasElement {
   if (canvas) return canvas;
   canvas = document.createElement('canvas');

@@ -18,7 +18,7 @@ milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-23
-updated: 2026-11-25
+updated: 2026-11-26
 ---
 
 # Remove leftovers of the first game concept; align everything with the guided tour with time travel
@@ -85,17 +85,15 @@ the party; Marlene only has a cameo in the tour today (beat `t12`).
 
 ### 4. The spring's own menu
 
-It is the **hub overlay at the Quelle** (`src/systems/story/hub/overlay.ts`, `src/systems/story/hub/home.ts`):
-E inside the 12 m home ring opens a field-book spread with the Chronik, the phone (Marlene's messages),
-the shelf (RPG counts), the drawer (Bussole state), the map (chapter select / continue) and the bench
-(rest = save). Its E prompt competes with the spring's scripted touch "Wasser berühren"
-(`src/systems/quelle/index.ts`; workaround `HOME.troughR` / `atTrough`).
+The former **spring overlay** opened from E inside the 12 m home ring. Its six tiles covered the
+Chronik, Marlene’s messages, RPG counts, Bussole state, chapter selection and saving. Its prompt
+competed with the spring’s scripted „Wasser berühren“ interaction.
 - [x] **Owner decision (2026-11-25):** Restore the procedural Bauwagen at 760/−915 as a hidden
   present-day easter egg. The old hub relocation and its Marlene fallback are superseded. The
   previous trailer geometry and placement are in `4cd2559^:src/systems/story/hub/station.ts`.
-- [ ] **Separate follow-up:** review the spring overlay and its E prompt, the `HOME.troughR`
-  workaround and any remaining `hub:use` consumers. Preserve the home and wake spot, heal and
-  hunt reset on `hub:enter`, and Q-hold return.
+- [x] Retire the spring overlay, its E prompt, the `HOME.troughR` workaround and the unused
+  `hub:use` content contract. Keep the home and wake spot, arrival effects on `hub:enter`,
+  Q-hold return and the scripted water touch.
 
 ### 5. Sweep: other old-concept candidates
 
@@ -514,7 +512,7 @@ _Status: approved 2026-11-25_ (slice 7, coordinator approves for the owner)
 - [ ] §6 — Confirm remaining interface destinations and any further changes to in-fiction lines with the owner.
 - [ ] Complete the listed contributor browser and mobile checks.
 
-## Plan
+## Slice 8 plan (history)
 
 _Status: approved 2026-11-25_ (slice 8, coordinator approves for the owner)
 
@@ -574,6 +572,55 @@ remaining interface destinations are deferred.
 - [ ] §4 — Review the spring overlay, the E prompt and any `hub:use` consumers separately.
 - [ ] §6 — Confirm remaining interface destinations and any further changes to in-fiction lines with the owner.
 - [ ] Complete the listed contributor browser and mobile checks.
+
+## Plan
+
+_Status: approved 2026-11-26_ (slice 9, coordinator approves for the owner)
+
+**Approach:** Retire the spring’s E menu and use the existing Pause pages for its functions.
+Move unlocked chapter selection to Pause → Kapitel and display collected bottles in Sammlungen.
+Keep the present-day home ring, its arrival effects and the existing water interaction. Remove
+`hub:use` and the obsolete `hub` story condition after checking the live story and dialogue catalogs.
+
+**Files to touch:**
+
+- `src/systems/story/`, `src/ui/pause-pages.ts`, `src/ui/touch.css` and `src/systems/flaschen/` — remove the overlay and its registrations, keep home detection, and move chapter selection and the bottle display.
+- `tests/`, `e2e/` and `e2e/helpers/` — update home, spring, chapter selection, Codex, card queue and collection coverage.
+- `docs/PRD.md`, `docs/ACTION-RPG.md`, `docs/ARCHITECTURE.md`, the tour systems notes and `content/story/README.md` — document the active home and Pause paths.
+- `scripts/dev/storyboard.mjs` and its docs — point the former spring menu capture at Pause → Kapitel. The chapter builders receive comment corrections.
+
+**Steps:**
+
+- [x] 1. Remove the spring menu and its E workaround. Preserve `hub:enter` / `hub:leave`, wake and Q-hold return. Retire the unused tile event and story condition.
+- [x] 2. Move chapter selection and the bottle display into the existing Pause pages. Keep unlocked chapter confirmation and Pause saving.
+- [x] 3. Update the focused unit and browser specs. Audit changed IDs, selectors and strings across `e2e/`, its helpers, `tests/` and the feature dictionaries.
+- [x] 4. Update the live docs. Run typecheck, Vitest with two workers, build, Node-loader content validation and MissionControl validation. Record the separate commit commands and browser handoff.
+
+**Test plan:** Check the home ring in the present, the past and while flying, water reach from the wake spot, and Q return. In Playwright, check an idle spring and the scripted water prompt, Pause → Kapitel with locked and unlocked chapters, Codex focus, Pause save and the card and bottle displays. Use the existing one-worker specs and cover the chapter page and spring touch on a reduced-motion landscape phone. Browser runs and captures are external.
+
+**Risks:** The home ring still triggers combat healing, hunt reset and oil refill, free respec, dialogue and story progress. The separate Quelle interaction still uses `e.owner` to arbitrate water touch and nearby interactions.
+
+**Open questions:** The owner still needs to decide final title wording, feature destinations and which in-fiction references to retain.
+
+| Epic criterion | Coverage | Outcome |
+| --- | --- | --- |
+| 1–2. Opening copy and tour map | full | The working title and tour map already shipped. |
+| 3. Journal, Feldbuch and destinations | partial | Keep the existing Pause pages and track the owner decisions below. |
+| 4–6. Survey controls, classic retirement, bible and staff | full | Earlier slices completed these items. |
+| 7. Bauwagen and spring interaction | full | The hidden Bauwagen shipped in slice 8. The spring keeps its home and water roles. |
+| 8. Old saves | full | Keep the current save shape, wake behavior and chapter unlocks. |
+| 9. Smoke, affected e2e and units | partial | Run unit tests and record the external one-worker checks. |
+| 10. PRD, ACTION-RPG and README | full | Document the spring and Pause changes in the active references. |
+| 11. Four gates | full | Run the four requested gate commands. |
+
+**Follow-up slices:**
+
+- [ ] §1 — Owner decision: final wording for the working title „Schloss Karlsberg Tour“.
+- [ ] §6 — Owner decision: keep Sammlungen and Funde as Pause pages or fold them into Codex.
+- [ ] §6 — Owner decision: keep Ausrüstung and Talente separate or combine them on I and in Pause.
+- [ ] §6 — Owner decision: whether Laub’s field book, its K4 and Behalten references, and Marlene’s loose note in travel lore stay as fiction.
+- [ ] §6 — Blocked on TASK-010: any owner-approved rewrite of the tour’s Bussole-page handoff `laub.t.seite` needs the tour script integration. The live line already directs the player to Ausrüstung. Any changed recorded dialogue needs matching clips after script lock.
+- [ ] Verification — Run the one-worker browser and mobile checks in Progress. Refresh the archived spring menu storyboard image and caption on the next capture.
 
 ## Progress
 
@@ -783,7 +830,27 @@ remaining interface destinations are deferred.
   git commit -m 'feat(world): restore the hidden Bauwagen' -m 'Refs: TASK-007' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>'
   ```
 
+- 2026-11-26 — Slice 9 approved by the coordinator for the owner on `feat/task-007-slice9` at `22a33d0`.
+
+- 2026-11-26 — Slice 9 step 1 complete. No live story or pack uses the tile event or condition. Removed both and the extra E prompt. The spring still claims its own prompt through the shared interaction ownership flag.
+- 2026-11-26 — Slice 9 step 2 complete. Pause now hosts chapter selection and the bottle display. Chapters retain their lock and confirmation behavior. Marlene’s general return dialogue still uses the existing home-entry triggers.
+
+- 2026-11-26 — Slice 9 step 3 complete. Updated the home and interaction tests, chapter replay and confirmation, Pause focus and saving, queued cards and bottle display. Audited the removed keys, selectors and hooks across e2e, its helpers, unit tests and the feature dictionaries. All 104 focused unit tests passed.
+
+- 2026-11-26 — Slice 9 step 4 complete. Typecheck, Vitest with two workers (1,557 tests in 117 files), the production build, Node-loader content validation, MissionControl validation and `git diff --check` passed. The content validator reported the existing example-pack warning. Gates used a writable copy of installed dependencies with pnpm’s automatic reinstall check disabled. No generated content changed.
+- 2026-11-26 — Playwright listed 47 tests in 15 specs and one mobile tour test. Browser execution and screenshots are pending. The storyboard capture now opens Pause → Kapitel under the existing shot ID. `node --check scripts/dev/storyboard.mjs` and shot discovery passed. The archived image still shows the prior UI.
+
+  ```sh
+  pnpm build
+  for spec in smoke story quelle touch pacing integration chronik flaschen npc progression chapter-prolog chapter-k1-quelle tour-slice chapter-k3 campaign; do
+    scripts/dev/heavy.sh -- pnpm exec playwright test "e2e/$spec.spec.ts" --workers=1
+  done
+  KQ_MOBILE_UNIT=small-landscape KQ_MOBILE_STATES=journal scripts/dev/heavy.sh -- pnpm exec playwright test -c e2e/mobile/playwright.config.ts --workers=1
+  ```
+
+- 2026-11-26 — The worktree’s `index.lock` restriction leaves the separate TASK-001/TASK-002 closure commit and this slice ready for staging in the contributor shell.
+
 ## Notes
-- Items marked "verify with owner" need a decision before work starts. Still open after 2026-11-23: final title wording, where Sammlungen / Funde / Ausrüstung / Talente go, which in-fiction "Feldbuch" lines stay.
+- See the active plan’s follow-up list for owner decisions and the tour script dependency.
 - Story content: chapters are generated by `scripts/content-build/`; the tour file is hand-authored.
 %% mc-links: [[SPR-001]] %%

@@ -351,8 +351,7 @@ html[data-kq-touch] .kq-hud .kq-toasts {
 html[data-kq-touch] .kq-hud .kq-prompt {
   bottom: 18px;
 }
-/* one prompt, not two: while the Aktion pill carries the interact prompt's text („Pause an der Quelle“),
-   the HUD's prompt pill at the bottom says the same and steps aside */
+/* The touch action already shows the interaction text, so hide the duplicate HUD prompt. */
 html[data-kq-touch]:has(.kq-touch:not(.kq-hidden) .kq-t-btn.interact.lit) .kq-hud .kq-prompt {
   display: none;
 }
