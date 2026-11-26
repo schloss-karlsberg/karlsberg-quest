@@ -82,8 +82,9 @@ it('accumulates locked movement and wheel units once per read', () => {
 it('retries a denied pointer lock and consumes a game-initiated unlock only once', async () => {
   const denied = Promise.reject(new Error('denied'));
   const request = vi.fn().mockReturnValueOnce(denied);
+  const exit = vi.fn();
   Object.assign(canvas, { requestPointerLock: request });
-  Object.assign(document, { pointerLockElement: null, exitPointerLock() {} });
+  Object.assign(document, { pointerLockElement: null, exitPointerLock: exit });
   input.requestLock();
   input.requestLock();
   expect(request).toHaveBeenCalledTimes(1);
@@ -91,12 +92,14 @@ it('retries a denied pointer lock and consumes a game-initiated unlock only once
   input.requestLock();
   expect(request).toHaveBeenCalledTimes(2);
   input.releaseLock();
+  expect(exit).not.toHaveBeenCalled();
   expect(input.takeSelfRelease()).toBe(false);
 
   Object.assign(document, { pointerLockElement: canvas });
   input.requestLock();
   expect(request).toHaveBeenCalledTimes(2);
   input.releaseLock();
+  expect(exit).toHaveBeenCalledTimes(1);
   expect(input.takeSelfRelease()).toBe(true);
   expect(input.takeSelfRelease()).toBe(false);
 });
