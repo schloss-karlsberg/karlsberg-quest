@@ -701,6 +701,8 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   }
 
   function toTitle(): void {
+    pause.push('title');
+    events.emit('game:title', {});
     save.autosave('title', true);
     started = false;
     ui.loading.setEnabled(false);
@@ -709,7 +711,6 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     input.releaseLock();
     ui.cards.clearToasts();
     ui.hud.show(false);
-    pause.push('title');
     if (!title.el.isConnected) ui.add(title.el);
     title.show();
     title.setReady(save.has());

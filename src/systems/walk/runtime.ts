@@ -209,6 +209,13 @@ export class WalkRuntime {
       else this.talking.delete(npc);
     }) as (p: never) => void);
     ev.on('player:teleport', (() => (this.jumped = true)) as (p: never) => void);
+    ev.on('travel:arrived', () => {
+      if (!this.era || !this.jumped) return;
+      // The travel autosave runs under the curtain. Save the jump for the next tick so the
+      // group can emit its arrival when the story is ready to receive it, including on reload.
+      this.writeSlice();
+      this.o.slice().pendingTravelSnap = true;
+    });
   }
 
   /** The player talks to this npc (the conversation names the placement: our id or its speaker). */
@@ -568,20 +575,19 @@ export class WalkRuntime {
       this.active = inEra;
       for (const n of this.npcs.values()) this.setVisible(n, inEra);
     }
-    if (!inEra) {
-      this.lastPlayer = { x: p.x, z: p.z };
-      this.jumped = false;
-      return;
-    }
-    this.now += dt;
     // jump: a teleport event, or the player moved > 20 m in one step
     const lp = this.lastPlayer;
-    if (lp && Math.hypot(p.x - lp.x, p.z - lp.z) > JUMP_DIST) this.jumped = true;
     this.lastPlayer = { x: p.x, z: p.z };
+    if (inEra) {
+      this.now += dt;
+      if (lp && Math.hypot(p.x - lp.x, p.z - lp.z) > JUMP_DIST) this.jumped = true;
+    }
     if (this.jumped) {
       this.jumped = false;
-      this.snapAll();
+      if (inEra) this.snapAll();
+      delete this.o.slice().pendingTravelSnap;
     }
+    if (!inEra) return;
     for (const w of this.walkers.values()) {
       const n = this.npcs.get(w.npc);
       if (this.isTalking(w.npc)) {
@@ -763,7 +769,7 @@ export class WalkRuntime {
       this.landMembers(g);
     }
     this.lastPlayer = null;
-    this.jumped = false;
+    this.jumped = s.pendingTravelSnap === true;
     this.sync();
   }
 
