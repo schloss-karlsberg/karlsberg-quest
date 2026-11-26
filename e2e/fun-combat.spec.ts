@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { SCREENS } from './helpers/common';
 
 /**
  * Combat fun pass (docs/ACTION-RPG.md §5.2, §5.5): the bosses reveal themselves (camera, title card,
@@ -7,7 +8,6 @@ import { type Page, expect, test } from '@playwright/test';
  * escort, the Nebelweber, red/white telegraphs on pale and dark ground, the Gnadenstoß.
  * Screenshots: test-results/screens/fun-combat-*.png — look at them after visual changes.
  */
-const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];

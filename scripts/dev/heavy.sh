@@ -39,6 +39,11 @@ real-GPU screenshot sets and local model runs (MOSS / TTS). An exclusive ticket 
 until it holds all slots, and tickets queued behind it wait too, so it cannot starve:
   scripts/dev/heavy.sh --exclusive --max-hold 10 -- \
     pnpm exec playwright test -c playwright.gpu.config.ts --workers=1
+The real-GPU / fixed-port tools refuse a normal slot (exit 2) and must run exclusive:
+scripts/dev/mobile-tour.ts (e2e/mobile/playwright.config.ts, port 5340),
+scripts/dev/storyboard.mjs (5370) and scripts/dev/look.mjs (5602). The perf-sensitive
+specs (walk "d" perf, framerate, perf, playwright.gpu.config.ts) only warn when they run
+in a normal slot while other slots are busy.
 
 Priority lane: owners `kq-integrate` and `kq-integrate-*` (the merge-gate e2e) go
 ahead of the FIFO order, but after 2 priority holds in a row the oldest waiting
@@ -80,7 +85,14 @@ Environment:
                         (no slot, no queue, even with --exclusive).
   KQ_HEAVY_SLOT         Set for the child: its slot (0 for an exclusive job). Without
                         KQ_E2E_PORT, the Playwright configs serve the preview on 5281 + slot,
-                        so e2e runs in different slots never share a server.
+                        so e2e runs in different slots never share a server; the fixed-port
+                        tools above use their base port + slot unless their port env is set
+                        (KQ_MOBILE_PORT, KQ_STORYBOARD_PORT, KQ_LOOK_PORT). In slot k >= 1 the
+                        Playwright output dirs get a -slot<k> suffix (test-results/artifacts-slot1,
+                        test-results/screens-slot1, ...), so two jobs from one checkout never
+                        wipe or overwrite each other's files; slot 0 keeps the plain paths.
+  KQ_HEAVY_MODE         Set for the child: exclusive or normal (scripts/dev/heavy-env.mjs reads
+                        it, plus KQ_HEAVY_LOCK, which is exported to the child too).
 
 Exit codes: the command's own code; 75 = timed out or refused by --strict;
 64 = usage error; 2 = priority owner without --max-hold <= 15. Slots with no
@@ -698,7 +710,9 @@ fi
 
 export KQ_HEAVY_HELD=1
 if [ "$GOT" = all ]; then KQ_HEAVY_SLOT=0; else KQ_HEAVY_SLOT=$GOT; fi
-export KQ_HEAVY_SLOT
+if [ "$my_mode" = X ]; then KQ_HEAVY_MODE=exclusive; else KQ_HEAVY_MODE=normal; fi
+KQ_HEAVY_LOCK=$LOCK   # so the child can see which other slots are busy (scripts/dev/heavy-env.mjs)
+export KQ_HEAVY_SLOT KQ_HEAVY_MODE KQ_HEAVY_LOCK
 dirs=()
 for k in $OWNED; do sdir "$k"; dirs=(${dirs[@]+"${dirs[@]}"} "$SD"); done
 set -m   # job control: the child gets its own process group and default SIGINT handling

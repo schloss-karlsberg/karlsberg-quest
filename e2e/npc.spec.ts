@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 import { waitForHooks } from './helpers/pause';
+import { SCREENS } from './helpers/common';
 
 /**
  * Round 2: ghostly NPCs (Hanne at the building site 1789), conversations, story conditions and
@@ -9,7 +10,6 @@ import { waitForHooks } from './helpers/pause';
  * Runs the test chapter content/story/99-test.story.json (`?storytest`).
  * Screenshots: test-results/screens/npc-*.png
  */
-const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 test.describe.configure({ timeout: 300_000 });
 

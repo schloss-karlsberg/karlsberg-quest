@@ -1,12 +1,12 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { SCREENS } from './helpers/common';
 
 /**
  * Combat: the Messstab, the dodge, the Bannlicht, spectral enemies, the four bosses, dying without
  * loss. Drives `window.kq.combat` with `?manual` (deterministic stepping). Screenshots:
  * test-results/screens/rpg-combat-*.png — look at them after visual changes.
  */
-const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];

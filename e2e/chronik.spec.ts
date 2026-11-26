@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 import { openPause, waitForHooks } from './helpers/pause';
+import { SCREENS } from './helpers/common';
 
 /**
  * Chronik and Codex (docs/ACTION-RPG.md §8.4 / §12): world clues, relief and echoes, and facts
@@ -8,7 +9,6 @@ import { openPause, waitForHooks } from './helpers/pause';
  * Screenshots: test-results/screens/chronik-*.png. `?placeholder` forces the test pack
  * (content/test/chronik-test.pack.json) even once real content exists.
  */
-const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 const URL = './?notitle&nosave&fresh&manual&placeholder';
 

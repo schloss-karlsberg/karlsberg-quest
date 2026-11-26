@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { SCREENS } from './helpers/common';
 
 /**
  * Skills + survey tools: gating (Relief-Blick, Kartograf), the unlock card with Laub's line, the
@@ -7,7 +8,6 @@ import { type Page, expect, test } from '@playwright/test';
  * view (B), Röntgenblick (V), Spurenleser horn meaning + pack routes and the settings / key help.
  * Screenshots: test-results/screens/skills-*.png.
  */
-const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];

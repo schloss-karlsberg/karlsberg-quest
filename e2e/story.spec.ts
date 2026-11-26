@@ -3,12 +3,12 @@ import { type Page, expect, test } from '@playwright/test';
 import { SAVE_KEY } from '../src/core/save';
 import { throughTour } from './helpers/tour';
 import { openPause, waitForHooks } from './helpers/pause';
+import { SCREENS } from './helpers/common';
 
 /**
  * Story feature: new-game flow, dialogue presenter, home at the Quelle (day/night), Pause chapters,
  * objectives + Bussole, being caught, endings and credits. Screenshots: test-results/screens/story-*.png
  */
-const SCREENS = 'test-results/screens';
 mkdirSync(SCREENS, { recursive: true });
 // software WebGL on a busy machine can be slow: generous budgets
 test.describe.configure({ timeout: 300_000 });
