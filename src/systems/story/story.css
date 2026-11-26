@@ -177,9 +177,17 @@ body.kq-in-combat .kqs-dlg-body::before {
   font-style: italic;
 }
 .kqs-skip {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
   margin-left: auto;
   opacity: 0.6;
 }
+.kqs-dlg:not(.kqs-show) .kqs-skip { visibility: hidden; }
+.kqs-skip:focus-visible { outline: 2px solid #ffd23f; outline-offset: 2px; }
 .kqs-skip kbd {
   font-family: var(--serif);
   font-style: normal;
@@ -1156,21 +1164,26 @@ html[data-kq-reduced-motion] .kqs-flow-card {
 /* reduced motion: no swinging, no rolling, no pops */
 .kqs-reduced .kqs-portrait,
 .kqs-reduced .kqs-portrait *,
-.kqs-reduced .kqs-dlg,
-.kqs-reduced .kqs-card,
 .kqs-reduced .kqs-card-rule,
 .kqs-reduced .kqs-bussole.kqs-jolt svg {
   animation: none !important;
   transition-duration: 0.01s !important;
 }
-@media (prefers-reduced-motion: reduce) {
-  .kqs-portrait,
-  .kqs-portrait *,
-  .kqs-cr-roll,
-  .kqs-flow-card,
-  .kqs-end-fire {
-    animation: none !important;
-  }
+html[data-kq-reduced-motion] .kqs-objective.kqs-new,
+html[data-kq-reduced-motion] .kqs-end-fire,
+html[data-kq-reduced-flash] .kqs-end-fire,
+html[data-kq-reduced-flash] .kqs-portrait .kqs-led {
+  animation: none;
+}
+html[data-kq-reduced-motion] :is(.kqs-objective, .kqs-bussole, .kqs-dlg, .kqs-choice-card, .kqs-card) {
+  transition: opacity 0.2s;
+}
+html[data-kq-reduced-motion] .kqs-curtain {
+  transition-duration: 0.2s;
+  transition-delay: 0s, 0.2s;
+}
+html[data-kq-reduced-motion] .kqs-curtain.kqs-down {
+  transition: opacity 0.2s;
 }
 
 /* ---- endings: the button to the next page never needs a scroll ----
@@ -1371,6 +1384,7 @@ html[data-kq-reduced-motion] .kqs-flow-card {
   cursor: pointer;
 }
 html[data-kq-reduced-motion] .kqs-stage-bar { animation: none; height: 9vh; }
+html[data-kq-reduced-motion] .kqs-stage-bussole { animation: none; opacity: 0.95; }
 html[data-kq-reduced-motion] .kqs-stage-era.on { animation: none; opacity: 1; }
 
 /* reduced motion: the lid and the page fade instead of flying */

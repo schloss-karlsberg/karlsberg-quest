@@ -852,6 +852,12 @@ html[data-kq-reduced-motion] .kqp-xp .kqp-lvl,
 html[data-kq-reduced-motion] .kqp-quick {
   animation: none !important;
 }
+html[data-kq-reduced-motion] :is(.kqp-bar-fill, .kqp-bar-ghost) {
+  transition: none !important;
+}
+html[data-kq-reduced-motion] .kqp-cards {
+  transition: none;
+}
 html[data-kq-reduced-motion] .kqp-line {
   transform: none;
   transition: opacity 0.3s;

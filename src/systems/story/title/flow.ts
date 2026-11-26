@@ -6,6 +6,7 @@
 import type { SettingsStore } from '../../../core/save';
 import { t } from '../../../i18n';
 import { h, svg } from '../../../ui/dom';
+import { wrapTab } from '../../../ui/focus';
 import { settingsForm } from '../../../ui/menus';
 import type { ModalManager } from '../../../ui/modal';
 import { titleHooks } from '../../../ui/title';
@@ -64,6 +65,13 @@ export function runNewGameFlow(host: HTMLElement, d: FlowDeps): Promise<false | 
       root?.remove();
       root = el;
       host.append(el);
+      el.addEventListener('keydown', (e) => {
+        wrapTab(e, el);
+        if (e.key === 'Escape' && !e.repeat) {
+          e.preventDefault();
+          cancel();
+        }
+      });
       queueMicrotask(() => el.querySelector<HTMLElement>('[data-autofocus]')?.focus({ preventScroll: true }));
     };
     const cancel = () => {
@@ -119,8 +127,10 @@ export function runNewGameFlow(host: HTMLElement, d: FlowDeps): Promise<false | 
       };
       ok.addEventListener('click', submit);
       input.addEventListener('keydown', (e) => {
-        e.stopPropagation();
-        if (e.key === 'Enter') submit();
+        if (e.key === 'Enter') {
+          e.stopPropagation();
+          submit();
+        }
       });
       input.addEventListener('input', () => (ok.disabled = !input.value.trim()));
       queueMicrotask(() => input.select());

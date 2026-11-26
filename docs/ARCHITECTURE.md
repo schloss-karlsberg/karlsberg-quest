@@ -436,20 +436,34 @@ Settings rows: `addSettingsRows((settings) => [[label, control, section?, help?]
 `graphics`, `access`, `audio` (default `game`), `help` is a sentence shown under the row. Give
 controls a `data-testid` and an `id` (the label's `for` is set from it).
 
-Accessibility contract for feature systems:
-- **Flashes**: when `settings.reducedFlash` is on, keep full-screen flashes ≤ 25 % (the post pass
-  already scales `uFlash` by 0.2 and the shift's chromatic aberration), no strobing light
-  (interiors stop candle/fire flicker, fx damps collapse and shift flashes, the fireworks echo
-  drops its white-out and spark twinkle, ghosts lose their eerie stutter (`uStutter`), the
-  hounds' ember eyes and horn glow stop flickering).
-- **Motion**: `settings.reducedMotion` → shorter / calmer transitions, no camera shake.
-- **Root attributes** for CSS: `html[data-kq-contrast]`, `[data-kq-reduced-motion]`,
-  `[data-kq-reduced-flash]`, `[data-kq-colorblind]`; `--sub-bg` (subtitle backing opacity),
-  `--sub-scale`. Feature CSS should add a high-contrast rule for its HUD pieces (solid backing,
-  ≥ 4.5 : 1 text).
-- **Colour**: never encode meaning in red vs green alone; with `settings.colorblind` the relief
-  scan uses the Okabe-Ito blue ↔ orange ramp (`terrain.uniforms.uPalette`).
-- **Audio**: speech on the `voice` bus, so players can turn music down and voices up.
+### Accessibility
+
+- Read `settings.reducedMotion` when rendering optional movement. Keep player input, world
+  locomotion, simulation clocks and required combat tells responsive. Cut scripted camera moves
+  to still shots or skip the move. Suppress shake, recoil offsets, title drift and camera bob.
+  Keep decorative particles, rotation, pulsing markers and auto-scrolling still or omit them.
+  Both credits views offer a static list when the in-game setting or the OS preference requests
+  reduced motion. Keep keyboard- and touch-driven scrolling available.
+- Use immediate state changes for gauges and indicators. When opacity is needed to cover a cut
+  or communicate a transition, use a short fade. Story overlays cap reduced-motion fades at
+  200 ms while scene triggers keep their authored timing. The era shift uses its own crossfade.
+- Keep flashing at three flashes per second or fewer. Review overlapping effects and rapid
+  retriggers as a combined view, including CSS, shader emissive terms and full-screen passes.
+  With `settings.reducedFlash`, use steady lights and attenuate full-screen flashes. The post pass
+  scales `uFlash` and shift colour separation by 0.2 with reduced flashes and suppresses both
+  with reduced motion. Feature-local effects also need steady or dim alternatives.
+- Use `html[data-kq-reduced-motion]`, `[data-kq-reduced-flash]`, `[data-kq-contrast]` and
+  `[data-kq-colorblind]` in feature CSS. The OS preference initializes motion and flash
+  settings and covers the loader before startup. High-contrast HUD pieces use a solid backing
+  and text contrast of at least 4.5 to 1. Subtitles share `--sub-bg` and `--sub-scale`.
+- Use native controls with visible German labels. Add a German accessible name to icon-only
+  controls and group radio options under a named radiogroup. Follow DOM order for Tab, show a
+  visible focus ring and keep focus inside the active dialog. Return focus to its opener where
+  available. Focus reading-only panels without scrolling so the first entry is visible on open.
+  Retain focus on an equivalent control after journal content refreshes.
+- Encode information with more than colour. With `settings.colorblind`, relief uses the
+  Okabe-Ito blue ↔ orange ramp (`terrain.uniforms.uPalette`). Route speech through the
+  `voice` bus so players can set its volume independently.
 
 ## 6. Events (core)
 
@@ -721,8 +735,9 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   each press is reported at most once; `t` = seconds into the act; tapped by wrapping the live
   `CombatSim.step` and reading the player state, buffer included, before / after, nothing in
   combat changes) and `frames`. `kq.pilot.observe({frames?})` is the
-  same without stepping; `kq.pilot.choose(n)` clicks option n (1-based) of the open dialogue /
-  story choice / modal, one at a time: a second `choose()` before the next `act` / `observe` returns
+  same without stepping; `kq.pilot.choose(n)` selects option n (1-based) of the open dialogue,
+  story choice or modal. Inline choices go through `kq.story.choose` and return a label only when
+  the choice was accepted. A second `choose()` before the next `act` / `observe` returns
   null and adds a `chooseRejected` event (the next modal may not be up yet). In bullet time the era
   shift runs on the fixed steps when frames are drawn only on request, and fast travel arrives at
   once (`src/core/bullet.ts`); `kq.pilot.showStrip(true)` shows each act's frames along the bottom of
@@ -1645,6 +1660,8 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   terrace lamps, winter over the summer night, the climax on the one scaffold, darkness, the
   return. Light via `uGlowColor/uGlowPos`, white flash via `post.uFlash` — off with
   `settings.reducedFlash` or `reducedMotion`; the graphics preset Niedrig halves the sparks.
+  Reduced motion keeps the phase and shell audio schedules, skips moving spark and smoke work,
+  and shows one stationary light during the dark phase.
 - Lit windows (`windows.ts`, the interiors' `extractOpenings`): cue `{do:'cue', id:'scenery:windows',
   data:{building, era?, on?, share?}}` (chapter 2 lights KB-B10); Ehrenhof gate `scenery:gate
   {open}` (closed by default; open adds a pass zone through KB-B39).

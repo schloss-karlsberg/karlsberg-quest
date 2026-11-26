@@ -327,10 +327,11 @@ export default defineSystem({
     if (shift.active) fade = 1 - smoothstep(0.5, 1.1, shift.t) + smoothstep(2.4, 3.2, shift.t);
     ambient.up = obl.active ? smoothstep(0.05, 0.3, obl.vis) : 0;
     const nearFire = fire.active ? fire.blaze : 0;
-    ambient.frame(pointScale(ctx.camera, ctx.renderer), Math.max(0, Math.min(1, fade)), nearFire);
+    ambient.object.visible = !ctx.settings.state.reducedMotion;
+    if (ambient.object.visible) ambient.frame(pointScale(ctx.camera, ctx.renderer), Math.max(0, Math.min(1, fade)), nearFire);
     // post-processing: only touch what fx contributes (other features may use these too)
     const pu = ctx.post.uniforms;
-    const heat = fire.heat * (quality.high ? 1 : 0.6) * (ctx.settings.state.reducedMotion ? 0.3 : 1);
+    const heat = ctx.settings.state.reducedMotion ? 0 : fire.heat * (quality.high ? 1 : 0.6);
     pu.uHeat!.value = heat;
     if (!shift.active) {
       const contributes = fire.flash > 0.001 || k3.flash > 0.001 || obl.vis > 0.001;

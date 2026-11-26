@@ -101,7 +101,8 @@ player the Messstab at the Weiher. Combat starts in Chapter 1.
 | Survey tools | **1** Geisterblick · **2** Relief (Shift+2 backwards, ^ off) · **3** Messen · **4** Röntgenblick · **5** Planblatt · **M** Karte | Open „Erkunden“ on touch. Relief cycles through the modes you’ve unlocked. |
 
 Accessibility (ARCHITECTURE §5 contract, extended): `settings.reducedMotion` → no camera shake, no
-roll camera tilt, shorter hit-stop; `settings.reducedFlash` → no full-screen flashes from combat at
+roll camera tilt, shorter hit-stop, a brief steady beam from reflected Bannlicht, and a static
+„Geblendet“ indicator for the debuff; `settings.reducedFlash` → no full-screen flashes from combat at
 all, hit flashes are local and ≤ 25 %; telegraphs always use **shape + motion + sound + caption**, never
 colour alone; `settings.soundIndicators` shows screen-edge arrows for off-screen attackers; gentle mode
 (below) makes fights forgiving; every combat key is remappable; keyboard-only play works (K, G, H, T / Z / U).
@@ -118,6 +119,7 @@ Over the shoulder by default (camera track, 2026-11-19), first person as an opti
 - **Spring arm:** pivot at the head, 0.62 m right shoulder offset, distance = wheel zoom (default
   3.6 m). It never sits inside a wall, a palace collider, a tree trunk (`forest.trunksNear`), under
   the terrain or above a room's ceiling (`world.ceilingAt`): it snaps in at once and eases back out.
+  In reduced motion, it cuts outward once the boom sweep clears at the extended shoulder offset.
 - **Fights:** aggro enemies within 16 m are written to `cameraHints.fight`; the arm pulls back and
   lifts until they fit in the frame (a boss adds its radius). **Conversations:** the talking NPC's
   head (within 8 m) is `cameraHints.focus`; the view eases into an over-the-shoulder two-shot.
@@ -1058,6 +1060,8 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Motion and focus regressions (TASK-032 review, 2026-11-26) | Verify shoulder clearance before extending the reduced-motion camera. Keep steady cues for the torch, reflected Bannlicht, fireworks, survey markers, loot and party lights. Both credits views honor the OS preference. Release notes open at the top, and inline pilot choices apply through the story API. |
+| Involuntary motion and lost keyboard focus (TASK-032, 2026-11-26) | Reduced motion uses still title and map views, camera cuts and short fades. Survey activations, the lantern and staged effects retain steady cues. Menus keep Tab inside the active dialog and restore focus after a page closes or a journal filter changes. |
 | Storage failures can stall play or leave a stale checkpoint after a cinematic (TASK-031, 2026-11-26) | The first failure allows an immediate retry. From the second consecutive failure onward, autosaves back off for one second of elapsed time. The game retries queued forced checkpoints, and hiding the tab or returning to the title gives one immediate attempt when there is no active cinematic hold. |
 | A failed checkpoint or interrupted input can affect the next play session (TASK-031, 2026-11-26) | A rejected save preserves the last checkpoint time and retry eligibility. Pause and focus changes clear pending input. Switching touch off cancels queued taps. Fingers and keyboard or assistive technology activations on Hieb share one attack until all holds end. |
 | Several autosave requests in one update can stall play if storage keeps failing (TASK-031, 2026-11-26) | The first failure allows an immediate retry. From the second consecutive failure onward, autosaves wait one second between attempts. |

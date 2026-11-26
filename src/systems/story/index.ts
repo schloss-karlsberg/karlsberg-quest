@@ -373,7 +373,7 @@ class StoryRuntime {
     ctx.events.on('story:cue', ({ id, data }) => {
       if (id.startsWith('bussole:')) this.objectives.cue(id, data ?? {}, ctx.settings.state.reducedMotion);
     });
-    this.overlays = new StoryOverlays(this.layer, ctx.ui.modals, (open) => ctx.events.emit('story:inline-choice', { open }), ctx.ui.hud);
+    this.overlays = new StoryOverlays(this.layer, ctx.ui.modals, (open) => ctx.events.emit('story:inline-choice', { open }), ctx.ui.hud, () => ctx.settings.state.reducedMotion);
 
     addPausePage({
       id: 'chapters',
