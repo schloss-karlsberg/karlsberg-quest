@@ -652,9 +652,10 @@ const STATES: State[] = [
           return { now: Math.round(performance.now() - w.t0), shownAt: w.shownAt, goneAt: w.goneAt };
         });
       const shown = () => c.page.evaluate(() => !!document.querySelector('.kqt-banner:not(.kqt-aside)'));
-      /** Taps the lines away until the banner shows, it came and went, or 20 s passed. */
+      /** Taps the lines away until the banner shows, it came and went, or 40 s passed (a guide's
+       *  talk can run a dozen lines, and on a phone the banner waits for every one of them). */
       const waitShown = async (): Promise<'shown' | 'gone' | 'timeout'> => {
-        const until = Date.now() + 20_000;
+        const until = Date.now() + 40_000;
         while (Date.now() < until) {
           if (await shown()) return 'shown';
           if ((await watch()).goneAt >= 0) return 'gone';
@@ -687,7 +688,7 @@ const STATES: State[] = [
           const line = document.querySelector('.kqs-dlg.kqs-show .kqs-dlg-text')?.textContent ?? null;
           return `banner ${b ? (b.classList.contains('kqt-aside') ? 'aside' : 'up') : 'absent'}, slot ${cards.showing ?? 'free'}, holds [${cards.holdReasons().join(', ')}], line ${line ? `„${line.slice(0, 60)}“` : 'none'}`;
         });
-        c.f.notes.push(`travel-card: the banner did not show within 20 s (${why})`);
+        c.f.notes.push(`travel-card: the banner did not show within 40 s (${why})`);
       }
       await c.tidy();
     },
