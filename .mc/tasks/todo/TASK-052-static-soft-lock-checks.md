@@ -44,8 +44,22 @@ and affected id, with warnings for cases that need a playthrough or an editorial
 - [x] Run the checks on the shipped chapters, investigate findings and record unresolved cases.
 - [x] Update the authoring guides and changelog. Run the four gates and the locked smoke spec if available.
 
+### Review fixes
+
+Keep the fresh-campaign checker aligned with runtime events, quest state and action timing,
+and keep the chapter-three basket cue safe when resuming an older save.
+
+- [ ] Trace and correct the 14 validator findings, with a fixture for each regression.
+- [x] Guard the basket cue after pickup and test the old-save state.
+- [ ] Update the authoring guides and changelogs, run the four gates and attempt locked browser checks.
+- [ ] Record each review disposition and commit the fixes locally on `dev/task-052`.
+
 ## Progress
 
+- Review round, 2026-11-26. The chapter-three cue now also requires the basket objective to
+  be incomplete. The story-engine regression exercises three kills, the fourth kill, and a
+  resumed save with the basket already collected. Dialogue text and clip ids match the branch
+  baseline.
 - Branch `dev/task-052`. Traced the story engine, NPC topics, Chronik discoveries, quest book,
   item pickup events and turn-in rewards.
 - Added an ordered progression pass, emitter and dialogue checks, and fixtures for broken and

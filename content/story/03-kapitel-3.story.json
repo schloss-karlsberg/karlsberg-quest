@@ -176,7 +176,12 @@
     },
     {
       "id": "korb",
-      "when": { "quest": { "id": "q.k3.nachmittag", "objective": "schatten", "gte": 4 } },
+      "when": {
+        "all": [
+          { "quest": { "id": "q.k3.nachmittag", "objective": "schatten", "gte": 4 } },
+          { "not": { "quest": { "id": "q.k3.nachmittag", "objective": "korb", "gte": 1 } } }
+        ]
+      },
       "do": [
         {
           "do": "say",
