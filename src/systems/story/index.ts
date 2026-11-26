@@ -1,13 +1,13 @@
 /**
  * Story feature: data-driven chapters/beats (content/story/*.story.json), the dialogue presenter,
- * objectives with Laub's compass, the hub at the Quelle, the new-game flow on the title, being
+ * objectives with Laub's compass, the home base at the Quelle, the new-game flow on the title, being
  * caught, endings and credits.
  *
  * Talks to other features only through events (contracts.ts + the story-private events below)
  * and `ctx.state`.
  */
 import './story.css';
-import { RADIO_LINES } from './strings';
+import './strings';
 import type { GameContext } from '../../core/context';
 import { type Era, ERA_INFO, isEra } from '../../core/era';
 import { defineSystem } from '../../core/systems';
@@ -28,8 +28,7 @@ import { composeEpilogue, type Epilogue } from './endings/epilogue';
 import { endingScenes } from './endings/scenes';
 import { EndingStage } from './endings/stage';
 import { EndingScreen } from './endings/ui';
-import { HubOverlay } from './hub/overlay';
-import { HOME, bringHome, hubAt } from './hub/home';
+import { HOME, atHome, bringHome } from './hub/home';
 import { ObjectiveView, bearingDeg } from './objectives';
 import { StoryOverlays, cardClockDt } from './overlays';
 import { playStorySound } from './sfx';
@@ -37,8 +36,9 @@ import { loadBundledStories, missingTourChestnuts, storiesInPlay } from './stori
 import { installTitleFlow } from './title/flow';
 import { titleHooks } from '../../ui/title';
 import { pauseHooks } from '../../ui/menus';
-import { COLLECTIONS } from '../../rpg/items';
-import { type Action, type Checkpoint, type ChoiceAction, type Condition, type EndingId, type FlagValue, type HubItem, type LookTime, type MeterAction, type NpcAction, type StoryFile, isWalkAction } from './types';
+import { h } from '../../ui/dom';
+import { addPausePage } from '../../ui/pause-pages';
+import { type Action, type Checkpoint, type ChoiceAction, type Condition, type EndingId, type FlagValue, type LookTime, type MeterAction, type NpcAction, type StoryFile, isWalkAction } from './types';
 import type { WalkRequest } from '../walk/types';
 import type { AnimalAction } from '../animals/types';
 import type { CinematicPlay } from '../cinematic/types';
@@ -65,8 +65,6 @@ declare module '../../core/state' {
 }
 declare module '../../core/events' {
   interface GameEvents {
-    /** A hub item was used (the hub overlay at the Quelle). */
-    'hub:use': { item: HubItem };
     /** The player was brought home to the Quelle (HOME.spawn): Q held in the past (contract C4). */
     'home:arrived': { reason: 'return' | 'caught' | 'checkpoint' };
     /** Free-form story cue for other features (e.g. { id: 'k2.fire.start' }). */
@@ -104,7 +102,6 @@ export interface StoryHooks {
   flush(): void;
   /** Emit player:caught; `holdMs` keeps the black curtain down longer (screenshots). */
   caught(by?: ThreatKind, holdMs?: number): void;
-  hub(open?: boolean): void;
   ending(id?: EndingId, staged?: boolean): void;
   credits(): void;
   epilogue(id: EndingId): Epilogue | null;
@@ -230,7 +227,6 @@ class StoryRuntime {
   readonly presenter: DialoguePresenter;
   readonly objectives: ObjectiveView;
   readonly overlays: StoryOverlays;
-  readonly hub: HubOverlay;
   readonly endings: EndingScreen;
   readonly stage: EndingStage;
   readonly voice: Voice;
@@ -261,7 +257,6 @@ class StoryRuntime {
   /** The story's prompt on screen (re-rendered when Touch-Steuerung switches) and the mode it was shown in. */
   private promptShown: { key: string | null; text: string; touch?: string } | null = null;
   private promptTouch = false;
-  private hubPrompt = false;
   private shiftPending: { to: Era; age: number; reason?: string } | null = null;
   private qHold = 0;
   /** The walk system offers „Zur Gruppe“ (group:find): Q is its hold then. */
@@ -278,7 +273,6 @@ class StoryRuntime {
   private caughtBusy = false;
   /** Story toasts held back until the action calms down. */
   private calmToasts: { text: string; ms?: number }[] = [];
-  private radioIndex = 0;
   private lastSaid = new Map<string, number>();
   /** Dialogue that is never spoken by the trigger runner (example packs, placeholder packs). */
   private readonly mutedLines: Set<string>;
@@ -293,7 +287,6 @@ class StoryRuntime {
   private caughtHoldS = 2.4;
   /** Lines triggered while the curtain is down: spoken when it lifts. */
   private wakeLines: { speaker: string; text: string; id?: string }[] = [];
-  /** The Chronik was opened from the hub's Pinnwand: reopen the hub when it closes. */
   /** The open choice (for inline `when` options). */
   private choiceAction: ChoiceAction | null = null;
   /** An NPC conversation is open (npc:conversation). */
@@ -302,8 +295,6 @@ class StoryRuntime {
   private readonly shownIds: string[] = [];
   private stillT = 0;
   private lastPos = { x: 0, z: 0 };
-  /** Facts of hidden packs (examples, placeholders without ?placeholder): not counted in the hub. */
-  private readonly hiddenFacts: Set<string>;
   private entryFlags: Map<string, string> | null = null;
   private readonly unbindGuideVoice: () => void;
 
@@ -330,7 +321,7 @@ class StoryRuntime {
         }
       },
       chapterCompleted: (f) => {
-        if (f.unlocks?.length || f.next) ctx.ui.toast(t('story.hub.map.done') + ': ' + f.title_de, 3500);
+        if (f.unlocks?.length || f.next) ctx.ui.toast(t('story.chapter.done') + ': ' + f.title_de, 3500);
       },
     });
 
@@ -338,7 +329,6 @@ class StoryRuntime {
     const placeholder = ctx.params.has('placeholder');
     const hidden = ctx.content.packs.filter((p) => p.file.includes('/examples/') || (p.pack.placeholder && !placeholder));
     this.mutedLines = new Set(hidden.flatMap((p) => (p.pack.dialogue ?? []).map((d) => d.id)));
-    this.hiddenFacts = new Set(hidden.flatMap((p) => (p.pack.facts ?? []).map((f) => f.id)));
     this.layer = ctx.ui.layer('story');
     this.layer.classList.remove('kq-hidden');
     this.unbindGuideVoice = ctx.audio.bindVoiceEmitter('imhoff', () => {
@@ -378,55 +368,11 @@ class StoryRuntime {
     });
     this.overlays = new StoryOverlays(this.layer, ctx.ui.modals, ctx.ui.hud);
 
-    // home is the Karlsbergquelle (hub/home.ts): no mesh of its own, the spring's set and its
-    // clearings belong to the quelle system
-
-    this.hub = new HubOverlay({
-      modals: ctx.ui.modals,
-      use: (item) => this.useHub(item),
-      chapters: () =>
-        this.engine.order.map((f) => ({
-          id: f.chapter,
-          title: f.title_de,
-          sub: f.sub_de ?? '',
-          unlocked: f === this.engine.first || this.slice.unlocked.includes(f.chapter),
-          completed: this.slice.completed.includes(f.chapter),
-          current: this.slice.active && this.slice.chapter === f.chapter,
-          placeholder: !!f.placeholder,
-        })),
-      currentBeatTitle: () => this.engine.beat()?.title_de ?? '—',
-      goto: (ch) => this.goto(ch),
-      rest: () => {
-        const ok = ctx.save.save('auto', 'bench');
-        return ok;
-      },
-      counts: () => {
-        const s = ctx.state.state;
-        const codexTotal = [...ctx.content.facts.keys()].filter((id) => !this.hiddenFacts.has(id)).length;
-        const codex = s.codex.facts.filter((id) => !this.hiddenFacts.has(id)).length;
-        // RPG numbers from the other features' slices (read only, untyped: systems never import each other)
-        const sys = s.systems as Record<string, unknown>;
-        const pr = (sys.progression ?? {}) as { xp?: number; level?: number; inventory?: Record<string, number>; completedSets?: string[] };
-        const qs = (sys.quests ?? {}) as { quests?: Record<string, { state?: string }>; bestiary?: Record<string, number> };
-        const states = Object.values(qs.quests ?? {});
-        return {
-          codex,
-          codexTotal,
-          level: pr.level ?? 1,
-          xp: pr.xp ?? 0,
-          questsDone: states.filter((q) => q.state === 'done').length,
-          questsTotal: states.filter((q) => q.state !== 'hidden').length,
-          banned: Object.values(qs.bestiary ?? {}).reduce((a, b) => a + b, 0),
-          sets: (pr.completedSets ?? []).length,
-          setsTotal: COLLECTIONS.length,
-          items: Object.values(pr.inventory ?? {}).reduce((a, b) => a + (b > 0 ? 1 : 0), 0),
-        };
-      },
-      radioLine: () => RADIO_LINES[this.radioIndex++ % RADIO_LINES.length] ?? null,
-      drawerState: () => (ctx.state.state.inventory.items.includes('item.bussole') ? 'empty' : 'full'),
-      blip: () => this.voice.blip(speakerMeta('marlene', ctx.content).voice),
-      reducedMotion: () => ctx.settings.state.reducedMotion,
-      onClose: () => {},
+    addPausePage({
+      id: 'chapters',
+      label: t('story.chapter.title'),
+      order: 80,
+      render: (el) => this.renderChapters(el),
     });
 
     this.stage = new EndingStage(ctx);
@@ -1427,49 +1373,50 @@ class StoryRuntime {
   };
 
   // ------------------------------------------------------------------------------------------
-  // hub
+  // Home base and chapter selection
   // ------------------------------------------------------------------------------------------
 
-  private useHub(item: HubItem): void {
-    const ctx = this.ctx;
-    const modals = ctx.ui.modals.count;
-    const chapter = this.slice.chapter;
-    ctx.events.emit('hub:use', { item });
-    // the hub pauses the game: let the beat react now, so a clue card (grant {card}) opens on top
-    // of the hub instead of after it has been closed
-    if (this.slice.active && !this.caughtBusy) this.engine.tick(0, this.env());
-    if (this.slice.chapter !== chapter) {
-      // the item ended the chapter (the bridged prologue's bench): close the hub, the next one starts
-      this.hub.close();
-      return;
+  private updateHome(): void {
+    const { player, era, events, ui } = this.ctx;
+    const { x, z } = player.position;
+    const inside = atHome(x, z, era.current, player.flying);
+    if (inside === this.inHub) return;
+    this.inHub = inside;
+    events.emit(inside ? 'hub:enter' : 'hub:leave', {});
+    if (inside && !this.hubToastShown) {
+      this.hubToastShown = true;
+      ui.toast(t('story.home.enterToast'), 3200);
     }
-    // The Pinnwand's clue cards take priority. Otherwise open Codex above the hub.
-    if (item === 'chronik' && ctx.ui.modals.count <= modals && ctx.ui.cards.pending === 0) ctx.events.emit('chronik:open', {});
   }
 
-  private updateHub(): void {
-    const ctx = this.ctx;
-    const p = ctx.player.position;
-    // at the trough while the story calls the spring (`quelle.call`), E is the Quelle's „Wasser
-    // berühren“: the hub keeps out of the way there (contract C4), not only behind the Quelle's
-    // prompt (the hub's is low) but also on the frame the Quelle has not claimed E yet (system order)
-    const at = hubAt({ era: ctx.era.current, x: p.x, z: p.z, flying: ctx.player.flying, flags: ctx.state.state.flags });
-    if (at.inside !== this.inHub) {
-      this.inHub = at.inside;
-      ctx.events.emit(at.inside ? 'hub:enter' : 'hub:leave', {});
-      if (at.inside && !this.hubToastShown) {
-        this.hubToastShown = true;
-        ctx.ui.toast(t('story.hub.enterToast'), 3200);
-      }
-    }
-    const showPrompt = at.prompt && !this.storyPrompt && !this.hub.open;
-    if (showPrompt !== this.hubPrompt) {
-      this.hubPrompt = showPrompt;
-      // a low prompt: anything else that wants E here (a clue, an npc, the spring's water) comes
-      // first, the hub waits so its prompt does not cover the objective
-      ctx.ui.hud.prompt(showPrompt ? 'E' : null, showPrompt ? t('story.hub.prompt') : undefined, 'hub', { low: true });
-    }
-    if (at.prompt && ctx.input.wasPressed('listen') && ctx.ui.modals.count === 0 && ctx.ui.hud.promptOwner() === 'hub') this.hub.show();
+  private renderChapters(el: HTMLElement): void {
+    const { modals } = this.ctx.ui;
+    const slice = this.slice;
+    const entries = this.engine.order.map((chapter) => {
+      const id = chapter.chapter;
+      const unlocked = chapter === this.engine.first || slice.unlocked.includes(id);
+      const current = slice.active && slice.chapter === id;
+      const completed = slice.completed.includes(id);
+      return h(`li${current ? '.current' : ''}${unlocked ? '' : '.locked'}`, [
+        h('button.kqs-chapter', {
+          disabled: !unlocked,
+          'aria-current': current ? 'true' : undefined,
+          'data-testid': `chapter-${id}`,
+          onclick: async () => {
+            if (!current && !(await modals.confirm(t('story.chapter.confirm', { title: chapter.title_de })))) return;
+            modals.closeAll();
+            if (!current) this.goto(id);
+          },
+        }, [
+          h('span.kqs-ch-title', unlocked ? chapter.title_de : t('story.chapter.locked')),
+          unlocked && chapter.sub_de ? h('span.kqs-ch-sub', chapter.sub_de) : null,
+          current ? h('span.kqs-ch-tag', t('story.chapter.current')) :
+            completed ? h('span.kqs-ch-tag.done', t('story.chapter.done')) : null,
+          chapter.placeholder && unlocked ? h('span.kqs-ch-tag.ph', t('story.placeholder')) : null,
+        ]),
+      ]);
+    });
+    el.replaceChildren(h('ol.kqs-chapters', entries));
   }
 
   // ------------------------------------------------------------------------------------------
@@ -1656,7 +1603,7 @@ class StoryRuntime {
       this.overlays.fade(0, 0.8);
     }
     this.updateShiftKey(dt);
-    this.updateHub();
+    this.updateHome();
     this.updateAfterword();
     // Touch-Steuerung switched while a prompt with a touch text is up: say it the other way
     if (this.storyPrompt && this.promptShown?.touch && ctx.input.touchMode !== this.promptTouch) this.renderPrompt();
@@ -1851,7 +1798,6 @@ class StoryRuntime {
         if (holdMs) this.caughtHold = holdMs;
         this.ctx.events.emit('player:caught', { by });
       },
-      hub: (open = true) => (open ? this.hub.show() : this.hub.close()),
       ending: (id, staged) => this.endings.show(id, staged),
       credits: () => this.endings.credits(),
       epilogue: (id) => this.epilogue(id),

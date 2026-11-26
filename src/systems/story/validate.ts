@@ -78,8 +78,6 @@ export function stageDirection(text: string, speaker?: string): string | null {
 }
 
 const SOUNDS = new Set(['howl', 'horn', 'radio', 'beep', 'compass', 'frost', 'match', 'crowbar', 'wind', 'bark']);
-// The Quelle hub and its legacy aliases (bed → bench, radio → phone).
-const HUB = new Set(['chronik', 'phone', 'shelf', 'drawer', 'map', 'bench', 'bed', 'radio']);
 const ENDINGS = ['museum', 'burn', 'keep'] as const;
 const NPCS = new Set(['soll', 'hanne', 'jost', 'peter', 'matthes', 'pikeur', 'gaertner', 'diener', 'mann', 'liese', 'hofgaertner', 'gardist', 'gardist-tor', 'lakai']);
 /** Speakers that stand as people (the party's guide and doubles, bible 06-enden §8): bound to a live person, no ghost. */
@@ -261,9 +259,6 @@ function checkCond(c: Condition | undefined, file: string, where: string, err: R
       break;
     case 'lantern':
       if (typeof r.lantern !== 'boolean') err(file, where, 'lantern must be true/false');
-      break;
-    case 'hub':
-      if (!HUB.has(String(r.hub))) err(file, where, `unknown hub item '${String(r.hub)}'`);
       break;
     case 'room':
       if (!isRoomId(r.room)) err(file, where, `room: malformed room id '${String(r.room)}'`);

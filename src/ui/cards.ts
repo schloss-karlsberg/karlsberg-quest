@@ -223,9 +223,7 @@ export class CardDirector {
   }
 
   private pump(): void {
-    // a field-book page may open over the station's hub (the Pinnwand hands out two at once: they
-    // come one after the other) and in front of a slide-in card (it steps aside), but never over a
-    // fight or a conversation
+    // A clue page may open over Pause or a slide-in card. Fights and conversations hold the queue.
     if (!this.queue.length || this.modalOwner !== null || this.gap > 0 || this.busy) return;
     const next = this.queue.shift()!;
     this.modalOwner = next.token;

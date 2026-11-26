@@ -8,7 +8,7 @@
 import type { Era } from '../../core/era';
 import type { ThreatConfig } from '../contracts';
 import { valueKey } from '../../content/triggers';
-import { type Action, type Beat, type Condition, type EndingId, type EventCond, type FlagValue, type LookTime, type Reaction, type StoryFile, hubItem } from './types';
+import { type Action, type Beat, type Condition, type EndingId, type EventCond, type FlagValue, type LookTime, type Reaction, type StoryFile } from './types';
 
 export interface ObjectiveState {
   text: string;
@@ -179,7 +179,6 @@ export function walkEvents(c: Condition, key: string, fn: (ev: EventCond, key: s
   else if ('any' in c) c.any.forEach((s, i) => walkEvents(s, `${key}.${i}`, fn));
   else if ('not' in c) walkEvents(c.not, `${key}.n`, fn);
   else if ('event' in c) fn(c, key);
-  else if ('hub' in c) fn({ event: 'hub:use', match: { item: hubItem(c.hub) } }, key);
   else if ('caseComplete' in c) fn({ event: 'chronik:case-complete', match: { caseId: c.caseComplete } }, key);
   else if ('room' in c) fn({ event: 'room:enter', match: { [roomMatchKey(c.room)]: c.room } }, key);
 }
@@ -255,7 +254,6 @@ export function evaluate(c: Condition, env: StoryEnv, latched: Record<string, nu
   }
   if ('leave' in c) return Math.hypot(env.x - c.leave.x, env.z - c.leave.z) > c.leave.r;
   if ('event' in c) return (latched[key] ?? 0) >= (c.times ?? 1);
-  if ('hub' in c) return (latched[key] ?? 0) >= 1;
   if ('flag' in c) return c.eq === undefined ? truthy(env.flags[c.flag]) : env.flags[c.flag] === c.eq;
   if ('timer' in c) return time >= c.timer;
   if ('era' in c) return env.era === c.era;
@@ -446,11 +444,6 @@ export class StoryEngine {
     const f = this.chapter();
     const b = this.beat();
     if (!s.active || !f || !b) return;
-    // an old hub id in the payload (bed, radio) means today's tile (bench, phone)
-    if (name === 'hub:use' && payload && typeof (payload as { item?: unknown }).item === 'string') {
-      const item = hubItem((payload as { item: string }).item);
-      if (item !== (payload as { item: string }).item) payload = { ...(payload as object), item };
-    }
     const bump = (ev: EventCond, key: string) => {
       if (eventMatches(ev, name, payload)) s.latched[key] = (s.latched[key] ?? 0) + 1;
     };

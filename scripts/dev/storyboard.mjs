@@ -601,11 +601,13 @@ const SHOTS = [
   },
   {
     id: 't14-pause-hub',
-    ui: '[data-testid="hub"]',
+    ui: '[data-testid="page-chapters"]',
     run: (k, h) => {
       h.place({ era: 'today', x: 1058, z: -832.1, tx: 1061, tz: -834.5, pitch: -9, zoom: 3.4 });
       h.look('pause');
-      k.story.hub();
+      k.ctx.ui.cards.dismissNotice();
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }));
+      document.querySelector('[data-testid="pause-chapters"]')?.click();
     },
   },
 

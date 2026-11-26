@@ -27,7 +27,7 @@ The script opens the game with `?debug&nosave&fresh&manual&q=high` and uses `win
 
 ## What is not captured, and why
 
-- The guided-tour ticket is a capture-only mockup. The training uses the combat hooks. The shipped tour ends on arrival in 1789. Revisit `t0-ticket` and `t14-pause-hub` if TASK-007 changes the title flow or the spring hub.
+- The guided-tour ticket is a capture-only mockup. The training uses the combat hooks. The shipped tour ends on arrival in 1789. The existing `t14-pause-hub.jpg` shows the former spring menu. The capture script now opens Pause → Kapitel for that shot. Refresh the image and its caption together.
 - The reunion, fire bowl and dogs use the shipped party set and animations. The museum frame uses the archive box and group around the table. The lifted page and the player's seated pose are design beats. The choice at the edge uses the ending panel in front of the party, with capture-only wording for the fire bowl and the Bussole.
 - The storyboard stages Marlene with the available party stand-in and the player's staff. The handoff and tripod at the dam, the physical horn at the spring, and the compass coming out of the trough are told in the captions.
 - The hillside chase in K1 and the eyes in the fog in K2 are represented by the closer K2 Parforcejagd picture (`c-meute`). The garden caption covers the K3 jaguar, which was hard to read in the dark. The K2 warning uses the exterior view of the palace (`k2-schloss`).

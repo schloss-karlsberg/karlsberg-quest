@@ -358,7 +358,7 @@ test('I opens Ausrüstung, Pause opens Talente, and learning a talent changes th
   await expect(page.getByTestId('talent-points')).toHaveAttribute('data-points', '1');
   await expect(page.getByTestId('talent-stab.standfest')).toHaveAttribute('data-rank', '1');
   await page.getByTestId('talent-learn-laterne.weit').click();
-  // respec only at the field station
+  // Respec requires the present-day home ring at the spring.
   await expect(page.getByTestId('talent-respec')).toBeDisabled();
   await shot(page, 'talents');
   await page.setViewportSize({ width: 1024, height: 768 });
@@ -382,5 +382,14 @@ test('I opens Ausrüstung, Pause opens Talente, and learning a talent changes th
   });
   expect((await events(page, 'xp:gain')).filter((g) => g.reason === 'codex').length).toBe(1);
   expect((await flags(page))['rpg.level']).toBe((await prog(page)).level);
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.setEra('today');
+    k.teleport(1059.3, -833.1, 50);
+    k.step(4);
+  });
+  await openPause(page);
+  await talentEntry.click();
+  await expect(page.getByTestId('talent-respec')).toBeEnabled();
   expect(errors).toEqual([]);
 });

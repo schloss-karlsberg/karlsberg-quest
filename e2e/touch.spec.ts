@@ -1,5 +1,7 @@
 import { type CDPSession, type Page, devices, expect, test } from '@playwright/test';
 import { SCREENS, trackErrors } from './helpers/common';
+import { waitForHooks } from './helpers/pause';
+import { QUELLE_STAND } from './helpers/prolog';
 
 /**
  * Touch controls (src/ui/touch.ts, phase 1 of docs/PERF-MOBILE-RESEARCH.md §B) on emulated
@@ -292,6 +294,47 @@ test.describe('notices on a small landscape phone', () => {
     await expect(toast).toBeVisible();
     await finger.end();
     await expect(toast).toHaveCount(0); // reduced motion removes the element without an exit fade
+  });
+});
+
+test.describe('touch at the Karlsbergquelle', () => {
+  test.use({ ...DEVICES['iphone-13'], reducedMotion: 'reduce' });
+
+  test('uses Pause for chapters and Aktion for the water', async ({ page }) => {
+    test.setTimeout(240_000);
+    await page.goto('./?notitle&nosave&fresh&manual&q=low');
+    await waitForHooks(page, ['story', 'quelle']);
+    await page.evaluate(({ x, z, yaw }) => {
+      const k = window.kq!;
+      k.ctx.settings.update((s) => { s.reducedMotion = true; }, 'reducedMotion');
+      k.teleport(x, z, yaw, -14);
+      k.step(6);
+    }, QUELLE_STAND);
+
+    const interact = page.getByTestId('touch-interact');
+    await expect(interact).toHaveText('Aktion');
+    await interact.tap();
+    await page.evaluate(() => window.kq!.step(2));
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+
+    await page.getByTestId('touch-pause').tap();
+    await page.getByTestId('pause-chapters').tap();
+    const chapters = page.getByTestId('page-chapters');
+    await expect(chapters.getByTestId('chapter-tour')).toBeEnabled();
+    await expect(chapters.getByTestId('chapter-k1')).toBeDisabled();
+    await chapters.getByRole('button', { name: 'Zurück', exact: true }).tap();
+    await page.getByTestId('resume').tap();
+
+    await page.evaluate(() => {
+      const k = window.kq!;
+      k.ctx.state.mutable.flags['quelle.call'] = true;
+      k.step(3);
+    });
+    await expect(interact).toHaveText('Wasser berühren');
+    await interact.tap();
+    await page.evaluate(() => window.kq!.step(2));
+    expect(await page.evaluate(() => window.kq!.quelle!.info().scene)).not.toBeNull();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
   });
 });
 

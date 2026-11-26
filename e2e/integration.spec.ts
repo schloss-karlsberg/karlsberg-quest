@@ -1,8 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
-import { waitForHooks } from './helpers/pause';
+import { openPause, waitForHooks } from './helpers/pause';
 import { installQuestPlay, touchSpring } from './helpers/prolog';
-import { openTourHub } from './helpers/tour';
 
 // Cross-system play on the tour and K1, with the Chronik test pack enabled.
 const SCREENS = 'test-results/screens';
@@ -72,29 +71,19 @@ test('integration: the tour and K1 across story, fx, hunt and chronik', async ({
   await expect(page.getByTestId('story-card')).toContainText('Die Führung');
   await shot(page, '01-new-game');
 
-  // The spring break leaves E available for the hub.
-  await openTourHub(page);
-  expect((await events(page, 'hub:enter')).length).toBeGreaterThan(0);
-  await shot(page, '02-hub');
-  await page.getByTestId('hub-drawer').click();
-  await page.getByTestId('hub-shelf').click();
-  await page.getByTestId('hub-back').click();
-  await page.getByTestId('hub-chronik').click();
-  await expect(page.getByTestId('page-codex')).toBeVisible();
-  await expect(page.locator('.ck-board')).toHaveCount(0);
-  expect(await page.evaluate(() => window.kq!.ctx.ui.modals.count)).toBe(2);
-  expect(await payloads(page, 'hub:use')).toEqual(expect.arrayContaining([{ item: 'drawer' }, { item: 'chronik' }, { item: 'shelf' }]));
-  expect((await events(page, 'chronik:open')).length).toBe(1);
-  expect((await events(page, 'chronik:opened')).length).toBe(1);
-  await shot(page, '03-hub-chronik');
-  await page.getByTestId('page-codex').getByRole('button', { name: 'Zurück', exact: true }).click();
-  await expect(page.getByTestId('page-codex')).toBeHidden();
-  await expect(page.getByTestId('hub-chronik')).toBeFocused();
-  await expect(page.getByTestId('hub')).toHaveCount(1);
-  // opened from the Pinnwand: closing Codex returns to the hub overlay
-  await expect(page.getByTestId('hub')).toBeVisible();
-  await page.getByTestId('hub-leave').click();
-  await expect(page.getByTestId('hub')).toBeHidden();
+  // The tour's spring break enters the home ring before the water is called.
+  const home = await page.evaluate(() => {
+    const k = window.kq!;
+    k.story!.goto('tour', 't16');
+    const groupAtSpring = k.walk!.snap('fuehrung', 'quelle');
+    k.teleport(1053, -828, 51);
+    k.step(4);
+    k.press('KeyE', 2);
+    return { groupAtSpring, inHub: k.story!.state().inHub, touchingWater: k.quelle!.info().scene !== null };
+  });
+  expect(home).toEqual({ groupAtSpring: true, inHub: true, touchingWater: false });
+  expect(await events(page, 'hub:enter')).toHaveLength(1);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 
   // Relief scan at the hollow way: the FX pulse and a Chronik clue.
   await page.evaluate(() => {
@@ -244,17 +233,14 @@ test('integration: the tour and K1 across story, fx, hunt and chronik', async ({
   await page.evaluate(() => window.kq!.teleport(1053, -828, 51, -3));
   await shot(page, '13-home');
 
-  // ---- 10. hub → Pinnwand → Codex: the clue facts are there ------------------------
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.ctx.ui.modals.closeAll();
-    k.teleport(1053, -828, 51);
-    k.step(2);
-    k.press('KeyE', 2);
-  });
-  await expect(page.getByTestId('hub')).toBeVisible();
-  await page.getByTestId('hub-chronik').click();
+  // ---- 10. Pause → Codex: the clue facts are there ----------------------------------------
+  await page.evaluate(() => window.kq!.ctx.ui.modals.closeAll());
+  await openPause(page);
+  const pauseCodex = page.getByTestId('pause-codex');
+  await pauseCodex.click();
   await expect(page.getByTestId('page-codex')).toBeVisible();
+  expect(await events(page, 'chronik:opened')).toHaveLength(1);
+  expect(await page.evaluate(() => window.kq!.ctx.ui.modals.count)).toBe(2);
   const facts = await page.evaluate(() => window.kq!.state().codex.facts);
   expect(facts.length).toBeGreaterThan(0);
   // relief patterns (rm.NN) have their own filter; everything else shows under "Alle"
@@ -269,8 +255,8 @@ test('integration: the tour and K1 across story, fx, hunt and chronik', async ({
   await shot(page, '14-codex');
   await page.getByTestId('page-codex').getByRole('button', { name: 'Zurück', exact: true }).click();
   await expect(page.getByTestId('page-codex')).toBeHidden();
-  await expect(page.getByTestId('hub-chronik')).toBeFocused();
-  await expect(page.getByTestId('hub')).toHaveCount(1);
+  await expect(pauseCodex).toBeFocused();
+  await expect(page.getByTestId('pause-menu')).toBeVisible();
   // no batches and no hint ladder any more
   expect(await payloads(page, 'chronik:batch')).toEqual([]);
 

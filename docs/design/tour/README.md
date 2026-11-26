@@ -17,7 +17,7 @@ define shipped content.
 | [`content/bible/08-stimmen.md`](../../../content/bible/08-stimmen.md) | Gerold Imhoff, the modern doubles, Marlene and barks |
 | [`storyboard-beats.md`](storyboard-beats.md) | 28 storyboard beats mapped onto `SHOTS`, and the shots they replace |
 | [`impact.md`](impact.md) | 25 work packages with files, change, size and dependencies |
-| [`systems.md`](systems.md) | Photo mode, cinematic, tour group, animals, Quelle hub, party, training flag; pacing targets |
+| [`systems.md`](systems.md) | Photo mode, cinematic, tour group, animals, Quelle home base, party, training flag; pacing targets |
 | [`open-questions.md`](open-questions.md) | 16 questions, all resolved by the owner |
 
 ## Decisions recorded (owner, 2026-11-20, via the coordinator)
@@ -32,7 +32,7 @@ define shipped content.
 8. Smartphone photo mode in the present; good photos fill an album and unlock codex cards; no signal in the past (running joke).
 9. Marlene is a forester (Forstamt) along the route; the measuring quests become her optional side quests, during the tour and later in the present.
 10. At the Quelle the player takes a break, the group walks on; the brass compass lies in the water, it talks; the first time travel is the spring touch.
-11. The whole time journey happens during that break. The Quelle is the new home base and wake spot everywhere (caught respawn, Q-hold return, hub functions).
+11. The whole time journey happens during that break. The Quelle is the home base and wake spot (caught respawn, Q-hold return and arrival effects). Pause provides saving and the feature pages.
 12. Season: mid-November, golden leaves, slightly dusky light.
 13. The three endings stay; after each comes a credits party on today's palace plateau at dusk with the guide and the group (cake, mulled wine, fairy lights), the historical characters as their modern doubles; per ending: museum → the guide shows the chronicle, burn → a fire bowl, keep → two dogs at your feet.
 14. Kept: FAKT/FIKTION labels, tone rules, German player-facing content, the XP budget (prologue incl. the 1789 training ends at level 3).
@@ -69,7 +69,7 @@ All open questions are resolved.
 | Owner | Work packages |
 |---|---|
 | kq-mobile | WP-02 (safe ring, heal, respec), WP-05 (fast travel, POIs), WP-14 (photo mode) |
-| kq-systems (new session) | WP-15 (cinematic), WP-16 (path-walk group), the systems side of the Quelle hub (WP-01 code, WP-04 teleport) |
+| kq-systems (new session) | WP-15 (cinematic), WP-16 (path-walk group), the Quelle home ring (WP-01) and return teleport (WP-04) |
 | kq-characters | WP-17 (animals), WP-13 costume |
 | 3D subagent (later) | WP-18 party set (props, lights, fire bowl) |
 | kq-integrate | WP-22 (e2e) |

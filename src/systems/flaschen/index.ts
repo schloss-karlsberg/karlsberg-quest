@@ -24,7 +24,7 @@ import type { GameContext } from '../../core/context';
 import { defineSystem } from '../../core/systems';
 import { FLASCHENGRUEN, cosmetics } from '../../player/cosmetics';
 import { h } from '../../ui/dom';
-import { addPageSection, addShelfItem } from '../../ui/pause-pages';
+import { addPageSection } from '../../ui/pause-pages';
 import type { Solid } from '../../world/collision';
 import { basinBase, wallBase, lookFor } from '../quelle/layout';
 import { clink } from './audio';
@@ -470,26 +470,19 @@ class Flaschen {
     };
   }
 
-  // ---- Sammlungen row and the Regal --------------------------------------------------------------------
+  // ---- Sammlungen --------------------------------------------------------------------
 
   renderRow(): HTMLElement {
-    const n = this.slice.found.length;
-    return h('section.kqj-set.kqf-row', { dataset: { testid: 'flaschen-row' } }, [
-      h('header', [h('h4', FLASCHEN_DE.name), h('span.kqj-n', `${n}/${FLASCHEN_TOTAL}`)]),
-      h('p.kqj-itxt', FLASCHEN_DE.row(n, FLASCHEN_TOTAL, countByEra(this.slice.found))),
-      h('p.kqj-note', FLASCHEN_DE.rowNote),
-    ]);
-  }
-
-  renderShelf(): HTMLElement {
     const n = this.slice.found.length;
     const src = n > 0 ? labelCanvas().toDataURL() : '';
     const bottles = Array.from({ length: n }, () =>
       h('span.kqf-shelf-bottle', [h('span.kqf-shelf-neck'), h('img.kqf-shelf-label', { src, alt: '' })]),
     );
-    return h('div.kqf-shelf', { dataset: { testid: 'flaschen-shelf' } }, [
-      h('div.kqs-shelf-row', [h('span', FLASCHEN_DE.shelfTitle), h('span.kqs-shelf-val', FLASCHEN_DE.shelfCount(n, FLASCHEN_TOTAL))]),
-      n ? h('div.kqf-shelf-board', bottles) : h('p.kqj-note', FLASCHEN_DE.shelfEmpty),
+    return h('section.kqj-set.kqf-row', { dataset: { testid: 'flaschen-row' } }, [
+      h('header', [h('h4', FLASCHEN_DE.name), h('span.kqj-n', `${n}/${FLASCHEN_TOTAL}`)]),
+      h('p.kqj-itxt', FLASCHEN_DE.row(n, FLASCHEN_TOTAL, countByEra(this.slice.found))),
+      h('p.kqj-note', FLASCHEN_DE.rowNote),
+      n ? h('div.kqf-shelf-board', { 'aria-hidden': 'true', 'data-testid': 'flaschen-shelf' }, bottles) : null,
     ]);
   }
 
@@ -503,7 +496,6 @@ class Flaschen {
 }
 
 const CSS = `
-.kqf-shelf{margin-top:.6rem}
 .kqf-shelf-board{display:flex;flex-wrap:wrap;gap:4px;align-items:flex-end;padding:6px 4px 3px;border-bottom:3px solid #5a3c22;margin-top:.3rem}
 .kqf-shelf-bottle{position:relative;display:inline-flex;flex-direction:column;align-items:center;justify-content:flex-end;width:16px;height:48px;background:linear-gradient(90deg,#3a1a06,#6a3410 45%,#3a1a06);border-radius:5px 5px 3px 3px;margin-top:10px}
 .kqf-shelf-neck{position:absolute;top:-10px;left:5px;width:6px;height:12px;background:#4a2208;border-radius:2px 2px 0 0}
@@ -528,7 +520,6 @@ export default defineSystem({
     sys.applyCosmetics();
     hooks = sys.hooks();
     addPageSection({ id: 'flaschen', page: 'sets', order: 10, render: () => sys?.renderRow() ?? null });
-    addShelfItem({ id: 'flaschen', order: 10, render: () => sys?.renderShelf() ?? null });
   },
   update(dt) {
     if (hooks && window.kq && window.kq.flaschen !== hooks) window.kq.flaschen = hooks;

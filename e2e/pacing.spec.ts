@@ -1,8 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { SCREENS, trackErrors } from './helpers/common';
-import { waitForHooks } from './helpers/pause';
+import { openPause, waitForHooks } from './helpers/pause';
 import { newGame } from './helpers/prolog';
-import { openTourHub } from './helpers/tour';
 
 // Tour onboarding, queued clue pages and the order in which Escape dismisses UI.
 test.describe.configure({ timeout: 600_000 });
@@ -81,12 +80,12 @@ test('the test quest holds its payout during combat and shares the notice slot',
   expect(errors).toEqual([]);
 });
 
-test('two clue pages at the hub open one at a time', async ({ page }) => {
+test('queued clue pages open one at a time above Pause', async ({ page }) => {
   const errors = trackErrors(page);
   await newGame(page, 'Alex', false, './?nosave&fresh&manual&placeholder');
   await waitForHooks(page, ['chronik']);
-  await openTourHub(page);
-  const hub = page.getByTestId('hub');
+  await openPause(page);
+  const pause = page.getByTestId('pause-menu');
   await page.evaluate(() => {
     const k = window.kq!;
     k.chronik!.examine('ct.clue.hohlweg');
@@ -106,7 +105,7 @@ test('two clue pages at the hub open one at a time', async ({ page }) => {
   await expect(card).toHaveCount(1);
   await expect(card).toHaveAttribute('data-clue', 'ct.clue.orangeriemauer');
   await page.keyboard.press('Escape');
-  await expect(hub).toBeVisible();
+  await expect(pause).toBeVisible();
   await expect(card).toHaveCount(0);
   expect(errors).toEqual([]);
 });

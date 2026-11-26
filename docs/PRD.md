@@ -22,6 +22,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-26 | **Spring interaction and Pause chapters (TASK-007, slice 9).** At the Karlsbergquelle, „Wasser berühren“ appears when the story calls for it and the player can reach the water. Pause provides saving and a „Kapitel“ page for replaying unlocked chapters. Sammlungen shows the bottles collected so far. The spring remains the home and wake point. |
 | unreleased | 2026-11-25 | **Palace plateau dressing (TASK-008, slice 5).** Present-day benches, low broken sandstone courses and verge stones follow dry ground beside the track through the former Ehrenhof. The fittings and layout are FIKTION. Niedrig keeps the benches and uses fewer stones. |
 | unreleased | 2026-11-25 | **Collect chestnuts on the guided tour (TASK-002).** 24 chestnuts lie in small clusters along the route, a few just off the path. Pick them up with E, by walking over them, or with the touch interact button. The feed and Ausrüstung → Fundstücke show the saved count. Gerold remarks on the first, Herr Soll counts the twelfth, and finding all 24 earns a last word. The activity is optional and awards no XP. |
 | unreleased | 2026-11-25 | **Kastanien sammeln in der Führung (TASK-002).** 24 Esskastanien lie along the paths the group walks, in small clusters, a few just off the path. Pick them up with E, by walking over them, or with the touch interact button; the feed counts them and the count is saved. Gerold remarks on the first (the old „Herzogskastanien“), Herr Soll counts the twelfth, and finding all 24 earns a last word. Optional, no XP, and the group waits as before. |
@@ -329,7 +330,7 @@ The tour grants Relief-Blick 3 and Kartograf 1. The campaign unlocks the remaini
 
 The Karlsbergquelle is the home base in every chapter (tour decision 11): the wake spot after being caught, the place a held Q returns you to, and where you heal. The smartphone album (good photos from the present unlock codex cards) is a collection of its own. There is no currency.
 
-At the spring, the hub gives access to the Chronik, Marlene’s messages, RPG counts, the Bussole state, the chapter map and the bench save action. The water interaction has priority at the trough. Pause provides saving and access to the game's feature pages.
+The spring offers „Wasser berühren“ when the story calls for it and the player is in reach and facing the water. Pause provides saving, the feature pages and „Kapitel“ for replaying unlocked chapters.
 
 The present-day Bauwagen is a fictional optional discovery beside the forest track. Its door note adds a Codex card and has no campaign role.
 

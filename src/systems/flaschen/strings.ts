@@ -11,13 +11,10 @@ export const FLASCHEN_DE = {
   prompt: 'Fläschchen aufheben',
   toast: (n: number, total: number) => `Fläschchen ${n}/${total}`,
   card: 'Ein Fläschchen im Laub. Mitnehmen: Der Wald ist kein Keller.',
-  /** Journal → Sammlungen: the counts only, never the places. */
+  /** Pause → Sammlungen: the era counts. */
   row: (n: number, total: number, eras: { era: Era; found: number; total: number }[]) =>
     `Fläschchen ${n}/${total} · ${eras.map((e) => `${ERA_DE[e.era]} ${e.found}/${e.total}`).join(' · ')}`,
   rowNote: 'Treibgut aus allen Jahren, an Orten, wo jemand gern war. Kein Zeichen auf der Karte.',
-  shelfTitle: 'Fläschchen',
-  shelfEmpty: 'Noch kein Fläschchen gefunden.',
-  shelfCount: (n: number, total: number) => `${n} von ${total}`,
   /** Caption of the clink; side = links / rechts / vorn / hinten. */
   clink: (side: string) => `[Glas klirrt leise, ${side}]`,
   side: { left: 'links', right: 'rechts', front: 'vorn', back: 'hinten' },

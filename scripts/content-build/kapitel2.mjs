@@ -6,7 +6,7 @@ const E = '1793-02';
 const KAB = 'B01.1.eg-kabinett';
 // Marlene's notes at home: since the tour bridge (WP-01) at the Karlsbergquelle, across the trail
 // south-west of the trough (quelle/layout.ts local u 0, w 12), r 8: the spawn (1059.3/−833.1) and
-// the trough's E zone (HOME.troughR) stay outside, the story grants them anyway
+// the trough's E zone stay outside the clue radius. The story also grants the clues.
 const QUELLE_NOTES = [1051.3, -827.4];
 const ORANG = [1275, -960]; // Orangeriehof / -parterre (TF-06, TF-15)
 const EH = [1205, -1115];

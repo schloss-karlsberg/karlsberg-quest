@@ -6,7 +6,7 @@ import { FLASCHENGRUEN } from '../src/player/cosmetics';
 /**
  * Fläschchen (docs/IDEAS-ROUND11.md §4): every one of the 24 bottles in its era, looked at from a
  * few metres (test-results/screens/fl-<id>.png), and one pickup end to end: E → 1/24 → the toast →
- * the Sammlungen row in Pause → the Regal → saved in the `flaschen` slice.
+ * the Sammlungen row in Pause with its collected bottles and the saved `flaschen` slice.
  */
 
 /**
@@ -103,7 +103,7 @@ test.describe('Fläschchen', () => {
     expect(errors).toEqual([]);
   });
 
-  test('one pickup end to end: E, 1/24, toast, Sammlungen row, Regal, saved in the slice', async ({ page }) => {
+  test('pickup updates the toast, Sammlungen and the saved count', async ({ page }) => {
     const errors = trackErrors(page);
     await boot(page);
     const id = 'fl.heute.grenzstein';
@@ -130,22 +130,18 @@ test.describe('Fläschchen', () => {
     // saved in the state slice
     const slice = await page.evaluate(() => (window.kq!.state().systems as Record<string, { found?: string[] }>).flaschen);
     expect(slice?.found).toEqual([id]);
-    // the Sammlungen row in Pause: counts only
+    // the Sammlungen row in Pause shows the counts and the collected bottles
     await openPause(page);
     await page.getByTestId('pause-sets').click();
     const row = page.getByTestId('flaschen-row');
     await expect(row).toBeVisible();
     await expect(row).toContainText('Fläschchen 1/24 · heute 1/6 · 1789 0/6');
+    const shelf = row.getByTestId('flaschen-shelf');
+    await expect(shelf).toBeVisible();
+    await expect(shelf.locator('.kqf-shelf-bottle')).toHaveCount(1);
     await page.screenshot({ path: `${SCREENS}/fl-sammlungen-row.png` });
     await page.getByTestId('page-sets').getByRole('button', { name: 'Zurück', exact: true }).click();
     await page.getByTestId('resume').click();
-    // the shelf (Mauerkante) of the hub at the Quelle shows the one bottle
-    await page.evaluate(() => window.kq!.story!.hub(true));
-    await page.getByTestId('hub-shelf').click();
-    const shelf = page.getByTestId('flaschen-shelf');
-    await expect(shelf).toBeVisible();
-    await expect(shelf.locator('.kqf-shelf-bottle')).toHaveCount(1);
-    await page.screenshot({ path: `${SCREENS}/fl-shelf.png` });
     // all 24 (debug hook): the lantern glass turns Flaschengrün through the player:lantern-tint event
     expect(await page.evaluate(() => window.kq!.avatar!.lanternTint())).toBeNull();
     await page.evaluate(() => {

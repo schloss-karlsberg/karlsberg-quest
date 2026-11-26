@@ -1,5 +1,4 @@
 import { type Page, expect } from '@playwright/test';
-import { waitForHooks } from './pause';
 
 /**
  * The tour (content/story/00-tour.story.json), the opening of a new game, on the fast path: from
@@ -62,20 +61,4 @@ export async function expectHandover(page: Page): Promise<void> {
   for (const f of ['laub.silent', 'combat.disabled', 'tour.slice']) expect(st.flags[f], f).toBeFalsy();
   expect(st.level).toBe(3);
   expect(st.inv['item.p.seite'] ?? 0).toBeGreaterThanOrEqual(1);
-}
-
-/** Set up the spring break with the group nearby, then open the hub using E. */
-export async function openTourHub(page: Page): Promise<void> {
-  await waitForHooks(page, ['story', 'walk']);
-  const at = await page.evaluate(() => {
-    const k = window.kq!;
-    k.story!.goto('tour', 't16');
-    const groupAtSpring = k.walk!.snap('fuehrung', 'quelle');
-    k.teleport(1053, -828, 51);
-    k.step(4);
-    return { groupAtSpring, inHub: k.story!.state().inHub, prompt: k.ctx.ui.hud.promptShown() };
-  });
-  expect(at).toMatchObject({ groupAtSpring: true, inHub: true, prompt: { owner: 'hub', key: 'E' } });
-  await page.evaluate(() => window.kq!.press('KeyE', 2));
-  await expect(page.getByTestId('hub')).toBeVisible();
 }

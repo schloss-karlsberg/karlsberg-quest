@@ -5,7 +5,7 @@ import { waitForHooks } from './helpers/pause';
 /**
  * Round 2: ghostly NPCs (Hanne at the building site 1789), conversations, story conditions and
  * actions (talked, inline + modal choices, meters, readings, rooms, memorials, lossless capture,
- * epilogue assembly), barks (idle, gap, memorial quiet) and Codex (Pinnwand) → hub return.
+ * epilogue assembly), and barks (idle, gap, memorial quiet).
  * Runs the test chapter content/story/99-test.story.json (`?storytest`).
  * Screenshots: test-results/screens/npc-*.png
  */
@@ -285,25 +285,5 @@ test('barks: one per 45 s, idle after 60 s, quiet at the Rondell; Codex from the
   expect((await events(page, 'bark:idle')).length).toBe(1);
   expect((await spoken()).at(-1)).toMatch(/^laub\.bark\.idle\.\d\d$/);
 
-  // the Chronik opened from the Pinnwand comes back to the hub overlay when it closes
-  await page.evaluate(() => {
-    const k = window.kq!;
-    k.setEra('today');
-    k.teleport(1059.3, -833.1, 50);
-    k.step(3);
-    k.ctx.ui.modals.closeAll();
-    k.story!.hub(true);
-  });
-  await expect(page.getByTestId('hub')).toBeVisible();
-  await page.getByTestId('hub-chronik').click();
-  // the Pinnwand opens Codex
-  await expect(page.getByTestId('page-codex')).toBeVisible();
-  await expect(page.locator('.ck-board')).toHaveCount(0);
-  expect(await page.evaluate(() => window.kq!.ctx.ui.modals.count)).toBe(2);
-  await page.keyboard.press('Escape');
-  await expect(page.getByTestId('page-codex')).toBeHidden();
-  await expect(page.getByTestId('hub-chronik')).toBeFocused();
-  await expect(page.getByTestId('hub')).toHaveCount(1);
-  await expect(page.getByTestId('hub')).toBeVisible();
   expect(errors).toEqual([]);
 });
