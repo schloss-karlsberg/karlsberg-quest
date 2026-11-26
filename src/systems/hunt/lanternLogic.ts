@@ -47,6 +47,7 @@ export function toggle(s: LanternState, want?: boolean): boolean | null {
   return next;
 }
 
-export function refill(s: LanternState, amount = 1): void {
-  s.oil = Math.min(1, Math.max(0, amount));
+/** Fill the tank, or add a fraction of its capacity. */
+export function refill(s: LanternState, amount?: number): void {
+  s.oil = amount === undefined ? 1 : Math.min(1, Math.max(0, s.oil + amount));
 }

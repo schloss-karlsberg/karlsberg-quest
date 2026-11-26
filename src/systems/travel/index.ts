@@ -572,18 +572,25 @@ class Travel {
   private openCache(poi: Poi): void {
     if (this.slice.done.includes(poi.id)) return;
     const ctx = this.ctx;
-    this.slice.done.push(poi.id);
-    this.guards.delete(poi.id);
+    // Loot placement and XP handlers can autosave. Hold through the combat sync on travel:poi.
+    const hold = `travel:cache:${poi.id}`;
+    ctx.save.hold(hold, true);
+    try {
+      this.slice.done.push(poi.id);
+      this.guards.delete(poi.id);
+      const items = cacheLoot(poi.id);
+      items.forEach((item, i) => {
+        const a = (i / items.length) * Math.PI * 2 + 0.6;
+        ctx.events.emit('loot:place', { id: `${poi.id}.${i}`, item, x: poi.x + Math.cos(a) * 1.3, z: poi.z + Math.sin(a) * 1.3, era: poi.era as Era });
+      });
+      ctx.events.emit('xp:grant', { amount: poiXp('cache', this.tier()), reason: 'poi', x: poi.x, z: poi.z });
+      ctx.events.emit('travel:poi', { id: poi.id, kind: 'cache' });
+      ctx.save.autosave('poi', true);
+    } finally {
+      ctx.save.hold(hold, false);
+    }
     cacheOpen(ctx.audio);
-    const items = cacheLoot(poi.id);
-    items.forEach((item, i) => {
-      const a = (i / items.length) * Math.PI * 2 + 0.6;
-      ctx.events.emit('loot:place', { id: `${poi.id}.${i}`, item, x: poi.x + Math.cos(a) * 1.3, z: poi.z + Math.sin(a) * 1.3, era: poi.era as Era });
-    });
-    ctx.events.emit('xp:grant', { amount: poiXp('cache', this.tier()), reason: 'poi', x: poi.x, z: poi.z });
-    ctx.events.emit('travel:poi', { id: poi.id, kind: 'cache' });
     ctx.ui.toast(TRAVEL_DE.cacheOpen, 2400);
-    ctx.save.autosave('poi');
   }
 
   private takeLore(poi: Poi, v: PoiVisual): void {

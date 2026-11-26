@@ -18,7 +18,7 @@ function gear() {
   let home = false;
   const core = new ProgressionCore(() => slice, { emit: vi.fn(), item: itemDef, statOptions: () => ({}), setMembers: () => [], setLevelFlag: vi.fn() });
   const changed = vi.fn((_reason: string) => page.refresh());
-  const page = installProgressionPages({ core, changed, atHome: () => home, item: itemDef, name: id => itemDef(id)?.name_de ?? id, quickKey: () => 'V' });
+  const page = installProgressionPages({ core, changed, atHome: () => home, item: itemDef, name: id => itemDef(id)?.name_de ?? id, quickKey: () => 'V', use: (id) => { if (!core.use(id)) return false; changed('use'); return true; } });
   const handle = openPausePage(modals, 'gear')!;
   const badge = () => pausePages().find(entry => entry.id === 'gear')!.badge!();
   return { root, core, badge, changed, handle, refresh: page.refresh,

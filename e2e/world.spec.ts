@@ -97,7 +97,7 @@ test.describe('world', () => {
     expect(errors).toEqual([]);
   });
 
-  test('route POIs: a guarded cache opens when its guards fall, a Fundstück, a Wegstein heals', async ({ page }) => {
+  test('route POIs: a guarded cache opens, a Fundstück is found, and a Wegstein heals and refills oil', async ({ page }) => {
     const errors = trackErrors(page);
     const pois = await page.evaluate(() => window.kq!.travel!.pois());
     expect(pois.length).toBeGreaterThan(40);
@@ -152,16 +152,22 @@ test.describe('world', () => {
     await expect(page.getByTestId('page-codex').getByTestId('collection-finds')).toHaveCount(0);
     await page.keyboard.press('Escape');
     await page.keyboard.press('Escape');
-    // a Wegstein heals out of a fight
+    // A Wegstein heals and refills oil out of combat. Keep the lantern off so it cannot drain.
     const shrine = (await page.evaluate(() => window.kq!.travel!.nearest('shrine')))!;
     await page.evaluate((s) => {
       const k = window.kq!;
       k.combat!.hurt(40);
+      k.lantern!.toggle(false);
+      k.lantern!.setOil(0.2);
       k.teleport(s.x, s.z + 1.2, 180, -8);
       k.step(10);
     }, shrine);
-    const hp = await page.evaluate(() => window.kq!.combat!.state().hp);
+    const { hp, oil } = await page.evaluate(() => ({
+      hp: window.kq!.combat!.state().hp,
+      oil: window.kq!.lantern!.state().oil,
+    }));
     expect(hp).toBeGreaterThanOrEqual(99);
+    expect(oil).toBe(1);
     await shot(page, 'wegstein');
     expect(errors).toEqual([]);
   });

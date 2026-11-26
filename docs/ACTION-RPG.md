@@ -481,8 +481,11 @@ The tour and quests grant survey skills (`skill:grant`, unlock cards and Laub’
 ## 7. Loot, items, collections
 
 - **No currency** (PRD: no shop, no grind). Loot is consumables, lore and quest items.
-- **Consumables** (`src/rpg/items.ts`): Kräuterbalsam (heal 45), Riechsalz (Atem), Lampenöl (Bannlicht
-  charges + oil), Kalkstaub (thrown: stuns spectral enemies in 6 m — "Das sind Kalköfen"). Stack 5–9.
+- **Consumables** (`src/rpg/items.ts`): Kräuterbalsam (heal 45), Riechsalz (Atem), Lampenöl (lights
+  the lantern, adds half a tank up to capacity and restores up to two Bannlicht charges), Kalkstaub
+  (thrown: stuns spectral enemies in 6 m — "Das sind Kalköfen"). Stack 5–9. Successful use from
+  Ausrüstung or the quick slot checkpoints the consumed item and its effects together (Kalkstaub,
+  whose stun lasts only for the running fight, saves on the regular autosave interval).
 - **Loot numbers (progression track, 2026-11-16)**: tables retuned so a small enemy drops about every
   third kill (`loot.klein` balsam 22 % / oil 10 % / salts 6 %, `loot.licht`, `loot.raff`, `loot.stein`
   raised, `loot.boss` adds a Kalkstaub); every empty roll in a row adds +6 % to the next (at most
@@ -1048,6 +1051,9 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Cache XP raises max HP during a checkpoint (TASK-025, 2026-11-26) | Combat mirrors the live HP after the XP grant and before travel releases the cache's save hold. Reloading preserves the HP from the new level. |
+| Partial consumable or cache saves (TASK-025, 2026-11-26) | Consumable use mirrors the restored resources before it checkpoints. Cache clearing checkpoints the opened flag, seeded pickups and XP together, after any cinematic hold. Both checkpoints bypass the autosave interval; Kalkstaub stays on the regular interval because its stun is not saved. Combat holds autosaves across each step's events, so the last guard's kill and the cache opening share one write. Loading restarts the Bannlicht recharge timer. |
+| Partial consumable or cache saves (TASK-025, 2026-11-26) | Consumable use mirrors the restored resources before it checkpoints. Cache clearing checkpoints the opened flag, seeded pickups and XP together, after any cinematic hold. Both checkpoints bypass the autosave interval. |
 | A second tab writes an autosave during tour setup (TASK-024 review, 2026-11-26) | The title checks the stored bytes when the player selects „Neues Spiel“ and again before the tour starts. An occupied slot with changed bytes needs a fresh confirmation. Cancellation or a failed setup preserves the slot. |
 | An unreadable autosave appears to be resumable (TASK-024, 2026-11-26) | The title tests whether the autosave can be read and shows a German explanation when loading is unavailable. „Neues Spiel“ asks before replacing any occupied writable slot. Cancellation preserves the original bytes. |
 | A read-only playtest resumes its temporary tour or advances HUD time twice per fast step (TASK-019 review, 2026-11-26) | „Weiter“ reloads the saved chapter and beat from the title. „Neues Spiel“ in `?nosave` opens the content warning directly. Deferred paints reuse the presentation from the step, and K3 waits for the skill card only for screenshots. |

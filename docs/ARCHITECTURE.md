@@ -314,6 +314,9 @@ export default defineSystem({
 Rules
 - A system that throws in `init/update/frame` is disabled and logged; the game keeps running.
 - Talk to other features through `ctx.events` and `ctx.state`, not by importing each other.
+- Persist everything that must survive a reload in your slice (`ctx.state.slice(id, init)`),
+  JSON-serialisable only. Call `ctx.save.autosave('reason')` at meaningful moments (throttled 5 s;
+  `autosave(reason, true)` bypasses the interval and respects active save holds).
 - Persist everything that must survive a reload in your slice (`ctx.state.slice(id, init)`). Slices
   are JSON-serialisable objects. The shared save decoder rejects malformed slice containers and
   invalid story data used during restore. Missing legacy story fields receive defaults. Call
@@ -844,6 +847,8 @@ Round-4 (polish: set dressing) integration rules:
   (also refills oil), `era:change` and a par force escape. Gentle mode / Rauhnacht
   (`settings.rauhnacht` or `flags.rauhnacht`) retune it. Re-configuring the same area with another
   `mode` switches the running pack in place (drive → finale at the kennel: they stay where they are).
+- `lantern:request` applies the refill before setting the light. `refill: true` fills the tank for
+  story requests and Wegsteine. A numeric refill adds that fraction of a tank up to capacity.
 - **Modes** (`modes.ts`, pure): `patrol` (default); `drive` (Ch. 4: arc of hounds 12–20 m behind and
   beside the player, horn from behind / a flank, they give 5 m when you turn back, pushing through
   = soft catch `player:caught {by:'pack', soft:true}`, story curtain "Die Meute hat dich
@@ -1639,9 +1644,15 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   pause and removes any curtain immediately, including during its fade. The title autosave runs
   after this cleanup. Both Enter and the travel button require an unblocked point at least 25 m away.
 - Route POIs (`pois.ts`, deterministic): along 18 chapter routes every ~120 m a cache (2–4 era
-  guards via `enemy:spawn`, group `poi:<id>`, only with a weapon in hand; `enemy:cleared` opens it:
-  `loot:place` + EP), a Fundstück (`lore.ts`, 26 fictional letters / notes / tokens / coins, card +
+  guards via `enemy:spawn`, only with a weapon in hand; `enemy:cleared` opens it), a Fundstück
+  (`lore.ts`, 26 fictional letters / notes / tokens / coins, card +
   Pause → Sammlungen → Funde) or a Wegstein (full heal + lantern refill, 120 s cooldown, out of combat).
+  A cache holds autosaves while it records the opening, places every seeded pickup and grants XP.
+  Combat mirrors its live resources on `travel:poi` after the cache grants XP and before travel
+  releases the hold. The checkpoint includes any HP gained when the player levels up, bypasses the
+  autosave interval and waits for any cinematic hold. Combat also holds autosaves while it handles
+  one simulation step's events, so the last guard's kill (its XP request) and the cache opening on
+  `enemy:cleared` land in one write: no save has the guards cleared and the cache still shut.
   Kept clear of buildings, content places (`KEEP_CLEAR`) and each other. Ids are `poi.<route>.<n>` and
   sit in saves (`done`): a new route goes LAST in `ROUTES` (the per-era spacing and Fundstück pools
   are shared, so an earlier insert would move later routes' POIs). `p-weiher` (round 10) follows
@@ -2177,7 +2188,7 @@ Each RPG track adds its own subsection here when it fills its system in.
 
 | Module | What |
 |---|---|
-| `logic.ts` | **pure** `ProgressionCore` over the slice + an emitter (tested in `tests/progression.test.ts`): XP × `stats.xp` capped at level 12, one `level:up` + one talent point per level, `flags['rpg.level']` via `setLevelFlag`; stack limits (consumables `stack`, weapons / charms / lore / keys 1, quest items 99, unknown quest ids 99); weapon auto-equip only when `weaponPower` is higher; charms fill `charmSlots(level)`; `use` → `item:use` (+ `lantern:request {lit, refill}` for oil / bann items); talents (`talentBlock`, respec); collections; codex +10 XP once per fact; seeded loot (`mulberry32(hash(enemy id) ^ drop counter)`, chance + `stats.loot` + bad-luck protection +6 % per empty roll ≤ 30 %); world pickups (place idempotent, taken ids never return, ≤ 40 drops kept) |
+| `logic.ts` | **pure** `ProgressionCore` over the slice + an emitter (tested in `tests/progression.test.ts`): XP × `stats.xp` capped at level 12, one `level:up` + one talent point per level, `flags['rpg.level']` via `setLevelFlag`; stack limits (consumables `stack`, weapons / charms / lore / keys 1, quest items 99, unknown quest ids 99); weapon auto-equip only when `weaponPower` is higher; charms fill `charmSlots(level)`; `use` → `item:use` (+ `lantern:request` with the item's oil amount); talents (`talentBlock`, respec); collections; codex +10 XP once per fact; seeded loot (`mulberry32(hash(enemy id) ^ drop counter)`, chance + `stats.loot` + bad-luck protection +6 % per empty roll ≤ 30 %); world pickups (place idempotent, taken ids never return, ≤ 40 drops kept) |
 | `pickups.ts` | three.js pickups: billboard core with a glint (no fog, min. on-screen size, fades past 40 m), spinning token, rising motes, ground pool, light column for quest / lore / weapon / charm items; era tint; pop-in bounce, drops drift towards a player within 3.4 m, take = fly to the bottom of the view + burst (reduced motion: fade only) |
 | `hud.ts` | `hud.dock('vitals', xp, 30)` (level medallion + brass bar with ghost gain, "+50" pop, brass ring pulse on level-up — no flash), `dock('vitals', quick, 40)` (key, glyph, name, count), `dock('feed', lines, 10)` (max 3 lines, fade after 4.2 s), floating "+N EP" at the `xp:grant` x/z |
 | `levelup-card.ts` | "Stufe N" stamp card (centre, `top: max(170px, 24vh)`), merges several level-ups, chime on the stamp; game time; steps aside (`kqp-held`) while a story title card / curtain, a modal or a skill unlock card shows |
@@ -2185,10 +2196,14 @@ Each RPG track adds its own subsection here when it fills its system in.
 | `icons.ts`, `audio.ts`, `progression.css` | procedural glyphs, Web Audio sounds (pickup, level, use, collection), styles incl. high-contrast and reduced-motion rules |
 
 Rules that came out of it:
-- **Consumable split**: progression only decrements and emits `item:use {item}`; **combat** owns
+- **Consumable use**: progression decrements the stack and emits `item:use {item}`. **Combat** owns
   Lebenskraft / Atem / Bannlicht and applies the `ItemEffect` from `src/rpg/items.ts` (heal ×
-  `stats.healing`, stamina, bann, Kalkstaub burst). Lampenöl's lantern refill is the one effect
-  progression sends itself (`lantern:request`).
+  `stats.healing`, stamina, bann, Kalkstaub burst). Combat mirrors the resources into its slice during
+  that event. Progression requests Lampenöl's oil increment through `lantern:request`, then checkpoints
+  the successful use, including from the gear page while the simulation is paused. Kalkstaub is the
+  exception: its stun exists only in the running fight (enemies are rebuilt on load), so its use stays
+  on the throttled autosave like other combat state. The Bannlicht recharge timer is not saved;
+  loading restarts it, so a loaded charge count never refills on the first tick.
 - **Stats**: `stats:changed {stats}` at boot, again on `game:start` (systems registered after
   progression miss the boot one) and whenever `deriveStats(slice, {gentle, rauhnacht})` changes.
 - **Loot**: progression rolls on `enemy:killed`, emits `loot:drop`, then `loot:place` per item

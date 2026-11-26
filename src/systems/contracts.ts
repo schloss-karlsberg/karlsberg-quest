@@ -188,8 +188,8 @@ declare module '../core/events' {
     'clue:grant': { id: string; card?: boolean };
     /** story → barks: a memorial place where nobody jokes (bible: Rondell 1785, Festsaal W5). */
     'memorial:set': { id: string; active: boolean; x?: number; z?: number; r?: number; era?: string; room?: string };
-    /** story → hunt: light / douse the lantern (oil timer meters), optionally refilled first. */
-    'lantern:request': { lit: boolean; refill?: boolean };
+    /** Light / douse the lantern. `refill: true` fills it, a number adds that fraction of a tank. */
+    'lantern:request': { lit: boolean; refill?: boolean | number };
 
     // ---- interiors (owner: interiors) -----------------------------------------------------
     /**

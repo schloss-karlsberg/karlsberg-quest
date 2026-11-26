@@ -14,6 +14,7 @@ export interface PageApi {
   name(id: string): string;
   atHome(): boolean;
   quickKey(): string;
+  use(id: string): boolean;
   /** Equipment or talents changed (save, HUD). */
   changed(reason: string): void;
 }
@@ -33,7 +34,7 @@ function effectText(def: ItemDef | undefined): string {
   if (e.heal) out.push(`heilt ${e.heal} Lebenskraft`);
   if (e.stamina) out.push(e.stamina >= 100 ? 'Atem sofort voll' : `+${e.stamina} Atem`);
   if (e.bann) out.push(`+${e.bann} Bannlicht`);
-  if (e.oil) out.push('füllt die Laterne');
+  if (e.oil) out.push(e.oil >= 1 ? 'füllt die Laterne' : `füllt ${Math.round(e.oil * 100)} % des Tanks nach`);
   if (e.burst) out.push(`geworfen: hält Geister im Umkreis von ${e.burst} m fest`);
   return out.join(' · ');
 }
@@ -138,7 +139,7 @@ function renderGear(api: PageApi, talentHeading: HTMLElement): HTMLElement {
           { 'data-testid': `gear-quick-${id}`, 'aria-pressed': isQuick ? 'true' : 'false', title: 'Auf die Schnelltaste legen', onclick: () => (core.setQuick(id), api.changed('quick')) },
           isQuick ? `Auf ${api.quickKey()} ✓` : `Auf ${api.quickKey()}`,
         ),
-        h('button.kq-btn.kqp-g-btn', { 'data-testid': `gear-use-${id}`, disabled: n < 1, onclick: () => (core.use(id), api.changed('use')) }, 'Benutzen'),
+        h('button.kq-btn.kqp-g-btn', { 'data-testid': `gear-use-${id}`, disabled: n < 1, onclick: () => api.use(id) }, 'Benutzen'),
       ]);
     }),
   ]);
