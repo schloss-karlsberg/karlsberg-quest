@@ -20,8 +20,8 @@ import {
   type Deer,
   type DeerInput,
 } from './deer';
-import { applyDogRequest, createDog, dogSlot, stepDogs, type Dog, type DogTarget } from './dogs';
-import { DOG_RADIUS, PLAYER_RADIUS, separateFromCrowd, type CrowdCircle } from '../../world/crowd';
+import { applyDogRequest, createDog, DOGS, dogSlot, stepDog, type Dog, type DogTarget } from './dogs';
+import { CROWD_LEVEL_TOLERANCE, DOG_RADIUS, PLAYER_RADIUS, separateFromCrowd, type CrowdCircle } from '../../world/crowd';
 import { createCinematicBridge, createPhotoBridge, type CinematicBridge, type P3, type PhotoBridge } from './photoBridge';
 import { restoreAnimals, serializeAnimals } from './save';
 import { specIdFor, toRequest, type AnimalAction, type AnimalEvent, type AnimalKind, type AnimalRequest, type AnimalSave } from './types';
@@ -427,21 +427,24 @@ export class AnimalsRuntime {
     const input: DeerInput = { player, los: this.los };
     if (w.walkable) input.walkable = (x, z) => w.walkable!(x, z);
     const evs = this.deer.length ? stepDeerHerd(this.deer, dt, input) : [];
-    if (this.dogs.length) {
-      evs.push(...stepDogs(this.dogs, dt, this.resolve));
-      const visitors = w.tourVisitors?.();
-      if (visitors?.length) {
-        const blockers = p.flying ? visitors : [...visitors, { x: p.x, y: p.y ?? w.heightAt(p.x, p.z), z: p.z, radius: PLAYER_RADIUS }];
-        for (const dog of this.dogs) {
-          if (dog.follow !== 'npc:double.jost') continue;
-          const body = { x: dog.x, y: w.heightAt(dog.x, dog.z), z: dog.z, radius: DOG_RADIUS };
-          const from = { x: dog.x + Math.sin(dog.yaw), z: dog.z + Math.cos(dog.yaw) };
-          separateFromCrowd(body, blockers, from);
-          if ((body.x !== dog.x || body.z !== dog.z) && Math.abs(w.heightAt(body.x, body.z) - body.y) < 0.45) {
-            dog.x = body.x;
-            dog.z = body.z;
-          }
-        }
+    const visitors = this.dogs.length ? w.tourVisitors?.() : undefined;
+    const blockers = visitors?.length && !p.flying ? [...visitors, { x: p.x, y: p.y ?? w.heightAt(p.x, p.z), z: p.z, radius: PLAYER_RADIUS }] : visitors;
+    const reachedBlocker = blockers?.length ? (dog: Dog, x: number, z: number): boolean => blockers.some((other) => {
+      const clearance = DOG_RADIUS + other.radius;
+      return Math.hypot(x - other.x, z - other.z) < clearance &&
+        Math.hypot(dog.x - other.x, dog.z - other.z) <= clearance + DOGS.PATH_EPS &&
+        Math.abs(w.heightAt(x, z) - other.y) <= CROWD_LEVEL_TOLERANCE;
+    }) : undefined;
+    for (const dog of this.dogs) {
+      const crowded = dog.follow === 'npc:double.jost' && blockers?.length;
+      stepDog(dog, dt, this.resolve, evs, crowded ? reachedBlocker : undefined);
+      if (!crowded) continue;
+      const body = { x: dog.x, y: w.heightAt(dog.x, dog.z), z: dog.z, radius: DOG_RADIUS };
+      const from = { x: dog.x + Math.sin(dog.yaw), z: dog.z + Math.cos(dog.yaw) };
+      separateFromCrowd(body, blockers, from);
+      if ((body.x !== dog.x || body.z !== dog.z) && Math.abs(w.heightAt(body.x, body.z) - body.y) < 0.45) {
+        dog.x = body.x;
+        dog.z = body.z;
       }
     }
     // keep the follow refs' samples fresh (the player and leaders) even when no dog asked this tick

@@ -14,13 +14,14 @@ export interface TourCrowd {
 export const VISITOR_RADIUS = 0.32;
 export const DOG_RADIUS = 0.26;
 export const PLAYER_RADIUS = 0.35;
+export const CROWD_LEVEL_TOLERANCE = 1.1;
 
 /** Slide the moving body out of nearby circles on its level. Two passes handle adjacent bodies. */
 export function separateFromCrowd(body: CrowdCircle, circles: readonly CrowdCircle[], from: { x: number; z: number }): void {
   for (let pass = 0; pass < 2; pass++) {
     let moved = false;
     for (const other of circles) {
-      if (Math.abs(body.y - other.y) > 1.1) continue;
+      if (Math.abs(body.y - other.y) > CROWD_LEVEL_TOLERANCE) continue;
       const limit = body.radius + other.radius;
       let dx = body.x - other.x;
       let dz = body.z - other.z;

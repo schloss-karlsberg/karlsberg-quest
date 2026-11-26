@@ -91,6 +91,8 @@ export interface DogTarget {
 }
 /** Resolve 'npc:double.jost' / 'player' / 'animal:<id>' to a live pose, or null when absent. */
 export type DogResolve = (ref: string) => DogTarget | null;
+/** Whether a dog is close enough to pass a waypoint occupied by another body. */
+export type BlockedWaypoint = (dog: Dog, x: number, z: number) => boolean;
 
 export interface Dog {
   readonly id: string;
@@ -297,7 +299,7 @@ function landAfterJump(dog: Dog, jumped: boolean | undefined, x: number, z: numb
   return true;
 }
 
-export function stepDog(dog: Dog, dt: number, resolve: DogResolve, out: AnimalEvent[] = []): AnimalEvent[] {
+export function stepDog(dog: Dog, dt: number, resolve: DogResolve, out: AnimalEvent[] = [], blockedWaypoint?: BlockedWaypoint): AnimalEvent[] {
   dog.t += dt;
   const target = dog.follow ? resolve(dog.follow) : null;
   const m = dog.motion;
@@ -361,9 +363,11 @@ export function stepDog(dog: Dog, dt: number, resolve: DogResolve, out: AnimalEv
     }
     case 'bolt': {
       const path = dog.path;
-      // a path point counts as passed within PATH_EPS: the dog curves on to the next, no snapping
+      // The dog curves past reached points. A crowd can make the authored point unreachable.
       const pass = (): void => {
-        while (path && dog.i < path.length && Math.hypot(path[dog.i]![0] - dog.x, path[dog.i]![1] - dog.z) <= DOGS.PATH_EPS) {
+        while (path && dog.i < path.length) {
+          const [x, z] = path[dog.i]!;
+          if (Math.hypot(x - dog.x, z - dog.z) > DOGS.PATH_EPS && !blockedWaypoint?.(dog, x, z)) break;
           const inner = dog.i > 0 && dog.i < path.length - 1;
           if (inner && dog.bark) out.push({ type: 'bark', id: dog.id, x: dog.x, z: dog.z });
           dog.i++;

@@ -38,6 +38,7 @@ function setup(slice: WalkSlice = { walkers: [], groups: [] }, factory?: BodyFac
   const bus = new FakeBus();
   const player = { x: 524, z: -765 };
   const world = { era: 'today', reducedMotion: false };
+  const heightAt = vi.fn((_x: number, _z: number) => 300);
   const bodies: FakeBody[] = [];
   const rt = new WalkRuntime({
     bus,
@@ -45,7 +46,7 @@ function setup(slice: WalkSlice = { walkers: [], groups: [] }, factory?: BodyFac
     slice: () => slice,
     log: () => {},
     world: {
-      heightAt: () => 300,
+      heightAt,
       player: () => player,
       era: () => world.era,
       reducedMotion: () => world.reducedMotion,
@@ -96,7 +97,7 @@ function setup(slice: WalkSlice = { walkers: [], groups: [] }, factory?: BodyFac
     rt.sync();
   };
   const req = (r: WalkRequest) => bus.emit('npc:walk', r);
-  return { bus, player, world, bodies, rt, step, req, slice };
+  return { bus, player, world, bodies, heightAt, rt, step, req, slice };
 }
 
 function demo(s: ReturnType<typeof setup>, to = 'abzweig', wait = true) {
@@ -152,6 +153,31 @@ describe('walk system', () => {
     s.rt.writeSlice();
     s.rt.restore();
     check();
+  });
+
+  it('shares visitor circles and samples only the visitor that changed position', () => {
+    const s = setup();
+    s.req({ op: 'group', group: 'fuehrung', leader: 'imhoff', members: MEMBERS_14 });
+    s.heightAt.mockClear();
+    const playerCircles = s.rt.tourVisitors();
+    expect(playerCircles).toHaveLength(15);
+    expect(s.heightAt).toHaveBeenCalledTimes(15);
+    expect(s.rt.tourVisitors()).toBe(playerCircles);
+    expect(s.heightAt).toHaveBeenCalledTimes(15);
+
+    const leader = s.rt.npcs.get('imhoff')!;
+    const leaderCircle = playerCircles[0];
+    leader.x += 2;
+    s.heightAt.mockReturnValueOnce(302);
+    const dogCircles = s.rt.tourVisitors();
+    expect(dogCircles).toBe(playerCircles);
+    expect(dogCircles[0]).toBe(leaderCircle);
+    expect(dogCircles[0]).toMatchObject({ x: leader.x, y: 302, z: leader.z });
+    expect(s.heightAt).toHaveBeenCalledTimes(16);
+    expect(s.heightAt).toHaveBeenLastCalledWith(leader.x, leader.z);
+
+    s.req({ op: 'despawn', group: 'fuehrung' });
+    expect(s.rt.tourVisitors()).toHaveLength(0);
   });
 
   it('maps npc ids to people specs', () => {

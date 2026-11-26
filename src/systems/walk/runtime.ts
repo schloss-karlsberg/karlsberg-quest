@@ -151,6 +151,7 @@ interface NpcRt {
   speed: number;
   clip: BodyClip | null;
   visible: boolean;
+  crowdCircle?: CrowdCircle;
 }
 
 type Mode = 'follow' | 'gather' | 'hold';
@@ -183,6 +184,7 @@ export interface WalkRuntimeOpts {
 }
 
 export class WalkRuntime {
+  private readonly visitorCircles: CrowdCircle[] = [];
   readonly npcs = new Map<string, NpcRt>();
   readonly walkers = new Map<string, Walker>();
   readonly groups = new Map<string, GroupRt>();
@@ -578,14 +580,32 @@ export class WalkRuntime {
     return this.o.world.era() === GROUP_ERA;
   }
 
-  tourVisitors(): CrowdCircle[] {
-    const group = this.groups.get('fuehrung');
-    if (!this.era || !group) return [];
-    const circles: CrowdCircle[] = [];
-    for (const id of [group.leader, ...group.members]) {
-      const n = this.npcs.get(id);
-      if (n?.body) circles.push({ x: n.x, y: this.o.world.heightAt(n.x, n.z), z: n.z, radius: VISITOR_RADIUS });
+  private visitorCircle(id: string): CrowdCircle | undefined {
+    const n = this.npcs.get(id);
+    if (!n?.body) return;
+    const circle = n.crowdCircle ??= { x: n.x, y: this.o.world.heightAt(n.x, n.z), z: n.z, radius: VISITOR_RADIUS };
+    if (circle.x !== n.x || circle.z !== n.z) {
+      circle.x = n.x;
+      circle.z = n.z;
+      circle.y = this.o.world.heightAt(n.x, n.z);
     }
+    return circle;
+  }
+
+  /** The player and dogs borrow the same circles, sampled at the latest simulation positions. */
+  tourVisitors(): readonly CrowdCircle[] {
+    const circles = this.visitorCircles;
+    const group = this.groups.get('fuehrung');
+    let count = 0;
+    if (this.era && group) {
+      const leader = this.visitorCircle(group.leader);
+      if (leader) circles[count++] = leader;
+      for (const id of group.members) {
+        const circle = this.visitorCircle(id);
+        if (circle) circles[count++] = circle;
+      }
+    }
+    circles.length = count;
     return circles;
   }
 
