@@ -304,6 +304,7 @@ class StoryRuntime {
   private lastPos = { x: 0, z: 0 };
   private entryFlags: Map<string, string> | null = null;
   private readonly unbindGuideVoice: () => void;
+  private readonly unwatchState: () => void;
 
   constructor(private readonly ctx: GameContext, credits: ReturnType<typeof creditSections>) {
     this.files = storiesInPlay(loadBundledStories(), ctx.params);
@@ -430,6 +431,9 @@ class StoryRuntime {
     // the credits over the party ended (naturally, skipped, or a load while they played): the story is finished
     ctx.events.on('credits:done', () => {
       if (this.slice.ending && !this.slice.finished) this.finish();
+    });
+    this.unwatchState = ctx.state.subscribe((_state, reason) => {
+      if (reason === 'load' || reason === 'new') this.cancelCaught();
     });
     ctx.events.on('save:loaded', () => {
       this.resync();
@@ -1458,6 +1462,18 @@ class StoryRuntime {
     this.caughtCombat = by === 'combat';
   }
 
+  private cancelCaught(): void {
+    this.wakeLines = [];
+    this.caughtAt = null;
+    this.caughtCombat = false;
+    this.overlays.clearCurtain();
+    if (this.caughtBusy) {
+      this.caughtBusy = false;
+      this.ctx.player.frozen = false;
+      this.ctx.ui.hud.busy('caught', false, 0);
+    }
+  }
+
   private updateCaught(dt: number): void {
     const ctx = this.ctx;
     ctx.player.frozen = true;
@@ -1840,6 +1856,8 @@ class StoryRuntime {
   dispose(): void {
     window.removeEventListener('keydown', this.onKey);
     this.overlays.closeChoice();
+    this.unwatchState();
+    this.cancelCaught();
     this.presenter.clear();
     this.unbindGuideVoice();
     this.stage.dispose();

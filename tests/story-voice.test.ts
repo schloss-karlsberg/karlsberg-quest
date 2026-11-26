@@ -46,11 +46,11 @@ const recording = { id: 'test.recorded', entry: { files: { legacy: 'line.mp3' },
 
 async function setupStoryVoice() {
   const kq: { story?: StoryHooks } = {};
-  vi.stubGlobal('window', Object.assign(new EventTarget(), { kq, AudioContext: Context, setInterval: vi.fn() }));
+  vi.useFakeTimers();
+  vi.stubGlobal('window', Object.assign(new EventTarget(), { kq, AudioContext: Context, setInterval: vi.fn(), setTimeout, clearTimeout }));
   vi.stubGlobal('Node', Element);
   const createElement = () => new Element();
   vi.stubGlobal('document', { createElement, createTextNode: createElement, body: createElement(), querySelector: () => null });
-  vi.useFakeTimers();
   vi.setSystemTime(new Date('2026-11-26T00:00:00Z'));
   vi.spyOn(Math, 'random').mockImplementation(seededRng(54));
   vi.spyOn(VoiceClips.prototype, 'init').mockImplementation(() => {});
@@ -66,17 +66,25 @@ async function setupStoryVoice() {
   const pause = { paused: false };
   const settings = { state: { reducedMotion: false, subtitles: false } };
   const input = { wasPressed: () => false, isDown: () => false, touchMode: false };
+  const content = new ContentDB([]);
+  const position = { x: 0, z: 0 };
+  const player = { position, frozen: false, yaw: 0, stats: {},
+    teleport: vi.fn((x: number, z: number) => Object.assign(position, { x, z })) };
+  const busy = vi.fn();
   const ctx = { events, state, save, audio, settings, pause, era, input, params: new URLSearchParams(),
-    systems: new Map(), content: new ContentDB([]), assets: { licences: async () => null }, loop: { manual: false },
-    world: { applyLook: vi.fn() }, player: { position: { x: 0, z: 0 }, yaw: 0, stats: {} },
-    ui: { layer: () => layer, modals: { count: 0 }, cards: { hold: vi.fn(), soft: vi.fn() },
-      hud: { el: createElement(), stack: vi.fn(), setMarker: vi.fn(), acting: () => false } } } as unknown as GameContext;
+    systems: new Map(), content, assets: { licences: async () => null }, loop: { manual: false },
+    world: { applyLook: vi.fn(), forest: { invalidate: vi.fn() } }, player,
+    ui: { layer: () => layer, toast: vi.fn(), modals: { count: 0 }, cards: { hold: vi.fn(), soft: vi.fn() },
+      hud: { el: createElement(), busy, stack: vi.fn(), setMarker: vi.fn(), acting: () => false } } } as unknown as GameContext;
+  // Boot restores the player's pose on save:loaded before the story resumes.
+  events.on('save:loaded', () => Object.assign(position, { x: state.state.player.x, z: state.state.player.z }));
   await story.init(ctx);
   const frame = () => story.frame(0);
   frame();
   events.emit('game:start', { resumed: false });
-  return { events, audio, era, pause, settings, input, save, frame, take, preload,
+  return { events, audio, era, pause, settings, input, save, frame, take, preload, state, content, player, busy,
     ac: audio.ctx as unknown as Context, hooks: kq.story!, dialogue: layer.querySelector('.kqs-dlg')!,
+    curtain: layer.querySelector('.kqs-curtain')!,
     step: (dt: number) => story.update(dt) };
 }
 
@@ -172,6 +180,63 @@ it('stops a recorded line and removes both active and queued subtitles when load
   expect(duckGain(audio, 'ambience')).toBe(1);
   step(5);
   expect(hooks.shown()).toEqual([recording.id]);
+});
+
+it.each(['load', 'new'] as const)('discards capture dialogue and wake when replacing the state with %s', async (reason) => {
+  const { events, save, state, content, player, busy, curtain, hooks, step } = await setupStoryVoice();
+  const restored = { x: 42, z: -77 };
+  Object.assign(state.mutable.player, restored);
+  expect(save.save('inactive')).toBe(true);
+  const line = { id: 'test.capture', speaker: 'laub', text_de: 'Alles gut.', trigger: { event: 'player:caught' } };
+  content.dialogue.set(line.id, line);
+  const said = vi.fn();
+  events.on('dialogue:say', said);
+  const atLoad = vi.fn(() => ({ frozen: player.frozen, down: curtain.classList.contains('kqs-down') }));
+  events.on('save:loaded', atLoad);
+
+  hooks.caught();
+  expect(player.frozen).toBe(true);
+  expect(curtain.classList.contains('kqs-down')).toBe(true);
+  expect(said).not.toHaveBeenCalled();
+  step(1);
+
+  if (reason === 'load') expect(save.load('inactive')).toBe(true);
+  else {
+    const fresh = createInitialState();
+    Object.assign(fresh.player, restored);
+    state.replace(fresh, 'new');
+    events.emit('save:loaded', { slot: 'new' });
+    events.emit('game:start', { resumed: false });
+  }
+  expect(atLoad).toHaveReturnedWith({ frozen: false, down: false });
+  expect(busy).toHaveBeenLastCalledWith('caught', false, 0);
+  step(4);
+  expect(player.position).toEqual(restored);
+  expect(player.teleport).not.toHaveBeenCalled();
+  expect(said).not.toHaveBeenCalled();
+  expect(hooks.shown()).toEqual([]);
+});
+
+it('clears a waking curtain on load without letting its old timer hide the next capture', async () => {
+  const { events, save, content, player, curtain, hooks, step } = await setupStoryVoice();
+  expect(save.save('inactive')).toBe(true);
+  const line = { id: 'test.capture', speaker: 'laub', text_de: 'Alles gut.', trigger: { event: 'player:caught' } };
+  content.dialogue.set(line.id, line);
+  const said = vi.fn();
+  events.on('dialogue:say', said);
+  hooks.caught();
+  step(3);
+  expect(player.teleport).toHaveBeenCalledOnce();
+  expect(said).toHaveBeenCalledExactlyOnceWith({ id: line.id, speaker: line.speaker, text: line.text_de });
+  expect(curtain.classList.contains('kqs-up')).toBe(true);
+
+  expect(save.load('inactive')).toBe(true);
+  expect(curtain.classList.contains('kqs-down')).toBe(false);
+  hooks.caught();
+  vi.advanceTimersByTime(2600);
+  expect(curtain.classList.contains('kqs-down')).toBe(true);
+  expect(curtain.classList.contains('kqs-up')).toBe(false);
+  expect(player.frozen).toBe(true);
 });
 
 it.todo('Choose whether a recorded era-specific warning already on screen should finish speaking after a shift or cut with its expired subtitle.');

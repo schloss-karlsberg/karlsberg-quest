@@ -489,9 +489,6 @@ body.kq-in-combat .kqs-dlg-body::before {
   justify-content: center;
   color: #e8dcc0;
   text-align: center;
-  transition:
-    opacity 1.2s,
-    visibility 0s 1.2s;
 }
 .kqs-curtain.kqs-down {
   opacity: 1;
