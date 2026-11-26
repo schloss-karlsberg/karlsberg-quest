@@ -91,12 +91,8 @@ on a small landscape viewport, including continuing from the title.
 - The locked `e2e/touch.spec.ts` attempt stopped before browser launch because the preview server could not bind `127.0.0.1:5423` (`listen EPERM`). Smoke was skipped because it uses the same preview server.
 - The review round updates the architecture, gameplay and PRD docs. It requires no new dialogue recordings.
 
+- 2026-11-26 PR review (rebased on `origin/main`): the four gates passed (`pnpm test` 124 files, 1613 tests, 0 failed; `pnpm validate` ran normally). Under the machine lock on port 5423, `e2e/touch.spec.ts` passed 11/11 and `e2e/smoke.spec.ts` 7/7. `e2e/chapter-k4.spec.ts` passed 2/2 on the identical pre-rebase code (`5969de0`). The review restored the kennel row's combat and horn notes and listed `player:restored` among the core events.
+
 ## Follow-ups
 
-- Run `pnpm validate` where the TypeScript runner can open its IPC socket.
-- Run `e2e/touch.spec.ts` and `e2e/smoke.spec.ts` under the machine lock on port 5423.
-
-```sh
-KQ_E2E_PORT=5423 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/touch.spec.ts --workers=1 --reporter=line
-KQ_E2E_PORT=5423 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line
-```
+- None. The `pnpm validate` run and the locked touch and smoke specs are recorded under Progress.
