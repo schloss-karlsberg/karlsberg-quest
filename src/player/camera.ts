@@ -32,7 +32,10 @@ import { finiteOr, safeDt } from './guards';
  *
  * **Photo mode** (src/systems/photo, additive; nothing changes while it is off): `setPhoto(true)`
  * puts the lens where the phone is held, at the eyes and a hand ahead of the face (`PHOTO_AHEAD`),
- * and hides the character (boom 0); `setFovScale(k)` narrows the field of view k-fold (the phone's
+ * and hides the character (boom 0). `setPhotoBlend(k)` (TASK-005, the phone coming out) glides the
+ * third-person camera into that lens: k < 1 places the camera as usual and then moves it k of the
+ * way to the lens (the caller eases k), so the character stays in view until the end; first
+ * person always cuts to the lens. `setFovScale(k)` narrows the field of view k-fold (the phone's
  * 2× zoom: the focal length doubles), eased unless reduced motion. `snapFov(camera)` ends the
  * zoom at once (a forced close: a cut scene, a fight, death): the base fov is written in the same
  * frame and the rig lets go of `camera.fov` — while the scale is 1 and nothing is easing, the rig
@@ -122,6 +125,7 @@ const _f = new Vector3();
 const _r = new Vector3();
 const _s = new Vector3();
 const _c = new Vector3();
+const _lens = new Vector3();
 const _shot = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0 };
 
 const smooth01 = (a: number, b: number, x: number): number => {
@@ -276,6 +280,8 @@ export class CameraRig {
   private goodInit = false;
   /** Photo mode (src/systems/photo): the lens at the phone, the character hidden. */
   private photo = false;
+  /** How far the camera has glided into the phone's lens (1 = there; TASK-005). */
+  private photoBlend = 1;
   /** Wanted and current field-of-view narrowing (1 = the settings' fov, 2 = the phone's 2×). */
   private fovWant = 1;
   private fovK = 1;
@@ -283,11 +289,24 @@ export class CameraRig {
   private fovBase = 0;
   private fovSet = -1;
 
-  /** Photo mode on / off (src/systems/photo). Off restores the boom from scratch. */
-  setPhoto(on: boolean): void {
+  /**
+   * Photo mode on / off (src/systems/photo). Off restores the boom from scratch. `glide` (the
+   * phone coming out or going back, TASK-005): the third-person boom keeps running, because the
+   * camera glides in from it (on) or has just glided out onto it (off).
+   */
+  setPhoto(on: boolean, glide = false): void {
     if (on === this.photo) return;
     this.photo = on;
-    this.pivotInit = false;
+    if (!glide) this.pivotInit = false;
+  }
+
+  /** How far (0..1, eased by the caller) the third-person camera has glided into the phone's lens. */
+  setPhotoBlend(k: number): void {
+    this.photoBlend = Number.isFinite(k) ? Math.max(0, Math.min(1, k)) : 1;
+  }
+
+  get photoGlide(): number {
+    return this.photoBlend;
   }
 
   get photoMode(): boolean {
@@ -346,7 +365,8 @@ export class CameraRig {
   }
 
   /** Photo mode: the lens at the phone (eyes, a hand ahead), looking along the player's view. */
-  private placePhoto(camera: PerspectiveCamera, o: RigInput, world: CameraWorld): void {
+  /** Where the phone's lens is (eyes, a hand ahead); false when the world gives no finite spot. */
+  private lensSpot(o: RigInput, world: CameraWorld, out: Vector3): boolean {
     const fx = -Math.sin(o.yaw);
     const fz = -Math.cos(o.yaw);
     let x = o.x + fx * PHOTO_AHEAD;
@@ -358,11 +378,16 @@ export class CameraRig {
     }
     let y = o.y + Math.max(0.5, o.eye - PHOTO_DROP);
     y = Math.max(y, world.heightAt(x, z, o.y) + CLEAR);
-    if (!Number.isFinite(x + y + z)) {
+    out.set(x, y, z);
+    return Number.isFinite(x + y + z);
+  }
+
+  private placePhoto(camera: PerspectiveCamera, o: RigInput, world: CameraWorld): void {
+    if (!this.lensSpot(o, world, _lens)) {
       this.fallBack(camera);
       return;
     }
-    camera.position.set(x, y, z);
+    camera.position.copy(_lens);
     camera.rotation.set(o.pitch, o.yaw, 0, 'YXZ');
     this.distance = 0;
     this.pivotInit = false;
@@ -478,7 +503,9 @@ export class CameraRig {
       return third;
     }
     this.applyFov(camera, dt, o.reducedMotion);
-    if (this.photo && !o.flying) {
+    // photo mode: the lens at the phone; while the phone comes out (third person) the camera glides
+    // there from its usual spot below
+    if (this.photo && !o.flying && (!third || this.photoBlend >= 1)) {
       this.placePhoto(camera, o, world);
       return third;
     }
@@ -670,6 +697,19 @@ export class CameraRig {
         }
       }
     } else this.lensLimit = null;
+    // the phone coming out (TASK-005): k of the way from this spot and framing into the lens and the
+    // player's own look. The lens and the boom are both clear, and the line between them runs along
+    // the swept boom, past the head.
+    const glide = this.photo ? this.photoBlend : 0;
+    if (glide > 0 && this.lensSpot(o, world, _lens)) {
+      px += (_lens.x - px) * glide;
+      pyC += (_lens.y - pyC) * glide;
+      pz += (_lens.z - pz) * glide;
+      let dy = o.yaw - yaw;
+      dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+      yaw += dy * glide;
+      pitch += (o.pitch - pitch) * glide;
+    }
     // a NaN that slipped through (the world's heights, a probe): keep the last good camera (F-15)
     if (!Number.isFinite(px + pyC + pz + pitch + yaw)) {
       this.fallBack(camera);
