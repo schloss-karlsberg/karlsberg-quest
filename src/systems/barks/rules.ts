@@ -2,7 +2,7 @@
  * Bark rules (pure, unit-tested in tests/story-ext.test.ts), bible 08-stimmen §1.1 / §2.1:
  *   - every group (line id without its number: "laub.bark.idle") is drawn at random,
  *   - the same line at the earliest after 10 minutes,
- *   - at most one bark per 45 s,
+ *   - at most one ordinary bark per 45 s (guide call-outs have a shorter dedicated cooldown),
  *   - no barks during echoes, dialogues (spoken lines, conversations, modals), at memorial places
  *     (Rondell 1785, Festsaal during W5, the finale: flag `barks.quiet`), or under the curtain.
  * Several groups answering the same event (hub:enter: Laub's return lines and Marlene's radio
@@ -15,6 +15,13 @@ import { barkGroup } from '../../content/triggers';
 
 export const LINE_COOLDOWN = 600;
 export const GLOBAL_GAP = 45;
+/** A stray player can hear the guide again soon, across both variants of the call-out. */
+export const CALLOUT_COOLDOWN = 15;
+
+export function calloutGroup(line: DialogueLine): string | null {
+  const group = barkGroup(line.id);
+  return line.trigger?.event === 'walk:bark' && group.endsWith('.bark.hier') ? group : null;
+}
 export const IDLE_AFTER = 60;
 /** A bark request waits this long for a quiet moment, then it is dropped. */
 export const REQUEST_TTL = 8;
@@ -36,6 +43,10 @@ export function newMemory(): BarkMemory {
 
 export function ready(mem: BarkMemory, now: number, gap = GLOBAL_GAP): boolean {
   return now - mem.last >= gap;
+}
+
+export function requestReady(mem: BarkMemory, now: number, callout: string | null): boolean {
+  return callout === null ? ready(mem, now) : now - (mem.groups[callout] ?? NEVER) >= CALLOUT_COOLDOWN;
 }
 
 export function lineFree(mem: BarkMemory, id: string, now: number, cooldown = LINE_COOLDOWN): boolean {

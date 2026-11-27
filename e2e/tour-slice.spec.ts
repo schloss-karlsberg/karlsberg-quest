@@ -3,6 +3,7 @@ import { type Page, expect, test } from '@playwright/test';
 import { trackErrors } from './helpers/common';
 import { waitForHooks } from './helpers/pause';
 import { expectHandover } from './helpers/tour';
+import { toWorld, yawToWater } from '../src/systems/quelle/layout';
 
 /**
  * The tour (content/story/00-tour.story.json, the opening of a new game): a smoke run from the
@@ -92,9 +93,46 @@ async function viewGroup(page: Page, d = 10): Promise<void> {
   }, d);
 }
 
+async function expectObjectiveFits(page: Page): Promise<void> {
+  const objective = page.getByTestId('objective');
+  await expect(objective).toContainText('Gerold Imhoff zuhören');
+  await expect.poll(() => objective.locator('.kqs-obj-text').evaluate((text) => {
+    const column = text.closest('.kq-tl')!.getBoundingClientRect();
+    const range = document.createRange();
+    range.selectNodeContents(text);
+    const lines = [...range.getClientRects()];
+    return lines.length > 0 && lines.every((line) =>
+      line.left >= Math.max(0, column.left) - 1 && line.right <= Math.min(innerWidth, column.right) + 1 &&
+      line.top >= Math.max(0, column.top) - 1 && line.bottom <= Math.min(innerHeight, column.bottom) + 1);
+  })).toBe(true);
+}
+
+test.describe('landscape phone', () => {
+  test.use({ viewport: { width: 667, height: 375 }, hasTouch: true, isMobile: true });
+
+  test('the parking-lot objective fits with the touch HUD active', async ({ page }) => {
+    await page.goto('./?notitle&nosave&fresh&manual');
+    await waitForHooks(page, ['story'], 120_000);
+    await expect(page.locator('html')).toHaveAttribute('data-kq-touch', '');
+    expect(await page.evaluate(() => ({
+      touch: window.kq!.ctx.input.touchMode,
+      coarse: matchMedia('(pointer: coarse)').matches,
+    }))).toEqual({ touch: true, coarse: true });
+    await page.evaluate(() => {
+      const k = window.kq!;
+      k.story!.goto('tour', 't2');
+      for (let i = 0; i < 30 && !k.ctx.state.state.flags['tour.station1.ready']; i++) {
+        k.story!.finishTyping();
+        k.step(60);
+      }
+    });
+    await expectObjectiveFits(page);
+  });
+});
+
 test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Weiher → Quelle → 1789 → chapter 1', async ({ page }) => {
   const errors = trackErrors(page);
-  await page.goto('./?notitle&nosave&fresh&manual');
+  await page.goto('./?notitle&fresh&manual');
   try {
     await waitForHooks(page, ['story', 'walk', 'npc', 'photo', 'animals', 'progression', 'cinematic', 'barks'], 120_000);
     await page.waitForFunction(() => {
@@ -143,6 +181,10 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   await page.evaluate(() => {
     const k = window.kq!;
     for (let i = 0; i < 30 && !k.ctx.state.state.flags['tour.station1.ready']; i++) k.step(60);
+  });
+  await expectObjectiveFits(page);
+  await page.evaluate(() => {
+    const k = window.kq!;
     const g = k.walk!.list().find((n) => n.npc === 'imhoff')!;
     k.teleport(g.x + 1.6, g.z + 1.2, (Math.atan2(g.x - (g.x + 1.6), -(g.z - (g.z + 1.2))) * 180) / Math.PI, -4);
     k.step(10);
@@ -262,6 +304,7 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   const tDeer0 = await time(page);
   expect(await page.evaluate(() => window.kq!.cinematic!.playing())).toBe('tour.reh');
   await captionShown(page, '[Leises Rascheln im Laub]');
+  expect(await page.evaluate(() => window.kq!.ctx.ui.hud.promptShown())).toBeNull();
   await page.evaluate(() => window.kq!.step(180));
   await shot(page, '06-reh-sicht');
   await page.evaluate(() => window.kq!.step(181));
@@ -386,6 +429,7 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
     await page.evaluate(() => window.kq!.step(1));
   }
   expect(await beat(page)).toBe('t14');
+  expect(await page.evaluate(() => window.kq!.quests!.lead()?.label)).toContain('hinauf zur Karlsbergquelle');
   // On the way to the Quelle, first cross the leash, then go far enough to trigger the find call.
   // After a minute apart, the player can hold Q for „Zur Gruppe“.
   await follow(page, 't14', 120);
@@ -411,19 +455,50 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   await page.evaluate(() => {
     const k = window.kq!;
     const g = k.walk!.walker('imhoff')!;
-    const p = k.ctx.player.position;
-    const dx = p.x - g.x;
-    const dz = p.z - g.z;
-    const scale = 45 / Math.hypot(dx, dz);
-    k.teleport(g.x + dx * scale, g.z + dz * scale, (-k.ctx.player.yaw * 180) / Math.PI, -4);
+    const next = k.quests!.lead();
+    if (next?.x == null || next.z == null) throw new Error('Missing Quelle waypoint');
+    // 45 m out, on the line from the stop through the guide, so both real markers share a bearing.
+    const dx = next.x - g.x, dz = next.z - g.z;
+    const dist = Math.hypot(dx, dz);
+    const heading = (Math.atan2(dx, -dz) * 180) / Math.PI;
+    k.teleport(g.x - dx * 45 / dist, g.z - dz * 45 / dist, heading + 120, -4);
     k.step(60);
   });
   for (let i = 0; i < 20 && !(await page.evaluate(() => window.kq!.walk!.find().called)); i++) await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
   const stray = await page.evaluate(() => ({ find: window.kq!.walk!.find(), walker: window.kq!.walk!.walker('imhoff') }));
   console.log(`[tour] stray: ${JSON.stringify(stray)}`);
-  expect(stray.walker!.waiting).toBe(true);
+  expect(stray.walker).toMatchObject({ to: 'quelle', waiting: true });
   expect(stray.find.marker).toBe(true);
   expect(stray.find.called).toBe(true);
+  const guideMarker = page.locator('[data-marker="walk.guide"]');
+  await expect(guideMarker).toHaveClass(/kqq-cm-obj/);
+  const rows = await page.evaluate(() => {
+    const k = window.kq!;
+    // A manual step only draws one frame; refresh the 10 Hz compass at the settled player position.
+    k.ctx.loop.renderOnce(0.1);
+    const guide = document.querySelector<HTMLElement>('[data-marker="walk.guide"]')!;
+    const objective = document.querySelector<HTMLElement>('[data-marker="kqq:obj"]')!;
+    const bearing = Number(guide.dataset.bearing);
+    const label = (marker: HTMLElement) => {
+      const rect = marker.getBoundingClientRect();
+      const css = getComputedStyle(marker, '::after');
+      const top = rect.top + parseFloat(css.top);
+      return { side: marker.dataset.side, left: rect.left, top, bottom: top + parseFloat(css.height) + parseFloat(css.paddingBottom) };
+    };
+    k.ctx.ui.hud.setHeading(bearing);
+    const forward = { guide: label(guide), objective: label(objective) };
+    k.ctx.ui.hud.setHeading(bearing + 120);
+    return { forward, edge: { guide: label(guide), objective: label(objective) } };
+  });
+  expect(rows.forward.guide.side).toBeUndefined();
+  expect(rows.forward.objective.side).toBeUndefined();
+  expect(Math.abs(rows.forward.guide.left - rows.forward.objective.left)).toBeLessThan(2);
+  expect(rows.edge.guide.side).toBe('l');
+  expect(rows.edge.objective.side).toBe(rows.edge.guide.side);
+  for (const { guide, objective } of [rows.forward, rows.edge]) {
+    expect(guide.top - objective.top).toBeGreaterThanOrEqual(16);
+    expect(guide.top).toBeGreaterThanOrEqual(objective.bottom);
+  }
   await shot(page, '09b-gruppe-verloren');
   for (let i = 0; i < 80 && !(await page.evaluate(() => window.kq!.walk!.find().prompt)); i++) await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
   expect(await page.evaluate(() => window.kq!.walk!.find().prompt)).toBe(true);
@@ -452,15 +527,32 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   await follow(page, 't16', 90);
   expect(await shown(page, 'imhoff.t.station4')).toEqual(['imhoff.t.station4', 'imhoff.t.station4a', 'imhoff.t.station4b', 'imhoff.t.station4c']);
   expect(await shown(page, 'imhoff.t.pause')).toEqual(['imhoff.t.pause']);
-  // the break: alone at the trough
-  await page.evaluate(() => {
+  // Stay on the forecourt side, three metres from the water.
+  const [x, z] = toWorld(0.1, 4.15);
+  const yaw = -yawToWater(x, z, 'today') * 180 / Math.PI;
+  await page.evaluate(({ x, z, yaw }) => {
     const k = window.kq!;
-    k.teleport(1059.3, -833.1, 50, -10);
+    k.teleport(x, z, yaw, -10);
     k.step(60);
-  });
+  }, { x, z, yaw });
+  expect(await page.evaluate(() => window.kq!.quelle!.info().prompt)).toBe(false);
   for (let i = 0; i < 40 && (await beat(page)) !== 't17'; i++) await page.evaluate(() => window.kq!.step(60));
   expect(await beat(page)).toBe('t17');
   await captionShown(page, '[Messing klirrt auf Stein]');
+  await expect(page.getByTestId('objective')).toContainText('Laub zuhören');
+  const laubIntro = ['laub.t.intro', 'player.q.laub', 'laub.t.intro.b', 'laub.t.quelle', 'laub.t.trog'];
+  const entrySave = await page.evaluate((ids) => {
+    const { save } = window.kq!.ctx;
+    const saved = save.peek();
+    return {
+      beat: saved?.systems.story?.beat,
+      spoken: saved?.systems.story?.said.filter((id) => ids.includes(id)),
+      unlocked: saved?.flags['quelle.call'] === true,
+      loaded: save.load(),
+    };
+  }, laubIntro);
+  expect(entrySave).toEqual({ beat: 't17', spoken: [], unlocked: false, loaded: true });
+  expect(await page.evaluate(() => window.kq!.quelle!.info().prompt)).toBe(false);
   const uphill = await page.evaluate(() => {
     const k = window.kq!;
     const start = k.walk!.walker('imhoff')!.s;
@@ -475,10 +567,23 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   expect(await page.evaluate(() => window.kq!.animals!.stats().dogs)).toBe(2);
   // Laub's lines run, then the hand into the water (the Quelle's own E)
   for (let i = 0; i < 60 && !(await page.evaluate(() => window.kq!.quelle!.info().prompt)); i++) await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
+  expect(await page.evaluate((ids) => window.kq!.story!.shown().filter((id) => ids.includes(id)), laubIntro)).toEqual(laubIntro);
+  const waterSave = await page.evaluate(() => {
+    const k = window.kq!;
+    const saved = k.ctx.save.peek();
+    const loaded = k.ctx.save.load();
+    k.step(2);
+    return { unlocked: saved?.flags['quelle.call'] === true, loaded, activeLine: k.story!.state().dialogue?.id };
+  });
+  expect(waterSave).toMatchObject({ unlocked: true, loaded: true });
+  expect(laubIntro).not.toContain(waterSave.activeLine);
+  await expect(page.getByTestId('objective')).toContainText('Am Trog das Wasser berühren');
+  expect(await page.evaluate(() => window.kq!.ctx.ui.hud.promptShown())).toEqual({ key: 'E', text: 'Wasser berühren', owner: 'quelle' });
   const tTouch = await time(page);
   await page.evaluate(() => window.kq!.press('KeyE', 2));
   for (let i = 0; i < 30 && (await beat(page)) !== 't18'; i++) await page.evaluate(() => window.kq!.step(30));
   expect(await beat(page)).toBe('t18');
+  expect(await page.evaluate(() => window.kq!.ctx.ui.hud.promptShown())).toBeNull();
   // under webdriver the era shift runs on frame time, not on kq.step (core/bullet.ts): scrub it
   // through like e2e/fx.spec.ts, then let the story see shift:done
   await page.evaluate(() => {

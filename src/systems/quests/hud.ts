@@ -95,7 +95,7 @@ export class Tracker {
     this.el.replaceChildren(
       ...shown.map((q) =>
         h(`div.kqq-tq${q.main ? '.kqq-main' : ''}${q.offer ? '.kqq-offer' : ''}${q.ready ? '.kqq-ready' : ''}${q.here ? '.kqq-here' : ''}`, { dataset: { quest: q.id } }, [
-          h('div.kqq-tq-title', [h('span.kqq-glyph', { 'aria-hidden': 'true' }, q.ready ? '?' : q.offer ? '!' : q.main ? '◆' : '◇'), q.title]),
+          h('div.kqq-tq-title', [h('span.kqq-glyph', { 'aria-hidden': 'true' }, q.ready ? '?' : q.offer ? '!' : q.main ? '◆' : '◇'), h('span.kqq-tq-name', q.title)]),
           ...(q.ready && q.readyText ? [h('div.kqq-to.kqq-turnin', [h('span.kqq-box', '?'), q.readyText])] : []),
           ...q.objectives.map((o) => {
             const row = h(

@@ -37,7 +37,7 @@ import { keepsOnBeatExit, retireScheduled, takeDueActions, type Scheduled } from
 import { playStorySound, playStorySoundAction } from './sfx';
 import { acceptTourDeerPhoto, loadBundledStories, missingTourChestnuts, restoreTourDeerPhoto, storiesInPlay } from './stories';
 import { installTitleFlow } from './title/flow';
-import { titleHooks } from '../../ui/title';
+import { ENDING_SLOT } from './title/actions';
 import { pauseHooks } from '../../ui/menus';
 import { h } from '../../ui/dom';
 import { addPausePage } from '../../ui/pause-pages';
@@ -189,8 +189,10 @@ export function lookFor(time: LookTime, era: Era = 'today'): EraLook {
   return base;
 }
 
-/** Save slot with the state before the ending was chosen (bible 06-enden §7.3). */
-export const ENDING_SLOT = 'ending';
+/** The page's document when it can report visibility (absent in Node tests and their stubs). */
+function pageDocument(): Document | null {
+  return typeof document !== 'undefined' && typeof document.addEventListener === 'function' ? document : null;
+}
 
 const CAUGHT_KEY: Record<ThreatKind, string> = { pack: 'story.caught.pack', fire: 'story.caught.fire', oblivion: 'story.caught.oblivion', combat: 'story.caught.combat' };
 /** Wrapped meter → the threat it starts (oil drives hunt's lantern via lantern:request). */
@@ -297,6 +299,8 @@ class StoryRuntime {
   private entryFlags: Map<string, string> | null = null;
   private readonly unbindGuideVoice: () => void;
   private readonly unwatchState: () => void;
+  private readonly unbindCardPause: () => void;
+  private readonly syncCardPause = (): void => this.overlays.setCardPaused(this.ctx.pause.paused, pageDocument()?.hidden === true);
 
   constructor(private readonly ctx: GameContext, credits: ReturnType<typeof creditSections>) {
     this.files = storiesInPlay(loadBundledStories(), ctx.params);
@@ -314,11 +318,7 @@ class StoryRuntime {
         this.clips?.preload(sayLineIds(b).map((id) => ({ id })));
         ctx.events.emit('story:beat', { chapter: ch, beat: b.id, ...(o.resume ? { resume: true as const } : {}) });
         if (!o.resume) this.pendingAutosave = true;
-        if (this.storyPrompt) {
-          ctx.ui.hud.prompt(null, undefined, 'story');
-          this.storyPrompt = false;
-          this.promptShown = null;
-        }
+        this.clearPrompt();
       },
       chapterCompleted: (f) => {
         if (f.unlocks?.length || f.next) ctx.ui.toast(t('story.chapter.done') + ': ' + f.title_de, 3500);
@@ -368,6 +368,9 @@ class StoryRuntime {
       if (id.startsWith('bussole:')) this.objectives.cue(id, data ?? {}, ctx.settings.state.reducedMotion);
     });
     this.overlays = new StoryOverlays(this.layer, ctx.ui.modals, (open) => ctx.events.emit('story:inline-choice', { open }), ctx.ui.hud, () => ctx.settings.state.reducedMotion);
+    this.syncCardPause();
+    this.unbindCardPause = ctx.events.on('game:pause', this.syncCardPause);
+    pageDocument()?.addEventListener('visibilitychange', this.syncCardPause);
 
     addPausePage({
       id: 'chapters',
@@ -397,13 +400,6 @@ class StoryRuntime {
     });
 
     installTitleFlow({ settings: ctx.settings, modals: ctx.ui.modals, onName: (n) => (this.pendingName = n) });
-    // bible 06-enden §2 / §7.3: once an ending was reached, the main menu offers the choice again
-    // (the save as it was before the choice: slot 'ending', written when the choice opened)
-    titleHooks.extraActions = () => {
-      const auto = ctx.save.peek('auto')?.systems['story'] as Partial<StorySlice> | undefined;
-      if (!auto?.ending || !ctx.save.has(ENDING_SLOT)) return [];
-      return [{ label: t('ui.menu.ending_again'), testid: 'title-ending-again', run: () => ctx.save.load(ENDING_SLOT) }];
-    };
     // post-game: the pause menu offers the choice at the table again (the HUD line says so too)
     pauseHooks.extraActions = () =>
       this.slice.finished && ctx.save.has(ENDING_SLOT) ? [{ label: t('ui.menu.ending_again'), testid: 'pause-ending-again', run: () => void ctx.save.load(ENDING_SLOT) }] : [];
@@ -462,7 +458,9 @@ class StoryRuntime {
       this.overlays.fade(1, 0.45);
       this.rejoin = { t: 0.5, x, z, yaw };
     });
+    ctx.events.on('cinematic:start', () => this.clearPrompt());
     ctx.events.on('shift:begin', () => {
+      this.clearPrompt();
       this.shiftPending = null;
       this.shifting = true;
     });
@@ -882,9 +880,7 @@ class StoryRuntime {
         return;
       case 'prompt':
         if (!a.key && !a.text && !a.action) {
-          if (this.storyPrompt) ctx.ui.hud.prompt(null, undefined, 'story');
-          this.storyPrompt = false;
-          this.promptShown = null;
+          this.clearPrompt();
         } else {
           this.promptShown = a;
           this.renderPrompt();
@@ -1664,6 +1660,12 @@ class StoryRuntime {
     }
   }
 
+  private clearPrompt(): void {
+    if (this.storyPrompt) this.ctx.ui.hud.prompt(null, undefined, 'story');
+    this.storyPrompt = false;
+    this.promptShown = null;
+  }
+
   /** The story's prompt in the current input mode: the `touch` text on a touch screen (mode read now). */
   private renderPrompt(): void {
     const p = this.promptShown;
@@ -1782,8 +1784,8 @@ class StoryRuntime {
   frame(dt: number): void {
     const ctx = this.ctx;
     if (!this.hooksInstalled && window.kq) this.installHooks();
-    // in ?manual / bullet time a card also goes in real time (a spec waiting without stepping)
-    this.overlays.tickCard(cardClockDt('frame', ctx.loop.manual, ctx.pause.paused, dt));
+    // The chapter card has a wall-clock cap even when slow rendering starves the fixed steps.
+    this.overlays.tickCard(cardClockDt('frame', ctx.loop.manual, ctx.pause.paused, dt), performance.now());
     // a modal choice pauses the game: its fuse burns on in real time (kq.step drives it headless)
     if (ctx.pause.paused && !ctx.loop.manual && this.overlays.choiceOpen && !this.overlays.choiceInline) this.overlays.tickChoice(dt);
     for (const m of Object.values(this.slice.meters)) if (!isWrapped(m.id)) this.overlays.gauge(m.id, m.label ?? m.id, m.value);
@@ -1796,7 +1798,7 @@ class StoryRuntime {
     const questLed = !!tracker?.querySelector('.kqq-tq.kqq-main');
     // the headline follows the tracker: its main goal (quests puts it on the tracker) leads the Bussole
     const tx = Number(tracker?.dataset.tx), tz = Number(tracker?.dataset.tz);
-    const questTarget = questLed && tracker?.dataset.tx !== undefined && Number.isFinite(tx) && Number.isFinite(tz) ? { x: tx, z: tz } : null;
+    const questTarget = tracker?.dataset.tx !== undefined && Number.isFinite(tx) && Number.isFinite(tz) ? { x: tx, z: tz } : null;
     this.objectives.frame(dt, p.x, p.z, heading, { compass, visible: hudVisible, reducedMotion: ctx.settings.state.reducedMotion, questLed, questTarget });
     this.layer.classList.toggle('kqs-reduced', ctx.settings.state.reducedMotion);
     this.presenter.el.style.visibility = hudVisible && !this.echoHold && !this.talking ? '' : 'hidden';
@@ -1880,6 +1882,8 @@ class StoryRuntime {
     this.overlays.closeChoice();
     this.unwatchState();
     this.cancelCaught();
+    pageDocument()?.removeEventListener('visibilitychange', this.syncCardPause);
+    this.unbindCardPause();
     this.presenter.clear();
     this.unbindGuideVoice();
     this.stage.dispose();

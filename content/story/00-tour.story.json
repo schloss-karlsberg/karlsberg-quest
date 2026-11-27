@@ -364,7 +364,7 @@
         { "do": "npc", "op": "despawn", "npc": "imhoff" },
         { "do": "npc", "op": "follow", "group": "fuehrung", "leader": "imhoff" },
         { "do": "npc", "op": "walk", "npc": "imhoff", "route": "p-aufstieg", "to": "plateau", "speed": 1.9 },
-        { "do": "objective", "id": "tour", "text": "Am Trog verschnaufen", "x": 1059.3, "z": -833.1 }
+        { "do": "objective", "id": "tour", "text": "Am Trog verschnaufen", "x": 1058.63, "z": -832.66 }
       ]
     },
     {
@@ -375,10 +375,10 @@
         {
           "id": "glanz",
           "when": { "timer": 9 },
-          "do": [{ "do": "objective", "id": "tour", "text": "Im Trog glänzt etwas: ganz an den Trog treten", "x": 1059.3, "z": -833.1 }]
+          "do": [{ "do": "objective", "id": "tour", "text": "Nachsehen, was im Trog glänzt", "x": 1058.63, "z": -832.66 }]
         }
       ],
-      "complete": { "all": [{ "enter": { "x": 1059.3, "z": -833.1, "r": 1.6, "era": "today" } }, { "timer": 10 }] }
+      "complete": { "all": [{ "enter": { "x": 1058.63, "z": -832.66, "r": 1.45, "era": "today" } }, { "timer": 10 }] }
     },
     {
       "id": "t17",
@@ -387,13 +387,23 @@
         { "do": "sound", "sound": "compass", "caption": "[Messing klirrt auf Stein]" },
         { "do": "give", "item": "item.bussole", "toast": "Eine Messing-Bussole, grün angelaufen. Der Deckel klemmt." },
         { "do": "flag", "set": { "story.compass": true, "laub.silent": null, "story.laub": true, "walk.find": false } },
-        { "do": "say", "id": "laub.t.intro", "speaker": "laub", "text": "Nicht fallen lassen. Ich bin schon einmal gefallen, das genügt.", "delay": 1.5 },
-        { "do": "say", "id": "player.q.laub", "speaker": "player", "text": "…Hat der Kompass gerade geredet?" },
-        { "do": "say", "id": "laub.t.intro.b", "speaker": "laub", "text": "Laub, Quirin, königlich bayerischer Geometer, abgeordnet zur Landesaufnahme im Rheinkreis. Seit November 1840 verwaltungstechnisch verschollen. Sie haben mich aus dem Wasser gezogen. Danke. Es war kalt, und es war lang." },
-        { "do": "say", "id": "laub.t.quelle", "speaker": "laub", "text": "Hören Sie das? Nein, natürlich nicht. Das Wasser. Es erinnert sich an etwas." },
-        { "do": "say", "id": "laub.t.trog", "speaker": "laub", "text": "Halten Sie die Hand hinein. Nein, das ist nicht hygienisch. Tun Sie es trotzdem." },
-        { "do": "flag", "set": { "quelle.guide": true, "quelle.call": true } },
-        { "do": "objective", "id": "tour", "text": "Hand ins Wasser: vor dem Trog E – das Wasser berühren", "x": 1059.3, "z": -833.1 }
+        { "do": "objective", "id": "tour", "text": "Laub zuhören", "onResume": false }
+      ],
+      "on": [
+        {
+          "id": "laub-anleitung",
+          "when": { "not": { "flag": "quelle.call" } },
+          "do": [
+            { "do": "say", "id": "laub.t.intro", "speaker": "laub", "text": "Nicht fallen lassen. Ich bin schon einmal gefallen, das genügt.", "delay": 1.5, "wait": true },
+            { "do": "say", "id": "player.q.laub", "speaker": "player", "text": "…Hat der Kompass gerade geredet?", "wait": true },
+            { "do": "say", "id": "laub.t.intro.b", "speaker": "laub", "text": "Laub, Quirin, königlich bayerischer Geometer, abgeordnet zur Landesaufnahme im Rheinkreis. Seit November 1840 verwaltungstechnisch verschollen. Sie haben mich aus dem Wasser gezogen. Danke. Es war kalt, und es war lang.", "wait": true },
+            { "do": "say", "id": "laub.t.quelle", "speaker": "laub", "text": "Hören Sie das? Nein, natürlich nicht. Das Wasser. Es erinnert sich an etwas.", "wait": true },
+            { "do": "say", "id": "laub.t.trog", "speaker": "laub", "text": "Halten Sie die Hand hinein. Nein, das ist nicht hygienisch. Tun Sie es trotzdem.", "wait": true },
+            { "do": "flag", "set": { "quelle.guide": true, "quelle.call": true } },
+            { "do": "objective", "id": "tour", "text": "Am Trog das Wasser berühren", "x": 1058.63, "z": -832.66 },
+            { "do": "autosave" }
+          ]
+        }
       ],
       "complete": { "event": "quelle:touch" },
       "exit": [
