@@ -50,6 +50,7 @@ describe('standalone skill card dismissal', () => {
     cards.push(first);
     cards.dismiss();
     cards.frame(SETTLE, false, false);
+    cards.frame(0, false, false); // settled: the card comes up on the next frame
     expect(cards.showing).toEqual(first);
 
     const next = { skill: 'kartograf', level: 3 } as const;
@@ -65,6 +66,7 @@ describe('standalone skill card dismissal', () => {
     expect(cards.showing).toBeNull();
     expect(cards.onStamp).not.toHaveBeenCalled();
     cards.frame(SETTLE, false, false);
+    cards.frame(0, false, false);
     expect(cards.showing).toEqual(next);
   });
 
@@ -75,6 +77,7 @@ describe('standalone skill card dismissal', () => {
     cards.push({ skill: 'relief', level: 2 });
     cards.push({ skill: 'kartograf', level: 3 });
     cards.frame(SETTLE, true, false);
+    cards.frame(0, true, false);
     cards.frame(1.2, true, false);
     expect(cards.onStamp).toHaveBeenCalledTimes(2);
     expect(cards.onRemark).toHaveBeenCalledTimes(2);
