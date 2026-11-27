@@ -153,6 +153,8 @@ function migrateStorySlice(story: StorySlice): void {
     objective.text = 'Q halten: zurück zur Quelle';
   } else if (objective.id === 'k2.ende' && objective.text === 'Feldstation. Die Nacht ist vorbei.') {
     objective.text = 'An der Quelle. Die Nacht ist vorbei.';
+  } else if (objective.id === 'end.frei' && typeof objective.text === 'string') {
+    objective.text = objective.text.replace('Sammlungen und Codex unter Pause', 'Pause → Sammlungen und Codex').replace(' · Esc → ', ' · ');
   }
 }
 

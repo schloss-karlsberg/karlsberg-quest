@@ -526,7 +526,9 @@ The tour and quests grant survey skills (`skill:grant`, unlock cards and Laub’
   only in lantern light at night, one only with the lantern out. E „Fläschchen aufheben“ → toast
   „Fläschchen n/24“. Pause → Sammlungen shows era counts and one bottle per find. Marlene speaks
   at 8 and Laub at 16. Finding all 24 awards the lantern glass „Flaschengrün“ and the
-  FIKTION card cx.47 „Treibgut“. **No XP per bottle** (the doc's 15 XP would push the prologue past
+  FIKTION card cx.47 „Treibgut“. Shaking down or taking a bottle immediately requests a save;
+  completing the set reconciles the lantern glass and Codex card on load without duplicate rewards.
+  **No XP per bottle** (the doc's 15 XP would push the prologue past
   L3: its margin is 4 XP, `tests/quests-content-a.test.ts`) and no talent point; only cx.47's usual
   codex XP. The bottle carries the real beer label as the owner's swappable placeholder: the text lives
   in `content/collectibles/flaschen.json` → `label` only, drawn to one texture / one material
@@ -628,7 +630,10 @@ No stance cards, no answer grids: see §8.6.
   confidence labels and fiction disclosures), **Sammlungen** (sets, bestiary, Fläschchen and Funde),
   **Ausrüstung & Talente**, **Karte**, **Album** and **Kapitel**. Back or Esc closes the page and
   returns focus to the Pause entry. Clue cards can also open Codex. Selecting another unlocked
-  chapter asks for confirmation before replay.
+  chapter asks for confirmation before replay. K3 replay starts fresh opening main-quest attempts and
+  retains earned rewards. Peter stays in the Ehrenhof through the opening quests. A completed
+  ending saves its free-roam hint. On load the hint points to Pause → Sammlungen and Codex,
+  and includes the ending replay action when its save slot is available.
 
 ### 8.5 How history is taught — without quizzes
 
@@ -1172,6 +1177,8 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | Festsaal retry, Continue, and jaguar quest ordering (TASK-043 review, 2026-11-26) | Hanne accepts the gate turn-in after a retry with a saved choice. The 50-second fallback runs only while the player is in the July Festsaal. Partial flares survive a visit to an earlier chapter and clear when the encounter or quest ends. |
 | Chapter 3 loses the Festsaal choice or jaguar progress (TASK-043, 2026-11-26) | Continuing restages the Festsaal objects only while the choice is open. A committed choice and its charm survive a checkpoint retry or chapter replay. The jaguar is restored in July 1793 until the kennel turn-in, without respawning a calmed animal. Saves retain successful Bannlicht flares, and the tracker hint names the flare instead of dodging. |
 | Early well echo and repeated dawn arrival (TASK-044, 2026-11-26) | The 1840 echo also credits the well visit, including in older drive and kennel saves. The drive cutoff pays a ready Pacht quest and records failure once. Dawn records the spring teleport so Continue keeps the player's saved position and heading after arrival. |
+| Side-quest deadlines, one-time finds and post-credits saves leave stale or blocked progress (TASK-046, 2026-11-26) | Story deadlines withdraw offers and settle ready quests. Chapter replay can re-offer missed quests without duplicating an earned bonus; recorded fixed pickups and the already-homed cassowary count. Bottle progress and the free-roam hint survive reloads. |
+| K3 replay skipped Peter's offer window, Pacht retries lost saved slips, and old free-roam saves omitted the ending replay action (TASK-046, 2026-11-26) | K3 story gates use current quest attempts while earned payouts stay recorded. Previously collected Pacht slips count on retry, and the live deadline follows the shift to today. The completed-ending autosave retains the Pause hint and restore rebuilds it from the available ending slot. |
 | Separate collection and progression entries crowd Pause (TASK-007, 2026-11-26) | Sammlungen includes the Funde section. I and Pause open Ausrüstung & Talente, with both sections on one scrollable page. The Pause entry counts unspent talent points. |
 | The spring’s general E menu competes with the water interaction (TASK-007, 2026-11-26) | The water uses E or the touch action when the story calls for it. Pause handles saving, chapter replay and collections. Entering the present-day spring ring still heals, refills oil, resets the hunt and enables respec. Q-hold return and the wake spot stay at the spring. |
 | K1 progression on Continue and chapter replay (TASK-041, 2026-11-26) | Restore the arrival prerequisite and recorded combat progress, including a missing Lohnzettel; make kill autosaves coherent, credit the already calmed Kasuar, and separate new Die Enge replays from previous clears. |

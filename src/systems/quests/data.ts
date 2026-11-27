@@ -1,5 +1,22 @@
 import { legacyPrologueQuests } from '../../core/legacy-prologue-quests';
 import type { ItemDef, QuestDef, QuestFile } from '../../rpg/types';
+import type { Action, StoryFile } from '../story/types';
+
+/** Past the offer window. On load, also repair deadlines whose scheduled command was lost. */
+export function sideQuestClosed(story: StoryFile | undefined, beat: string | null, id: string): boolean {
+  if (!story || !beat) return false;
+  const index = story.beats.findIndex((entry) => entry.id === beat);
+  const closes = (actions: Action[] | undefined) => actions?.some((action) => action.do === 'quest' && action.op === 'fail' && action.id === id);
+  return story.beats.slice(0, index + 1).some((entry, ordinal) => closes(entry.enter) || (ordinal < index && closes(entry.exit)));
+}
+
+/**
+ * The giver stands in this story chapter. A placement's `chapter` names its dialogue lines, which can
+ * be a sub-key of the story chapter (`k3g`, `k3h` in K3).
+ */
+export function giverPlacedIn(placement: { chapter?: string } | undefined, chapter: string): boolean {
+  return !!placement && (!placement.chapter || placement.chapter.startsWith(chapter));
+}
 
 /** All quest files bundled by Vite (content/quests/*.quests.json), sorted by file name. */
 export function loadBundledQuests(): { file: string; data: QuestFile }[] {

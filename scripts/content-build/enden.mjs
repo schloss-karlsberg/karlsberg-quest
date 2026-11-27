@@ -76,7 +76,7 @@ const file = `${ROOT}/content/story/05-enden.story.json`;
 const source = readFileSync(file, 'utf8');
 const freeRoam = /("do":\s*"objective",\s*"id":\s*"end\.frei",\s*"text":\s*)"(?:[^"\\]|\\.)*"/;
 if (!freeRoam.test(source)) throw new Error('end.frei objective not found');
-const objective = 'Frei unterwegs: Sammlungen und Codex unter Pause · Esc → „Ende noch einmal wählen“';
+const objective = 'Frei unterwegs: Pause → Sammlungen und Codex · „Ende noch einmal wählen“';
 const updated = source.replace(freeRoam, (_, key) => key + JSON.stringify(objective));
 
 // --story also copies the deeds and frame into the fallback epilogue.

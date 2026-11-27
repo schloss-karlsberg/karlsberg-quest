@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { trackErrors } from './helpers/common';
 import { type Any, flags, install, playK3, story } from './helpers/k3';
+import { openPause, waitForHooks } from './helpers/pause';
 
 /**
  * Chapter 3 "Die Nacht" as a quest chain, played through headless (`?manual`, driven through window.kq), with the
@@ -29,6 +30,44 @@ test('chapter 3 "Die Nacht": played through', async ({ page }) => {
     k.step(4);
   });
   await playK3(page);
+  expect(errors).toEqual([]);
+});
+
+test('chapter 3 replay from Pause leaves time to accept Peter’s chair quest', async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto('./?notitle&nosave&fresh&manual');
+  await waitForHooks(page, ['story', 'npc', 'quests', 'fx']);
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.story!.start('Alex');
+    const state = k.ctx.state.mutable;
+    state.systems.story!.unlocked.push('k3');
+    state.systems.story!.completed.push('k3');
+    for (const id of ['q.k3.nachmittag', 'q.k3.buch', 'q.k3.strohmann']) {
+      state.systems.quests!.quests[id] = { state: 'done', counts: {}, t: 0 };
+      state.flags[`quest.${id}`] = 'done';
+    }
+  });
+  await openPause(page);
+  await page.getByTestId('pause-chapters').click();
+  await page.getByTestId('chapter-k3').click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Ja', exact: true }).click();
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.story!.flush();
+    k.teleport(1208, -1114, 90, 2);
+    k.step(4);
+    k.press('KeyQ', 1);
+    k.fx!.shiftAt(3.6);
+    k.fx!.freeze(false);
+    k.step(120);
+  });
+  expect(await story(page)).toMatchObject({ era: '1793-07', beat: 'k3_1' });
+  const topics = await page.evaluate(() => window.kq!.quests!.topics('peter'));
+  const chair = 'q.k3.lehnstuhl';
+  expect(topics).toContainEqual(expect.objectContaining({ quest: chair, kind: 'offer' }));
+  await page.evaluate((id) => window.kq!.ctx.events.emit('quest:accept', { id, npc: 'peter' }), chair);
+  expect(await flags(page)).toMatchObject({ [`quest.${chair}`]: 'active' });
   expect(errors).toEqual([]);
 });
 

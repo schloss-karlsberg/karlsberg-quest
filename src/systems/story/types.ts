@@ -550,6 +550,8 @@ export interface QuestAction extends ActionBase {
   id: string;
   objective?: string;
   n?: number;
+  /** Apply the deadline after the preceding era shift has finished. */
+  afterShift?: boolean;
 }
 /**
  * Spawn / remove an enemy group (`enemy:spawn` / `enemy:despawn`). kind = src/rpg/enemies.ts id.
