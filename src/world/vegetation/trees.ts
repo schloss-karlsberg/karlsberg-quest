@@ -848,6 +848,11 @@ export class ModelTrees {
   private readonly materials: ShaderMaterial[] = [];
   readonly impMaterial: ShaderMaterial;
   private readonly atlas: WebGLRenderTarget;
+  /** The atlas bake (kept: a lost WebGL context erases the atlas, which is then baked again). */
+  private readonly bakeScene = new Scene();
+  private readonly bakeCam: OrthographicCamera;
+  private readonly bakeMats: ShaderMaterial[];
+  private atlasValid = false;
   readonly variants: number;
   readonly stats = { lod0: 0, lod1: 0, imp: 0, calls: 0, shadowLod: 0, shadowImp: 0 };
   private readonly lv: number[] = [];
@@ -926,8 +931,8 @@ export class ModelTrees {
     const H = tile * shapes.length;
     this.atlas = new WebGLRenderTarget(W, H, { samples: 4, generateMipmaps: true, minFilter: LinearMipmapLinearFilter, magFilter: LinearFilter, depthBuffer: true });
     this.atlas.texture.anisotropy = 4;
-    const bakeScene = new Scene();
-    const bakeMats = famTex.map(
+    const bakeScene = this.bakeScene;
+    const bakeMats = (this.bakeMats = famTex.map(
       (t, f) =>
         new ShaderMaterial({
           vertexShader: BAKE_VERT,
@@ -941,7 +946,7 @@ export class ModelTrees {
             uBarkRef: { value: Math.max(0.02, barkMean[f]!.lum) },
           },
         }),
-    );
+    ));
     const boxes: number[] = [];
     shapes.forEach((s, i) => {
       const fam = TREE_VARIANTS[i]!.family;
@@ -962,19 +967,10 @@ export class ModelTrees {
         bakeScene.add(m);
       }
     });
-    const cam = new OrthographicCamera(0, W, H, 0, 0.1, tile * 4);
+    const cam = (this.bakeCam = new OrthographicCamera(0, W, H, 0, 0.1, tile * 4));
     cam.position.set(0, 0, 0);
     cam.updateMatrixWorld(true);
-    const prevTarget = renderer.getRenderTarget();
-    const prevAlpha = renderer.getClearAlpha();
-    const prevColor = renderer.getClearColor(new Color());
-    renderer.setRenderTarget(this.atlas);
-    renderer.setClearColor(0x000000, 0);
-    renderer.clear(true, true, false);
-    renderer.render(bakeScene, cam);
-    renderer.setRenderTarget(prevTarget);
-    renderer.setClearColor(prevColor, prevAlpha);
-    for (const m of bakeMats) m.dispose();
+    this.bake(renderer);
 
     this.impMaterial = new ShaderMaterial({
       vertexShader: IMP_VERT,
@@ -999,6 +995,29 @@ export class ModelTrees {
     this.imp = makeBatch(quad, this.impMaterial, MAX_IMP, 'trees-impostor', this.object);
     this.shadowImp = new ShadowList(makeBatch(quad, this.impMaterial, MAX_IMP_SHADOW, 'trees-impostor-shadow', this.object));
     this.materials.push(...lod1Mats);
+  }
+
+  private bake(renderer: WebGLRenderer): void {
+    const prevTarget = renderer.getRenderTarget();
+    const prevAlpha = renderer.getClearAlpha();
+    const prevColor = renderer.getClearColor(new Color());
+    renderer.setRenderTarget(this.atlas);
+    renderer.setClearColor(0x000000, 0);
+    renderer.clear(true, true, false);
+    renderer.render(this.bakeScene, this.bakeCam);
+    renderer.setRenderTarget(prevTarget);
+    renderer.setClearColor(prevColor, prevAlpha);
+    this.atlasValid = true;
+  }
+
+  /** A WebGL context restore erased the baked atlas (render/context.ts). */
+  invalidateAtlas(): void {
+    this.atlasValid = false;
+  }
+
+  /** Bake the atlas again if it was erased; call before the shadow, reflection and main draws. */
+  ensureAtlas(renderer: WebGLRenderer): void {
+    if (!this.atlasValid) this.bake(renderer);
   }
 
   /** Alpha-to-coverage for the leaf and impostor cut-outs (MSAA tiers). */
@@ -1121,6 +1140,7 @@ export class ModelTrees {
 
   dispose(): void {
     this.atlas.dispose();
+    for (const m of this.bakeMats) m.dispose();
     for (const m of this.materials) m.dispose();
     this.impMaterial.dispose();
     this.object.removeFromParent();

@@ -365,6 +365,8 @@ describe('party runtime', () => {
     d.bus.emit('party:set', { variant: 'museum' });
     d.bus.emit('party:credits', {});
     d.rt.skip();
+    expect(d.slice.credits).toBe('done');
+    expect(d.strip.hidden).toBe(1);
     expect(d.cine.playing).toBeNull();
     expect(d.bus.of('credits:done')).toEqual([{ skipped: true }]);
     // Keyboard dismissal also works without a cinematic system.

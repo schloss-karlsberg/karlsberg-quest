@@ -104,7 +104,15 @@ export function isTouchSetting(v: unknown): v is TouchSetting {
  * is answered with it). 'Maus' (look / aim) has no button: it gets the neutral swipe hint ('look'),
  * never the interact hand.
  */
-export type TouchIcon = 'interact' | 'attack' | 'dodge' | 'bannlicht' | 'shift' | 'fly' | 'map' | 'balm' | 'lock' | 'crouch' | 'relief' | 'pause' | 'photo' | 'look';
+export type TouchIcon = 'interact' | 'attack' | 'dodge' | 'bannlicht' | 'shift' | 'fly' | 'map' | 'balm' | 'lock' | 'crouch' | 'prone' | 'lantern' | 'relief' | 'pause' | 'photo' | 'look';
+
+/** Virtual actions for the stance and lantern controls. */
+export const TOUCH_BUTTON_ACTIONS = {
+  crouch: ['crouch', 'down'],
+  prone: ['prone'],
+  lantern: ['lantern'],
+} satisfies Partial<Record<TouchIcon, Action[]>>;
+
 const KEY_ICON: Record<string, TouchIcon> = {
   E: 'interact',
   Q: 'shift',
@@ -121,7 +129,8 @@ const KEY_ICON: Record<string, TouchIcon> = {
   H: 'balm',
   TAB: 'lock',
   C: 'crouch',
-  X: 'crouch',
+  X: 'prone',
+  L: 'lantern',
   N: 'photo',
   MAUS: 'look',
   MOUSE: 'look',
@@ -146,6 +155,8 @@ const KEY_ICON: Record<string, TouchIcon> = {
   GEISTERBLICK: 'fly',
   SINKEN: 'crouch',
   DUCKEN: 'crouch',
+  HINLEGEN: 'prone',
+  LATERNE: 'lantern',
   PAUSE: 'pause',
 };
 
@@ -188,6 +199,8 @@ const TOUCH_NAMES: Partial<Record<Action, string>> = {
   up: 'Steigen',
   down: 'Sinken',
   crouch: 'Ducken',
+  prone: 'Hinlegen',
+  lantern: 'Laterne',
   pause: 'Pause',
   skill1: '1',
   skill2: '2',

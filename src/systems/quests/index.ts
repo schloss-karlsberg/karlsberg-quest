@@ -142,7 +142,7 @@ class QuestRuntime {
   private here: string | null = null;
   private interest = new Set<string>();
   private dirty = true;
-  /** Set when a quest was accepted or an objective closed: saved actions settle next tick. */
+  /** Set when a quest was accepted or an objective closed: saved actions settle next tick (Q-15). */
   private settle = false;
   private availIn = 0;
   private markIn = 0;
@@ -300,8 +300,9 @@ class QuestRuntime {
   }
 
   private settleKnown(): void {
-    const { inventory } = this.ctx.state.state;
-    this.book.settleKnown((c) => inventory.clues.includes(c), (id) => this.hasPhoto(id));
+    const { era, inventory, systems } = this.ctx.state.state;
+    const group = systems.combat?.groups?.['k2.pikeur'];
+    this.book.settleKnown((c) => inventory.clues.includes(c), (id) => this.hasPhoto(id), group && { group, era });
   }
 
   slice(): QuestSlice {

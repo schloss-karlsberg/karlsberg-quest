@@ -7,13 +7,14 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import type { Footprint } from '../src/data/types';
+import { PLAYER_RADIUS, WADE_LIMIT_M } from '../src/player/player';
 import { LAUF_DELAY, SPRINT_BOOST, laufschrittTarget } from '../src/systems/travel/laufschritt';
 import { LORE } from '../src/systems/travel/lore';
 import { QUELLE, REACH, canTouch, toWorld, touchLocal } from '../src/systems/quelle/layout';
 import { decodeH2025, quantToMetres } from '../src/data/decode';
 import type { TerrainMeta } from '../src/data/types';
 import { Heightfield } from '../src/world/heightfield';
-import { ACTIVATE_RADIUS, ANNOUNCE_MIN, SURVEY_POINTS, TRIPOD_SEED_BASE, activateRadius, announceFor, cardMayTakeE, knownPoints, livePointIds, pointById, travelBlock, wayLineBlocked } from '../src/systems/travel/points';
+import { ACTIVATE_RADIUS, ANNOUNCE_MIN, SURVEY_POINTS, TRIPOD_SEED_BASE, activateRadius, announceFor, cardMayTakeE, knownPoints, livePointIds, pointById, travelBlock, wayLineBlocked, wayStartBlocked } from '../src/systems/travel/points';
 import { TRAVEL_DE } from '../src/systems/travel/strings';
 import { KEEP_CLEAR, KEEP_CLEAR_R, POI_SPACING, ROUTES, cacheLoot, generatePois } from '../src/systems/travel/pois';
 import { ENEMIES } from '../src/rpg/enemies';
@@ -184,8 +185,123 @@ describe('way-finding (world/route.ts)', () => {
 
   it('goes straight when the line is free', () => {
     const r = findRoute(-10, 30, 10, 30, wall);
-    expect(r.straight).toBe(true);
-    expect(r.points).toHaveLength(2);
+    expect(r).toEqual({ points: [[-10, 30], [10, 30]], complete: true, straight: true, expanded: 0 });
+  });
+
+  it('returns only the start when the player is enclosed', () => {
+    const enclosure = (x: number, z: number) => {
+      const d = Math.max(Math.abs(x), Math.abs(z));
+      return d >= 0.75 && d <= 2;
+    };
+    const r = findRoute(0, 0, 8, 0, enclosure);
+    expect(r).toMatchObject({ points: [[0, 0]], complete: false, straight: false });
+  });
+
+  it('does not complete a straight route to a blocked goal half a metre away', () => {
+    const blocked = (x: number, z: number) => Math.hypot(x - 0.5, z) < 0.1;
+    const r = findRoute(0, 0, 0.5, 0, blocked);
+    expect(r).toMatchObject({ points: [[0, 0]], complete: false, straight: false });
+  });
+
+  it('stops at the reachable approach to a blocked goal', () => {
+    const barrier = (x: number) => x >= 5 && x <= 7;
+    const r = findRoute(0, 0, 6, 0, barrier);
+    expect(r).toMatchObject({ points: [[0, 0], [4, 0]], complete: false, straight: false });
+  });
+
+  it('ends a partial route at the closest reachable point on its side of a wall', () => {
+    const barrier = (x: number) => x >= 5 && x <= 7;
+    const r = findRoute(0, 0, 10, 0, barrier);
+    expect(r).toMatchObject({ points: [[0, 0], [4, 0]], complete: false, straight: false });
+  });
+
+  it('checks the last leg from the search grid to an off-grid goal', () => {
+    const barrier = (x: number) => x >= 4.2 && x <= 4.8;
+    const r = findRoute(0, 0, 4.9, 0, barrier);
+    expect(r).toMatchObject({ points: [[0, 0], [4, 0]], complete: false, straight: false });
+  });
+
+  it('takes another connector to a free off-grid goal across a finite diagonal wall', () => {
+    const diagonal = (x: number, z: number) => Math.abs(z) <= 4 && z - x - 20 >= -0.8 && z - x - 20 <= 0.3;
+    const goal: [number, number] = [-20.4, 0.4];
+    expect(diagonal(...goal)).toBe(false);
+    expect(lineFree(-20, -1, ...goal, diagonal, 0.1)).toBe(false);
+    const route = findRoute(0, 0, ...goal, diagonal, { cell: 1 });
+    expect(route).toMatchObject({ complete: true, straight: false });
+    expect(route.points.at(-1)).toEqual(goal);
+    expect(route.points.some(([, z]) => Math.abs(z) > 4)).toBe(true);
+    for (const [index, point] of route.points.slice(1).entries()) {
+      expect(lineFree(...route.points[index]!, ...point, diagonal, 0.1)).toBe(true);
+    }
+  });
+
+  it('checks the only available grid leg when a thin wall misses its midpoint', () => {
+    const thin = (x: number) => x >= 0.3 && x <= 0.7;
+    const r = findRoute(0, 0, 8, 0, thin, { margin: 0 });
+    expect(r).toMatchObject({ points: [[0, 0]], complete: false, straight: false });
+  });
+
+  it('routes around a thin wall even when a crossing edge misses it at the midpoint', () => {
+    const thin = (x: number, z: number) => x >= 10.6 && x <= 11.4 && Math.abs(z) <= 4;
+    expect(thin(11.5, 0)).toBe(false);
+    expect(lineFree(12.5, 0, 10.5, 0, thin, 0.3)).toBe(false);
+    const route = findRoute(180.5, 0, 0, 0, thin);
+    expect(route).toMatchObject({ complete: true, straight: false });
+    expect(route.points.at(-1)).toEqual([0, 0]);
+    expect(route.points.some(([, z]) => Math.abs(z) > 4)).toBe(true);
+    for (const [index, point] of route.points.slice(1).entries()) {
+      expect(lineFree(...route.points[index]!, ...point, thin, 0.1)).toBe(true);
+    }
+  });
+
+  it('uses player clearance to leave a footprint but keeps the routing margin beyond the first leg', () => {
+    const walls = new FootprintCollider([
+      [[-2, -2], [1.5, -2], [1.5, -0.045], [-2, 0.06]],
+      [[2.5, -2], [4, -2], [4, 0], [2.5, 0]],
+    ]);
+    const blocked = (x: number, z: number) => walls.resolve(x, z, 0.38).hit;
+    const startBlocked = (x: number, z: number) => walls.resolve(x, z, PLAYER_RADIUS).hit;
+    const start: [number, number] = [0, 0.36];
+    expect(blocked(...start)).toBe(true);
+    expect(startBlocked(...start)).toBe(false);
+    expect(findRoute(...start, 0, 8, blocked, { startBlocked })).toEqual({
+      points: [start, [0, 8]], complete: true, straight: true, expanded: 0,
+    });
+    expect(lineFree(...start, 1, 0.36, blocked, 0.3)).toBe(false);
+    expect(lineFree(...start, 1, 0.36, startBlocked, 0.3)).toBe(true);
+    expect(lineFree(2, 0.36, 3, 0.36, blocked, 0.3)).toBe(false);
+    expect(lineFree(2, 0.36, 3, 0.36, startBlocked, 0.3)).toBe(true);
+    expect(findRoute(...start, 6, 0.36, blocked, { cell: 1, margin: 0, startBlocked })).toMatchObject({
+      points: [start, [1, 0.36], [2, 0.36]], complete: false, straight: false,
+    });
+  });
+
+  it('keeps the trail for a player pushed against a wall, where rounding reads the spot as an overlap', () => {
+    // a wing whose east face is x = 1250: walking west into it, the collider sets the player one
+    // radius off the face, and the same probe there reports a hit (1250.35 − 1250 < 0.35)
+    const wing = new FootprintCollider([[[1230, -1200], [1250, -1200], [1250, -1180], [1230, -1180]]]);
+    const start = wing.resolve(1250.1, -1190, PLAYER_RADIUS);
+    expect(start.hit).toBe(true);
+    expect(wing.resolve(start.x, start.z, PLAYER_RADIUS).hit).toBe(true);
+    const blocked = (x: number, z: number) => wing.resolve(x, z, 0.38).hit;
+    const startBlocked = wayStartBlocked((x, z, r) => wing.resolve(x, z, r).hit, () => -Infinity, PLAYER_RADIUS, WADE_LIMIT_M);
+    expect(startBlocked(start.x, start.z)).toBe(false);
+    const route = findRoute(start.x, start.z, 1220, -1190, blocked, { cell: 1, margin: 45, startBlocked });
+    expect(route).toMatchObject({ complete: true, straight: false });
+    expect(route.points.at(-1)).toEqual([1220, -1190]);
+    for (const [index, point] of route.points.slice(1).entries()) {
+      expect(lineFree(...route.points[index]!, ...point, index === 0 ? startBlocked : blocked, 0.1)).toBe(true);
+    }
+  });
+
+  it('shows the way out of the shallows, but not from past the wading limit', () => {
+    // a lake east of x = 0, as deep inside as it is far from the shore
+    const water = (x: number) => x > 0;
+    const startBlocked = wayStartBlocked(() => false, (x) => x, PLAYER_RADIUS, WADE_LIMIT_M);
+    const wading = findRoute(0.6, 0.1, -10, 6, water, { cell: 1, startBlocked });
+    expect(wading).toMatchObject({ complete: true, straight: false });
+    expect(wading.points.at(-1)).toEqual([-10, 6]);
+    expect(findRoute(1.2, 0.1, -10, 6, water, { cell: 1, startBlocked }).points).toEqual([[1.2, 0.1]]);
   });
 
   it('walks round a wall instead of through it, and every leg is free', () => {

@@ -3,7 +3,7 @@ import type { EventBus } from '../core/events';
 import type { SettingsStore } from '../core/save';
 import { addStrings, t } from '../i18n';
 import type { Action, Input } from '../player/input';
-import { TOUCH, TOUCH_SETTINGS, type TouchSetting, diffHeld, isTouchSetting, lookDelta, crouchButtonMode, rotateWanted, stickToMove, touchActive, touchPromptIcon } from '../player/touchMap';
+import { TOUCH, TOUCH_BUTTON_ACTIONS, TOUCH_SETTINGS, type TouchSetting, diffHeld, isTouchSetting, lookDelta, crouchButtonMode, rotateWanted, stickToMove, touchActive, touchPromptIcon } from '../player/touchMap';
 import { h, svg } from './dom';
 import type { Hud } from './hud';
 import { PointerTap } from './pointerTap';
@@ -28,6 +28,8 @@ addStrings('de', {
   'touch.up': 'Steigen',
   'touch.down': 'Sinken',
   'touch.crouch': 'Ducken (Schleichen)',
+  'touch.prone': 'Hinlegen',
+  'touch.lantern': 'Laterne',
   'touch.bannlicht': 'Bannlicht',
   'touch.lock': 'Ziel erfassen',
   'touch.balm': 'Balsam',
@@ -140,6 +142,7 @@ export class TouchControls {
   private readonly flyBtn: Btn;
   /** Crouch toggle on foot, hold to sink while flying (C on the keyboard). */
   private readonly crouchBtn: Btn;
+  private readonly proneBtn: HTMLButtonElement;
   private stance = 'stand';
   private readonly dodgeBtn: Btn;
   private readonly surveyBtn: HTMLButtonElement;
@@ -184,7 +187,8 @@ export class TouchControls {
     this.dodgeBtn = btn('dodge', I.dodge, t('touch.dodge'), ['dodge', 'up']);
     // 'crouch' toggles the stance on foot (the player ignores it while flying), 'down' sinks while
     // flying (nothing reads it on foot): the same pair as C
-    this.crouchBtn = btn('crouch', I.crouch, t('touch.crouch'), ['crouch', 'down']);
+    this.crouchBtn = btn('crouch', I.crouch, t('touch.crouch'), TOUCH_BUTTON_ACTIONS.crouch);
+    this.proneBtn = btn('prone', I.prone, t('touch.prone'), TOUCH_BUTTON_ACTIONS.prone).el;
     const shift = btn('shift', I.shift, t('touch.shift'), ['shift']);
     shift.el.append(h('i.kq-t-ring'));
     deps.events.on('group:find', ({ prompt }) => {
@@ -250,6 +254,8 @@ export class TouchControls {
       btn('balm', I.balm, t('touch.balm'), ['quickUse']).el,
       shift.el,
       this.crouchBtn.el,
+      this.proneBtn,
+      btn('lantern', I.lantern, t('touch.lantern'), TOUCH_BUTTON_ACTIONS.lantern).el,
       this.interactBtn.el,
     ]);
     this.el = h('div.kq-touch.kq-hidden', { 'data-testid': 'touch' }, [this.stick, skills, arc, top, survey]);
@@ -306,8 +312,9 @@ export class TouchControls {
     });
     // abilities unlock by level (combat: skillsForLevel); a fresh game or a loaded save may change them
     for (const ev of ['level:up', 'stats:changed', 'game:start', 'save:loaded'] as const) deps.events.on(ev, () => this.syncSkills());
-    // a load sets the stance without a player:stance event: read it back
-    for (const ev of ['game:start', 'save:loaded'] as const) deps.events.on(ev, () => this.syncFly());
+    // Boot restores the player after the save:loaded notification.
+    deps.events.on('player:restored', () => this.syncFly());
+    deps.events.on('game:start', () => this.syncFly());
     this.refresh();
   }
 
@@ -394,11 +401,16 @@ export class TouchControls {
     this.flyBtn.el.classList.toggle('on', fl);
     this.flyBtn.el.textContent = t(fl ? 'touch.land' : 'touch.fly');
     this.surveyBtn.classList.toggle('on', fl);
-    const cr = crouchButtonMode(fl, this.deps.stance?.() ?? this.stance);
+    const stance = this.deps.stance?.() ?? this.stance;
+    const cr = crouchButtonMode(fl, stance);
     this.crouchBtn.el.replaceChildren(svg(TOUCH_ICONS[cr.icon]));
     this.crouchBtn.el.classList.toggle('on', cr.on);
     this.crouchBtn.el.setAttribute('aria-label', t(cr.label));
     this.crouchBtn.el.setAttribute('aria-pressed', String(cr.on));
+    const prone = stance === 'prone';
+    this.proneBtn.classList.toggle('kq-hidden', fl);
+    this.proneBtn.classList.toggle('on', prone);
+    this.proneBtn.setAttribute('aria-pressed', String(prone));
     this.dodgeBtn.el.replaceChildren(svg(fl ? TOUCH_ICONS.up : TOUCH_ICONS.dodge));
     this.dodgeBtn.el.setAttribute('aria-label', t(fl ? 'touch.up' : 'touch.dodge'));
   }

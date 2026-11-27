@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import { slotDir } from '../../scripts/dev/heavy-env.mjs';
 
 /**
@@ -40,14 +40,20 @@ export interface PlayOptions {
  * story turns `credits:done` into `story.credits`). Resolves once the story is finished.
  */
 export async function throughParty(page: Page): Promise<void> {
-  await page.evaluate(() => {
+  const start = await page.evaluate(() => {
     const k = window.kq!;
     for (let i = 0; i < 90 && k.party?.state().credits !== 'playing'; i++) k.step(60);
+    const { beat, scheduled } = k.story!.state();
+    return { beat, scheduled, credits: k.party?.state().credits };
   });
-  await page.locator('[data-testid="party-credits"]').waitFor({ state: 'visible', timeout: 10_000 });
-  await page.evaluate(() => {
-    window.kq!.party!.skip();
-    window.kq!.step(30);
+  expect(start, 'Credits should start within 90 simulated seconds of the epilogue').toMatchObject({ credits: 'playing' });
+  await expect(page.getByTestId('party-credits')).toBeVisible();
+  const end = await page.evaluate(() => {
+    const k = window.kq!;
+    k.party!.skip();
+    const { beat, finished } = k.story!.state();
+    return { beat, finished, credits: k.party!.state().credits };
   });
-  await page.waitForFunction(() => window.kq!.story!.state().finished === true, undefined, { timeout: 10_000 });
+  // The party emits credits:done synchronously when skipped and the story finishes on that event.
+  expect(end).toMatchObject({ finished: true, credits: 'done' });
 }

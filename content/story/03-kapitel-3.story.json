@@ -352,8 +352,7 @@
         { "do": "meter", "id": "smoke", "active": true, "seconds": 300, "lossless": true },
         { "do": "npc", "op": "despawn", "npc": "peter" },
         { "do": "quest", "op": "fail", "id": "q.k3.lehnstuhl" },
-        { "do": "say", "line": "laub.k3.hinauf", "delay": 1.5 },
-        { "do": "quest", "op": "start", "id": "q.k3.festsaal", "onResume": true, "delay": 1 },
+        { "do": "say", "line": "laub.k3.hinauf" },
         { "do": "autosave" }
       ]
     },
@@ -369,7 +368,8 @@
           "text": "Hinauf in den Festsaal: durchs Vestibül, die Prunktreppe. Geduckt (C): weniger Rauch",
           "x": 1265.8,
           "z": -1126.8
-        }
+        },
+        { "do": "quest", "op": "start", "id": "q.k3.festsaal", "onResume": true }
       ],
       "complete": { "any": [{ "room": "B01.2.og-festsaal" }, { "chosen": "k3.objekt" }] }
     },
@@ -451,9 +451,7 @@
         { "do": "memorial", "id": "k3.festsaal", "active": false },
         { "do": "flag", "set": { "fire.hold": false } },
         { "do": "say", "line": "hanne.k3.06", "delay": 0.3 },
-        { "do": "npc", "op": "despawn", "npc": "hanne", "delay": 1.5 },
-        { "do": "quest", "op": "progress", "id": "q.k3.festsaal", "objective": "saal", "onResume": true },
-        { "do": "quest", "op": "progress", "id": "q.k3.festsaal", "objective": "wahl", "onResume": true }
+        { "do": "npc", "op": "despawn", "npc": "hanne", "delay": 1.5 }
       ]
     },
     {
@@ -468,7 +466,9 @@
           "text": "Hinaus in den Garten! Nimm die Prunktreppe, solange sie hält, oder die schmale südliche Dienertreppe. Halte die Umschalttaste zum Rennen. So bist du kürzer im Rauch.",
           "x": 1285,
           "z": -1150
-        }
+        },
+        { "do": "quest", "op": "progress", "id": "q.k3.festsaal", "objective": "saal", "onResume": true },
+        { "do": "quest", "op": "progress", "id": "q.k3.festsaal", "objective": "wahl", "onResume": true }
       ],
       "on": [
         {
@@ -562,8 +562,7 @@
       "complete": { "quest": { "id": "q.k3.festsaal", "state": "done" } },
       "exit": [
         { "do": "threat", "kind": "pack", "active": false },
-        { "do": "say", "line": "laub.k3.pforte", "delay": 1 },
-        { "do": "quest", "op": "start", "id": "q.k3.hunde", "onResume": true, "delay": 4 },
+        { "do": "say", "line": "laub.k3.pforte" },
         { "do": "autosave" }
       ]
     },
@@ -571,7 +570,10 @@
       "id": "k3_7",
       "title_de": "Zum Zwinger",
       "checkpoint": "k3_7",
-      "enter": [{ "do": "anchor", "to": "1793-07", "x": 1272, "z": -1300, "r": 25 }],
+      "enter": [
+        { "do": "anchor", "to": "1793-07", "x": 1272, "z": -1300, "r": 25 },
+        { "do": "quest", "op": "start", "id": "q.k3.hunde", "onResume": true }
+      ],
       "on": [
         {
           "id": "meute",
