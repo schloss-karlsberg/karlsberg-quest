@@ -22,6 +22,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-27 | **Wegweiser on the frozen lake (TASK-071).** In February 1793 the trail and the „Weg“ marker lead across the walkable ice instead of hiding there; open water still blocks them. |
 | unreleased | 2026-11-27 | **Ending card after a reload (TASK-068).** A save taken during an ending scene or while its closing card is up shows the closing card again after title Continue or a pause-menu load, then the epilogue as before. Once the card is dismissed (the game checkpoints then), a reload opens the epilogue directly. Older saves from that stretch cannot tell the two apart and show the card once more. |
 | unreleased | 2026-11-27 | **v0.5.0 ending saves (TASK-069).** A v0.5.0 save made right after its credits (story finished, still on beat e2, combat off) now loads into free play with combat back on, the free-play hint and the post-game party, without replaying the ending. |
 | unreleased | 2026-11-27 | **Party reload position (TASK-067).** An old e3 save written while the credits rolled but still at the spring (its arrival teleport was lost) now loads at the party on the plateau, on boot and on an in-session load. |

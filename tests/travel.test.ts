@@ -14,7 +14,7 @@ import { QUELLE, REACH, canTouch, toWorld, touchLocal } from '../src/systems/que
 import { decodeH2025, quantToMetres } from '../src/data/decode';
 import type { TerrainMeta } from '../src/data/types';
 import { Heightfield } from '../src/world/heightfield';
-import { ACTIVATE_RADIUS, ANNOUNCE_MIN, SURVEY_POINTS, TRIPOD_SEED_BASE, activateRadius, announceFor, cardMayTakeE, knownPoints, livePointIds, pointById, travelBlock, wayLineBlocked, wayStartBlocked } from '../src/systems/travel/points';
+import { ACTIVATE_RADIUS, ANNOUNCE_MIN, SURVEY_POINTS, TRIPOD_SEED_BASE, activateRadius, announceFor, cardMayTakeE, knownPoints, isOpenWater, livePointIds, pointById, travelBlock, wayLineBlocked, wayStartBlocked } from '../src/systems/travel/points';
 import { TRAVEL_DE } from '../src/systems/travel/strings';
 import { KEEP_CLEAR, KEEP_CLEAR_R, POI_SPACING, ROUTES, cacheLoot, generatePois } from '../src/systems/travel/pois';
 import { ENEMIES } from '../src/rpg/enemies';
@@ -560,5 +560,33 @@ describe('the Karlsbergquelle tripod keeps clear of the spring (playtest round 1
       expect(w.h1789.slopeDeg(x, z)).toBeLessThan(26);
       expect(w.footprints.footprintAt(x, z)).toBe(-1);
     }
+  });
+});
+
+describe('Wegweiser on the frozen lake (TASK-071)', () => {
+  // a lake band across x 40..60, as surfaceAt reports it in every era (frozen or not)
+  const surface = (x: number) => (x > 40 && x < 60 ? 'water' : 'meadow');
+  const predicates = (frozen: boolean) => {
+    const water = (x: number, z: number) => isOpenWater(surface(x), frozen) && z > -100;
+    return { water, blocked: water };
+  };
+
+  it('leads the trail across walkable ice and keeps the "Weg" marker off', () => {
+    const { water, blocked } = predicates(true);
+    const route = findRoute(20, 0, 80, 0, blocked);
+    expect(route.points.length).toBeGreaterThan(0);
+    expect(pathLength(route.points)).toBeLessThan(62);
+    expect(wayLineBlocked(false, { x: 20, z: 0 }, { x: 80, z: 0 }, blocked, water)).toBe(false);
+    expect(wayLineBlocked(true, { x: 20, z: 0 }, { x: 80, z: 0 }, blocked, water)).toBe(false);
+  });
+
+  it('still treats open water as blocked', () => {
+    const { water, blocked } = predicates(false);
+    expect(isOpenWater('water', false)).toBe(true);
+    expect(isOpenWater('meadow', true)).toBe(false);
+    expect(wayLineBlocked(true, { x: 20, z: 0 }, { x: 80, z: 0 }, blocked, water)).toBe(true);
+    // the straight line is blocked; any route found goes round the band, never through it
+    const route = findRoute(20, 0, 80, 0, blocked, { maxExpand: 20000 });
+    expect(route.points.every(([x, z]) => !water(x, z))).toBe(true);
   });
 });
