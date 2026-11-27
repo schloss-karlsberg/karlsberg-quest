@@ -4,7 +4,7 @@ aliases:
 - TASK-076
 title: 'Talking to the guide at tour stops 2 to 4 opens an empty dialogue'
 slug: empty-guide-dialogue-at-tour-stops
-status: in-progress
+status: review
 priority: 2
 owner: ''
 projects: []
@@ -120,3 +120,4 @@ because at the stops the guide is already talking in the speech box.
 - 2026-11-27: step 6 done - `docs/ARCHITECTURE.md` (npc: E only with something to say, the silent-line guard, the talk-wait check), a row in `docs/ACTION-RPG.md` §14 and in the `docs/PRD.md` changelog.
 - 2026-11-27: step 5 done - new test in `e2e/tour-slice.spec.ts` (t2 talk as before; no prompt and no conversation next to the guide at t6, t13, t15; a forced open says the silent line): green in 3.0 min, and red on the old npc code (at „no E after the car-park talk“). It counts only the visible prompt (`.kq-prompt.show`): the HUD keeps the last text in the hidden element.
 - 2026-11-27: step 7 done, gates green - `pnpm typecheck`, `pnpm validate` (28 warnings, none new), `pnpm build` green. `pnpm test`: 2,365 passed; 6 files fail locally: `content-packs`, `save-fuzz`, `voice-moss`, `voice-assets`, `voice-service` (the known Windows-only ones, also on untouched `main`) and `i18n-text` (its 5 s timeout on a cold start; alone with a longer timeout it passes, 6/6). e2e `--workers=1`: `npc.spec.ts` 2/2, `tour-slice.spec.ts` 2/3 (the new test and the landscape-phone test green), `integration.spec.ts` 0/2. The three red ones fail on untouched `main` too, in a `main` worktree on this machine: integration „the tour and K1“ at the chapter card „Die Führung“ (its 5.5 s wall-clock cap under SwiftShader; `main` twice at the same line), integration „round 2“ waiting for Hanne's fade-in (`alpha > 0.95`, same line on `main`; `near` is still „hanne“ on this branch), and the full tour run (the 10-minute test timeout, on `main` too). After screenshots (real GPU) in `test-results/contribute/TASK-076/`: no talk prompt and no box at t6 and t13; the t2 talk unchanged.
+- 2026-11-27: PR: https://github.com/schloss-karlsberg/karlsberg-quest/pull/126
