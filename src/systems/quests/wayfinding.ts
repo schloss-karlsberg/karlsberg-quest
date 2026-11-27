@@ -22,6 +22,11 @@ export interface WayPoint {
   room?: string;
   /** What kind of thing is there (marker icon, hint wording). */
   kind: 'zone' | 'pickup' | 'clue' | 'npc' | 'dest';
+  /**
+   * Shown from every era: a place to walk to and shift time at („Im Ehrenhof: Q – in den Juli 1793“).
+   * The spot is the same in both eras; hidden, it left the chapter 3 and 4 openers without a marker (TASK-083).
+   */
+  anyEra?: boolean;
   /** Where the floating mark sits when it is not over x/z (a door: in the opening, not over the foot of its steps). */
   mark?: { x: number; y: number; z: number };
 }
@@ -90,6 +95,8 @@ export function objectiveTarget(q: Pick<QuestDef, 'id' | 'era'>, o: QuestObjecti
       // the exact spot: story triggers for clues are 6–9 m, the clue radius (15 m) would hide the mark too soon
       return { x: c.x, z: c.z, r: 4, era, kind: 'clue' };
     }
+    case 'reach':
+      return o.where && !o.where.room ? { ...zone(o.where), anyEra: true } : o.where ? zone(o.where) : null;
     default:
       if (o.where) return zone(o.where);
       if (o.place?.length) {
@@ -102,7 +109,7 @@ export function objectiveTarget(q: Pick<QuestDef, 'id' | 'era'>, o: QuestObjecti
 
 /** Is this target shown in the current era (and not inside a palace room)? */
 export function targetVisible(t: WayPoint | null, era: string, questEra?: string): t is WayPoint {
-  return !!t && !t.room && inEra(t, era, questEra);
+  return !!t && !t.room && (!!t.anyEra || inEra(t, era, questEra));
 }
 
 const DIRS = ['Norden', 'Nordosten', 'Osten', 'Südosten', 'Süden', 'Südwesten', 'Westen', 'Nordwesten'];
@@ -164,6 +171,7 @@ export function hintFor(o: QuestObjective & { hint_de?: string }, h: HintContext
   if (o.hint_de) return o.hint_de;
   const where = whereText(h.target, h.player);
   const go = where ? ` (${where})` : '';
+  if (h.otherEra && h.target?.anyEra) return `Zur Markierung gehen${go}, dort Q halten, um ${ERA_NAME[h.otherEra] ?? h.otherEra} zu wechseln.`;
   if (h.otherEra) return `Das liegt in einer anderen Zeit: Q halten, um ${ERA_NAME[h.otherEra] ?? h.otherEra} zu wechseln.`;
   switch (o.type) {
     case 'kill': {

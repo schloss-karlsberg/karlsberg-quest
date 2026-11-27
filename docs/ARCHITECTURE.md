@@ -2362,7 +2362,8 @@ Each RPG track adds its own subsection here when it fills its system in.
   objective zones (≤ 200 m, era tint, fades inside); the lead is gold, 90 m tall, ≤ 420 m.
 - `wayfinding.ts` (pure, `tests/wayfinding.test.ts`): `objectiveTarget` (a place for every
   objective type, clue places from the content packs; none for a clue with `anchor: "portable"`,
-  the tablet's nominal spot is no place: playtest round 10, F-25), `hintFor` / `storyHint`, `StallWatch`
+  the tablet's nominal spot is no place: playtest round 10, F-25; a `reach` place is `anyEra`: shown
+  from every era, so „Im Ehrenhof: Q – in den Juli 1793“ has its marker in the present, TASK-083), `hintFor` / `storyHint`, `StallWatch`
   (60 s). `index.ts` picks the lead (`computeLead`: main quest, else the story objective, else side
   quests), drives compass + `hud.waymark` (`src/ui/waymark.ts`) + beacons and the stall hint;
   a goal behind walls leads door by door (`world.routeTo`, set by interiors: breadth-first over the
