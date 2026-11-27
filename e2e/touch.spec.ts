@@ -32,28 +32,43 @@ class Finger {
     readonly id: number,
   ) {}
   private static down = new Map<number, { x: number; y: number }>();
+  /**
+   * The fingers' own clock (ms since the epoch), sent as each event's timestamp. A touch screen stamps
+   * a contact when it happens. Without a timestamp, CDP stamps an event when it dispatches it, after
+   * the renderer acknowledged the previous one. On a hosted runner a software-rendered frame holds
+   * that acknowledgement for up to a second, so a 60 ms tap lasted over two seconds and missed the
+   * 450 ms tap window (src/ui/pointerTap.ts). Each event advances the clock by one 60 Hz frame and a
+   * tap by its hold; a contact that starts with no finger down catches up with the wall clock.
+   */
+  private static clock = 0;
+  private static stamp(ms: number): number {
+    Finger.clock = Math.max(Finger.clock + ms, Finger.down.size === 0 ? Date.now() : 0);
+    return Finger.clock / 1000;
+  }
   private points(): { x: number; y: number; id: number }[] {
     return [...Finger.down.entries()].map(([id, p]) => ({ ...p, id }));
   }
   async start(x: number, y: number): Promise<void> {
+    const timestamp = Finger.stamp(16);
     Finger.down.set(this.id, { x, y });
-    await this.cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: this.points() });
+    await this.cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: this.points(), timestamp });
   }
   async move(x: number, y: number, steps = 6): Promise<void> {
     const from = Finger.down.get(this.id)!;
     for (let i = 1; i <= steps; i++) {
       Finger.down.set(this.id, { x: from.x + ((x - from.x) * i) / steps, y: from.y + ((y - from.y) * i) / steps });
-      await this.cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: this.points() });
+      await this.cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: this.points(), timestamp: Finger.stamp(16) });
     }
   }
-  async end(): Promise<void> {
+  async end(holdMs = 16): Promise<void> {
+    const timestamp = Finger.stamp(holdMs);
     Finger.down.delete(this.id);
-    await this.cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: this.points() });
+    await this.cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: this.points(), timestamp });
   }
   async tap(x: number, y: number, holdMs = 60): Promise<void> {
     await this.start(x, y);
     await new Promise((r) => setTimeout(r, holdMs));
-    await this.end();
+    await this.end(holdMs);
   }
 }
 
