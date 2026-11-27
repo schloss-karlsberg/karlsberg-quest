@@ -1,0 +1,33 @@
+/**
+ * TASK-076: at the tour stops after the first conversation the guide still offered „E Mit … sprechen“,
+ * and E opened a dialogue with no text, only „Auf Wiedersehen“. A person offers a conversation only
+ * while it has something to say (a greeting, a topic, a quest topic).
+ */
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+import type { DialogueLine } from '../src/content/types';
+import { answer, GREET, hasWords, talkLines } from '../src/systems/npc/logic';
+
+const pack = JSON.parse(readFileSync('content/packs/tour.pack.json', 'utf8')) as { dialogue: DialogueLine[] };
+const c = { era: 'today', flags: {}, chapter: 'tour', beat: null, clues: [] } as never;
+
+describe('a person offers a conversation only with something to say', () => {
+  const lines = talkLines(pack.dialogue, 'imhoff', 'tour');
+
+  it('the guide greets at the first stop (t2 stays as it was)', () => {
+    expect(lines.length).toBeGreaterThan(0);
+    expect(hasWords(lines, 'imhoff', 'tour', c, new Set(), 0)).toBe(true);
+  });
+
+  it('after his first conversation he has nothing left: no talk prompt at the later stops', () => {
+    const said = new Set(answer(lines, 'imhoff', 'tour', GREET, c, new Set()).map((l) => l.id));
+    for (let i = 0; i < 5; i++) for (const l of answer(lines, 'imhoff', 'tour', GREET, c, said)) said.add(l.id);
+    expect(hasWords(lines, 'imhoff', 'tour', c, said, 0)).toBe(false);
+    // a quest topic is something to say
+    expect(hasWords(lines, 'imhoff', 'tour', c, said, 1)).toBe(true);
+  });
+
+  it('a person without any lines keeps the silent look („Schweigt und sieht dich an.“)', () => {
+    expect(hasWords([], 'niemand', 'tour', c, new Set(), 0)).toBe(true);
+  });
+});

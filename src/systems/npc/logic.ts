@@ -62,6 +62,16 @@ export function answer(lines: DialogueLine[], npc: string, chapter: string, topi
   return pickSequence(own, 'npc:talk', payloadFor(npc, chapter, topic), c, said, new Map(), 0, 0);
 }
 
+/**
+ * Has this person anything to say now: a greeting, a topic, or a quest topic (`questTopics`)? Without
+ * it the talk prompt is not offered (TASK-076: the guide at the later tour stops opened an empty
+ * dialogue). A person with no lines at all keeps its silent look („Schweigt und sieht dich an.“).
+ */
+export function hasWords(lines: DialogueLine[], npc: string, chapter: string, c: TriggerContext, said: ReadonlySet<string>, questTopics: number): boolean {
+  if (questTopics > 0 || !lines.length) return true;
+  return answer(lines, npc, chapter, GREET, c, said).length > 0 || availableTopics(lines, npc, chapter, c).length > 0;
+}
+
 export function talkedFlag(chapter: string, npc: string, topic?: string): string {
   return `talked.${chapter}.${npc}${topic ? `.${topic}` : ''}`;
 }

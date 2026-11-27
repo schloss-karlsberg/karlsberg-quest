@@ -290,6 +290,18 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   const p4 = await page.evaluate(() => window.kq!.ctx.player.position);
   expect(Math.hypot(p4.x - 623.4, p4.z + 485.9)).toBeLessThan(15);
   await follow(page, 't6', 200);
+  // TASK-076: Gerold gives this stop's talk through the radio box; right next to him there is no
+  // „Mit Gerold … sprechen“ that would open an empty conversation
+  await viewGroup(page, 1);
+  const nextToGuide = await page.evaluate(() => {
+    const k = window.kq!;
+    k.step(10);
+    const g = k.walk!.list().find((n) => n.npc === 'imhoff')!;
+    const p = k.ctx.player.position;
+    return { d: Math.hypot(p.x - g.x, p.z - g.z), prompt: document.querySelector('.kq-prompt')?.textContent ?? '' };
+  });
+  expect(nextToGuide.d).toBeLessThan(2.8);
+  expect(nextToGuide.prompt).not.toMatch(/sprechen/);
   await viewGroup(page);
   const card = page.getByTestId('dialogue');
   await expect(card).toHaveClass(/kqs-dlg-raised/);
