@@ -130,6 +130,17 @@ time during movement, and fades on an early tap.
 - Git accepted the credits fix commit and denied the following staging attempt at
   `index.lock`. The mobile tour hardening and documentation edits are in the worktree.
 - No voiced dialogue changes are required.
+- Merge review (2026-11-26/27): rebased on `origin/main` `cdd46824` (minimap, sound captions,
+  input and touch button changes, card settle timing). The phone HUD zoom uses main's
+  `--kq-t-hud-zoom`, and `releaseVirtual` keeps main's pending-tap cleanup. Combat callouts covered
+  Lebenskraft at 667×375, so they now start right of the vitals column, and the tour asserts it.
+  A card on screen also picks up the touch dismiss callback when touch mode switches on. Tests
+  follow main's one-frame card settle and the shared set-piece DOM stub. Gates: `pnpm typecheck`,
+  `pnpm test` (2295 passed, 0 failed), `pnpm validate`, `pnpm build`. Locked e2e on port 5407:
+  `party` 5/5, `smoke` 9/9, `skills` 7/7, `touch` 11/11 (one backdrop-tap flake under load on the
+  first run, passed on rerun), and the exclusive `small-landscape` tour subset
+  (`touch-buttons,pause,skill-unlock,credits`) with 0 failed states. Open: the skill card, like the
+  level card, covers the vitals and can cover a sound caption below the dialogue while it shows.
 
 | Review finding | Result |
 | --- | --- |
