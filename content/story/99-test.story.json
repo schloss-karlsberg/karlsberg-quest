@@ -104,7 +104,7 @@
       "id": "r2",
       "title_de": "TEST: Hanne im Festsaal",
       "enter": [{ "do": "objective", "text": "TEST: Sprich mit Hanne." }],
-      "complete": { "all": [{ "room": "KB-B01" }, { "talked": { "npc": "hanne", "chapter": "k1" } }] },
+      "complete": { "all": [{ "room": "KB-B01" }, { "talked": { "npc": "hanne", "chapter": "k1" } }, { "event": "npc:conversation", "match": { "npc": "hanne", "open": false } }] },
       "exit": [{ "do": "npc", "op": "despawn", "npc": "hanne" }],
       "next": "r3"
     },
