@@ -1299,7 +1299,13 @@ Round-4 (polish: set dressing) integration rules:
   the turn-in card and `qt:` Übergeben (`quest:turnin`), then ONE history line (a quest's
   `history_at_turnin`, 0 = none: the story tells it later or it waits in the codex) (marked "Was wirklich
   war", with source and codex note); „Erzähl mehr“ (`more` topic) tells the rest (`quest:told`). No
-  stance prompt (docs/ACTION-RPG.md §8.6). Quest glyphs over the head
+  stance prompt (docs/ACTION-RPG.md §8.6). A placement takes E only while it has something to say
+  now (`offersTalk` in `logic.ts`, TASK-076): a greeting that can still play, a menu topic, a quest
+  topic, or no lines at all (a silent figure answers „(Schweigt und sieht dich an.)“). Once its
+  `once` lines are said and nothing is left (the tour guide after the car park), the prompt goes and
+  E is free for others. A forced open with nothing to say shows the silent line, never an empty box.
+  `tests/npc-talk-waits.test.ts` checks that no beat or reaction waits for a talk with someone who
+  has nothing to say then. Quest glyphs over the head
   (`glyphs.ts`, `npc:marker`: ! / ringed ! / ? with halo / grey ?), escort `npc:follow`, transient
   flag `npc.near`. Emits `npc:talk`,
   `npc:conversation`, `bark:npc-near`, `clue:grant` (first talk), flags `talked.*`, `npc.owns.<clue>`.

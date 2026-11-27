@@ -151,6 +151,93 @@ test.describe('landscape phone', () => {
   });
 });
 
+/** Stand 1.6 m beside the guide, facing him; what the npc system offers there (the visible prompt only). */
+const besideGuide = (page: Page) =>
+  page.evaluate(() => {
+    const k = window.kq!;
+    const g = k.walk!.list().find((n) => n.npc === 'imhoff')!;
+    const x = g.x + 1.6;
+    const z = g.z + 1.2;
+    k.teleport(x, z, (Math.atan2(g.x - x, -(g.z - z)) * 180) / Math.PI, -4);
+    k.step(10);
+    return { near: k.npc!.state().near, prompt: document.querySelector('.kq-prompt.show')?.textContent ?? '' };
+  });
+
+test('the guide takes E at the car park only: no empty talk at the Felsenpfad, the Weiher and the Quelle (TASK-076)', async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto('./?notitle&nosave&fresh&manual');
+  await waitForHooks(page, ['story', 'walk', 'npc'], 120_000);
+  await page.waitForFunction(() => {
+    window.kq!.step(1);
+    return window.kq!.animals?.ready === true;
+  }, null, { timeout: 20_000 });
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.story!.start('Testerin');
+    k.step(30);
+    k.teleport(526, -773, 215, -4);
+    k.step(30);
+    for (let i = 0; i < 90 && !(k.story!.state().beat === 't2' && k.ctx.state.state.flags['tour.station1.ready']); i++) {
+      k.story!.finishTyping();
+      k.step(60);
+    }
+  });
+  expect(await beat(page)).toBe('t2');
+  expect(await page.evaluate(() => window.kq!.ctx.state.state.flags['tour.station1.ready'])).toBe(true);
+
+  // t2: the first conversation, as before (all three car-park greetings)
+  const before = await besideGuide(page);
+  expect(before.near).toBe('imhoff');
+  expect(before.prompt).toContain('Gerold Imhoff');
+  await page.evaluate(() => window.kq!.press('KeyE', 2));
+  await expect.poll(() => page.evaluate(() => window.kq!.npc!.state().open), { timeout: 15_000 }).toBe(true);
+  const greeting = await page.evaluate(() => {
+    const n = window.kq!.npc!;
+    const ids = [];
+    for (let i = 0; i < 6 && n.state().busy; i++) {
+      ids.push(n.state().line?.id);
+      n.finish();
+      n.advance();
+    }
+    n.close();
+    window.kq!.step(5);
+    return ids;
+  });
+  expect(greeting).toEqual(['imhoff.t.station1', 'imhoff.t.station1a', 'imhoff.t.station1b']);
+  // he said it all: standing next to him, E is not his any more
+  expect(await besideGuide(page)).toMatchObject({ near: null });
+
+  // the stops: he talks in the speech box; next to him no talk prompt, E opens nothing
+  for (const [b, stop] of [['t6', 'felsen'], ['t13', 'weiher'], ['t15', 'quelle']]) {
+    await page.evaluate(([bb, ss]) => {
+      const k = window.kq!;
+      k.walk!.snap('fuehrung', ss);
+      k.story!.goto('tour', bb);
+      k.step(60);
+    }, [b, stop]);
+    expect(await beat(page), stop).toBe(b);
+    const at = await besideGuide(page);
+    expect(at.near, b).toBeNull();
+    expect(at.prompt, b).not.toContain('Gerold Imhoff');
+    await page.evaluate(() => {
+      window.kq!.press('KeyE', 2);
+      window.kq!.step(5);
+    });
+    expect(await page.evaluate(() => window.kq!.npc!.state().open), b).toBe(false);
+  }
+
+  // a forced open (debug) says the silent line instead of an empty box with only „Auf Wiedersehen“
+  const forced = await page.evaluate(() => {
+    const n = window.kq!.npc!;
+    n.talk('imhoff');
+    const s = n.state();
+    n.close();
+    return { open: s.open, line: s.line?.id ?? null };
+  });
+  expect(forced).toEqual({ open: true, line: 'npc.silent' });
+  expect(errors).toEqual([]);
+});
+
 test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Weiher → Quelle → 1789 → chapter 1', async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto('./?notitle&fresh&manual');
