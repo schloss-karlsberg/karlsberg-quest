@@ -7,6 +7,7 @@ addStrings('de', {
   'story.dialogue.tap': 'Tippen: weiter',
   'story.tag.historical': 'historisch · nach Quelle',
   'story.tag.echo': 'Erinnerung (Fiktion)',
+  'story.echo.date': 'Erinnerung · {when}',
   'story.tag.fiction': 'Fiktion',
   'story.source': 'Quelle',
   'story.placeholder': 'Platzhalter',
@@ -16,7 +17,7 @@ addStrings('de', {
   'story.chapter.locked': 'Noch verborgen',
   'story.chapter.current': 'Jetzt',
   'story.chapter.done': 'Abgeschlossen',
-  'story.chapter.confirm': '„{title}“ (neu) beginnen? Stufe, Gegenstände und Codex bleiben erhalten.',
+  'story.chapter.confirm': '„{title}“ (neu) beginnen? Deine Stufe, Ausrüstung und Codex-Einträge bleiben erhalten.',
 
   // objectives
   'story.objective': 'Ziel',
@@ -37,8 +38,8 @@ addStrings('de', {
   'story.caught.sub.combat': 'Niedergeworfen. Nicht verloren.',
   'story.caught.wake': 'Du wachst an der Quelle auf. Was bestätigt ist, bleibt.',
   'story.meter.return': 'Die Erinnerung lässt dich los.',
-  'story.caught.wakePoint': 'Du kommst am Vermessungspunkt {name} zu dir, im Heute. Nichts ist verloren.',
-  'story.caught.wakeAnchor': 'Du kommst dort zu dir, wo du hinübergegangen bist, im Heute. Nichts ist verloren.',
+  'story.caught.wakePoint': 'Du kommst am Reisepunkt {name} in der Gegenwart zu dir. Nichts ist verloren.',
+  'story.caught.wakeAnchor': 'Du kommst in der Gegenwart dort zu dir, wo der Zeitsprung begann. Nichts ist verloren.',
   'story.caught.backQ': 'Hier ging es hinüber: Q – zurück in die Erinnerung',
   'story.oil.half': 'Die Hälfte vom Öl ist fort. Behalten Sie das im Auge.',
   'story.oil.low': 'Das Öl wird knapp. Nur noch Sekunden, dann lässt uns die Erinnerung los. Lampenöl, falls Sie welches haben.',

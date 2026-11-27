@@ -50,6 +50,14 @@ describe('story prompts on a touch screen', () => {
     expect(first.touch).toBe('Wischen: Schauen');
   });
 
+  it('tells touch players to move the stick all the way forward to sprint', () => {
+    expect(prompts.find((p) => p.key === 'Umschalt')?.touch).toBe('Zum Rennen ganz vor');
+  });
+
+  it('first sends touch players to the Fotomodus button during the deer encounter', () => {
+    expect(prompts.find((p) => p.key === 'N')?.touch).toBe('Fotomodus öffnen');
+  });
+
   it('validator: touch must be a text, a long one warns', () => {
     const file = (touch: unknown): StoryFile =>
       ({ chapter: 'c', order: 0, title_de: 'C', start: 'b', beats: [{ id: 'b', enter: [{ do: 'prompt', key: 'E', text: 'Lauschen', touch }], complete: { manual: true } }] }) as unknown as StoryFile;

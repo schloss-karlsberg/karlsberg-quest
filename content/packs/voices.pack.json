@@ -544,7 +544,7 @@
     {
       "id": "marlene.gen.11",
       "speaker": "marlene",
-      "text_de": "Du redest im Schlaf. Gestern hast du ‚Bijou‘ gesagt. Ist das ein Hund?",
+      "text_de": "Du redest im Schlaf. Gestern hast du „Bijou“ gesagt. Ist das ein Hund?",
       "trigger": {
         "event": "hub:enter"
       },

@@ -85,7 +85,7 @@ test('the tour starts with audio and Continue restores the read-only autosave', 
   await page.screenshot({ path: `${SCREENS}/title.png` });
 
   // version + build, and „Neuigkeiten“ with its unseen badge (cleared once opened)
-  await expect(page.getByTestId('title-version')).toContainText(/Version \d+\.\d+\.\d+ · Build \S+/);
+  await expect(page.getByTestId('title-version')).toContainText(/Version \d+\.\d+\.\d+ · Stand \S+/);
   const badge = page.locator('.kq-news-badge');
   await expect(badge).toBeVisible();
   await page.getByTestId('title-news').click();

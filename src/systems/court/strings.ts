@@ -46,7 +46,7 @@ addStrings('de', {
   'court.hint.lossless': 'Du verlierst nichts – nur ein bisschen Zeit.',
   'court.hint.ok': 'Verstanden',
   'court.hint.how.hivis': 'Ohne Rock bist du sofort ein Fremder: Besorg dir Kleidung, die an den Hof passt.',
-  'court.hint.how.running': 'Geh langsam: Shift loslassen, wenn dich jemand sieht.',
+  'court.hint.how.running': 'Geh langsam: Umschalttaste loslassen, wenn dich jemand sieht.',
   'court.hint.how.staff': 'Kein Stab, kein Zielen, kein Schlag, wo eine Wache hinsieht.',
   'court.hint.how.take': 'Nimm nichts, solange dich jemand sieht: Warte, bis der Blick wegschwenkt.',
   // inspection (Musterung)

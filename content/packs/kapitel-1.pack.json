@@ -873,7 +873,7 @@
           "id": "entry.k1.5",
           "kind": "fact",
           "factId": "cx.05",
-          "text_de": "Eine Zeitschrift nannte das Land 1782 ‚{was}‘.",
+          "text_de": "Eine Zeitschrift nannte das Land 1782 „{was}“.",
           "blanks": [
             {
               "id": "was",
@@ -1209,7 +1209,7 @@
     {
       "id": "hanne.k1.04",
       "speaker": "hanne",
-      "text_de": "Seit einer Woche steh ich hier jeden Morgen. Der Schreiber sagt, es ist angewiesen. Ich sag ihm, ‚angewiesen‘ kann ich nicht essen.",
+      "text_de": "Seit einer Woche steh ich hier jeden Morgen. Der Schreiber sagt, es ist angewiesen. Ich sag ihm, „angewiesen“ kann ich nicht essen.",
       "trigger": {
         "event": "npc:talk",
         "npc": "hanne",
@@ -1746,7 +1746,7 @@
     {
       "id": "laub.k1.brief",
       "speaker": "laub",
-      "text_de": "Wir schreiben im Namen des Hofrats Justus Amsel aus Celle. Er reist, er schreibt Bücher, eins heißt ‚Vom Betragen bei Hofe‘. Sie sind sein Sekretär, vorausgeschickt. Den Hofrat gibt es nicht. Das weiß die Wache nicht. Ich weiß es. Ich sage es nur Ihnen.",
+      "text_de": "Wir schreiben im Namen des Hofrats Justus Amsel aus Celle. Er reist, er schreibt Bücher, eins heißt „Vom Betragen bei Hofe“. Sie sind sein Sekretär, vorausgeschickt. Den Hofrat gibt es nicht. Das weiß die Wache nicht. Ich weiß es. Ich sage es nur Ihnen.",
       "trigger": {
         "event": "story:beat",
         "chapter": "k1",
@@ -1809,7 +1809,7 @@
     {
       "id": "laub.k1.wahrhaftig",
       "speaker": "laub",
-      "text_de": "Knigge schreibt, in einer späteren Auflage: ‚Sey ernsthaft, bescheiden, höflich, ruhig, wahrhaftig!‘ Vier von fünf haben wir geschafft.",
+      "text_de": "Knigge schreibt, in einer späteren Auflage: „Sey ernsthaft, bescheiden, höflich, ruhig, wahrhaftig!“ Vier von fünf haben wir geschafft.",
       "trigger": {
         "event": "story:beat",
         "chapter": "k1",

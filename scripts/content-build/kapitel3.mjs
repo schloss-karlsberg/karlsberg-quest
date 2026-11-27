@@ -179,7 +179,7 @@ const cases = [{
       { id: 'wo', category: 'place', correct: 'n.lothringen', alsoCorrect: ['n.metz'], accepts: ['n.lothringen', 'n.metz', 'n.kaiserslautern', 'n.mannheim', 'n.homburg'] }),
     f1('entry.k3.3', 'cx.22', 'Mit dem Stroh stopfte man alle Gemächer im {wo} aus.',
       { id: 'wo', category: 'place', correct: 'n.erdgeschoss', accepts: ['n.erdgeschoss', 'n.dachstuhl', 'n.keller', 'n.festsaal'] }),
-    f1('entry.k3.4', 'cx.22', 'Der Kommissär setzte das Schloss ‚im Namen der {was}‘ in Brand.',
+    f1('entry.k3.4', 'cx.22', 'Der Kommissär setzte das Schloss „im Namen der {was}“ in Brand.',
       { id: 'was', category: 'object', correct: 'n.nation', accepts: ['n.nation', 'n.republik', 'n.freiheit'] }),
     f1('entry.k3.5', 'cx.23', 'Die abziehenden Franzosen gaben das Schloss zur Plünderung frei, auch für die {wer} der Umgebung.',
       { id: 'wer', category: 'group', correct: 'n.dorfbewohner', accepts: ['n.dorfbewohner', 'n.preussen', 'n.hofbediente'] }),
@@ -192,7 +192,7 @@ const cases = [{
       { id: 'wer', category: 'person', correct: 'n.buechsenmacher', accepts: ['n.buechsenmacher', 'n.mundkoch', 'n.hofgaertner'] }),
     f1('entry.k3.8', 'cx.28', 'Das Feuer zerstörte vor allem die Residenz des Herzogs und die {was}.',
       { id: 'was', category: 'object', correct: 'n.fachwerk', accepts: ['n.fachwerk', 'n.wirtschaftsgebaeude', 'n.gewoelbe'] }),
-    f1('entry.k3.9', 'cx.25', 'Mannlich schrieb, die Galerie sei ‚cent pas‘ lang gewesen: {wieviel}.',
+    f1('entry.k3.9', 'cx.25', 'Mannlich schrieb, die Galerie sei „cent pas“ lang gewesen: {wieviel}.',
       { id: 'wieviel', category: 'other', correct: 'n.hundert_schritt', accepts: ['n.hundert_schritt', 'n.hundert_fuss', 'n.hundert_klafter'] }),
     { id: 'entry.k3.10', kind: 'reading', flag: 'flag.k3_pluenderer', text_de: 'Die Leute aus den Dörfern {wie}.',
       blanks: [{ id: 'wie', accepts: ['n.r_schuld', 'n.r_stahlen', 'n.r_retteten', 'n.r_alle'] }] },
@@ -207,8 +207,8 @@ const MANNLICH_NICHT_DABEI = 'Mannlich war nicht dabei. Er schreibt nach Bericht
 
 const dialogue = [
   // At the spring
-  say('marlene.k3.morgen', 'marlene', 'Du siehst aus, als hättest du ein Feuer gelöscht. Hast du heut Nacht geträumt? Du hast im Schlaf ‚Obacht‘ gesagt.', beat('3.0'), { once: true }),
-  say('marlene.k3.ausstellung', 'marlene', '2018 war in Saarbrücken eine Ausstellung, ‚Steinerne Macht‘. Da lag vom Karlsberg fast nichts. Ein Türgriff, eine Uhr mit Alabaster, ein Dukat mit dem Schloss drauf, eine Pistole und ein Jagdmesser. Ein ganzes Schloss, und übrig bleibt ein Türgriff.', found('clue.k3.marlene'), { once: true, src: [src('RP18', 'P')] }),
+  say('marlene.k3.morgen', 'marlene', 'Du siehst aus, als hättest du ein Feuer gelöscht. Hast du heut Nacht geträumt? Du hast im Schlaf „Obacht“ gesagt.', beat('3.0'), { once: true }),
+  say('marlene.k3.ausstellung', 'marlene', '2018 war in Saarbrücken eine Ausstellung, „Steinerne Macht“. Da lag vom Karlsberg fast nichts. Ein Türgriff, eine Uhr mit Alabaster, ein Dukat mit dem Schloss drauf, eine Pistole und ein Jagdmesser. Ein ganzes Schloss, und übrig bleibt ein Türgriff.', found('clue.k3.marlene'), { once: true, src: [src('RP18', 'P')] }),
   say('laub.k3.start', 'laub', 'Juli dreiundneunzig. Ich war nicht dabei. Ich bin erst vierzehn Jahre später geboren worden. Und trotzdem habe ich das Gefühl, ich sollte mich entschuldigen.', beat('3.0'), { once: true }),
   // Ehrenhof
   ...seq(echo('clue.k3.stroh'), [

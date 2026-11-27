@@ -15,6 +15,7 @@ import { decodeH2025, quantToMetres } from '../src/data/decode';
 import type { TerrainMeta } from '../src/data/types';
 import { Heightfield } from '../src/world/heightfield';
 import { ACTIVATE_RADIUS, ANNOUNCE_MIN, SURVEY_POINTS, TRIPOD_SEED_BASE, activateRadius, announceFor, cardMayTakeE, knownPoints, livePointIds, pointById, travelBlock, wayLineBlocked, wayStartBlocked } from '../src/systems/travel/points';
+import { TRAVEL_DE } from '../src/systems/travel/strings';
 import { KEEP_CLEAR, KEEP_CLEAR_R, POI_SPACING, ROUTES, cacheLoot, generatePois } from '../src/systems/travel/pois';
 import { ENEMIES } from '../src/rpg/enemies';
 import { FootprintCollider, type Ring } from '../src/world/collision';
@@ -44,6 +45,10 @@ function contentPlaces(): { x: number; z: number; r?: number; npc?: boolean }[] 
 }
 
 describe('survey points', () => {
+  it('formats the Ehrenhof activation banner in German', () => {
+    expect(TRAVEL_DE.activated(pointById('ehrenhof')!.name)).toBe('Reisepunkt entdeckt: Ehrenhof');
+  });
+
   it('stand outside every building, inside the land, apart from each other', () => {
     for (const p of SURVEY_POINTS) {
       expect(inBuilding(p.x, p.z), p.id).toBe(false);
