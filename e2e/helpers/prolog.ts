@@ -113,6 +113,8 @@ export async function turninMoment(page: Page, quest: string): Promise<unknown> 
 
 /** Talk a quest through with an NPC giver: accept (the offer card) or hand in (the turn-in card). */
 export async function talkQuest(page: Page, npc: string, quest: string, value?: string): Promise<void> {
+  // an open page blocks the conversation (npc open() refuses while a modal is up)
+  await putAwayPages(page);
   await page.evaluate(
     ([npc, quest, value]) => {
       const k = window.kq!;
@@ -296,9 +298,13 @@ export async function newGame(page: Page, name: string, shots = false, url = './
 export async function putAwayPages(page: Page): Promise<void> {
   await page.evaluate(() => {
     const k = window.kq!;
-    for (let i = 0; i < 12 && (k.ctx.ui.cards.pending > 0 || k.ctx.ui.modals.count > 0) && !k.story?.choice(); i++) {
-      k.ctx.ui.modals.closeAll();
-      k.step(10);
+    const { cards, modals } = k.ctx.ui;
+    // what keeps the queue shut (soft reasons and the story's extra hold only delay slide-in cards)
+    const blocked = () => cards.holdReasons().some((r) => !r.startsWith('soft:') && r !== 'story');
+    // one render per step: the card gap runs in rendered frames, so k.step(10) opened one page at most
+    for (let i = 0; i < 240 && (modals.count > 0 || (cards.pending > 0 && !blocked())) && !k.story?.choice(); i++) {
+      modals.closeAll();
+      k.step(1);
     }
   });
 }
