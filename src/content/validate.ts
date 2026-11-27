@@ -228,6 +228,7 @@ export function validateContent(packs: LoadedPack[], opts: ValidateOptions = {})
   const speakers = new Map(all.speakers.map(([, s]) => [s.id, s]));
   for (const [file, s] of all.speakers) {
     if (!isStr(s.name_de)) err(file, s.id, 'speaker: missing name_de');
+    if (s.dative_de !== undefined && !isStr(s.dative_de)) err(file, s.id, 'speaker: dative_de must be a non-empty string');
     if (typeof s.historical !== 'boolean') err(file, s.id, 'speaker: "historical" must be true or false');
   }
   for (const [file, d] of all.dialogue) {

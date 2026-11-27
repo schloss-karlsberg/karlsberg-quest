@@ -130,6 +130,11 @@ export interface DialogueLine {
 export interface Speaker {
   id: string;
   name_de: string;
+  /**
+   * The name after a dative preposition, as in „Mit {name} sprechen“: „dem Hofgärtner“, „einem
+   * Gardisten“. Needed when the name starts with an article or is declined; default `name_de`.
+   */
+  dative_de?: string;
   /** true for historical persons (their lines then need sources). */
   historical: boolean;
 }
