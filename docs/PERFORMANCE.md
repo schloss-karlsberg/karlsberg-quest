@@ -351,9 +351,12 @@ The fix (`systems/fx/shift/warm.ts`, `slices.ts`, `reveal.ts`) changes nothing o
    gathers everything not drawn now (the hidden palace, the other era's sets), the shift's own
    materials (stand-ins from `ShiftEffect.warmObjects`) and the next era's model templates (the
    story's shift target, else today ↔ 1789; their assets are prefetched, 7 MB for 1789). For each
-   distinct material × kind × vertex layout it makes one stand-in that shares the real buffers but
-   draws a single triangle. The stand-ins are compiled with `compileAsync` into the post target,
-   then each is drawn once into the post target (casters also into the shadow target,
+   distinct material × kind × vertex layout it makes one stand-in that draws a single primitive.
+   The effect's stand-ins borrow its geometries and restore their draw ranges after each draw.
+   This lets the effect release the uploaded buffers at teardown, even before the first shift.
+   Other stand-ins share the source buffers through temporary geometries. The stand-ins compile
+   with `compileAsync` into the post target, then each draws once into the post target (casters
+   also into the shadow target,
    `SunShadows.warm`). That builds the pipelines and uploads the buffers and textures. At most
    one program is used for the first time per frame. The other era's terrain textures are
    uploaded with `initTexture`. After every era change the pass runs again. It does not run on

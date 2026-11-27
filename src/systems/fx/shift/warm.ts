@@ -102,8 +102,10 @@ function shareGeometry(src: BufferGeometry, start: number, count: number): Buffe
   return g;
 }
 
-/** Release a stand-in's geometry state in the renderer without deleting the shared GPU buffers. */
-function releaseGeometry(g: BufferGeometry): void {
+/** Release temporary geometry state without deleting the shared GPU buffers. */
+function releaseStandIn(s: StandIn): void {
+  if (s.borrowedRange) return;
+  const g = (s.obj as Mesh).geometry;
   g.index = null;
   g.attributes = {};
   g.morphAttributes = {};
@@ -115,6 +117,8 @@ interface StandIn {
   casts: boolean;
   /** material × kind × layout */
   key: string;
+  /** Draw just this range of the effect-owned geometry during warm-up. */
+  borrowedRange?: BufferGeometry['drawRange'];
 }
 
 type Kind = 'im' | 'pt' | 'ls' | 'll' | 'ln' | 'me';
@@ -143,7 +147,11 @@ function standInKeys(src: Drawable, asInstanced = false): string[] {
  * One stand-in per distinct material × layout × kind among `sources`. `asInstanced`: the sources
  * are model templates that the world draws as InstancedMesh copies (scenery/models.ts).
  */
-function standIns(sources: Drawable[], seen: Set<string>, asInstanced = false): StandIn[] {
+function standIns(
+  sources: Drawable[],
+  seen: Set<string>,
+  { asInstanced = false, borrowGeometry = false } = {},
+): StandIn[] {
   const out: StandIn[] = [];
   for (const src of sources) {
     const kind = kindOf(src, asInstanced);
@@ -163,7 +171,7 @@ function standIns(sources: Drawable[], seen: Set<string>, asInstanced = false): 
       const start = group ? group.start : 0;
       const n = Math.min(kind === 'pt' ? 1 : kind === 'ls' || kind === 'ln' || kind === 'll' ? 2 : 3, Math.max(0, total - start));
       if (n <= 0) return;
-      const sg = shareGeometry(g, start, n);
+      const sg = borrowGeometry ? g : shareGeometry(g, start, n);
       let o: Object3D;
       if (kind === 'im') {
         const im = new InstancedMesh(sg, m, 1);
@@ -190,7 +198,7 @@ function standIns(sources: Drawable[], seen: Set<string>, asInstanced = false): 
       o.renderOrder = src.renderOrder;
       o.userData = src.userData;
       o.name = src.name;
-      out.push({ obj: o, casts: castsShadow(src), key });
+      out.push({ obj: o, casts: castsShadow(src), key, borrowedRange: borrowGeometry ? { start, count: n } : undefined });
     });
   }
   return out;
@@ -396,7 +404,7 @@ export class ShiftWarmer {
       }
       this.revealQueue.splice(i, 1);
       const first = this.draw(s);
-      releaseGeometry((s.obj as Mesh).geometry);
+      releaseStandIn(s);
       if (first) break;
     }
     for (const [o, h] of this.held) {
@@ -412,7 +420,7 @@ export class ShiftWarmer {
   private releaseAll(): void {
     for (const [o, h] of this.held) o.layers.mask = h.mask;
     this.held.clear();
-    for (const s of this.revealQueue) releaseGeometry((s.obj as Mesh).geometry);
+    for (const s of this.revealQueue) releaseStandIn(s);
     this.revealQueue.length = 0;
     this.toCompile.length = 0;
   }
@@ -420,14 +428,19 @@ export class ShiftWarmer {
   /** What is not drawn now (+ the effect's stand-ins, + the other era's models), warmed. */
   private *pass(withEffect: boolean): Generator<unknown, void> {
     const ctx = this.ctx;
-    const sources: Drawable[] = withEffect ? (this.src.effect() as Drawable[]) : [];
+    const effectSources = withEffect ? this.src.effect() as Drawable[] : [];
+    const hidden: Drawable[] = [];
     const cam = ctx.camera;
     ctx.scene.traverse((o) => {
       const d = o as Drawable;
-      if (d.geometry && d.material && o.layers.test(cam.layers) && !shown(o)) sources.push(d);
+      if (d.geometry && d.material && o.layers.test(cam.layers) && !shown(o)) hidden.push(d);
     });
     yield;
-    yield* this.warm(standIns(sources, this.seen));
+    // Register the effect's own geometries with three.js so their owners can dispose the uploads.
+    yield* this.warm([
+      ...standIns(effectSources, this.seen, { borrowGeometry: true }),
+      ...standIns(hidden, this.seen),
+    ]);
     // the other era's models: fetched in the background, then warmed like the rest
     let roots: Object3D[] = [];
     yield this.src.templates().then(
@@ -436,7 +449,7 @@ export class ShiftWarmer {
     );
     const meshes: Drawable[] = [];
     for (const root of roots) root.traverse((o) => void ((o as Mesh).isMesh && meshes.push(o as Drawable)));
-    yield* this.warm(standIns(meshes, this.seen, true));
+    yield* this.warm(standIns(meshes, this.seen, { asInstanced: true }));
     // what the systems build only once the next era is active (prewarm.ts registry)
     const samples: Drawable[] = [];
     for (const root of this.src.registered()) root.traverse((o) => void ((o as Drawable).geometry && (o as Drawable).material && samples.push(o as Drawable)));
@@ -474,10 +487,17 @@ export class ShiftWarmer {
     const ctx = this.ctx;
     const r = ctx.renderer;
     const scene = this.scene;
-    scene.add(s.obj);
-    this.withTarget(() => r.render(scene, ctx.camera));
-    if (s.casts && ctx.world.shadows.enabled) ctx.world.shadows.warm(r, scene);
-    scene.clear();
+    const geometry = (s.obj as Mesh).geometry;
+    const previousRange = s.borrowedRange ? { ...geometry.drawRange } : undefined;
+    try {
+      if (s.borrowedRange) geometry.setDrawRange(s.borrowedRange.start, s.borrowedRange.count);
+      scene.add(s.obj);
+      this.withTarget(() => r.render(scene, ctx.camera));
+      if (s.casts && ctx.world.shadows.enabled) ctx.world.shadows.warm(r, scene);
+    } finally {
+      if (previousRange) geometry.setDrawRange(previousRange.start, previousRange.count);
+      scene.clear();
+    }
     this.drawn.add(s.key);
     this.stats.drawn++;
     const mat = (s.obj as Mesh).material as Material;
@@ -507,6 +527,6 @@ export class ShiftWarmer {
       const first = this.draw(s);
       yield first ? NEXT_FRAME : undefined;
     }
-    for (const s of list) releaseGeometry((s.obj as Mesh).geometry);
+    for (const s of list) releaseStandIn(s);
   }
 }
