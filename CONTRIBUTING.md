@@ -90,6 +90,16 @@ test and screenshot timeouts are tripled through `ciScale` in `e2e/helpers/ci.ts
 runs alone with a 240-minute Playwright deadline in a 270-minute job. Other shards have
 180 minutes inside a 205-minute job.
 
+Hosted shards differ from a local run in two ways that tests must allow for. Full Chromium grants
+pointer lock without a click, while the local headless shell never does. A test that needs to run
+without the lock calls `kq.ctx.input.releaseLock()` and waits for `document.pointerLockElement` to
+clear. Software frames also take up to a second, so wall-clock waits stretch:
+
+- Poll frame-driven state with `expect.poll` and a `ciScale` timeout, not a fixed `waitForTimeout`.
+- Measure HUD lines with wall-clock timers in the `page.evaluate` that shows them.
+- Give CDP touch events their own `timestamp` (`Finger` in `e2e/touch.spec.ts`). Otherwise a slow
+  acknowledgement stretches a tap past the 450 ms tap window.
+
 Use the Actions tab or the command below to run selected spec names on a branch. Leave `specs`
 blank to run the full suite.
 
