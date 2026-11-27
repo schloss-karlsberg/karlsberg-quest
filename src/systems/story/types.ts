@@ -704,6 +704,8 @@ export interface Beat {
   /** Placeholder beat (skeleton chapters): shown with a "Platzhalter" label. */
   placeholder?: boolean;
   enter?: Action[];
+  /** Accumulate beat timer seconds only while this live condition holds (without event latches). */
+  timerWhile?: Condition;
   complete: Condition;
   exit?: Action[];
   /** Next beat id (default: the following beat in the list; none = chapter complete). */

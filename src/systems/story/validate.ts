@@ -159,6 +159,7 @@ export function validateStories(files: { file: string; story: StoryFile }[], ref
       }
       if (b.complete === undefined) err(file, where, 'missing "complete" condition');
       else checkCond(b.complete, file, where, err);
+      if (b.timerWhile !== undefined) checkCond(b.timerWhile, file, `${where}:timerWhile`, err);
       lines += checkActions(b.enter, file, `${where}:enter`, err, warn, refs, chapters);
       lines += checkActions(b.exit, file, `${where}:exit`, err, warn, refs, chapters);
       const rids = new Set<string>();

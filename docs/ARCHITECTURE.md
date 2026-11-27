@@ -2400,6 +2400,10 @@ Each RPG track adds its own subsection here when it fills its system in.
   charged past three times can be led home with E → `menagerie:calmed`; three Bannlicht flares
   drive a jaguar off for good → `menagerie:calmed`. The save records the counted misses and flares
   as well as completed calming.
+  An explicit era on a spawn cue overrides the current era; re-sending an identical spawn is a no-op.
+  The garden-to-kennel beats reassert the same fire-night jaguar by id, including on resume. A
+  temporary removal with `keepProgress` (chapter 3's `leave`) keeps the partial counts across
+  chapter selection; calming, a permanent removal, or closing the jaguar quest clears them.
 - **Debug** `window.kq.combat`: `state() spawn(kind, opts) kill(groupOrId?) hit(n) bann() dodge()
   god(on) groups() enemies() place() windup() freeze() skill(id) hurt() heal() events() shake() sim()`.
 - **e2e** `e2e/combat.spec.ts` (screenshots `test-results/screens/rpg-combat-*.png`),

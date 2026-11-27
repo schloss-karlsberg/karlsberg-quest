@@ -447,6 +447,7 @@ class StoryRuntime {
     });
     ctx.events.on('echo:end', () => ctx.ui.hud.setEraLabel(t(ERA_INFO[ctx.era.current].labelKey)));
     ctx.events.on('era:change', ({ to }) => {
+      this.slice.room = null;
       this.dropShiftObjective(to);
       if (to === 'today' || this.slice.lookPast?.era === to) this.applyLook();
     });
