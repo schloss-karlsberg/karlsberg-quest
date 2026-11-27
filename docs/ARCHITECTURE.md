@@ -206,8 +206,13 @@ and 30 fps every 4th (every frame / every 2nd at 60 Hz).
 hooks that change the view ask (`teleport`, `setEra`, `setScanMode`, `setMapMix`, `spawnAsset`,
 `perfHud`, the bench camera), so do modal / pause / settings changes, resize, the tab becoming
 visible and, in bullet time, a real mouse move / key / wheel. `kq.step(n)`, `loop.renderOnce` and
-the pilot's `act` / `observe` normally render synchronously. With `?manual&faststep`, the step
-and press hooks prepare presentation synchronously and queue a paint. A frame woken solely for
+the pilot's `act` / `observe` normally render synchronously. `kq.step` / `kq.press` draw only when
+the GPU has finished their previous draw (a WebGL2 fence the browser updates between tasks;
+`src/debug/stepGate.ts`). So in a stepping loop within one task, only the first step draws.
+Otherwise, and always with `?manual&faststep`, they prepare presentation synchronously and
+queue a paint. `kq.step(n, { draw: true })` draws in any case (render measurements). Unpaced
+synchronous draws let software WebGL fall minutes behind, and the browser then grows until a
+hosted runner runs out of memory (TASK-075). A frame woken solely for
 that paint draws the prepared scene without running the camera, HUD or frame systems again.
 A synchronous full draw satisfies the queued paint. Explicit frame requests still run.
 With nothing to simulate (paused / manual) and nothing to draw the rAF loop parks until a
@@ -729,7 +734,7 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   1789-palace-air, 1793-02-night, 1793-07-fire, 1796-ruin, scan1, scan2, scan3, scan1-air,
   map1840}.png`. Look at them after visual changes.
 - Debug hooks (`window.kq`, always installed): `teleport(x, z, yawDeg, pitchDeg)`, `setEra`,
-  `setScanMode`, `setMapMix`, `step(n)`, `state()`, `press(code, steps)`, `screenshotReady()`.
+  `setScanMode`, `setMapMix`, `step(n, { draw? })`, `state()`, `press(code, steps)`, `screenshotReady()`.
   URL flags: `debug`, `notitle`, `nosave`, `fresh`, `manual`, `nomsaa`, `preserve`,
   `era=1789`, `x=…&z=…&yaw=…`, `scanall`, `perf` (overlay), `autoq` (auto-downgrade also under
   WebDriver), `warm` (shader warm-up also under WebDriver), `idle` (the full idle-render policy
@@ -1347,9 +1352,9 @@ the guide, opt-in with `?people=authored`), and callers do not change.
   - People are not saved: whoever spawned them spawns them again after a load.
 - **Rules**
   - The people system updates every person in the render hook (`frame`, the rendered frame's dt),
-    not in the fixed `update`: `kq.step(n)` runs n updates but renders once, so it moves the people's
+    not in the fixed `update`: `kq.step(n)` runs n updates but presents once, so it moves the people's
     clips on by one frame only. A test or shot harness that needs n frames of people time calls
-    `kq.step(1)` n times.
+    `kq.step(1)` n times (each call runs the frame hooks, even when its GPU draw is deferred).
   - Callers never call update. They move and
     rotate `root` (world space, feet at the origin; `root.rotation.y = yaw` in the player's
     convention, forward −z) and call `setSpeed` / `face` / `play` / `lookAt`.

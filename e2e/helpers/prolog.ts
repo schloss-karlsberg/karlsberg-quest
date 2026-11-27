@@ -301,7 +301,8 @@ export async function putAwayPages(page: Page): Promise<void> {
     const { cards, modals } = k.ctx.ui;
     // what keeps the queue shut (soft reasons and the story's extra hold only delay slide-in cards)
     const blocked = () => cards.holdReasons().some((r) => !r.startsWith('soft:') && r !== 'story');
-    // one render per step: the card gap runs in rendered frames, so k.step(10) opened one page at most
+    // one frame per step: the card gap runs on presented frames (drawn or only prepared, see
+    // src/debug/stepGate.ts), so k.step(10) opened one page at most
     for (let i = 0; i < 240 && (modals.count > 0 || (cards.pending > 0 && !blocked())) && !k.story?.choice(); i++) {
       modals.closeAll();
       k.step(1);
