@@ -96,7 +96,7 @@ export function measureUi(insets: { top: number; right: number; bottom: number; 
 
   // ---- overlaps between visible regions --------------------------------------------------------
   const REGIONS =
-    '.kq-compass, .kq-tl, .kq-dock, .kq-toast, .kq-prompt, .kq-subtitles, .kq-stance, .kq-oil, .kq-crosshair, [data-testid=quest-tracker], [data-testid=dialogue], [data-testid=story-card], [data-testid=hud-xp], [data-testid=hud-quick], [data-testid=quest-banner], [data-testid=quest-reward], [data-testid=level-card], [data-testid=skill-card], [data-testid=npc-talk], [data-testid=objective], .kqt-card, .kq-t-btn, .kq-t-stick, .kq-t-pop, .kq-modal, .kq-rotate';
+    '.kq-compass, .kq-tl, .kq-dock, .kq-toast, .kq-prompt, .kq-subtitles, .kq-stance, .kq-oil, .kq-crosshair, [data-testid=quest-tracker], [data-testid=dialogue], [data-testid=story-card], [data-testid=hud-xp], [data-testid=hud-quick], [data-testid=quest-banner], [data-testid=quest-reward], [data-testid=level-card], [data-testid=skill-card], [data-testid=npc-talk], [data-testid=objective], .kqt-card, .kqc-tell span, .kq-party-strip, .kq-party-bar, .kq-t-btn, .kq-t-stick, .kq-t-pop, .kq-modal, .kq-rotate';
   const regions = [...new Set([...document.querySelectorAll(REGIONS), ...seen])].filter((el) => shown(el));
   const interactive = (el: Element) => seen.has(el) || el.matches('.kq-t-btn, .kq-t-stick');
   /**
@@ -129,12 +129,20 @@ export function measureUi(insets: { top: number; right: number; bottom: number; 
       const rb = visibleRect(b);
       const x = inter(ra, rb);
       if (!x || x.area < 24) continue;
-      // a modal covers the HUD on purpose; only what lies on top of a modal counts
-      if (a.matches('.kq-modal') !== b.matches('.kq-modal') && covered(a.matches('.kq-modal') ? b : a)) continue;
+      // Test the intersection against the paper itself, including the modal's controls. The
+      // centre of a wide dialogue card can still be visible beside the paper.
+      const modalA = a.closest('.kq-modal');
+      const modalB = b.closest('.kq-modal');
+      if (modalA !== modalB) {
+        const midX = Math.max(ra.left, rb.left) + x.w / 2;
+        const midY = Math.max(ra.top, rb.top) + x.h / 2;
+        const front = document.elementFromPoint(midX, midY)?.closest('.kq-modal');
+        if (front && (front === modalA || front === modalB)) continue;
+      }
       // the same for an open pop-up: a button it hides (covered at its centre) is not a rival target
       if (inPop(a) !== inPop(b) && covered(inPop(a) ? b : a)) continue;
       const both = interactive(a) && interactive(b);
-      const text = (el: Element) => el.matches('.kq-subtitles, [data-testid=dialogue], [data-testid=quest-tracker], .kq-prompt, [data-testid=npc-talk], .kq-modal, .kqt-card');
+      const text = (el: Element) => el.matches('.kq-subtitles, [data-testid=dialogue], [data-testid=quest-tracker], .kq-prompt, [data-testid=npc-talk], [data-testid=skill-card], .kq-modal, .kqt-card, .kqc-tell span, .kq-party-strip');
       const sev: Issue['sev'] = both ? 'S1' : (interactive(a) && text(b)) || (interactive(b) && text(a)) ? 'S2' : 'S3';
       issues.push({ sev, kind: 'overlap', what: `${name(a)} ∩ ${name(b)}`, box: { x: r2(Math.max(ra.left, rb.left)), y: r2(Math.max(ra.top, rb.top)), w: r2(x.w), h: r2(x.h) } });
     }

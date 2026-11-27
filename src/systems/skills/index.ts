@@ -51,12 +51,15 @@ declare module '../../debug/hooks' {
 }
 
 let cards: UnlockCards | null = null;
+const dismissCard = () => cards?.dismiss();
 
 function tickCards(dt: number, ctx: GameContext): void {
   if (!cards) return;
-  let hold = ctx.pause.reasons.has('title') || ctx.ui.cards.held;
-  // one centre card at a time (src/ui/cards.ts)
-  if (cards.wants && !hold && !ctx.ui.cards.claim('skill')) hold = true;
+  // Match the short touch layout in touch.css, where the stick can cover the notice band.
+  const stickCoversCard = ctx.input.touchMode && ctx.input.touchStickActive && window.innerHeight <= 500;
+  let hold = stickCoversCard || ctx.pause.reasons.has('title') || ctx.ui.cards.held;
+  // One centre card at a time. A tap on the touch surface dismisses it like a level card.
+  if (cards.wants && !hold && !ctx.ui.cards.claim('skill', ctx.input.touchMode ? dismissCard : undefined)) hold = true;
   // game time: a card on screen waits while the game is paused (modal, menu) instead of running out unseen
   cards.frame(ctx.pause.paused ? 0 : Math.min(dt, 0.1), ctx.settings.state.reducedMotion, hold);
   if (!cards.wants) ctx.ui.cards.release('skill');
@@ -119,10 +122,8 @@ export default defineSystem({
     layer.classList.remove('kq-hidden');
     layer.style.pointerEvents = 'none';
     cards = new UnlockCards(layer);
-    cards.onStamp = (req) => {
-      stampChime(ctx.audio, req.level);
-      laubLine(ctx, req.skill, req.level);
-    };
+    cards.onStamp = (req) => stampChime(ctx.audio, req.level);
+    cards.onRemark = (req) => laubLine(ctx, req.skill, req.level);
     // a level card coming up takes the waiting unlocks along (one card, not two: src/ui/cards.ts)
     ctx.ui.cards.source('skill', () =>
       (cards?.drain() ?? []).map((req) => {

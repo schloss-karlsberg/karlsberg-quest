@@ -181,7 +181,7 @@ export class CinematicRuntime {
     ctx.save.hold('cinematic', true);
     ctx.ui.cards.hold('cinematic', true);
     ctx.ui.hud.busy('stage-cinematic', true);
-    this.showUi(true);
+    this.showUi(cur);
     ctx.events.emit('cinematic:start', { id: plan.id, seconds: T });
     return true;
   }
@@ -207,7 +207,7 @@ export class CinematicRuntime {
     }
     ctx.ui.cards.hold('cinematic', false);
     ctx.ui.hud.busy('stage-cinematic', false, 0);
-    this.showUi(false);
+    this.showUi(null);
   }
 
   /** A load (or the game's start on a save): never replay; end what played, and what the save held. */
@@ -359,17 +359,17 @@ export class CinematicRuntime {
     this.userSkip();
   };
 
-  private showUi(on: boolean): void {
+  private showUi(c: Playing | null): void {
     if (typeof document === 'undefined') return;
-    document.documentElement.toggleAttribute('data-kq-cinematic', on);
-    if (on) {
+    if (c) {
+      document.documentElement.setAttribute('data-kq-cinematic', c.plan.lockInput ? 'locked' : 'free');
       if (!this.ui) {
         const fade = h('div.kq-cine-fade', { 'data-testid': 'cinematic-fade' });
         const skip = h('div.kq-cine-skip', { 'data-testid': 'cinematic-skip' }, t('cinematic.skip'));
         const root = h('div.kq-cine', { 'data-testid': 'cinematic' }, [h('div.kq-cine-bar.top'), h('div.kq-cine-bar.bottom'), fade, skip]);
         this.ui = { root, fade, skip };
       }
-      this.ui.root.dataset.id = this.cur?.plan.id ?? '';
+      this.ui.root.dataset.id = c.plan.id;
       this.ui.fade.style.opacity = '0';
       this.ui.skip.classList.remove('on');
       document.body.appendChild(this.ui.root);
@@ -378,6 +378,7 @@ export class CinematicRuntime {
       window.addEventListener('keydown', this.onKey, true);
       window.addEventListener('pointerdown', this.onPointer, true);
     } else {
+      document.documentElement.removeAttribute('data-kq-cinematic');
       this.ui?.root.classList.remove('on');
       this.ui?.root.remove();
       window.removeEventListener('keydown', this.onKey, true);

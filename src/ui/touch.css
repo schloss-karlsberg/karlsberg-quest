@@ -407,6 +407,12 @@ html[data-kq-touch] .kq-crosshair {
     --kq-t-arc-scale: 0.9;
     --kq-t-hud-zoom: 0.78;
   }
+  html[data-kq-touch] {
+    /* Safe right edge of the notice band, including the fully expanded Aktion pill. */
+    --kq-phone-notice-right: calc(282px + var(--kq-safe-r));
+    --kq-phone-dialogue-cap: clamp(84px, calc(var(--kq-bl-top, 100vh) - 14px - var(--kq-safe-t)), 36vh);
+    --kq-phone-notice-top: calc(12px + var(--kq-safe-t) + var(--kq-phone-dialogue-cap));
+  }
   /* every tap target stays >= 44 CSS px after the arc's scale (M-12, M-16) */
   .kq-touch {
     --kq-t-btn: 52px;
@@ -459,6 +465,34 @@ html[data-kq-touch] .kq-crosshair {
   }
   html[data-kq-touch] .kq-hud {
     zoom: var(--kq-t-hud-zoom);
+  }
+  /* Reserve the vitals on the left and Balsam and Ausweichen on the right.
+     Convert the physical offsets to the HUD's zoomed coordinates. */
+  html[data-kq-touch] .kq-hud .kq-prompt {
+    --prompt-left: calc((174px + var(--kq-safe-l)) / var(--kq-t-hud-zoom) - var(--kq-safe-l));
+    --prompt-right: calc((222px + var(--kq-safe-r)) / var(--kq-t-hud-zoom) - var(--kq-safe-r));
+    left: var(--prompt-left);
+    right: var(--prompt-right);
+    width: max-content;
+    max-width: calc(100% - var(--prompt-left) - var(--prompt-right));
+    margin-inline: auto;
+    transform: none;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  html[data-kq-touch] .kq-prompt kbd {
+    flex: none;
+  }
+  /* The combat callout is below the dialogue band, left of the Aktion pill and right of the
+     vitals column (the HUD prompt's 174 px reserve), so Lebenskraft stays readable in a fight. */
+  html[data-kq-touch] .kqc-tell {
+    inset: var(--kq-phone-notice-top) var(--kq-phone-notice-right) auto calc(174px + var(--kq-safe-l));
+    transform: none;
+  }
+  html[data-kq-touch] .kqc-tell span {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
   /* The dock fits between the tracker and the skills, below the top buttons. The extra inset
      compensates for the HUD zoom while the controls use the full device safe area. */
@@ -624,7 +658,7 @@ html[data-kq-touch] .kqp-q-key {
     min-width: 0;
     /* ends above the bottom-left zone (vitals: „Lebenskraft“), whose top edge the HUD publishes
        as --kq-bl-top; never more than 36vh, never less than 84 px (then it scrolls inside) */
-    max-height: clamp(84px, calc(var(--kq-bl-top, 100vh) - 14px - var(--kq-safe-t)), 36vh);
+    max-height: var(--kq-phone-dialogue-cap);
     overflow-y: auto;
     overscroll-behavior: contain;
     touch-action: pan-y;
@@ -738,7 +772,7 @@ html[data-kq-touch] .kqp-q-key {
   html[data-kq-touch] body:has(.kq-dock-boss:not(:empty)) .kqp-cards {
     left: calc(8px + var(--kq-safe-l));
     right: calc(220px + var(--kq-safe-r));
-    top: calc(12px + var(--kq-safe-t) + clamp(84px, calc(var(--kq-bl-top, 100vh) - 14px - var(--kq-safe-t)), 36vh));
+    top: var(--kq-phone-notice-top);
     display: flex;
     justify-content: center;
     transform: none;
@@ -810,6 +844,77 @@ html[data-kq-touch] .kqp-q-key {
     padding: 0 5px 1px;
     font-size: 11px;
     border-width: 2px;
+  }
+}
+
+/* The standalone skill slip shares the vertical band of the level card. Its right edge also
+   clears a fully expanded Aktion pill and the survey menu while the slip fades in or out. */
+@media (max-height: 500px) {
+  html[data-kq-touch] body .kqk-cards,
+  html[data-kq-touch] body:has(.kq-dock-boss > :not(.kq-court-off):not([style*='display: none'])) .kqk-cards {
+    inset: var(--kq-phone-notice-top) var(--kq-phone-notice-right) auto calc(8px + var(--kq-safe-l));
+    display: flex;
+    justify-content: center;
+    transform: none;
+  }
+  html[data-kq-touch] .kqk-card {
+    display: grid;
+    grid-template-columns: 50px minmax(0, 1fr);
+    align-items: start;
+    gap: 4px 8px;
+    width: min(100%, 400px);
+    max-height: calc(100dvh - var(--kq-phone-notice-top) - var(--kq-safe-b) - 12px);
+    /* Leave room for the settled stamp's rotation below its grid row. */
+    padding: 7px 12px 14px 8px;
+    background-size: auto, auto 18px, auto;
+    transform: none;
+    animation: none;
+  }
+  /* The floating stick can be placed anywhere in the left play zone. */
+  html[data-kq-touch]:has(.kq-t-stick:not(.kq-hidden)) .kqk-card {
+    visibility: hidden;
+  }
+  html[data-kq-touch] .kqk-medal {
+    width: 50px;
+    height: 50px;
+  }
+  html[data-kq-touch] .kqk-kicker,
+  html[data-kq-touch] .kqk-tier {
+    font-size: 13px;
+  }
+  html[data-kq-touch] .kqk-name {
+    flex-wrap: wrap;
+    gap: 2px 6px;
+    font-size: 21px;
+  }
+  html[data-kq-touch] .kqk-pip {
+    min-width: 18px;
+    height: 18px;
+    font-size: 11px;
+    line-height: 16px;
+  }
+  html[data-kq-touch] .kqk-desc {
+    margin-top: 3px;
+    font-size: 15px;
+    overflow-wrap: anywhere;
+  }
+  html[data-kq-touch] .kqk-card kbd,
+  html[data-kq-touch] .kqk-also ~ .kqk-also .kqk-also-desc {
+    display: none;
+  }
+  html[data-kq-touch] .kqk-rule {
+    margin-top: 4px;
+  }
+  html[data-kq-touch] .kqk-also {
+    margin-top: 3px;
+    padding-top: 2px;
+  }
+  html[data-kq-touch] .kqk-stamp {
+    position: static;
+    grid-column: 2;
+    justify-self: end;
+    margin-right: 4px;
+    font-size: 11px;
   }
 }
 

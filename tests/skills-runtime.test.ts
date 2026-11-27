@@ -55,6 +55,7 @@ function setupSkills() {
   const ctx = {
     audio: { ctx: null, bus: () => null },
     events, state, pause,
+    input: { touchMode: false, touchStickActive: false },
     ui: { cards, layer: () => layer },
     save: { autosave },
     settings: { state: { reducedMotion: true } },
