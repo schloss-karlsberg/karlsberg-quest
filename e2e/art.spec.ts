@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { desktopViewport } from './helpers/ci';
+import { ciViewport, desktopViewport, isCI } from './helpers/ci';
 import { SCREENS } from './helpers/common';
 
 /**
@@ -27,12 +27,17 @@ test.describe('art foundation', () => {
     page.on('console', (m) => {
       if (m.type() === 'error' && /shader|program|webgl/i.test(m.text())) errors.push(m.text());
     });
-    await page.goto('./?notitle&nosave&fresh&manual&q=high&x=790&z=-905&yaw=60');
+    // A Hoch frame (shadow pass, about 2 M triangles) takes tens of seconds on a hosted SwiftShader
+    // runner. Draw only the frames this test asks for: `&idle` stops bullet time rendering every
+    // animation frame, so the readiness wait and the screenshot do not queue behind extra frames.
+    // The hosted run also uses its default viewport; the local run keeps the desktop one.
+    if (isCI) await page.setViewportSize(ciViewport);
+    await page.goto('./?notitle&nosave&fresh&manual&idle&q=high&x=790&z=-905&yaw=60');
     await page.waitForFunction(() => window.kq?.ctx);
-    await page.evaluate(() => window.kq!.screenshotReady());
     const s = await page.evaluate(async () => {
       const k = window.kq!;
       const c = k.ctx;
+      // placed before the one readiness wait, so its frames draw the stump with the world
       const id = await k.spawnAsset('nature.stump.01', 794, -907);
       await k.screenshotReady();
       const o = c.scene.getObjectByProperty('uuid', id);

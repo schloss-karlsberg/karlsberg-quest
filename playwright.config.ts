@@ -1,5 +1,5 @@
 import { defineConfig } from '@playwright/test';
-import { ciScale, desktopViewport, isCI } from './e2e/helpers/ci';
+import { ciScale, ciViewport, desktopViewport, isCI } from './e2e/helpers/ci';
 import { slotDir, slotPort } from './scripts/dev/heavy-env.mjs';
 
 // KQ_E2E_PORT: run several worktrees' suites side by side without reusing each other's server.
@@ -25,7 +25,7 @@ export default defineConfig({
   use: {
     baseURL: `http://127.0.0.1:${PORT}/`,
     // The game already selects Niedrig for SwiftShader, with DPR 1, shorter LOD distances and no shadows.
-    viewport: isCI ? { width: 640, height: 360 } : desktopViewport,
+    viewport: isCI ? ciViewport : desktopViewport,
     // CI runs the full Chromium build (new headless), not chrome-headless-shell: when SwiftShader falls
     // behind on synchronous kq.step draws, the shell's renderer and browser processes grow by about
     // 30-40 MB/s each until the 16 GB runner is OOM-killed; full Chromium stays flat (TASK-075).
