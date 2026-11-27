@@ -592,7 +592,8 @@ class StoryRuntime {
       ? this.engine.chapters.get('enden')?.beats.flatMap((beat) => beat.exit ?? [])
         .find((action) => action.do === 'objective' && action.id === 'end.frei')
       : undefined;
-    if (freeRoam) this.exec(freeRoam);
+    // a load already holding this hint (the second resync of one load) does not set it again
+    if (freeRoam && !(s.objective?.id === 'end.frei' && s.objective.text === (freeRoam as { text?: string }).text)) this.exec(freeRoam);
     else this.objectives.set(s.objective);
     this.applyLook();
     this.mirrorAllReadings();

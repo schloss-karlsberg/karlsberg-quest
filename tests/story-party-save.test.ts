@@ -33,7 +33,7 @@ vi.mock('../src/systems/story/objectives', async (original) => ({
 }));
 vi.mock('../src/systems/story/overlays', async (original) => ({
   ...await original<typeof import('../src/systems/story/overlays')>(),
-  StoryOverlays: class { fade() {} card() {} tickCard() {} tickChoice() {} closeChoice() {} dropCard() {} clearCurtain() {} },
+  StoryOverlays: class { fade() {} card() {} tickCard() {} tickChoice() {} closeChoice() {} dropCard() {} clearCurtain() {} setCardPaused() {} },
 }));
 
 function endingSave(beat: string | null, extra: Partial<ReturnType<typeof createStorySlice>> = {}): GameState {
