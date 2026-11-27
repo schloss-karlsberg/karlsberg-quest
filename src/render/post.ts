@@ -437,10 +437,16 @@ export class PostFX {
       this.blit(renderer, this.bloomDown, mips[i]!);
     }
     const up = this.bloomUp.uniforms;
-    for (let i = mips.length - 1; i > 0; i--) {
-      up.tSrc!.value = mips[i]!.texture;
-      (up.uTexel!.value as Vector2).set(1 / mips[i]!.width, 1 / mips[i]!.height);
-      this.blit(renderer, this.bloomUp, mips[i - 1]!);
+    const autoClear = renderer.autoClear;
+    renderer.autoClear = false; // add the coarse glow to the finer image already in the target
+    try {
+      for (let i = mips.length - 1; i > 0; i--) {
+        up.tSrc!.value = mips[i]!.texture;
+        (up.uTexel!.value as Vector2).set(1 / mips[i]!.width, 1 / mips[i]!.height);
+        this.blit(renderer, this.bloomUp, mips[i - 1]!);
+      }
+    } finally {
+      renderer.autoClear = autoClear;
     }
   }
 

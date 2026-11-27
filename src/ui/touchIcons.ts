@@ -29,6 +29,10 @@ export const TOUCH_ICONS: Record<TouchIcon | 'skill' | 'up' | 'down' | 'shutter'
   down: S('<path d="M12 4v15M6 13l6 6 6-6"/>'),
   // a figure crouched low (sneaking)
   crouch: S('<circle cx="14" cy="5.5" r="2"/><path d="M13 8.5 9.5 13l3.5 2-1.5 5"/><path d="M9.5 13 6 14.5M13 15l4.5-1 .5 6"/><path d="M12.5 9.5l3.5 2"/>'),
+  // a figure lying flat
+  prone: S('<circle cx="18.5" cy="12.5" r="2"/><path d="m3 16 6-1.5h5l3.5 1.5H21M3 20h18"/>'),
+  // the lantern's handle, frame and flame
+  lantern: S('<path d="M10 5V4a2 2 0 0 1 4 0v1M8 6h8l2 13H6L8 6ZM6 19h12v2H6zM12 10c0 2-2 2.5-2 4a2 2 0 0 0 4 0c0-1.5-2-2-2-4Z"/>'),
   // look / aim has no button: a neutral swipe hint (two arrows apart)
   look: S('<path d="M3.5 12h17M7 8.5 3.5 12 7 15.5M17 8.5l3.5 3.5-3.5 3.5"/>'),
   // up

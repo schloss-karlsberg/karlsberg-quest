@@ -77,7 +77,7 @@ async function boot(ending: EndingId, flags: Record<string, string> = {}, beat =
     },
     save,
   } as unknown as GameContext;
-  vi.stubGlobal('window', { kq: hooks, addEventListener() {}, removeEventListener() {}, setInterval() {} });
+  vi.stubGlobal('window', { kq: hooks, addEventListener() {}, removeEventListener() {}, setInterval() {}, setTimeout() { return 0; }, clearTimeout() {} });
   vi.stubGlobal('fetch', undefined);
   vi.stubGlobal('requestAnimationFrame', () => 1);
   await story.init(ctx);

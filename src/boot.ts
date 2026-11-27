@@ -20,10 +20,12 @@ import { Input, isTyping } from './player/input';
 import { Player } from './player/player';
 import { actionPose } from './player/pose';
 import { applySeeThrough, type SeeInput } from './player/seeThrough';
+import { bindRenderContext, renderWorldMaps } from './render/context';
 import { PerfMonitor } from './render/perf';
 import { PostFX } from './render/post';
 import { QualityManager, gpuName, isSoftwareGpu, parseQualityParam, suggestLevel } from './render/quality';
 import { EnvLight } from './render/standard';
+import { bindViewport } from './render/viewport';
 import { SYSTEM_LOADERS } from './systems';
 import { actionLabel } from './ui/actionLabel';
 import type { BootLoader, LoadingRequest } from './ui/loader';
@@ -59,7 +61,6 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
 
   // ---- renderer, scene, camera
   const renderer = new WebGLRenderer({ antialias: false, powerPreference: 'high-performance', preserveDrawingBuffer: params.has('preserve') });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.toneMapping = NoToneMapping;
   renderer.domElement.tabIndex = 0;
@@ -75,18 +76,10 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   void assets.licences().then(setAssetLicences);
   // the loop is created below; resize and pause need a late reference
   let loopRef: FixedStepLoop | null = null;
-  const resize = () => {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    renderer.setSize(w, h, false);
-    post.setSize(w, h, renderer.getPixelRatio());
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-    // a resized canvas is cleared: draw it again even while the view is held (menus, bullet time)
-    loopRef?.requestRender();
-  };
-  window.addEventListener('resize', resize);
-  resize();
+  let quality: QualityManager;
+  const resize = bindViewport(renderer, post, camera,
+    () => quality?.pixelRatio ?? Math.min(window.devicePixelRatio, 1.25),
+    () => loopRef?.requestRender());
 
   // ---- core services
   const events = new EventBus();
@@ -153,8 +146,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   mark('data');
   const world = new World(data, scene, post);
   mark('world');
-  const quality = new QualityManager({
-    renderer,
+  quality = new QualityManager({
     post,
     world,
     settings,
@@ -194,6 +186,10 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   });
   world.attachAssets(assets, renderer);
   const env = new EnvLight(world.sky.mesh);
+  bindRenderContext(renderer.domElement, {
+    env, shadows: world.shadows.reuse, reflections: world.water.schedule, nature: world.nature, perf,
+    redraw: () => loopRef?.requestRender(),
+  });
   const shadowFocus = new Vector3();
   const camFwd = new Vector3();
   // never under WebDriver (e2e screenshots stay comparable) or in deterministic ?manual runs
@@ -269,7 +265,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   // the authored MPFB player is the default; ?avatar=surveyor wears the CC0 surveyor (fallback)
   const avatarModel = (id: AvatarModelId) => () => assets.model(AVATAR_MODELS[id].asset);
   const avatarFirst = avatarModelParam(params.get('avatar'));
-  const avatar = new Avatar(scene, player, avatarModel(avatarFirst), AVATAR_MODELS[avatarFirst].height);
+  const avatar = new Avatar(scene, player, avatarModel(avatarFirst), events, AVATAR_MODELS[avatarFirst].height);
   let zoomSaved = 0;
   let capFps = 60;
   const applySettings = () => {
@@ -398,10 +394,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
       // ?manual / bullet time, whose frames can lie many simulated steps apart, nor in a fight
       // (lunging enemies, dodges: every caster's shadow on time)
       const fresh = loop.manual || cameraHints.fight.length > 0 || cameraHints.boss > 0;
-      const shadowsDrawn = world.shadows.stats.drawn;
-      world.shadows.update(renderer, scene, shadowFocus, fresh ? Infinity : frameDt);
-      world.water.renderReflection(renderer, scene, camera, world.shadows.stats.drawn !== shadowsDrawn);
-      env.update(renderer, world.lookVersion);
+      renderWorldMaps(renderer, scene, camera, world, env, shadowFocus, fresh ? Infinity : frameDt);
       post.render(renderer, scene, camera, loop.time);
       perf.end();
       // (not in bullet time: its frames lie many simulated steps apart and say nothing about speed)
@@ -536,6 +529,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     ui.toast(t(flying ? 'fly.on' : 'fly.off'));
     syncFlyPrompt();
   });
+  events.on('player:restored', syncFlyPrompt);
   events.on('ui:toast', ({ text, ms }) => ui.toast(t(text), ms));
   // the character's short reactions (third person)
   events.on('player:damaged', () => avatar.react('hit'));
