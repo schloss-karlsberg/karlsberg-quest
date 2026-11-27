@@ -107,9 +107,13 @@ export class UnlockCards {
         this.waited = 0;
         return;
       }
-      // real seconds: a paused game (dt 0) still lets the merge window pass on the next frames
-      this.waited += Math.max(dt, 1 / 60);
-      if (hold || this.waited < SETTLE) return;
+      if (this.waited < SETTLE) {
+        // Once settled, let the director grant the slot on the next frame.
+        // A paused game (dt 0) still lets the merge window pass.
+        this.waited += Math.max(dt, 1 / 60);
+        return;
+      }
+      if (hold) return;
       const req = this.queue.shift()!;
       // unlocks that came together share one card (playtest round 4: two cards in a row for one reward)
       const extra = this.queue.splice(0);

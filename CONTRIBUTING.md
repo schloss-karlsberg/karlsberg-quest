@@ -45,6 +45,20 @@ These are intentionally **on in production** too, so you can reproduce a bug on 
 | `kq.pilot` | Scripted play on top of `window.kq`: act, observe, choose, `bulletTime(true)`, `showStrip(true)` |
 | F8 (in game) | Write a playtest note with the current position and state; export it from the pause menu |
 
+For e2e gameplay waits, boot with `?manual` and use `kq.step(n)` up to a fixed game-tick budget.
+Assert the resulting state when the budget ends. Use `&idle` when the test owns the render
+schedule. Each `kq.step(n)` advances `n` fixed ticks and draws one frame. Use readiness
+assertions for asynchronous work such as asset loading and browser UI transitions.
+
+In the normal e2e suite, check fixed work such as draw calls, triangles or ticks. Check the
+active render cap in the browser and test the cadence with synthetic animation-frame timestamps.
+Check held and resumed drawing over a fixed number of browser animation callbacks after queued
+render requests drain. Allow a couple of draws from asynchronous requests (a streamed asset, a
+delayed settings save) in a held view; a redraw on every callback must still fail. For workload deltas, load the fixture first and pair measurements at the
+same camera pose and simulation tick.
+If a check needs elapsed time, calibrate against a baseline from the same run or log why the
+check is skipped under load. Absolute fps targets belong in dedicated GPU benchmarks.
+
 ## The four gates
 
 Run all four before you open a pull request. CI runs the same checks.

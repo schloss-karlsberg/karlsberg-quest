@@ -163,3 +163,23 @@ export function wayLineBlocked(
 ): boolean {
   return !lineFree(from.x, from.z, to.x, to.z, palaceHidden ? water : blocked, 0.5);
 }
+
+/** How far under the walking radius the Wegweiser probes the player's own spot (m). */
+export const WAY_START_SLACK = 0.05;
+
+/**
+ * The Wegweiser's probe at the player's own spot and on a route's first step (`findRoute`'s
+ * `startBlocked`). Walls count at the walking radius less `WAY_START_SLACK`: pushed against a wall
+ * the player sits exactly one radius from it, and rounding (or a corner's leftover overlap) reads
+ * that spot as blocked, which hid the trail at the very wall it should lead round. Water counts
+ * only past the wading limit, so a player in the shallows still sees the way out.
+ */
+export function wayStartBlocked(
+  walls: (x: number, z: number, radius: number) => boolean,
+  depth: (x: number, z: number) => number,
+  playerRadius: number,
+  wadeLimit: number,
+): (x: number, z: number) => boolean {
+  const radius = playerRadius - WAY_START_SLACK;
+  return (x, z) => walls(x, z, radius) || depth(x, z) > wadeLimit;
+}

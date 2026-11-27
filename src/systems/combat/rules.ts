@@ -5,6 +5,7 @@
  * phases, safe zones and telegraph times. The simulation (sim.ts) only calls into this file.
  */
 import { homeSpot } from '../home';
+import { isCleared } from '../../rpg/enemy-groups';
 import type { DerivedStats, EnemyAttackDef, EnemyDef, EnemyGroupState } from '../../rpg/types';
 
 // ---- tuning --------------------------------------------------------------------------------
@@ -476,10 +477,6 @@ export function upsertGroup(groups: Record<string, EnemyGroupState>, req: SpawnR
 
 export function remaining(g: EnemyGroupState): number {
   return Math.max(0, g.count - g.killed);
-}
-
-export function isCleared(g: EnemyGroupState): boolean {
-  return g.killed >= g.count;
 }
 
 /** A cleared group comes back only with `respawn` > 0, that many seconds after its clear. */
