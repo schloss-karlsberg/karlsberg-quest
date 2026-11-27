@@ -208,7 +208,7 @@ export class StageDirector {
 
   dispose(): void {
     for (const off of this.offs.splice(0)) off();
-    const kq = window.kq;
+    const kq = typeof window === 'undefined' ? undefined : window.kq;
     if (kq && kq.stage === this.hooks) delete kq.stage;
     this.hooks = null;
     this.clear();
