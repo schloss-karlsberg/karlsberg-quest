@@ -76,7 +76,7 @@ who skipped the talk at the car park does not get the car-park talk at the Felse
 - `content/story/00-tour.story.json` - t2's `exit` clears `tour.station1.ready`.
 - `tests/story-ext.test.ts` - unit tests for `offersTalk()`.
 - `tests/tour-slice.test.ts` - the stop-1 greeting test with the flag; the flag is gone after t2.
-- `tests/npc-talk.test.ts` (new) - content check: every beat that waits for a talk (`talked` / `npc:conversation`) has an NPC that can talk then (a greeting or topic whose conditions hold, counting flags the beat's `enter` sets).
+- `tests/npc-talk-waits.test.ts` (new) - content check: every beat that waits for a talk (`talked` / `npc:conversation`) has an NPC that can talk then (a greeting or topic whose conditions hold, counting flags the beat's `enter` sets).
 - `e2e/tour-slice.spec.ts` - new test: E at t2 as before, then no talk prompt next to the guide at t6, t13 and t15, and a forced open shows the silent line.
 - `docs/ARCHITECTURE.md` - the npc note on E, if it describes it.
 
@@ -84,13 +84,13 @@ who skipped the talk at the car park does not get the car-park talk at the Felse
 - [x] 1. `offersTalk()` in `logic.ts` with unit tests (`tests/story-ext.test.ts`).
 - [x] 2. npc system: `update()` offers E only to NPCs with something to say; `open()` guard; cached talk lines.
 - [x] 3. Tour content: stop-1 greetings need `tour.station1.ready`; t2's `exit` clears it; update `tests/tour-slice.test.ts`.
-- [ ] 4. Content check `tests/npc-talk.test.ts`: no beat waits for a talk with an NPC that has nothing to say then.
+- [x] 4. Content check `tests/npc-talk-waits.test.ts`: no beat waits for a talk with an NPC that has nothing to say then.
 - [ ] 5. e2e test in `e2e/tour-slice.spec.ts` (t2, t6, t13, t15, forced open).
 - [ ] 6. Docs (`docs/ARCHITECTURE.md` npc note).
 - [ ] 7. Gates, e2e runs, after screenshots.
 
 **Test plan:**
-- Unit: `pnpm exec vitest run tests/story-ext.test.ts tests/tour-slice.test.ts tests/npc-talk.test.ts`.
+- Unit: `pnpm exec vitest run tests/story-ext.test.ts tests/tour-slice.test.ts tests/npc-talk-waits.test.ts`.
 - e2e: `pnpm build && pnpm exec playwright test e2e/tour-slice.spec.ts --workers=1`, plus the other specs that open NPC conversations (found with grep for `npc!.talk` / `KeyE`).
 - Gates: `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build`.
 - Manual: `http://localhost:5280/?debug&nosave&fresh&notitle`. Run `kq.story.goto('tour','t2')`, talk to Gerold with E, then `kq.story.goto('tour','t6')` and stand next to him. Expect no „Mit Gerold Imhoff · Führung sprechen“, and E does nothing.
@@ -116,3 +116,4 @@ because at the stops the guide is already talking in the speech box.
 - 2026-11-27: step 1 done - `offersTalk()` in `src/systems/npc/logic.ts`; `tests/story-ext.test.ts`: the guide, Hanne (k1, k3g), a silent figure, quest topics, and a check that it agrees with `answer` / `availableTopics` for every NPC in the k1, k3, tour and endings packs.
 - 2026-11-27: step 2 done - `src/systems/npc/index.ts`: the nearest-NPC choice skips a placement with nothing to say (no prompt, no `npc.near`); `open()` says „(Schweigt und sieht dich an.)“ when there is no greeting, topic or quest topic; talk lines cached per NPC and chapter. `tests/npc-encounter.test.ts`: the reload case gives Soll a question so it still reopens; new case (no E once all is said, a forced open shows the silent line) fails on the old code.
 - 2026-11-27: step 3 done - the three stop-1 greetings in `content/packs/tour.pack.json` need `tour.station1.ready`; t2's `exit` clears it. `tests/tour-slice.test.ts`: no car-park talk without the flag, the flag is gone after t2. `pnpm validate` green (28 warnings, none new).
+- 2026-11-27: step 4 done - `tests/npc-talk-waits.test.ts` (named so it does not mix with the existing `npc-talk-hint`): every beat `complete` and every `on[].when` (story and beat level) of the tour and chapters 1-4 that waits for a talk (`talked`, a closed `npc:conversation`) has someone who offers E then (`offersTalk` with the flags the beat's `enter` sets); an `any` with a timer or another way out does not block; a wait for one topic is skipped (whenever the topic is in the menu, E is offered). Plan updated: the file name.
