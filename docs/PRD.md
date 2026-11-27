@@ -22,6 +22,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-27 | **v0.5.0 ending saves (TASK-069).** A v0.5.0 save made right after its credits (story finished, still on beat e2, combat off) now loads into free play with combat back on, the free-play hint and the post-game party, without replaying the ending. |
 | unreleased | 2026-11-27 | **Party reload position (TASK-067).** An old e3 save written while the credits rolled but still at the spring (its arrival teleport was lost) now loads at the party on the plateau, on boot and on an in-session load. |
 | unreleased | 2026-11-26 | **Legacy ending recovery (TASK-045).** Continue restores the epilogue's party button when needed, preserves identifiable plateau positions and recovers the missing free-play hint. Older chapter replays regain the ending choice and can earn the Keep return route again. Fresh replays play the finale dialogue again. |
 | unreleased | 2026-11-26 | **Ending saves and chapter replay (TASK-045).** Continue remembers a confirmed choice and completes a pending trip to the party. Credits checkpoint free play, including the Keep return route. Loading another slot does not complete its credits, and replaying the endings starts a fresh choice. |
