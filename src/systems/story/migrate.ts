@@ -4,6 +4,7 @@ import { createStorySlice, DEFAULT_VISITOR_NAME, type StorySlice } from './engin
 import type { GameState, PlayerState } from '../../core/state';
 import { createQuestSlice } from '../quests/logic';
 import { HOME } from './hub/home';
+import { PARTY_CHECKPOINT } from '../party/placements';
 import type { PartySlice } from '../party/types';
 import type { EndingId, FlagValue, LookTime } from './types';
 import type { WalkSlice } from '../walk/types';
@@ -225,8 +226,15 @@ export function migrateEndingProgress(story: StorySlice, flags: Record<string, F
 
   // The old teleport ran after 0.4 s. A save still at the spring can come from a resume that
   // lost that action. The spring's 30 m chapter-entry radius covers its starting positions.
-  if (beat === 'e3' && flags['story.party.arrived'] === undefined && story.beatTime >= 0.4 &&
-      Math.hypot(player.x - HOME.spawn.x, player.z - HOME.spawn.z) > 30) {
+  const atSpring = Math.hypot(player.x - HOME.spawn.x, player.z - HOME.spawn.z) <= 30;
+  if (beat === 'e3' && flags['story.party.arrived'] === undefined && story.beatTime >= 0.4 && !atSpring) {
+    flags['story.party.arrived'] = true;
+  }
+  // Credits playing at save time mean the arrival ran in that session; a save still at the spring
+  // lost its teleport (TASK-067). The party skips saved credits on load, which ends e3 before the
+  // arrival could run again, so restore the arrival pose (e3 `fest-ankunft`: 1200/-1095, yaw 40°).
+  if (beat === 'e3' && flags['story.party.arrived'] === undefined && party?.credits === 'playing' && atSpring) {
+    Object.assign(player, { x: PARTY_CHECKPOINT.x, z: PARTY_CHECKPOINT.z, yaw: -40 * Math.PI / 180 });
     flags['story.party.arrived'] = true;
   }
 }
