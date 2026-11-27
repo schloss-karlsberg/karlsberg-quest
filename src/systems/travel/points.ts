@@ -148,6 +148,16 @@ export function announceFor(goal: { x: number; z: number } | null, player: { x: 
 }
 
 /**
+ * Open water for the Wegweiser (route search, "Weg" marker, motes): water the player cannot walk
+ * on. Frozen water (February 1793) carries the player like land (`Water.depthInside`, the
+ * movement rule), so the trail leads across the ice instead of hiding there (TASK-071). The
+ * frozen state is read on every call, so a thaw (era change or load) restores the water.
+ */
+export function isOpenWater(surface: string, frozen: boolean): boolean {
+  return !frozen && surface === 'water';
+}
+
+/**
  * The Wegweiser's "straight line blocked" check (the compass "Weg" marker and the motes). In the
  * past it counts everything that stops the player (walls, wings, set dressing, water). In the
  * present day (`palace === 'hidden'`) only water counts: the forest's trunks and the ruins' stones
