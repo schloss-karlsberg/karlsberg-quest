@@ -2125,6 +2125,20 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
   lock / dodge / abilities / Q / E / pause from every other reader; the photo system reads them
   with `raw`. Esc is caught in the capture phase (and the pointer-lock loss marked as the game's
   own), so no pause menu opens.
+- **The phone comes out** (TASK-005): N and the touch button play the move instead of cutting.
+  `PhoneRaise` (`raise.ts`, pure, `tests/photo-raise.test.ts`) runs one progress value on frame
+  time: 0.3 s the hand to the hip pocket and out, 0.45 s the raise with the camera glide
+  (`CameraRig.setPhotoBlend`: the usual third-person spot, then k of the way to the lens; the
+  character fades as the lens passes the head and hides at the end), 0.15 s the viewfinder fading in.
+  Closing (0.7 s) is the same curve backwards. The avatar reads `phonePose` (`src/player/pose.ts`):
+  the upper-body `Interact` scrubbed from 0.04 (hand at the pocket) to 0.55 (arm held out, phone
+  upright), and a phone made in code in the right hand's grip. `photo:open` / `photo:close` and
+  the input mutes switch at the start, as before. N during a move jumps to its end; the shutter
+  during the opening jumps to camera mode and takes no picture (`shoot()` needs the phase 'open',
+  so a shot always judges from the lens). Every forced close snaps shut in the same call, also mid-move
+  (`finishClose`). Reduced motion, first person and flying cut to the lens (only the viewfinder
+  fades); the `kq.photo.open()` / `close()` test hooks are instant. `kq.photo.state().phase`,
+  `kq.avatar.state().phone`; `tests/photo-hud.test.ts`, `e2e/photo.spec.ts`.
 - The **viewfinder** uses `html[data-kq-photo]` to hide the gameplay HUD, prompts, waymarks, minimap,
   measuring UI and quest giver glyphs while the phone is up. Touch keeps the phone toggle and
   shutter visible and accepts movement and look gestures. The measuring scene and surface taps
