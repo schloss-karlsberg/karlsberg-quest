@@ -12,9 +12,11 @@
 import {
   AdditiveBlending,
   BoxGeometry,
+  type BufferGeometry,
   CanvasTexture,
   CylinderGeometry,
   Group,
+  type Material,
   Mesh,
   MeshStandardMaterial,
   type Object3D,
@@ -232,20 +234,25 @@ export class FestsaalObjects {
   }
 
   clear(): void {
+    const geometries = new Set<BufferGeometry>();
+    const materials = new Set<Material>();
     for (const i of this.items) {
       i.obj.traverse((o) => {
-        const m = o as Mesh;
-        if (m.isMesh) m.geometry.dispose();
+        if (!(o instanceof Mesh)) return;
+        geometries.add(o.geometry);
+        for (const mat of Array.isArray(o.material) ? o.material : [o.material]) materials.add(mat);
       });
       i.obj.removeFromParent();
       i.glint?.material.dispose();
       i.glint?.removeFromParent();
     }
+    for (const geometry of geometries) geometry.dispose();
+    for (const material of materials) material.dispose();
     this.items = [];
     this.setPrompt(null);
   }
 
-  /** The player took `key` (E, or the story's 40 s fallback sets the flag itself). */
+  /** The player took `key` with E. The story's 50 s fallback sets the flag directly. */
   take(key: FestsaalKey): boolean {
     if (this.taken || !this.items.some((i) => i.spot.key === key)) return false;
     this.taken = key;

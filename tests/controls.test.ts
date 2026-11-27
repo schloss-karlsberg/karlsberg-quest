@@ -66,7 +66,7 @@ describe('Steuerung key help', () => {
   it('shows either bound Shift key as a standalone reverse scan shortcut', () => {
     expect(rowValues({ scan: ['ShiftLeft'] }).scan).toBe('[Umschalt] (rückwärts)');
     expect(rowValues({ scan: ['ShiftRight', 'Digit2'] }).scan)
-      .toBe('[2] / [Umschalt r.] (rückwärts) / [Umschalt+2]');
+      .toBe('[2] / [Umschalt rechts] (rückwärts) / [Umschalt+2]');
   });
 
   it('uses supplied layout labels while preserving localized special keys', () => {

@@ -159,6 +159,7 @@ export function validateStories(files: { file: string; story: StoryFile }[], ref
       }
       if (b.complete === undefined) err(file, where, 'missing "complete" condition');
       else checkCond(b.complete, file, where, err);
+      if (b.timerWhile !== undefined) checkCond(b.timerWhile, file, `${where}:timerWhile`, err);
       lines += checkActions(b.enter, file, `${where}:enter`, err, warn, refs, chapters);
       lines += checkActions(b.exit, file, `${where}:exit`, err, warn, refs, chapters);
       const rids = new Set<string>();
@@ -390,6 +391,7 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
         break;
       case 'teleport':
         if (!isNum(a.x) || !isNum(a.z)) err(file, where, 'teleport needs x/z');
+        if (a.onceFlag !== undefined && !isStr(a.onceFlag)) err(file, where, 'teleport onceFlag must be a flag name');
         break;
       case 'card':
         if (!isStr(a.title)) err(file, where, 'card needs a title');
@@ -477,6 +479,7 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
         else if (refs.quests && !refs.quests.has(a.id)) err(file, where, `quest: unknown quest '${a.id}'`);
         if (a.op === 'progress' && !isStr(a.objective)) err(file, where, 'quest progress needs an objective');
         if (a.n !== undefined && !isNum(a.n)) err(file, where, 'quest: n must be a number');
+        if (a.afterShift !== undefined && (a.op !== 'fail' || typeof a.afterShift !== 'boolean')) err(file, where, 'quest: afterShift is a boolean for fail actions');
         break;
       case 'enemy':
         if (a.op !== 'spawn' && a.op !== 'despawn') err(file, where, "enemy needs op 'spawn' or 'despawn'");

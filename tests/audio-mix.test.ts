@@ -1,8 +1,9 @@
-import { PerspectiveCamera } from 'three';
+import { PerspectiveCamera, Scene, Vector3 } from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import tourRoute from '../content/routes/p-fuehrung.json';
 import tourStory from '../content/story/00-tour.story.json';
 import { AudioManager } from '../src/audio/audio';
+import type { DialogueLine } from '../src/content/types';
 import type { GameContext } from '../src/core/context';
 import type { Era } from '../src/core/era';
 import { EventBus } from '../src/core/events';
@@ -11,7 +12,10 @@ import { t } from '../src/i18n';
 import type { Stance } from '../src/player/stance';
 import ambience from '../src/systems/ambience';
 import { seededRng } from '../src/systems/barks/rules';
+import { EchoDirector } from '../src/systems/chronik/echo';
+import type { ChronikClue } from '../src/systems/chronik/types';
 import footsteps from '../src/systems/footsteps';
+import { DialoguePresenter } from '../src/systems/story/dialogue/presenter';
 import { speakerMeta } from '../src/systems/story/dialogue/speakers';
 import { Voice } from '../src/systems/story/dialogue/voice';
 import { playStorySoundAction } from '../src/systems/story/sfx';
@@ -19,6 +23,16 @@ import type { StoryFile } from '../src/systems/story/types';
 import { World } from '../src/world/world';
 import { bus, Context, duckGain, Panner, type Node } from './audio-fixture';
 import { loadWorldData } from './world-data';
+
+vi.mock('../src/ui/dom', () => {
+  const element = () => ({
+    dataset: {},
+    classList: { add() {}, remove() {}, toggle() {} },
+    addEventListener() {},
+    replaceChildren() {},
+  });
+  return { h: element, svg: element };
+});
 
 const buffer = { duration: 4 } as AudioBuffer;
 
@@ -210,6 +224,64 @@ it('fades water with altitude and winter, routes dread to music, and stops both 
   }
 });
 
+it('disconnects both spatial audio nodes per echo after its tail on completion and abort', () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  const element = { append() {}, remove() {}, classList: { toggle() {}, add() {}, remove() {} } };
+  vi.stubGlobal('document', { createElement: () => ({ ...element }) });
+  const audio = new AudioManager();
+  audio.unlock();
+  const createSpatial = vi.spyOn(audio, 'createSource3D');
+  const { sources, currentTime } = audio.ctx as unknown as Context;
+  const events = new EventBus();
+  const scene = new Scene();
+  const onDone = vi.fn();
+  const ctx = {
+    audio, scene, events, t, player: { position: new Vector3(), yaw: 0 },
+    world: { heightAt: () => 0 }, era: { info: { night: false } },
+    post: { uniforms: { uDesaturate: { value: 0.1 } } }, settings: { state: { reducedMotion: true } },
+    content: { speakers: new Map() }, ui: { hud: { subtitle() {} } },
+  } as unknown as GameContext;
+  const clue: ChronikClue = {
+    id: 'test.echo', kind: 'echo', title_de: 'Echo', fiction: true,
+    where: { era: '1789', x: 0, z: -5, radius: 4 }, reveals: {},
+  };
+  const lines: DialogueLine[] = [{
+    id: 'test.line', speaker: 'test-fictional-speaker', text_de: 'Hallo.',
+    trigger: { event: 'echo:start', id: clue.id },
+  }];
+  const echo = new EchoDirector(ctx, () => lines, element as unknown as HTMLElement, onDone);
+  const liveConnections = () => createSpatial.mock.results.flatMap(({ value }) => (
+    [value.input, value.panner] as Node[]
+  )).reduce((sum, node) => sum + node.connections.length, 0);
+
+  for (const aborted of [true, false, true, false]) {
+    echo.start(clue);
+    expect(liveConnections()).toBe(2);
+    echo.update(2);
+    expect(liveConnections()).toBe(4);
+    expect(duckGain(audio, 'ambience')).toBe(0.38);
+    const whisper = sources.at(-1)!;
+    if (aborted) echo.finish(true);
+    else echo.update(echo.progress.total);
+    expect(echo.active).toBe(false);
+    expect(scene.children).toHaveLength(0);
+    expect(ctx.post.uniforms.uDesaturate!.value).toBe(0.1);
+    expect(vi.getTimerCount()).toBe(2);
+    expect(whisper.stop).toHaveBeenCalledExactlyOnceWith(expect.any(Number));
+    const stopAt = whisper.stop.mock.calls[0]![0];
+    expect(Number.isFinite(stopAt)).toBe(true);
+    expect(stopAt).toBeGreaterThan(currentTime);
+    whisper.end();
+    vi.runAllTimers();
+    expect(liveConnections()).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+    expect(duckGain(audio, 'ambience')).toBe(1);
+  }
+  expect(onDone).toHaveBeenCalledTimes(2);
+  expect(onDone).toHaveBeenLastCalledWith(clue, [{ speaker: 'test-fictional-speaker', text: 'Hallo.' }], false);
+  echo.dispose();
+});
+
 describe('tour sounds', () => {
   it('routes scripted cues to SFX, honors mute and captions, and plays during reduced motion', () => {
     const audio = new AudioManager();
@@ -386,6 +458,35 @@ describe('speech mix', () => {
     ctx.sources[0]!.end();
     expect(next.playing).toBe(true);
     expect(duckGain(audio, 'ambience')).toBe(0.38);
+  });
+
+  it.each(['voice', 'master'] as const)('types a recorded line without creating sources when %s is muted', (channel) => {
+    const audio = new AudioManager();
+    audio.unlock();
+    audio.setVolumes({ [channel]: 0 });
+    const ctx = audio.ctx as unknown as Context;
+    const voice = new Voice(audio);
+    const blip = vi.spyOn(voice, 'blip');
+    const take = vi.fn(() => ({ id: 'departure', entry: { files: {}, textHash: '' }, buffer, seconds: 4 }));
+    const presenter = new DialoguePresenter({
+      layer: { append() {} } as unknown as HTMLElement,
+      meta: speakerMeta,
+      voice,
+      clips: { take, preload() {} },
+      reducedMotion: () => false,
+      name: () => 'Alex',
+    });
+    presenter.enqueue({ id: 'departure', speaker: 'imhoff', text: 'Ein kurzer Satz für den Test.', ms: 10_000, beat: 't3', group: 0, priority: 'normal' });
+    for (let i = 0; i < 7 * 60; i++) {
+      ctx.currentTime += 1 / 60;
+      presenter.update(1 / 60);
+    }
+    expect(take).toHaveBeenCalled();
+    expect(blip).toHaveBeenCalled();
+    expect(ctx.sources).toHaveLength(0);
+    expect(presenter.hasLine('departure', 't3')).toBe(true);
+    presenter.skip();
+    expect(presenter.hasLine('departure', 't3')).toBe(false);
   });
 
   it('routes Gerold clips and murmurs through one moving source on the voice bus', () => {

@@ -60,6 +60,7 @@ test.describe('art foundation', () => {
     const list = page.getByTestId('asset-licences');
     await expect(list).toBeVisible();
     await expect(list).toContainText('Tree Stump 01');
+    await expect(list).toContainText('Netz auf 4,5 % vereinfacht');
     await expect(list).toContainText('CC0-1.0');
     await expect(list).toContainText('Bänke und Sandstein am Schlossplateau (FIKTION): Karlsberg Quest — CC0-1.0');
     await expect(list).toContainText('Herbststräucher und trockene Blütenstände (FIKTION): Karlsberg Quest — CC0-1.0');

@@ -106,7 +106,7 @@ export class Polyline {
   }
 }
 
-export interface RouteStop { id: string; x: number; z: number; s: number }
+export type RouteStop = Route['stops'][number] & { s: number };
 export interface BuiltRoute {
   id: string;
   line: Polyline;
@@ -123,7 +123,7 @@ export function buildRoute(route: Route): BuiltRoute {
   for (const st of route.stops) {
     const s = line.project(st.x, st.z).s;
     stopS.set(st.id, s);
-    stops.push({ id: st.id, x: st.x, z: st.z, s });
+    stops.push({ ...st, s });
   }
   return { id: route.id, line, stopS, stops };
 }
@@ -187,6 +187,15 @@ export function checkRoute(route: Route, extent: Extent = PLAY_EXTENT): string[]
     const { s, dist } = line.project(st.x, st.z);
     if (dist > MAX_STOP_OFF) errs.push(`${label}: stop '${st.id}' is ${dist.toFixed(1)} m from the polyline (max ${MAX_STOP_OFF})`);
     if (s <= prevS) errs.push(`${label}: stop '${st.id}' (s ${s.toFixed(1)}) is not after '${prevId}' (s ${prevS.toFixed(1)})`);
+    if (st.slots !== undefined && !Array.isArray(st.slots)) errs.push(`${label}: stop '${st.id}' slots must be an array`);
+    if (Array.isArray(st.slots)) {
+      for (const slot of st.slots) {
+        if (!Array.isArray(slot) || !Number.isFinite(slot[0]) || !Number.isFinite(slot[1])
+          || slot[0] < extent.x[0] || slot[0] > extent.x[1] || slot[1] < extent.z[0] || slot[1] > extent.z[1]) {
+          errs.push(`${label}: stop '${st.id}' has a slot outside the playable extent`);
+        }
+      }
+    }
     prevS = s;
     prevId = st.id;
   }

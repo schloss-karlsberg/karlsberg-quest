@@ -122,9 +122,128 @@ test.describe('photo mode', () => {
     await page.waitForTimeout(400);
     await page.screenshot({ path: `${SCREENS}/photo-keinnetz.png` });
     expect(await page.evaluate(() => window.kq!.photo!.album())).toHaveLength(0);
+    // a white picture is not kept in the gallery either (TASK-006)
+    expect(await page.evaluate(async () => (await window.kq!.photo!.gallery.settled(), window.kq!.photo!.gallery.count()))).toBe(0);
     // Esc puts it away (no pause menu while the phone was up)
     await page.keyboard.press('Escape');
     await expect.poll(() => page.evaluate(() => window.kq!.photo!.state().open)).toBe(false);
+    expect(errors).toEqual([]);
+  });
+
+  test('gallery: every shot is kept on the device (IndexedDB); G opens it; full size, share / download, Album button, delete (TASK-006)', async ({ page }) => {
+    // many steps under SwiftShader (two shots, downloads, the album): more than the describe's 4 min
+    test.setTimeout(480_000);
+    const errors = trackErrors(page);
+    await boot(page);
+    await standAtBoard(page);
+    await page.keyboard.press('KeyN');
+    await expect.poll(() => page.evaluate(() => window.kq!.photo!.state().open)).toBe(true);
+    // the phone bar: 1× 2× and the gallery button; the hint names G (the pointer is locked on desktop)
+    await expect(page.getByTestId('photo-gallery')).toHaveText('Galerie');
+    await expect(page.getByTestId('photo')).toContainText('G: Galerie');
+    await page.waitForTimeout(600);
+    // two shots (the hook skips the cooldown), stored in order
+    await page.evaluate(() => {
+      window.kq!.photo!.shoot();
+      window.kq!.photo!.shoot();
+    });
+    const stored = await page.evaluate(async () => {
+      const g = window.kq!.photo!.gallery;
+      await g.settled();
+      return { kind: await g.kind(), list: await g.list() };
+    });
+    expect(stored.kind).toBe('idb');
+    expect(stored.list).toHaveLength(2);
+    expect(stored.list[0]!.id).toBeGreaterThan(stored.list[1]!.id);
+    expect(stored.list[0]).toMatchObject({ era: 'today', good: ['photo.parkplatz'], targets: ['photo.parkplatz'] });
+    expect(stored.list[0]!.width).toBeGreaterThan(0);
+    expect(stored.list[0]!.width).toBeLessThanOrEqual(1920);
+    // G: the phone goes down, the gallery opens on the grid
+    await page.keyboard.press('KeyG');
+    await expect(page.getByTestId('gallery')).toBeVisible();
+    await expect.poll(() => page.evaluate(() => window.kq!.photo!.state().open)).toBe(false);
+    await expect(page.getByTestId('gallery-count')).toHaveText('2 von 100 Fotos');
+    await expect(page.getByTestId('gallery-hint')).toHaveAttribute('data-store', 'idb');
+    await expect(page.getByTestId('gallery-hint')).toContainText('nur auf diesem Gerät');
+    await expect(page.locator('[data-testid^="gallery-item-"]')).toHaveCount(2);
+    await page.screenshot({ path: `${SCREENS}/photo-gallery.png` });
+    // full size, newest first; next / previous
+    await page.getByTestId(`gallery-item-${stored.list[0]!.id}`).click();
+    const full = page.getByTestId('gallery-full');
+    await expect(full).toBeVisible();
+    await expect.poll(() => full.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(stored.list[0]!.width);
+    await expect(page.getByTestId('gallery-pos')).toHaveText('1 / 2');
+    await expect(page.getByTestId('gallery-prev')).toBeDisabled();
+    await page.getByTestId('gallery-next').click();
+    await expect(page.getByTestId('gallery-pos')).toHaveText('2 / 2');
+    await page.keyboard.press('ArrowLeft');
+    await expect(page.getByTestId('gallery-pos')).toHaveText('1 / 2');
+    await page.screenshot({ path: `${SCREENS}/photo-gallery-viewer.png` });
+    // Herunterladen: a JPEG named after the shot's time
+    const name = /^karlsberg-quest-\d{4}-\d\d-\d\d-\d\d-\d\d-\d\d\.jpg$/;
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('gallery-download').click()]);
+    expect(dl.suggestedFilename()).toMatch(name);
+    // Teilen without file sharing falls back to the download …
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'canShare', { configurable: true, value: undefined });
+    });
+    const [dl2] = await Promise.all([page.waitForEvent('download'), page.getByTestId('gallery-share').click()]);
+    expect(dl2.suggestedFilename()).toMatch(name);
+    // … and with it, hands the file to the share sheet
+    await page.evaluate(() => {
+      const w = window as unknown as { shared?: { name: string; type: string }[] };
+      Object.defineProperty(navigator, 'canShare', { configurable: true, value: (d: { files?: File[] }) => !!d.files?.length });
+      Object.defineProperty(navigator, 'share', { configurable: true, value: async (d: { files: File[] }) => void (w.shared = d.files.map((f) => ({ name: f.name, type: f.type }))) });
+    });
+    await page.getByTestId('gallery-share').click();
+    const shared = await page.evaluate(() => (window as unknown as { shared?: { name: string; type: string }[] }).shared);
+    expect(shared).toHaveLength(1);
+    expect(shared![0]!.name).toMatch(name);
+    expect(shared![0]!.type).toBe('image/jpeg');
+
+    // the photos are in IndexedDB itself, picture and thumbnail (what the next load reads back; an
+    // in-place reload of the game page under SwiftShader is slow enough to be aborted here, on a
+    // real GPU it takes ~3 s and keeps them: TASK-006 progress log)
+    const raw = await page.evaluate(
+      () =>
+        new Promise<{ photos: number; full: number; blobs: boolean; thumbs: boolean }>((resolve, reject) => {
+          const r = indexedDB.open('kq-photos');
+          r.onerror = () => reject(r.error);
+          r.onsuccess = () => {
+            const db = r.result;
+            const tx = db.transaction(['photos', 'full']);
+            const a = tx.objectStore('photos').getAll();
+            const b = tx.objectStore('full').getAll();
+            tx.oncomplete = () => {
+              const rows = a.result as { thumb: Blob }[];
+              const full = b.result as Blob[];
+              resolve({ photos: rows.length, full: full.length, blobs: full.every((x) => x instanceof Blob && x.type === 'image/jpeg' && x.size > 2000), thumbs: rows.every((x) => x.thumb instanceof Blob && x.thumb.size > 500) });
+              db.close();
+            };
+          };
+        }),
+    );
+    expect(raw).toEqual({ photos: 2, full: 2, blobs: true, thumbs: true });
+    await page.getByTestId('gallery').getByRole('button', { name: 'Schließen' }).click();
+    // Pause → Album → „Galerie öffnen“
+    await openPause(page);
+    await page.getByTestId('pause-album').click();
+    await page.getByTestId('album-gallery').click();
+    await expect(page.getByTestId('gallery-count')).toHaveText('2 von 100 Fotos');
+    // Löschen asks once („Wirklich?“, same place), then the next photo moves in; the last one leaves the empty grid
+    await page.locator('[data-testid^="gallery-item-"]').first().click();
+    await page.getByTestId('gallery-delete').click();
+    await expect(page.getByTestId('gallery-delete')).toHaveText('Wirklich?');
+    await expect(page.getByTestId('gallery-delete')).toHaveAttribute('aria-label', 'Wirklich löschen?');
+    expect(await page.evaluate(() => window.kq!.photo!.gallery.count())).toBe(2);
+    await page.getByTestId('gallery-delete').click();
+    await expect(page.getByTestId('gallery-pos')).toHaveText('1 / 1');
+    expect(await page.evaluate(() => window.kq!.photo!.gallery.count())).toBe(1);
+    await page.getByTestId('gallery-delete').click();
+    await page.getByTestId('gallery-delete').click();
+    await expect(page.getByTestId('gallery-empty')).toBeVisible();
+    await expect(page.getByTestId('gallery-count')).toHaveText('0 von 100 Fotos');
+    expect(await page.evaluate(() => window.kq!.photo!.gallery.count())).toBe(0);
     expect(errors).toEqual([]);
   });
 
@@ -258,6 +377,44 @@ test.describe('photo mode on a phone (iPhone 13 landscape)', () => {
     await expect(page.getByTestId('touch-pause')).toBeVisible();
     await expect(page.getByTestId('touch-attack')).toHaveAttribute('aria-label', 'Hieb (halten: Wuchthieb)');
     expect(await page.evaluate(() => window.kq!.tools!.measure.state())).toEqual(measurement);
+    expect(errors).toEqual([]);
+  });
+
+  test('the phone bar’s „Galerie“ opens the gallery by touch; a photo opens full-size and is deleted by taps (TASK-006)', async ({ page }) => {
+    const errors = trackErrors(page);
+    await boot(page);
+    await standAtBoard(page);
+    const cdp = await page.context().newCDPSession(page);
+    const cam = await center(page, 'touch-photo');
+    await tap(cdp, cam.x, cam.y);
+    await expect.poll(() => page.evaluate(() => window.kq!.photo!.state().open)).toBe(true);
+    await page.waitForTimeout(700);
+    const shutter = await center(page, 'touch-attack');
+    await tap(cdp, shutter.x, shutter.y);
+    await expect(page.getByTestId('photo-card')).toBeVisible();
+    await page.evaluate(() => window.kq!.photo!.gallery.settled());
+    // the bar's buttons are full-size tap targets on touch
+    for (const id of ['photo-zoom-1', 'photo-zoom-2', 'photo-gallery']) expect((await page.getByTestId(id).boundingBox())!.height, id).toBeGreaterThanOrEqual(44);
+    const btn = await center(page, 'photo-gallery');
+    await tap(cdp, btn.x, btn.y);
+    await expect(page.getByTestId('gallery')).toBeVisible();
+    await expect.poll(() => page.evaluate(() => window.kq!.photo!.state().open)).toBe(false);
+    await expect(page.getByTestId('gallery-count')).toHaveText('1 von 100 Fotos');
+    const item = (await page.locator('[data-testid^="gallery-item-"]').first().boundingBox())!;
+    await tap(cdp, item.x + item.width / 2, item.y + item.height / 2);
+    await expect(page.getByTestId('gallery-full')).toBeVisible();
+    for (const id of ['gallery-back', 'gallery-share', 'gallery-download', 'gallery-delete']) {
+      const b = (await page.getByTestId(id).boundingBox())!;
+      expect(b.height, id).toBeGreaterThanOrEqual(44);
+      expect(b.y + b.height, `${id} on screen`).toBeLessThanOrEqual(page.viewportSize()!.height);
+    }
+    await page.screenshot({ path: `${SCREENS}/photo-touch-gallery.png` });
+    let del = await center(page, 'gallery-delete');
+    await tap(cdp, del.x, del.y);
+    await expect(page.getByTestId('gallery-delete')).toHaveText('Wirklich?');
+    del = await center(page, 'gallery-delete');
+    await tap(cdp, del.x, del.y);
+    await expect(page.getByTestId('gallery-empty')).toBeVisible();
     expect(errors).toEqual([]);
   });
 });

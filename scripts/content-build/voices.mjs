@@ -89,7 +89,7 @@ const dialogue = [
     'Es wird früh dunkel. Nimm die Lampe mit. Und Öl.',
     'Die Wildschweine waren wieder am Weiher. Die graben, das dürfen die.',
     'Brauchst du was? Ich fahr nachher nach Homburg.',
-    'Du redest im Schlaf. Gestern hast du ‚Bijou‘ gesagt. Ist das ein Hund?',
+    'Du redest im Schlaf. Gestern hast du „Bijou“ gesagt. Ist das ein Hund?',
     'Schreib’s auf, sonst vergisst du’s. Hat meine Oma immer gesagt. Sie hat alles vergessen, aber aufgeschrieben.',
     'Ich mag den Nebel hier oben. Da sieht der Wald aus, als würd er sich an was erinnern.',
     'Der Laserscan ist ja neu. Zweitausendfünfundzwanzig geflogen, im Winter, ohne Laub. Sonst sieht man nix.',

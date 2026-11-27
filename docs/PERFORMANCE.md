@@ -33,9 +33,15 @@ the e2e test fails when a scene is over.
   culling; modules can register more switches in `baselineHooks`), then run the bench again.
 - **E2E**: `PERF_LABEL=after npx playwright test e2e/perf.spec.ts` writes
   `test-results/perf/bench-<label>.json` and `load-<label>.json`; `PERF_BASELINE=1` runs the
-  baseline, `PERF_FRAMES=n` changes the frames per scene. Headless Chromium uses SwiftShader (CPU
-  rasteriser): frame times there are 50–100× a real GPU and say little; calls, triangles, CPU
-  time and bytes are exact.
+  baseline, `PERF_FRAMES=n` changes the frames per scene. Headless Chromium uses SwiftShader
+  (a CPU rasteriser). Draw calls, triangles and bytes are suitable for e2e assertions. Frame
+  and CPU milliseconds depend on the machine and its load.
+- **Tour group workload (TASK-050).** `e2e/walk.spec.ts` loads all 16 bodies, then samples eight
+  stepped frames at the trailhead on each quality tier. Within each scene pass it draws the
+  group hidden and visible at the same camera pose and tick. All 16 bodies must submit triangles
+  to the main view on every sampled frame. `test-results/walk/perf.json` records the hidden and
+  visible peaks and the peak paired delta. The added work must be positive and fit within 190
+  draw calls and 130,000 triangles per pass, with room for shadows on Mittel and Hoch.
 - **Real GPU, headless**: Chromium with `--enable-gpu --ignore-gpu-blocklist --use-angle=metal`
   (add `--disable-gpu-vsync --disable-frame-rate-limit` for uncapped timing) and call `kq.bench()`.
 - **Present-day ground cover on Niedrig (TASK-008):** `e2e/gpu/tour-groundcover.gpu.ts` records six
@@ -345,9 +351,12 @@ The fix (`systems/fx/shift/warm.ts`, `slices.ts`, `reveal.ts`) changes nothing o
    gathers everything not drawn now (the hidden palace, the other era's sets), the shift's own
    materials (stand-ins from `ShiftEffect.warmObjects`) and the next era's model templates (the
    story's shift target, else today ↔ 1789; their assets are prefetched, 7 MB for 1789). For each
-   distinct material × kind × vertex layout it makes one stand-in that shares the real buffers but
-   draws a single triangle. The stand-ins are compiled with `compileAsync` into the post target,
-   then each is drawn once into the post target (casters also into the shadow target,
+   distinct material × kind × vertex layout it makes one stand-in that draws a single primitive.
+   The effect's stand-ins borrow its geometries and restore their draw ranges after each draw.
+   This lets the effect release the uploaded buffers at teardown, even before the first shift.
+   Other stand-ins share the source buffers through temporary geometries. The stand-ins compile
+   with `compileAsync` into the post target, then each draws once into the post target (casters
+   also into the shadow target,
    `SunShadows.warm`). That builds the pipelines and uploads the buffers and textures. At most
    one program is used for the first time per frame. The other era's terrain textures are
    uploaded with `initTexture`. After every era change the pass runs again. It does not run on
@@ -559,6 +568,41 @@ change and historical redraw at 667 × 375 with touch emulation and low graphics
 In the review checkout, that benchmark measured 7.988 ms to allocate and paint the 1,424,375-cell
 terrain buffer and 0.010 ms per warmed present-day redraw. It excludes canvas upload and compositing.
 The browser timings are pending because the sandbox blocked the preview server.
+### 3.8 Fixed-step and render hot paths (TASK-033, 2026-11-26)
+
+`src/core/loop.ts` drives a 60 Hz simulation and a separately paced render callback. In
+`src/boot.ts` each fixed step polls input through the player and systems. Each drawn frame runs
+the camera, system overlays and world updates before the draw passes. The sweep prioritised work
+that recurs on these paths, including frames where the camera or displayed UI stays still.
+
+| Path | Finding and change |
+|---|---|
+| Terrain culling (`src/world/terrain.ts`, drawn frame) | A stationary view used to repeat the whole chunk scan and mark visible instance buffers for upload. Reuse the batches while the camera's view-projection matrix, position, far distance, LOD scale and detail eligibility match. Dataset replacement and relief installation invalidate the cache. The terrain test observes a full scan on the first update, zero box tests on the identical update and a new scan after a projection or LOD change. |
+| Hunt overlay (`src/systems/hunt/overlay.ts`, drawn frame) | Cache arrow SVG nodes and recalculate positions when the angle, node or viewport changes. Compare the vignette opacity in integer thousandths before formatting it. In the reduced-motion test, 180 frames easing toward full alert used to write `0.750` 180 times and now make zero writes after the first `0.750`. A changed displayed value still writes once. |
+| Wading (`src/player/player.ts`, fixed step) | Sample the proposed depth once. When it exceeds the wading limit, check the current depth to decide whether to block the move. Probe distinct axis positions only for blocked diagonal steps. Use the accepted probe for wading speed and `stats.inWater`. The tests count one query on a dry step, two on straight movement into the wading limit (previously four or five on the initial sweep), and three or four on blocked diagonal steps. |
+| Input and flight (`src/player/input.ts`, `src/player/player.ts`, fixed step) | Polls return early for empty key sets and use precomputed virtual codes and direct binding checks. Virtual touch actions still work with remapped keys. Flight reuses one player-owned target vector. The previous flight update constructed one `Vector3` per flying step in source. |
+
+Keep temporary math objects with their owner and reuse a query result within the step when its
+inputs match. For work cached across frames, track every input that can change the result and
+exercise both reuse and invalidation in tests. Compare DOM values at their written precision so
+that a change invisible to the player does not trigger formatting or a style assignment.
+Operation counts above come from unit tests and code inspection. Frame-time and garbage-collection
+effects still need a browser profile.
+### 3.8 Tour crowd (TASK-022)
+
+The same character geometry and LOD bands apply on all presets. With all 15 visitors in view,
+the loaded tour bodies cost 161 draws and 118,392 triangles per color pass at 10 m, and 161 draws
+and 112,431 triangles at 20 m. These are body mesh counts from `tests/people.test.ts`. Relative to
+`dev/task-016` the in-view mesh cost is +0 draws and +0 triangles at each distance. The guide
+uses the smaller mesh at 20 m and the solid stand-ins skip the alpha-hash shader path.
+
+Frustum culling stays active in the camera and shadow passes. The wider shared bounds can keep a
+body drawn slightly longer at a frustum edge. Each skinned part and ghost depth twin also starts
+with a mesh-local sphere for render-list sorting, avoiding CPU skinning on its first visible frame.
+The maximum camera range stays at 60 m. The 58 m re-entry threshold prevents toggling near that
+limit. The story also keeps the departing group
+drawn during the Bussole beat while it is still within range. Phone frame times need a rendered
+run.
 
 ## 4. Loading
 
@@ -682,6 +726,12 @@ re-rendered every frame. What changed:
 3. **Pixel-ratio caps** Hoch 1.25, Mittel 1.
 4. **Shadow re-use** every 2nd frame on every tier with shadows (Hoch and Mittel; Niedrig has none).
 5. **Energiesparen**, see above.
+
+The browser regression check waits for queued redraws to drain and observes the draw counter over
+60 animation callbacks. Pause and bullet time hold the last frame: at most two draws from
+asynchronous requests (a streamed asset, the delayed camera-zoom save) may fall in the window,
+while a redraw on every callback fails. Leaving bullet time must produce further draws after the
+badge redraw.
 
 Measured on the real GPU (Apple M5 Pro, ANGLE Metal, headless Chromium, 1512 × 982 at device
 pixel ratio 2 like a 14" MacBook Pro, `--disable-gpu-vsync --disable-frame-rate-limit` so the

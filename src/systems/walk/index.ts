@@ -23,6 +23,7 @@
  */
 import { defineSystem } from '../../core/systems';
 import type { GameContext } from '../../core/context';
+import { t } from '../../i18n';
 import { actionLabel } from '../../ui/actionLabel';
 import { peopleOf, peopleSpecs, walkBodies } from './bodies';
 import { createFindState, stepFind, type FindState } from './find';
@@ -112,6 +113,10 @@ class WalkSystem {
     const routes = loadRoutes();
     const bodies = walkBodies(() => peopleOf(ctx));
     const forest = ctx.world.forest;
+    // The authored trail slots stay clear at every graphics tier, including scattered boulders.
+    for (const stop of routes.get('p-fuehrung')?.stops ?? []) {
+      for (const [x, z] of stop.slots ?? []) ctx.world.nature.props.addClearing(x, z, 2, ['today']);
+    }
     this.rt = new WalkRuntime({
       bus: ctx.events as unknown as WalkBus,
       bodies,
@@ -126,8 +131,10 @@ class WalkSystem {
         trunksNear: forest ? forest.trunksNear.bind(forest) : undefined,
         player: () => ctx.player.position,
         era: () => ctx.era.current,
+        reducedMotion: () => ctx.settings.state.reducedMotion,
       },
     });
+    ctx.tourCrowd.visitors = () => this.rt.tourVisitors();
     ctx.events.on('save:loaded', () => this.rt.restore());
     ctx.events.on('cinematic:play', () => (this.cinematic = true));
     ctx.events.on('cinematic:end', () => (this.cinematic = false));
@@ -194,7 +201,7 @@ class WalkSystem {
     if (prompt !== this.promptUp) {
       this.promptUp = prompt;
       const touch = this.ctx.input.touchMode;
-      if (prompt) hud.prompt(actionLabel(this.ctx.input, 'shift', 0, 'KeyQ'), touch ? 'Halten: zur Gruppe' : 'Gedrückt halten: zur Gruppe', 'walk');
+      if (prompt) hud.prompt(actionLabel(this.ctx.input, 'shift', 0, 'KeyQ'), touch ? t('action.regroup.hold') : 'Gedrückt halten: zur Gruppe', 'walk');
       else hud.prompt(null, undefined, 'walk');
       this.ctx.events.emit('group:find', { group, prompt });
     }
@@ -248,6 +255,7 @@ class WalkSystem {
   }
 
   dispose(): void {
+    delete this.ctx.tourCrowd.visitors;
     this.rt.clear();
   }
 

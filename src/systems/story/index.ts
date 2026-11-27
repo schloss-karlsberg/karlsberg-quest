@@ -25,7 +25,7 @@ import { VoiceClips, type VoiceClipStats } from './dialogue/voiceClips';
 import { sayLineIds } from './dialogue/voiceManifest';
 import { DialoguePresenter, holdSeconds, substituteName } from './dialogue/presenter';
 import { speakerMeta } from './dialogue/speakers';
-import { DEFAULT_VISITOR_NAME, type MeterState, StoryEngine, type StoryEnv, type StorySlice, createStorySlice, evaluate, runsOnResume, waitsForChapterCard } from './engine';
+import { DEFAULT_VISITOR_NAME, type MeterState, StoryEngine, type StoryEnv, type StorySlice, createStorySlice, evaluate, runTeleport, runsOnResume, waitsForChapterCard } from './engine';
 import { composeEpilogue, type Epilogue } from './endings/epilogue';
 import { endingScenes } from './endings/scenes';
 import { EndingStage } from './endings/stage';
@@ -33,6 +33,7 @@ import { EndingScreen } from './endings/ui';
 import { HOME, atHome, bringHome } from './hub/home';
 import { ObjectiveView, objectivePoint } from './objectives';
 import { StoryOverlays, cardClockDt } from './overlays';
+import { keepsOnBeatExit, retireScheduled, takeDueActions, type Scheduled } from './schedule';
 import { playStorySound, playStorySoundAction } from './sfx';
 import { acceptTourDeerPhoto, loadBundledStories, missingTourChestnuts, restoreTourDeerPhoto, storiesInPlay } from './stories';
 import { installTitleFlow } from './title/flow';
@@ -200,25 +201,12 @@ const QUIET_EVENTS = new Set(['player:step', 'dialogue:say', 'hunt:alert', 'lant
 /** Pack lines of these events are never spoken by the trigger runner (assembled elsewhere). */
 const ASSEMBLED_EVENTS = new Set(['epilog:line', 'story:ending']);
 
-interface Scheduled {
-  at: number;
-  gen: number;
-  fn: () => void;
-  ready?: () => boolean;
-  /** Beat the action belongs to (null = chapter-wide); retired when another beat begins. */
-  beat: string | null;
-  /** Changes state (objective, threat, flags …): run at once when its beat ends instead of dropped. */
-  keep: boolean;
-}
-
 /** Where a run of actions belongs (RunOptions.beat / where). */
 interface RunScope {
   beat: string | null;
   where: { x: number; z: number; r: number } | null;
 }
 
-/** Presentation actions: dropped with their beat; everything else changes state and runs early instead. */
-const PRESENTATION = new Set(['say', 'toast', 'sound', 'card', 'prompt', 'echo', 'choice']);
 /** Barks and skill remarks: low priority in the dialogue queue (hints are not: the player is stuck). */
 const isLowLine = (id: string | undefined) => !!id && (isBarkLine(id) || id.startsWith('laub.skill.'));
 /** Story lines about the past's dangers: dropped when the era they were said in is left. */
@@ -226,6 +214,8 @@ const ERA_BOUND_IDS = new Set(['laub.p.zurueck', 'laub.p.hinlegen']);
 
 /** Longer lines than this (characters) are lore in a fight: held until it is over. */
 const COMBAT_LINE_MAX = 120;
+/** These quest gates must play again before Peter leaves the Ehrenhof. */
+const PETER_REPLAY_QUESTS = ['q.k3.nachmittag', 'q.k3.buch', 'q.k3.strohmann'];
 
 class StoryRuntime {
   readonly engine: StoryEngine;
@@ -237,6 +227,7 @@ class StoryRuntime {
   readonly endings: EndingScreen;
   readonly stage: EndingStage;
   readonly voice: Voice;
+  private activeSpeaker: string | null = null;
   /** Recorded clips, when browser playback is enabled. */
   readonly clips: VoiceClips | null;
   private time = 0;
@@ -311,7 +302,7 @@ class StoryRuntime {
     this.files = storiesInPlay(loadBundledStories(), ctx.params);
     this.engine = new StoryEngine(this.files, () => this.slice, {
       run: (actions, o) => this.run(actions, o.resume, { beat: o.beat ?? null, where: o.where ?? null }, o.source),
-      chapterEntered: (f, o) => this.chapterEntered(f, o.resume),
+      chapterEntered: (f, o) => this.chapterEntered(f, o),
       beatEntered: (ch, b, o) => {
         // the last beat's delayed lines are stale now; its delayed state changes happen at once
         this.retireScheduled(b.id);
@@ -331,6 +322,7 @@ class StoryRuntime {
       },
       chapterCompleted: (f) => {
         if (f.unlocks?.length || f.next) ctx.ui.toast(t('story.chapter.done') + ': ' + f.title_de, 3500);
+        if (f.chapter === 'enden') this.pendingAutosave = true;
       },
     });
 
@@ -459,6 +451,7 @@ class StoryRuntime {
     });
     ctx.events.on('echo:end', () => ctx.ui.hud.setEraLabel(t(ERA_INFO[ctx.era.current].labelKey)));
     ctx.events.on('era:change', ({ to }) => {
+      this.slice.room = null;
       this.dropShiftObjective(to);
       if (to === 'today' || this.slice.lookPast?.era === to) this.applyLook();
     });
@@ -562,7 +555,12 @@ class StoryRuntime {
     // a load never resumes in the middle of a fade (fade actions are one-shot)
     this.overlays.fade(0, 0);
     const s = this.slice;
-    this.objectives.set(s.objective);
+    const freeRoam = s.finished && !s.active && s.chapter === 'enden' && (!s.objective || s.objective.id === 'end.frei')
+      ? this.engine.chapters.get('enden')?.beats.flatMap((beat) => beat.exit ?? [])
+        .find((action) => action.do === 'objective' && action.id === 'end.frei')
+      : undefined;
+    if (freeRoam) this.exec(freeRoam);
+    else this.objectives.set(s.objective);
     this.applyLook();
     this.mirrorAllReadings();
     // post-game (bible 06-enden §7.2): the party stays at dusk; people are not saved, so set it again
@@ -610,21 +608,21 @@ class StoryRuntime {
     this.goto(dev?.chapter ?? first.chapter);
   }
 
-  goto(chapter: string, beat?: string): void {
+  goto(chapter: string, beat?: string, replay?: readonly string[]): void {
     this.cancelScheduled();
     this.presenter.clear();
     // jumping between beats of the running chapter: no title card
     this.quietCard = !!beat && this.slice.active && this.slice.chapter === chapter;
     try {
-      this.engine.goto(chapter, beat);
+      this.engine.goto(chapter, beat, { replay });
     } finally {
       this.quietCard = false;
     }
   }
 
-  private chapterEntered(f: StoryFile, resume: boolean): void {
+  private chapterEntered(f: StoryFile, { resume, replay }: { resume: boolean; replay?: readonly string[] }): void {
     const ctx = this.ctx;
-    ctx.events.emit('story:chapter', { id: f.chapter, ...(resume ? { resume: true as const } : {}) });
+    ctx.events.emit('story:chapter', { id: f.chapter, ...(resume ? { resume: true as const } : {}), ...(replay ? { replay } : {}) });
     if (resume) {
       restoreTourDeerPhoto(this.slice, ctx.state.mutable.flags);
       if (ctx.era.current === 'today') {
@@ -694,9 +692,9 @@ class StoryRuntime {
         if (ready()) continueRun();
         else this.schedule(0, continueRun, scope, false, ready);
       };
-      if (gate && waitsForChapterCard(a, at)) this.gated.push({ at, gen: this.gen, fn: () => this.withScope(scope, exec), beat: scope.beat, keep: !PRESENTATION.has(a.do) });
+      if (gate && waitsForChapterCard(a, at)) this.gated.push({ at, gen: this.gen, fn: () => this.withScope(scope, exec), beat: scope.beat, keep: keepsOnBeatExit(a) });
       else if (at <= 0) this.withScope(scope, exec);
-      else this.schedule(at, exec, scope, !PRESENTATION.has(a.do));
+      else this.schedule(at, exec, scope, keepsOnBeatExit(a));
       if (rest) return;
       if (text && a.do === 'say') at += text.length / 42 + holdSeconds(text, a.ms) + 0.4;
     }
@@ -742,10 +740,7 @@ class StoryRuntime {
       this.gated = [];
     }
     if (this.gatedAt && this.gatedAt.beat !== beat) this.gatedAt = null;
-    const stale =this.queue.filter((q) => q.gen === this.gen && q.beat !== null && q.beat !== beat);
-    if (!stale.length) return;
-    this.queue = this.queue.filter((q) => !stale.includes(q));
-    for (const q of stale.sort((a, b) => a.at - b.at)) if (q.keep) q.fn();
+    retireScheduled(this.queue, beat, this.gen);
   }
 
   private cancelScheduled(): void {
@@ -829,7 +824,7 @@ class StoryRuntime {
       case 'objective': {
         // the post-game line promises the pause menu's „Ende noch einmal wählen“: only when the
         // ending's save exists (with saving off it never does — playtest round 5)
-        const text = a.text && a.text.includes('Esc →') && !ctx.save.has(ENDING_SLOT) ? a.text.replace(/\s*·\s*Esc →.*$/, '') : a.text;
+        const text = a.id === 'end.frei' && !ctx.save.has(ENDING_SLOT) ? a.text?.split(' · ')[0] : a.text;
         const { x, z } = objectivePoint(a, ctx.state.state.systems.animals);
         if (!text) s.objective = null;
         else s.objective = { text, ...(x !== undefined && z !== undefined ? { x, z } : {}), ...(a.id ? { id: a.id } : {}) };
@@ -872,7 +867,7 @@ class StoryRuntime {
         else ctx.ui.toast(a.text, a.ms);
         return;
       case 'teleport':
-        this.teleport(a.x, a.z, a.yaw);
+        runTeleport(a, ctx.state.mutable.flags, (x, z, yaw) => this.teleport(x, z, yaw));
         return;
       case 'card':
         this.overlays.card(a.title, a.sub, a.note, a.seconds);
@@ -976,7 +971,9 @@ class StoryRuntime {
         const cmd: { op: typeof a.op; id: string; objective?: string; n?: number } = { op: a.op, id: a.id };
         if (a.objective) cmd.objective = a.objective;
         if (a.n !== undefined) cmd.n = a.n;
-        ctx.events.emit('quest:command', cmd);
+        if (a.afterShift && (this.shifting || this.shiftPending)) {
+          this.schedule(0, () => ctx.events.emit('quest:command', cmd), null, true, () => !this.shifting && !this.shiftPending);
+        } else ctx.events.emit('quest:command', cmd);
         return;
       }
       case 'enemy': {
@@ -1336,6 +1333,7 @@ class StoryRuntime {
       fiction: p.fiction,
       phoneDown: p.phoneDown,
       source: src ? (src.label ?? src.url) : undefined,
+      raised: this.slice.chapter === 'tour' && (sc?.beat ?? this.slice.beat) === 't6',
       beat: p.keep ? null : sc ? sc.beat : this.slice.beat,
       where,
       priority: p.priority ?? (low ? 'low' : 'normal'),
@@ -1435,7 +1433,7 @@ class StoryRuntime {
           onclick: async () => {
             if (!current && !(await modals.confirm(t('story.chapter.confirm', { title: chapter.title_de })))) return;
             modals.closeAll();
-            if (!current) this.goto(id);
+            if (!current) this.goto(id, undefined, id === 'k3' ? PETER_REPLAY_QUESTS : undefined);
           },
         }, [
           h('span.kqs-ch-title', unlocked ? chapter.title_de : t('story.chapter.locked')),
@@ -1612,6 +1610,11 @@ class StoryRuntime {
     // during an echo (playtest round 5: the level card over Laub's „Jetzt. Hinlegen …“ and over the
     // carts' echo; the hunt system holds them while a pack is out, W8 included)
     const cur = this.presenter.current;
+    const speaker = cur && cur.priority !== 'low' ? cur.speaker : null;
+    if (speaker !== this.activeSpeaker) {
+      this.activeSpeaker = speaker;
+      ctx.events.emit('dialogue:active', { speaker });
+    }
     ctx.ui.cards.soft('dialogue', !!cur && cur.priority !== 'low');
     ctx.ui.cards.hold('echo', this.echoHold);
     this.overlays.tickChoice(dt);
@@ -1621,13 +1624,7 @@ class StoryRuntime {
       if (this.caughtBusy) return;
     }
     if ((this.gated.length || this.gatedAt) && !this.overlays.holdsLines) this.releaseGate();
-    if (this.queue.length) {
-      const due = new Set(this.queue.filter((q) => q.at <= this.time && (q.ready?.() ?? true)));
-      if (due.size) {
-        this.queue = this.queue.filter((q) => !due.has(q));
-        for (const d of [...due].sort((a, b) => a.at - b.at)) if (d.gen === this.gen) d.fn();
-      }
-    }
+    if (this.queue.length) for (const d of takeDueActions(this.queue, this.time)) if (d.gen === this.gen) d.fn();
     // fx did not answer the shift request → switch directly
     if (this.shiftPending) {
       this.shiftPending.age += dt;
@@ -1893,6 +1890,8 @@ let rt: StoryRuntime | null = null;
 
 export default defineSystem({
   id: 'story',
+  // A story resume can issue walk commands immediately on save:loaded. Restore the route first.
+  after: ['walk'],
   async init(ctx) {
     rt = new StoryRuntime(ctx, creditSections(await ctx.assets.licences()));
   },

@@ -67,6 +67,7 @@ interface Playing {
   snap: Snapshot;
   hold: { yaw: number; pitch: number };
   pose: Pose;
+  lastSrc?: number;
   holdAt: number | null;
   era: string;
   look0: EraLook | null;
@@ -267,7 +268,12 @@ export class CinematicRuntime {
   private shoot(cam: GameContext['camera']): void {
     const c = this.cur;
     if (!c) return;
-    const p = poseAt(c.plan, this.srcTime(c), c.snap, this.env, c.hold, c.pose);
+    const src = this.srcTime(c);
+    const p = c.pose;
+    if (!c.reduced || src !== c.lastSrc) {
+      poseAt(c.plan, src, c.snap, this.env, c.hold, p);
+      c.lastSrc = src;
+    }
     c.hold.yaw = p.yaw;
     c.hold.pitch = p.pitch;
     cam.position.set(p.x, p.y, p.z);

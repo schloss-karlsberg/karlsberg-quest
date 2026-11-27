@@ -437,7 +437,9 @@ toasts when the slot frees. In free play, Escape or a completed outside touch ta
 through and folds it away after 2.6 s (`DONE_LINGER_MS`). Tests: `tests/cards.test.ts`,
 `e2e/pacing.spec.ts` (one visible notice, modal priority, and two queued clue pages in sequence).
 
-**Title extras** (`src/ui/title.ts`): `titleHooks.extraActions()` returns more main-menu buttons
+**Title screen** (`src/ui/title.ts`): Returning to the menu during its start fade cancels the
+pending hide. Reduced motion hides the menu immediately on start.
+`titleHooks.extraActions()` returns more main-menu buttons
 (`{label, testid, run}`; `run` resolves true to start the game) — the story adds "Ende noch
 einmal wählen" (testid `title-ending-again`) once the auto save's story has an ending and the
 `ending` slot exists.
@@ -679,6 +681,9 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 - Pause and journal page tests use `tests/ui-fixture.ts` to run the real renderers and handlers on a
   small in-memory element tree. Assert control state and text there; use Playwright for layout,
   browser focus behaviour and canvas drawing. The fixture does not run timers or animation frames.
+- `tests/disposal-counts.ts` listens for three.js `dispose` events on resources reached by a test.
+  Use it across repeated transitions to check the live count and detect double disposal. Track owned
+  textures and render targets explicitly so shared textures can remain live until their owner exits.
 - Unit (`tests/`): event bus, loop determinism, state/save round trip and throttling, settings,
   system ordering + error isolation, heightfield sampling, decoders (incl. real data), collision,
   forest determinism, validator (good + each failure class), ContentDB.
@@ -1041,6 +1046,10 @@ Round-4 (polish: set dressing) integration rules:
   increment `meta.shifts` unless the reason is `caught`. The transition emits `shift:begin` before
   it captures and freezes movement, so the court can release an active escort. The transition
   restores movement before `shift:done`. `scan:mode` 1–3 → scan pulse. Era particles always.
+  increment `meta.shifts` unless the reason is `caught`. `scan:mode` 1–3 → scan pulse. Era particles always.
+  A shift releases its point clouds and streaks at completion. The effect owns its screen passes
+  and shader warm-up samples. Warm-up draws with those same geometries, so effect teardown releases
+  their GPU buffers even when play ends before the first shift.
 - `threat:configure {kind:'fire'|'oblivion'}` → fire schedule over the real rooms (`fire:room`,
   `fire:progress`, smoke meter, `flags['fire.hold']` pauses it) / Steinfraß (`oblivion:progress`,
   pushed back by `clue:found`, `echo:start`, `oblivion:remember {amount?}`); full meter →
@@ -1072,7 +1081,8 @@ Round-4 (polish: set dressing) integration rules:
   the Chronik's registry (`chronik/staging.ts`). Shared bits in `common.ts` (instanced solid
   material with fog, `GlowPoints`, `GradeLoan` for a temporary grade). `end-memories.ts` is used by
   the burn ending (`endings/stage.ts`). Reduced motion / reduced flash honoured per piece. Hooks
-  `kq.stage.active/state/hold/cue/advance/line`.
+  `kq.stage.active/state/hold/cue/advance/line`. Retired pieces release instance buffers as well
+  as their geometry and materials. Director teardown releases the event subscriptions and card hold.
 
 ### chronik (`src/systems/chronik/`) – clues, echoes (the board is gone, D-008)
 - Clue markers + E examine card (`clue:found`, `noun:learned` kept for story conditions but no
@@ -1348,7 +1358,7 @@ the guide, opt-in with `?people=authored`), and callers do not change.
     and stays invisible until then.
 - **Distance LOD** (`PEOPLE_LOD`, measured from the camera):
   - animation at full rate within 25 m, about 10 Hz within 40 m, frozen beyond
-  - hidden beyond the draw limit (stand-in: 60 m)
+  - hidden beyond 60 m, drawn again within 58 m
   - frustum culling stays on
 - **Budget tiers** (`TIER_BUDGET`, for the authored meshes; the stand-ins only report them):
   - hero: ≤ 25k tris, ≤ 8 draw calls
@@ -1381,10 +1391,12 @@ the guide, opt-in with `?people=authored`), and callers do not change.
     per loop per metre of height.
   - `face` is an eased turn, capped at 5 rad/s. `lookAt` turns neck and head
     (`Rig.turnBone`, ±60°, no owl neck).
-  - 'solid' = per-person clones of the model's slots lit by `kqStandard`. 'ghost' = the NPC ghost
-    shader with its depth pre-pass.
-  - Each skinned part gets one conservative bound round the whole body, so frustum culling works
-    on skinned meshes.
+  - The solid look uses opaque per-person clones of the model's material slots lit by
+    `kqStandard`. The ghost look uses its own shader and depth pre-pass.
+  - Skinned parts and their ghost depth twins use a shared body sphere anchored to the person's
+    root for frustum culling, independently of pose and mesh level. The body sphere is also
+    transformed to each skinned mesh's local space at construction for render-list sorting.
+    Ghost depth twins inherit the local sphere when cloned.
   - `dispose()` frees the materials, the clone's skeletons, the mixer's actions and the fallback
     capsule. Geometry belongs to the asset cache.
   - A failed load shows a capsule.
@@ -1396,8 +1408,7 @@ the guide, opt-in with `?people=authored`), and callers do not change.
     draws with the one shared toon twin `peopleMaterial(eye, 'toon')`).
   - **Switch:** `PEOPLE_AUTHORED_DEFAULT` (`specs.ts`, one line) turns authored bodies on or off;
     `?people=authored` / `?people=standin` force either for the session (read once at people init).
-    It is `false` for now: the authored guide is opt-in (`?people=authored`) until his look passes
-    review; by default every person, the guide too, draws its stand-in.
+    The authored guide is enabled by default. The visitors draw their stand-ins.
   - **One shared material.** The pipeline bakes every surface colour of a body into its vertex
     colours and gives the mesh ONE material `People` (`kqchar/palette.py`). The people system draws
     every such mesh, in every authored person and every GLB, with the same `MeshStandardMaterial`
@@ -1585,8 +1596,12 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   `setSpeed` on change, `play(clip)` only when the clip hint changes.
 - Dog leaders: `npc:double.*` / `npc:extra.*` / `npc:guide` → the live person with that `specId`
   (`ctx.people.list()`, `root.position`, `root.rotation.y`), other `npc:<id>` → `kq.npc.list()`,
-  `player`, `animal:<id>`. Speed and heading from the motion between ticks (a jump > 15 m/s counts as
-  0). Unresolvable → the dog idles where it is.
+  `player`, `animal:<id>`. Speed and heading come from movement between ticks. A jump over
+  15 m/s counts as zero speed. An unresolved leader leaves the dog idling in place. Walk
+  relocations land the dogs in their new slots immediately using the leader poses supplied in
+  `group:relocated`. Dogs plant on sharp reversals and turn at up to 5 rad/s, with an
+  immediate facing change in reduced motion. The animal save stores an optional `turning` flag
+  so a planted dog stays still after loading until it lines up. Older saves default to `false`.
 - Events: the core's `animal:alert {id}`, `animal:fled {id, by, dist}`, `animal:settled {id}`,
   `animal:returned {id}` go onto the bus 1:1; `bark` / `shake` cues play as one-shots on the body (no
   dog bark SFX yet).
@@ -1621,7 +1636,9 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   window light `lightmap.ts`, nearest 12 candles/chandeliers) per building and era, built within
   60 m of the player, dropped beyond 85 m. 1789 candle-lit; 1793-02 dark, dust sheets, one candle
   in the Kabinett; 1793-07 looted (bible ch. 3) and burning; 1796 broken masonry, rubble, open
-  sky; today low mossy foundations only (no collision).
+  sky; today low mossy foundations only (no collision). Era changes release the old building
+  meshes, lightmaps and distance records. Festsaal choice replays release each prop geometry and
+  material once and reuse one glint texture until teardown.
 - Medium / high tier: the finishes take the CC0 surface layers (parquet, plaster, boards,
   marble, damask …) and the chandeliers / fauteuils are CC0 models (`Built.models`, instanced
   beside the mesh, dropped with it; candle flames sit at the model's candle tips). The model groups
@@ -1911,6 +1928,8 @@ pause the logic.
   past it the walk ends there (`to` becomes the warp stop, arrived); members land in their slots at
   once (mode unchanged), one `npc:arrived {skipped: true}`. Works while bodies are hidden; it never
   moves the player.
+- Both paths update the body roots and emit `group:relocated {group, poses}` after landing the
+  members and before reporting arrival. The animals system places the dogs using these poses.
 - **Bodies** (`bodies.ts`): `ctx.people` (people contract v0.1) first — spec per npc (`imhoff` →
   `guide`, spec ids pass through), tier hero / featured / extra, `root.position` moved, turns via
   `face`, locomotion via `setSpeed` (no `play` for walking, no `root.rotation`, no `lookAt`). A
@@ -2151,9 +2170,30 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
   label. Grants fire once per target: `codex` → `state.codex.facts` + `codex:unlocked { noXp: true }`
   (progression gives no XP for it), `card` → `cards` (must be in `cards[]`), `flag` → `state.flags`.
   Unknown ids are skipped with a dev warning. Photos give no XP.
-- Hooks: `kq.photo.{open, close, shoot, album, has, targets, judge(id), state, zoom, cards}`, and
+- **Gallery** (TASK-006; `gallery.ts`, `gallery-logic.ts`, `store.ts`): every shot with signal is
+  kept **on the device, not in the save**.
+  - Storage: `notes/capture.ts` `captureViewBlobs` copies the frame once, then encodes a JPEG of at
+    most 1920 px (q 0.88) and a 320 px thumbnail (q 0.75). IndexedDB `kq-photos` holds store
+    `photos` (metadata: ISO time, play seconds, era, x / z, targets, good, stars, size; plus the
+    thumbnail) and store `full` (the picture, same key). Where IndexedDB is missing or blocked a
+    memory store keeps the session only (`PhotoStore` interface; no wrapper library).
+  - Writes run after the shot, one after another, and never hold up the card. At most 100 photos
+    (`GALLERY_CAP`): a shot beyond that is not stored and a toast says so. The first stored photo
+    calls `navigator.storage.persist()`.
+  - Opening it: **G** while the phone is up (on desktop the phone holds the pointer lock, so the
+    bar's buttons are out of reach; G is the Bannlicht key, muted then), the phone bar's
+    „Galerie“ button (touch), or „Galerie öffnen“ on Pause → Album.
+  - The modal: a newest-first grid with the count and a device-only hint (Safari may clear site
+    data after about seven days without a visit; the memory store says „bis zum Neuladen“).
+  - A photo opens full-size, with ‹ › / arrow keys / a swipe, Teilen, Herunterladen and Löschen
+    (the first press asks „Wirklich?“, the second deletes). Herunterladen uses an object URL and `<a download>`
+    (`karlsberg-quest-YYYY-MM-DD-HH-MM-SS.jpg`). Teilen calls `navigator.share({ files })` from
+    the click when `navigator.canShare({ files })` says yes; otherwise, or when sharing fails, it
+    downloads. Object URLs are revoked when the grid is rebuilt and when the gallery closes.
+- Hooks: `kq.photo.{open, close, shoot, album, has, targets, judge(id), state, zoom, cards}`,
+  `kq.photo.gallery.{open, close, state, list, count, remove, kind, settled}`, and
   with `?debug` `kq.photo.deer.{spawn, calm, at, state}`. Tests: `tests/photo.test.ts`,
-  `tests/camera-photo.test.ts`, `e2e/photo.spec.ts`.
+  `tests/photo-gallery.test.ts`, `tests/camera-photo.test.ts`, `e2e/photo.spec.ts`.
 
 ### How to wire a chapter (story files, round 3)
 
@@ -2298,6 +2338,9 @@ Each RPG track adds its own subsection here when it fills its system in.
   chapters are reset (chapter jumps; the e2e `test` chapter counts as after the campaign). Side quests the
   player took keep running unless their chapter fails them. The book restores on a state `load`
   too (it fires before `save:loaded`, which reaches the story's resume first).
+- `migrate.ts` completes the Schuldbuch reward batch when deserialisation finds the defeated
+  quest boss and a loot roll saved at its first pickup. The remaining drops use the original roll
+  IDs and positions. XP and bestiary credit are applied before the systems restore their slices.
 - Main quest always visible (playtest round 10, F-30 / F-41, `tests/quests-tracker.test.ts`):
   a running main quest is always in `tracked()` (a lost entry heals on read, `track(id, false)`
   ignores it, Aufgaben shows no toggle for it). `mainOffer(chapter)`: with no main quest
@@ -2353,6 +2396,9 @@ Each RPG track adds its own subsection here when it fills its system in.
 | `strings.ts` | German captions (one per telegraph), boss hints, info lines |
 | `index.ts` | wiring: events in and out (see the diagram above), slice `state.systems.combat` (hp, stamina, bann, groups, deaths), `stats:changed` / `deriveStats` fallback, equip → weapon stage, `item:use` effects, `xp:grant` per kill, camera shake (none with reducedMotion), the boss reveal camera and death slow motion (none with reducedMotion), the lantern flare, death → `player:died` → `player:caught {by:'combat'}` → full heal on `player:teleport` (or after 8 s), heal on `hub:enter` and at the shift anchor; abilities by level (`skillsForLevel`; a new one rides on the level card through the card source `ability`, a toast only if no level card took it within 10 s of calm), keys `skill1–3` (T / Z(Y) / U, input.ts), the Ausfall's push through `player.impulse`; round 6 **camera clearance** (`cameraClearance`, after the reveal camera: when the camera ends up inside a big body's hull — a boss, a Steinfresser, a Foliant — the view eases out along the line from its axis, a little up, ≤ 3 m for a boss (to 1.3 × its hull), never under the ground; the player and the fight are untouched; `kq.combat.view()` reads the pull and each body's dither); `enemy:killed.by` maps the sim's `skill` / `hazard` to `heavy`; no `xp:grant` for called adds |
 
+- The per-step `combat:step` save hold is released only after the step's HP, stamina and
+  Bannlicht are mirrored into the combat slice, so a kill autosave carries the vitals after the
+  kill's XP (a level-up heals). `tests/combat-autosave.test.ts` checks the saved snapshot.
 - **Interact wins LMB**: an attack from the mouse is ignored while any `.kq-prompt` is shown
   (npc / chronik / menagerie); K always swings. Attacks are also blocked while measuring, flying,
   frozen, in a modal or a conversation, and with `flags['combat.disabled']` („Du hebst den Stab nicht.“).
@@ -2368,6 +2414,10 @@ Each RPG track adds its own subsection here when it fills its system in.
   charged past three times can be led home with E → `menagerie:calmed`; three Bannlicht flares
   drive a jaguar off for good → `menagerie:calmed`. The save records the counted misses and flares
   as well as completed calming.
+  An explicit era on a spawn cue overrides the current era; re-sending an identical spawn is a no-op.
+  The garden-to-kennel beats reassert the same fire-night jaguar by id, including on resume. A
+  temporary removal with `keepProgress` (chapter 3's `leave`) keeps the partial counts across
+  chapter selection; calming, a permanent removal, or closing the jaguar quest clears them.
 - **Debug** `window.kq.combat`: `state() spawn(kind, opts) kill(groupOrId?) hit(n) bann() dodge()
   god(on) groups() enemies() place() windup() freeze() skill(id) hurt() heal() events() shake() sim()`.
 - **e2e** `e2e/combat.spec.ts` (screenshots `test-results/screens/rpg-combat-*.png`),

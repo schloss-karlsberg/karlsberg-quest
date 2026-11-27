@@ -25,7 +25,8 @@ import { acceptSound, objectiveSound, pageSound, readySound, tickSound, turninSo
 import { Beacons, type BeaconSpec } from './beacons';
 import { type HintContext, type WayDeps, type WayPoint, StallWatch, distanceText, hintFor, objectiveTarget, storyHint, targetVisible } from './wayfinding';
 import { enemyDef } from '../../rpg/enemies';
-import { loadBundledQuests, questsInPlay } from './data';
+import { giverPlacedIn, loadBundledQuests, questsInPlay, sideQuestClosed } from './data';
+import { loadBundledStories } from '../story/stories';
 import { Feed, RewardNotice, showBanner, Tracker, type RewardView, type TrackerQuest } from './hud';
 import { Waymark } from '../../ui/waymark';
 import { hideWhileQuiet } from '../../core/quiet';
@@ -158,6 +159,7 @@ class QuestRuntime {
     this.retired = retired;
     this.items = items;
     const self = this;
+    const stories = new Map(loadBundledStories().map(({ story }) => [story.chapter, story]));
     this.book = new QuestBook(this.defs, this.slice(), {
       get flags() {
         return ctx.state.mutable.flags;
@@ -171,6 +173,15 @@ class QuestRuntime {
       emit: (n, p) => ctx.events.emit(n, p),
       now: () => ctx.state.state.meta.playSeconds,
       rng: Math.random,
+      hasCalmed: (animal) => animal === 'cassowary' && ctx.state.state.systems.menagerie?.calmed?.includes('kasuar') === true,
+      takenPickups: () => ctx.state.state.systems.progression?.taken ?? [],
+      sideClosed: (id) => {
+        const story = ctx.state.state.systems.story;
+        return sideQuestClosed(stories.get(story?.chapter ?? ''), story?.beat ?? null, id);
+      },
+      canOfferAtNpc: (npc, chapter) => {
+        return giverPlacedIn(ctx.state.state.systems.npc?.placed?.[npc], chapter);
+      },
     });
     this.book.onChange = (why) => self.changed(why);
 
@@ -199,22 +210,16 @@ class QuestRuntime {
         else if (op === 'start') this.book.accept(id);
         else if (op === 'progress' && objective) this.book.progress(id, objective, n ?? 1, true);
         else if (op === 'complete') this.book.complete(id, true);
-        else if (op === 'fail') {
-          // the story moves on: an offer nobody took is simply withdrawn, a finished quest pays
-          // out, only an accepted, unfinished one is missed (playtest: offers failed with an ×)
-          const st = this.book.state(id);
-          if (st === 'offered' || st === 'hidden') this.book.reset(id);
-          else if (st === 'ready') this.book.complete(id, true);
-          else this.book.fail(id);
-        }
+        else if (op === 'fail') this.book.close(id);
         else if (op === 'reset') this.book.reset(id);
       }),
       ev.on('quest:accept', ({ id }) => this.book.accept(id)),
       ev.on('quest:decline', () => (this.dirty = true)),
       ev.on('quest:told', ({ id }) => this.book.told(id)),
       ev.on('quest:turnin', ({ id }) => this.book.complete(id)),
-      ev.on('story:chapter', ({ id }) => {
+      ev.on('story:chapter', ({ id, replay }) => {
         this.availIn = 0;
+        this.book.startChapter(id, replay);
         this.book.dropEarlier(id);
         // the main quest on offer is the chapter's (renderTracker)
         this.dirty = true;
@@ -224,6 +229,7 @@ class QuestRuntime {
         this.markIn = 0;
         this.dirty = true;
       }),
+      ev.on('story:beat', () => (this.availIn = 0)),
       ev.on('level:up', () => (this.availIn = 0)),
       ev.on('chronik:open', () => openPausePage(ctx.ui.modals, 'codex')),
       ev.on('game:start', ({ resumed }) => {
@@ -313,10 +319,12 @@ class QuestRuntime {
   restore(): void {
     this.book.slice = this.slice();
     this.book.mirror();
-    this.book.reassert();
+    const { combat, progression } = this.ctx.state.state.systems;
+    this.book.reassert(combat, progression);
     this.restoring = true;
     try {
       this.settleKnown();
+      this.book.reconcileDeadlines(this.chapter());
     } finally {
       this.restoring = false;
     }
@@ -380,7 +388,7 @@ class QuestRuntime {
     acceptSound(this.ctx.audio);
     // The banner waits until the payout notice is gone.
     const first = q.objectives.find((o) => !o.optional && !o.hidden && !(o.after ?? []).length);
-    const xp = q.rewards?.xp ?? 0;
+    const xp = this.book.slice.replay?.quests[id] ? 0 : q.rewards?.xp ?? 0;
     const sub = [first?.text_de, xp > 0 ? t('quest.xp', { n: xp }) : ''].filter(Boolean).join(' · ');
     this.bannerQ.push(() => {
       // A saved calm can finish the quest on acceptance: no "Nebenaufgabe" banner after its payout.
@@ -465,12 +473,12 @@ class QuestRuntime {
   card(id: string, turnin = false): QuestCard | undefined {
     const q = this.defs.get(id);
     if (!q) return undefined;
-    const r = q.rewards ?? {};
+    const r = this.book.slice.replay?.quests[id] ? {} : q.rewards ?? {};
     const facts = new Set([...(q.history ?? []).map((l) => l.fact).filter((f): f is string => !!f), ...(r.codex ?? [])]);
     const g = giverOf(q);
     return {
       title: q.title_de,
-      giver: this.ctx.content.speakers.get(g)?.name_de ?? g,
+      giver: this.ctx.content.speakers.get(g)?.name_de ?? t('common.unknownPerson'),
       pitch: q.summary_de,
       main: q.kind === 'main',
       objectives: q.objectives
@@ -488,7 +496,7 @@ class QuestRuntime {
   }
 
   itemName(id: string): string {
-    return this.items.get(id)?.name_de ?? itemDef(id)?.name_de ?? id;
+    return this.items.get(id)?.name_de ?? itemDef(id)?.name_de ?? t('common.unknownItem');
   }
 
   // ---- per tick -----------------------------------------------------------------------------
@@ -578,7 +586,7 @@ class QuestRuntime {
     const offer = this.book.mainOffer(this.chapter());
     if (offer) {
       const g = giverId(offer);
-      const name = this.ctx.content.speakers.get(g)?.name_de ?? g;
+      const name = this.ctx.content.speakers.get(g)?.name_de ?? t('common.unknownPerson');
       list.push({ id: offer.id, title: offer.title_de, main: false, offer: true, ready: false, objectives: [{ id: 'offer', text: t('quest.offerAt', { name }), count: 0, need: 1, done: false, optional: false }] });
       first = false;
     }
@@ -588,7 +596,7 @@ class QuestRuntime {
       const st = this.book.state(id);
       const ready = st === 'ready';
       const ti = turninOf(q);
-      const who = typeof ti === 'object' ? this.ctx.content.speakers.get('npc' in ti ? ti.npc : ti.voice)?.name_de ?? ('npc' in ti ? ti.npc : ti.voice) : null;
+      const who = typeof ti === 'object' ? this.ctx.content.speakers.get('npc' in ti ? ti.npc : ti.voice)?.name_de ?? t('common.unknownPerson') : null;
       list.push({
         id,
         title: q.title_de,
@@ -679,7 +687,7 @@ class QuestRuntime {
         if (typeof ti === 'object' && 'npc' in ti) {
           const n = this.npcPlaced(ti.npc);
           if (n && n.era === era) {
-            const name = this.ctx.content.speakers.get(ti.npc)?.name_de ?? ti.npc;
+            const name = this.ctx.content.speakers.get(ti.npc)?.name_de ?? t('common.unknownPerson');
             return { quest: q, obj: null, target: { x: n.x, z: n.z, r: 2.5, era: n.era, kind: 'npc' }, label: t('quest.readyAt', { name }) };
           }
         }
@@ -888,7 +896,7 @@ class QuestRuntime {
       otherEra,
       player: { x: p.x, z: p.z },
       scan: clue?.requires?.scanMode,
-      npcName: o.npc ? (ctx.content.speakers.get(o.npc)?.name_de ?? o.npc) : undefined,
+      npcName: o.npc ? (ctx.content.speakers.get(o.npc)?.name_de ?? t('common.unknownPerson')) : undefined,
       itemName: o.item ? this.itemName(o.item) : undefined,
       needsBann: !!(o.enemy && enemyDef(o.enemy)?.needsBann),
     };
@@ -935,7 +943,7 @@ class QuestRuntime {
         if (i >= 0) s.unseen.splice(i, 1);
       },
       bestiary: () => book.slice.bestiary ?? {},
-      speaker: (id) => ctx.content.speakers.get(id)?.name_de ?? id,
+      speaker: (id) => ctx.content.speakers.get(id)?.name_de ?? t('common.unknownPerson'),
       storyStep: () => {
         const so = (ctx.state.state.systems as Record<string, unknown>).story as { objective?: { text?: string | null } | null } | undefined;
         return so?.objective?.text || null;

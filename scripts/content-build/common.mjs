@@ -41,7 +41,7 @@ const S = {
   'WP-JB': ['https://de.wikipedia.org/wiki/Schloss_J%C3%A4gersburg', 'de.wikipedia: Schloss Jägersburg'],
   'WP-WJ': ['https://de.wikipedia.org/wiki/Wilde_Jagd', 'de.wikipedia: Wilde Jagd'],
   HIST: ['https://geoportal.saarland.de/mapbender/php/mod_showMetadata.php?languageCode=de&resource=wms&id=2597', 'Geoportal Saarland: WMS Historische Karten (dl-de/by-2-0)'],
-  LVGL: ['https://www.shop.lvgl.saarland.de/', 'LVGL Saarland: Geobasisdaten (DGM1 2025, Open Data)'],
+  LVGL: ['https://www.shop.lvgl.saarland.de/', 'LVGL Saarland: Geobasisdaten (DGM1 2025, offene Daten)'],
   SDSCHG: ['https://umwelt-online.de/recht/bau/laender/saarland/dschg18.htm', 'Saarländisches Denkmalschutzgesetz'],
   'HE-BW': ['https://denkmal.hessen.de/sites/denkmal.hessen.de/files/2022-08/bodendenkmaeler-unter-wald_0.pdf', 'Landesamt für Denkmalpflege Hessen: Bodendenkmäler unter Wald'],
   HP: ['https://schloss-karlsberg.de/hoerpfad-schloss-karlsberg/', 'Hörpfad Schloss Karlsberg'],

@@ -3,7 +3,7 @@ import type { EventBus } from '../core/events';
 import type { SettingsStore } from '../core/save';
 import { addStrings, t } from '../i18n';
 import type { Action, Input } from '../player/input';
-import { TOUCH, TOUCH_BUTTON_ACTIONS, TOUCH_SETTINGS, type TouchSetting, diffHeld, isTouchSetting, lookDelta, crouchButtonMode, rotateWanted, stickToMove, touchActive, touchIconFor, touchPromptIcon } from '../player/touchMap';
+import { TOUCH, TOUCH_BUTTON_ACTIONS, TOUCH_SETTINGS, type TouchSetting, diffHeld, isTouchSetting, lookDelta, crouchButtonMode, rotateWanted, stickToMove, touchActive, touchPromptIcon } from '../player/touchMap';
 import { h, svg } from './dom';
 import type { Hud } from './hud';
 import { PointerTap } from './pointerTap';
@@ -22,7 +22,7 @@ addStrings('de', {
   'touch.setting.auto': 'Auto',
   'touch.setting.on': 'An',
   'touch.setting.off': 'Aus',
-  'touch.setting.help': 'Stick, Wischen zum Umsehen und Knöpfe auf dem Bildschirm. Auto: an auf Telefon und Tablet oder sobald der Bildschirm berührt wird.',
+  'touch.setting.help': 'Mit dem Regler bewegen, zum Umsehen wischen und auf die Schaltflächen tippen. Auf Handys und Tablets ist die Touch-Steuerung automatisch an. Sie schaltet sich auch ein, sobald du den Bildschirm berührst.',
   'touch.attack': 'Hieb (halten: Wuchthieb)',
   'touch.dodge': 'Ausweichen',
   'touch.up': 'Steigen',
@@ -31,11 +31,11 @@ addStrings('de', {
   'touch.prone': 'Hinlegen',
   'touch.lantern': 'Laterne',
   'touch.bannlicht': 'Bannlicht',
-  'touch.lock': 'Ziel fassen',
+  'touch.lock': 'Ziel erfassen',
   'touch.balm': 'Balsam',
   'touch.interact': 'Interagieren (halten: Lauschen)',
   'touch.interact.short': 'Aktion',
-  'touch.shift': 'Epochenwechsel (halten: zurück)',
+  'touch.shift': 'Zeitsprung (halten: zurück zur Quelle)',
   'touch.fly': 'Geisterblick',
   'touch.land': 'Landen',
   'touch.survey': 'Erkunden',
@@ -44,7 +44,7 @@ addStrings('de', {
   'touch.plans': 'Planblatt',
   'touch.map': 'Karte',
   'touch.pause': 'Pause',
-  'touch.photo': 'Handy-Kamera',
+  'touch.photo': 'Fotomodus',
   'touch.shutter': 'Auslöser: Foto machen',
   'touch.relief': 'Relief',
   'touch.relief.0': 'Aus',
@@ -191,6 +191,9 @@ export class TouchControls {
     this.proneBtn = btn('prone', I.prone, t('touch.prone'), TOUCH_BUTTON_ACTIONS.prone).el;
     const shift = btn('shift', I.shift, t('touch.shift'), ['shift']);
     shift.el.append(h('i.kq-t-ring'));
+    deps.events.on('group:find', ({ prompt }) => {
+      shift.el.setAttribute('aria-label', t(prompt ? 'action.regroup.hold' : 'touch.shift'));
+    });
     const attack = btn('attack', I.attack, t('touch.attack'), ['attack', 'interact']);
     attack.el.append(h('i.kq-t-ring'));
     this.attackBtn = attack.el;
@@ -333,7 +336,10 @@ export class TouchControls {
     this.wanted = touchActive(this.deps.settings.state.touchControls, this.coarse, this.touchSeen);
     this.deps.input.touchMode = this.wanted;
     document.documentElement.toggleAttribute('data-kq-touch', this.wanted);
-    this.deps.hud.setTouchIcons(this.wanted ? (key) => TOUCH_ICONS[touchIconFor(key)] : null);
+    this.deps.hud.setTouchIcons(this.wanted ? (key) => {
+      const icon = touchPromptIcon(key, null);
+      return icon ? TOUCH_ICONS[icon] : null;
+    } : null);
     if (!this.wanted) this.releaseAll();
     this.syncVisible();
     this.syncFly();
@@ -378,6 +384,8 @@ export class TouchControls {
     this.attackBtn.classList.toggle('shutter', on);
     this.attackBtn.replaceChildren(svg(on ? TOUCH_ICONS.shutter : TOUCH_ICONS.attack), h('i.kq-t-ring'));
     this.attackBtn.setAttribute('aria-label', t(on ? 'touch.shutter' : 'touch.attack'));
+    const prompt = this.deps.hud.promptShown();
+    this.setPrompt(prompt?.key ?? null, prompt?.text ?? null);
   }
 
   /** Hide the ability buttons not learnt yet. */
@@ -412,7 +420,7 @@ export class TouchControls {
    * an interact prompt's text ("Lauschen", "Untersuchen" …).
    */
   setPrompt(key: string | null, text: string | null): void {
-    const icon = touchPromptIcon(key, text);
+    const icon = touchPromptIcon(key, text, this.attackBtn.classList.contains('shutter'));
     const mine = icon === 'interact' && !!text?.trim();
     this.interactText.textContent = mine ? text! : t('touch.interact.short');
     this.interactBtn.el.classList.toggle('lit', mine);

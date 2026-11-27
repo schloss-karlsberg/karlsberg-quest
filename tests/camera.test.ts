@@ -170,6 +170,27 @@ describe('third-person camera rig', () => {
     expect(cam.position.y).toBeGreaterThan(slope.heightAt(cam.position.x, cam.position.z) + 0.3);
   });
 
+  it('pulls the framed lens in immediately at a diagonal ridge and eases back out when it clears', () => {
+    const rig = new CameraRig();
+    const cam = new PerspectiveCamera();
+    const ridge: CameraWorld = {
+      heightAt: (x, z) => x < 0.208 && z > 1.18 && z < 1.21 ? 4 : 0,
+      blocked: () => false,
+    };
+    settle(rig, cam, flat);
+    expect(cam.position.z).toBeGreaterThan(3);
+    rig.update(cam, input(), ridge, noHints());
+    expect(cam.position.z).toBeLessThan(0.9);
+    expect(cam.position.y).toBeGreaterThan(1.65);
+
+    const pulledIn = cam.position.clone();
+    rig.update(cam, input({ yaw: 0.003 }), ridge, noHints());
+    expect(cam.position.z).toBeGreaterThan(pulledIn.z);
+    expect(cam.position.distanceTo(pulledIn)).toBeLessThan(0.3);
+    settle(rig, cam, ridge, input({ yaw: 0.003 }));
+    expect(cam.position.z).toBeCloseTo(rig.zoom, 1);
+  });
+
   it('indoors the camera stays under the ceiling', () => {
     const rig = new CameraRig();
     const cam = new PerspectiveCamera();

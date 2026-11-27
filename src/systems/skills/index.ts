@@ -20,6 +20,7 @@ import './strings';
 import './skills.css';
 import type { GameContext } from '../../core/context';
 import { defineSystem } from '../../core/systems';
+import { hasString } from '../../i18n';
 import { stampChime } from './audio';
 import { UnlockCards } from './card';
 import { type Gate, SKILL_IDS, SKILL_MAX, type SkillId, gateFrom, levelOf, parseSkill, roman, setFreeOverride, skillIncreases } from './logic';
@@ -102,14 +103,15 @@ function onUnlocked(ctx: GameContext, skill: SkillId, level: number): void {
   ctx.events.emit('skill:unlocked', { skill, level });
 }
 
-function laubLine(ctx: GameContext, skill: SkillId, level: number): void {
+/** Laub's comment on an unlock; skipped when that skill level has no line (exported for tests). */
+export function laubLine(ctx: GameContext, skill: SkillId, level: number): void {
   const laubTalks = ctx.state.state.flags['story.laub'] === true || !storyRunning(ctx);
   if (!laubTalks) return;
   const key = `skills.laub.${skill}.${level}`;
-  const text = ctx.t(key);
-  if (text === key) return;
+  // t() returns a German placeholder for a missing key, never the key itself
+  if (!hasString(key)) return;
   said.push(key);
-  ctx.events.emit('dialogue:say', { speaker: 'laub', text, id: `laub.skill.${skill}.${level}`, fiction: true });
+  ctx.events.emit('dialogue:say', { speaker: 'laub', text: ctx.t(key), id: `laub.skill.${skill}.${level}`, fiction: true });
 }
 
 export default defineSystem({

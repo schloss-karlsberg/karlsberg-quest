@@ -26,7 +26,9 @@ describe('stickToMove', () => {
   it('sprints at the rim, only forwards', () => {
     expect(stickToMove(0, -R * 2).actions).toEqual(['forward', 'sprint']);
     expect(stickToMove(0, R * 2).actions).toEqual(['back']);
-    expect(stickToMove(0, -R * 0.7).actions).not.toContain('sprint');
+    expect(stickToMove(0, -R * 0.5).actions).toEqual(['forward']);
+    expect(stickToMove(0, -R * 0.91).actions).toEqual(['forward']);
+    expect(stickToMove(0, -R * 0.92).actions).toEqual(['forward', 'sprint']);
   });
   it('clamps the knob to the radius', () => {
     const r = stickToMove(R * 3, R * 4);
@@ -215,6 +217,15 @@ describe('Input.press (virtual touch actions)', () => {
   it('works after the player remapped the key', () => {
     const inp = make();
     inp.setBindings({ attack: ['KeyZ'] });
+    inp.simulate('KeyK', true);
+    expect(inp.wasPressed('attack')).toBe(false);
+    inp.simulate('KeyZ', true);
+    inp.muted.add('attack');
+    expect(inp.isDown('attack')).toBe(false);
+    expect(inp.wasPressed('attack', true)).toBe(true);
+    inp.muted.delete('attack');
+    inp.simulate('KeyZ', false);
+    expect(inp.isDown('attack')).toBe(false);
     inp.press('attack', true);
     expect(inp.isDown('attack')).toBe(true);
   });
@@ -292,12 +303,20 @@ describe('rotateWanted (M-02)', () => {
     expect(rotateWanted({ ...q, width: 820, height: 1180 })).toBe(false);
     expect(rotateWanted({ ...q, width: 600, height: 960 })).toBe(false);
   });
+  it('asks the tour phone to rotate in Auto before the first touch, and unblocks it in landscape', () => {
+    const portrait = { ...q, width: 390, height: 844 };
+    const touch = touchActive('auto', true, false);
+    expect(rotateWanted({ ...portrait, touch })).toBe(true);
+    expect(rotateWanted({ ...portrait, touch, width: 844, height: 390 })).toBe(false);
+    expect(rotateWanted({ ...portrait, touch: touchActive('auto', false, false) })).toBe(false);
+  });
 });
 
 describe('touchPromptIcon (M-05)', () => {
   it('leaves a movement prompt to the stick', () => {
     expect(touchPromptIcon('W A S D', 'Gehen · ins Bild klicken, dann Maus: Schauen')).toBeNull();
     expect(touchPromptIcon('WASD', 'Gehen')).toBeNull();
+    expect(touchPromptIcon('Umschalt', 'Zum Rennen ganz vor')).toBeNull();
   });
   it('maps keys and key-less interact prompts as before', () => {
     expect(touchPromptIcon('E', 'Untersuchen')).toBe('interact');

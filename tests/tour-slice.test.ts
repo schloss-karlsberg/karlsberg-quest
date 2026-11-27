@@ -222,17 +222,24 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     expect(h.said).toContain('imhoff.t.pause');
     h.tick();
     expect(h.beat()).toBe('t16');
-    // alone at the trough: the compass, Laub, the touch
+    // The group continues uphill as the player finds the compass.
+    const departing = h.sent.length;
     Object.assign(h.pos, { x: 1059.3, z: -833.1 });
     for (let i = 0; i < 25; i++) h.tick();
     expect(h.beat()).toBe('t17');
     expect(h.sent.map(({ a }) => a)).toContainEqual({ do: 'sound', sound: 'compass', caption: '[Messing klirrt auf Stein]' });
+    const cleanups = () => h.sent.slice(departing).filter(({ a }) =>
+      (a.do === 'npc' && a.op === 'despawn' && 'group' in a && a.group === 'fuehrung') ||
+      (a.do === 'animal' && a.op === 'despawn' && ['diane', 'bijou'].includes(a.id)));
+    expect(cleanups()).toHaveLength(0);
+    expect(h.flags['walk.find']).toBe(false);
     expect(h.flags['story.compass']).toBe(true);
     expect(h.flags['quelle.call']).toBe(true);
     expect(h.said).toEqual(expect.arrayContaining(['player.q.fund', 'laub.t.intro', 'player.q.laub', 'laub.t.trog']));
     h.ev('quelle:touch', {});
     expect(h.era()).toBe('1789');
     expect(h.beat()).toBe('t18');
+    expect(cleanups()).toHaveLength(0);
     expect(h.flags['quelle.call']).toBeUndefined();
     // no „Fortsetzung folgt“: a look round in 1789, then the hand-over into chapter 1
     expect(h.sent.some((s) => s.kind === 'card')).toBe(false);
@@ -240,6 +247,8 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     expect(h.said).toEqual(expect.arrayContaining(['player.q.wo', 'laub.t.1789']));
     expect(h.flags['combat.disabled']).toBeUndefined();
     expect(h.flags['tour.slice']).toBeUndefined();
+    expect(h.flags['walk.find']).toBeUndefined();
+    expect(cleanups()).toHaveLength(3);
     expect(h.completed()).toContain('tour');
     expect(h.chapter()).toBe('k1');
     expect(h.beat()).toBe('k1_0');

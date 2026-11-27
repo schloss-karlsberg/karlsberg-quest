@@ -12,6 +12,7 @@ import { levelForXp } from '../src/rpg/stats';
 import type { FlagValue, QuestDef, QuestFile } from '../src/rpg/types';
 import { questsInPlay } from '../src/systems/quests/data';
 import { QuestBook, type QuestDefIn, createQuestSlice, need, seededRng } from '../src/systems/quests/logic';
+import { hintFor } from '../src/systems/quests/wayfinding';
 import type { StoryFile } from '../src/systems/story/types';
 
 const ROOT = new URL('..', import.meta.url);
@@ -39,6 +40,14 @@ function walk(v: unknown, out: Any[] = []): Any[] {
 const actions = (s: StoryFile) => walk(s).filter((o) => typeof o.do === 'string');
 const mains = (f: QuestFile) => f.quests.filter((q) => q.kind === 'main');
 const sides = (f: QuestFile) => f.quests.filter((q) => q.kind === 'side');
+
+it('tells a stalled jaguar quest player to aim the Bannlicht, not to dodge', () => {
+  const objective = Q3.quests.find(({ id }) => id === 'q.k3.jaguar')!.objectives[0]!;
+  const context = { target: null, player: { x: 1276, z: -1418 } };
+  expect(hintFor(objective, context)).toMatch(/Bannlicht.*dreimal/);
+  expect(hintFor(objective, context)).not.toContain('Ausweichen');
+  expect(hintFor(objective, { ...context, otherEra: '1793-07' })).toMatch(/Q halten/);
+});
 
 describe('contentB: the shape of the chapters', () => {
   it('K3 and K4: at least five main quests and two to four side quests each', () => {
@@ -116,10 +125,12 @@ describe('contentB: the shape of the chapters', () => {
     expect(r('q.k4.stellen').items).toContainEqual({ item: 'item.horn' });
     // the Festsaal choice (four things in the room, `festsaal.took`) hands over the charm (nichts: nothing)
     const k34 = S3.beats.find((b) => b.id === 'k3_4')!;
-    const took = (k34.on ?? []).filter((r) => (r.when as unknown as Any)?.flag === 'festsaal.took');
-    expect(took.map((r) => (r.when as unknown as Any).eq).sort()).toEqual(['dukat', 'nichts', 'tuergriff', 'uhr']);
-    for (const r of took) {
-      const key = (r.when as unknown as Any).eq as string;
+    const took = (k34.on ?? []).flatMap((reaction) => {
+      const key = walk(reaction.when).find((c) => c.flag === 'festsaal.took')?.eq;
+      return typeof key === 'string' ? [{ reaction, key }] : [];
+    });
+    expect(took.map(({ key }) => key).sort()).toEqual(['dukat', 'nichts', 'tuergriff', 'uhr']);
+    for (const { reaction: r, key } of took) {
       const items = (r.do as unknown as Any[]).filter((a) => a.do === 'item').map((a) => a.item);
       expect(items).toEqual(key === 'nichts' ? [] : [`item.charm.${key}`]);
       expect((r.do as unknown as Any[]).find((a) => a.do === "flag")!.set).toMatchObject({ 'flag.k3_objekt': key, 'choice.k3.objekt': key });
@@ -248,7 +259,7 @@ function play(files: QuestFile[], ids: string[]) {
               book.handle('room:enter', { roomId: o.room, id: `KB-B01/${o.room}` });
               break;
             case 'calm':
-              book.handle('menagerie:calmed', { animal: o.animal, id: 'k3.jaguar' });
+              book.handle('menagerie:calmed', { animal: 'jaguar', id: 'k3.jaguar' });
               break;
             case 'talk':
               book.handle('npc:talk', { npc: o.npc, topic: 'greet' });

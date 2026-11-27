@@ -1,6 +1,14 @@
-/** WP-16 tour walk: the walk system's runtime (src/systems/walk/runtime.ts) with fake bodies and a fake bus. */
+/** WP-16 tour walk: the walk runtime with fake bodies. */
 import { describe, expect, it, vi } from 'vitest';
+import tourPack from '../content/packs/tour.pack.json';
 import route from '../content/routes/p-fuehrung.json';
+import { ContentDB } from '../src/content/db';
+import type { ContentPack } from '../src/content/types';
+import type { GameContext } from '../src/core/context';
+import { EventBus, type EventName, type GameEvents } from '../src/core/events';
+import { GameStateStore, createInitialState } from '../src/core/state';
+import barks from '../src/systems/barks';
+import { createStorySlice } from '../src/systems/story/engine';
 import { PEOPLE_MISSING, walkBodies, type PeopleApiLike } from '../src/systems/walk/bodies';
 import { WalkRuntime, memberLooks, specFor, type Body, type BodyFactory, type BodySpawn, type WalkBus } from '../src/systems/walk/runtime';
 import type { Route, WalkRequest, WalkSlice } from '../src/systems/walk/types';
@@ -10,18 +18,14 @@ const DT = 1 / 60;
 const MEMBERS_14 = ['double.herzog', 'double.mannlich', 'double.hanne', 'double.peter', 'double.jost', 'double.soll', 'double.liese', 'extra.mats', 'extra.mutter', 'extra.paar_a', 'extra.paar_b', 'extra.wanderin_a', 'extra.wanderin_b', 'extra.student'];
 const MEMBERS = ['double.herzog', 'double.mannlich', 'double.hanne', 'extra.mats', 'extra.mutter', 'extra.student'];
 
-class FakeBus implements WalkBus {
-  readonly handlers = new Map<string, ((p: never) => void)[]>();
-  readonly log: { n: string; p: any }[] = [];
-  on(name: string, fn: (p: never) => void): void {
-    this.handlers.set(name, [...(this.handlers.get(name) ?? []), fn]);
+class RecordingBus extends EventBus {
+  readonly log: { name: EventName; payload: unknown }[] = [];
+  constructor() {
+    super();
+    this.onAny((name, payload) => this.log.push({ name, payload }));
   }
-  emit(name: string, payload: unknown): void {
-    this.log.push({ n: name, p: payload });
-    for (const fn of this.handlers.get(name) ?? []) fn(payload as never);
-  }
-  of(name: string): any[] {
-    return this.log.filter((e) => e.n === name).map((e) => e.p);
+  of<K extends EventName>(name: K): GameEvents[K][] {
+    return this.log.filter((e) => e.name === name).map((e) => e.payload as GameEvents[K]);
   }
 }
 
@@ -35,19 +39,21 @@ interface FakeBody extends Body {
 }
 
 function setup(slice: WalkSlice = { walkers: [], groups: [] }, factory?: BodyFactory) {
-  const bus = new FakeBus();
+  const bus = new RecordingBus();
   const player = { x: 524, z: -765 };
-  const world = { era: 'today' };
+  const world = { era: 'today', reducedMotion: false };
+  const heightAt = vi.fn((_x: number, _z: number) => 300);
   const bodies: FakeBody[] = [];
   const rt = new WalkRuntime({
-    bus,
+    bus: bus as unknown as WalkBus,
     routes: new Map([[ROUTE.id, ROUTE]]),
     slice: () => slice,
     log: () => {},
     world: {
-      heightAt: () => 300,
+      heightAt,
       player: () => player,
       era: () => world.era,
+      reducedMotion: () => world.reducedMotion,
       // one trunk right on the route, 30 m in
       trunksNear: (x, z, r, fn) => {
         if (Math.hypot(x - 512, z - -740) < r + 1) fn(512, -740, 0.5, 20);
@@ -82,7 +88,7 @@ function setup(slice: WalkSlice = { walkers: [], groups: [] }, factory?: BodyFac
       return b;
     }),
   });
-  const step = (seconds: number, follow?: (w: { x: number; z: number }) => void) => {
+  const step = (seconds: number, follow?: (w: { x: number; z: number }) => void, afterTick?: () => void) => {
     const n = Math.round(seconds / DT);
     for (let i = 0; i < n; i++) {
       if (follow) {
@@ -91,11 +97,12 @@ function setup(slice: WalkSlice = { walkers: [], groups: [] }, factory?: BodyFac
       }
       rt.update(DT);
       rt.sync();
+      afterTick?.();
     }
     rt.sync();
   };
   const req = (r: WalkRequest) => bus.emit('npc:walk', r);
-  return { bus, player, world, bodies, rt, step, req, slice };
+  return { bus, player, world, bodies, heightAt, rt, step, req, slice };
 }
 
 function demo(s: ReturnType<typeof setup>, to = 'abzweig', wait = true) {
@@ -105,6 +112,79 @@ function demo(s: ReturnType<typeof setup>, to = 'abzweig', wait = true) {
 }
 
 describe('walk system', () => {
+  it('turns stopped visitors toward the guide and the guide toward the player during the active line', () => {
+    const s = setup();
+    s.req({ op: 'walk', npc: 'imhoff', route: ROUTE.id, to: 'parkplatz' });
+    s.req({ op: 'group', group: 'fuehrung', leader: 'imhoff', members: MEMBERS });
+    const guide = s.rt.npcs.get('imhoff')!;
+    const member = s.rt.npcs.get(MEMBERS[0]!)!;
+    const initial = 0.4;
+    member.yaw = initial;
+    const bearing = Math.atan2(member.x - guide.x, member.z - guide.z);
+    s.bus.emit('dialogue:active', { speaker: 'imhoff' });
+    s.step(DT);
+    expect(member.yaw).not.toBe(initial);
+    expect(Math.cos(member.yaw - bearing)).toBeLessThan(0.999);
+    s.world.reducedMotion = true;
+    s.step(DT);
+    expect(Math.cos(member.yaw - bearing)).toBeCloseTo(1, 10);
+    expect(Math.cos(guide.yaw - Math.atan2(guide.x - s.player.x, guide.z - s.player.z))).toBeCloseTo(1, 10);
+    const parked = s.rt.walkers.get('imhoff')!;
+    s.bus.emit('dialogue:active', { speaker: null });
+    s.step(DT);
+    expect(Math.cos(guide.yaw - parked.yaw)).toBeCloseTo(1, 10);
+    expect(s.rt.tourVisitors()).toHaveLength(1 + MEMBERS.length);
+    s.world.era = '1789';
+    expect(s.rt.tourVisitors()).toHaveLength(0);
+  });
+
+  it('uses the trail slots for the Felsenpfad gathering before and after a save', () => {
+    const s = setup();
+    s.req({ op: 'walk', npc: 'imhoff', route: ROUTE.id, to: 'felsen' });
+    s.req({ op: 'group', group: 'fuehrung', leader: 'imhoff', members: MEMBERS_14 });
+    expect(s.rt.snap('fuehrung', 'felsen')).toBe(true);
+    s.req({ op: 'gather', group: 'fuehrung', around: 'imhoff' });
+    s.step(10);
+    const slots = ROUTE.stops.find((stop) => stop.id === 'felsen')!.slots!;
+    const check = () => {
+      for (const [x, z] of slots) {
+        expect(MEMBERS_14.some((m) => {
+          const n = s.rt.npcs.get(m)!;
+          return Math.hypot(x - n.x, z - n.z) < 0.051;
+        })).toBe(true);
+      }
+    };
+    check();
+    s.rt.writeSlice();
+    s.rt.restore();
+    check();
+  });
+
+  it('shares visitor circles and samples only the visitor that changed position', () => {
+    const s = setup();
+    s.req({ op: 'group', group: 'fuehrung', leader: 'imhoff', members: MEMBERS_14 });
+    s.heightAt.mockClear();
+    const playerCircles = s.rt.tourVisitors();
+    expect(playerCircles).toHaveLength(15);
+    expect(s.heightAt).toHaveBeenCalledTimes(15);
+    expect(s.rt.tourVisitors()).toBe(playerCircles);
+    expect(s.heightAt).toHaveBeenCalledTimes(15);
+
+    const leader = s.rt.npcs.get('imhoff')!;
+    const leaderCircle = playerCircles[0];
+    leader.x += 2;
+    s.heightAt.mockReturnValueOnce(302);
+    const dogCircles = s.rt.tourVisitors();
+    expect(dogCircles).toBe(playerCircles);
+    expect(dogCircles[0]).toBe(leaderCircle);
+    expect(dogCircles[0]).toMatchObject({ x: leader.x, y: 302, z: leader.z });
+    expect(s.heightAt).toHaveBeenCalledTimes(16);
+    expect(s.heightAt).toHaveBeenLastCalledWith(leader.x, leader.z);
+
+    s.req({ op: 'despawn', group: 'fuehrung' });
+    expect(s.rt.tourVisitors()).toHaveLength(0);
+  });
+
   it('maps npc ids to people specs', () => {
     expect(specFor('imhoff')).toBe('guide');
     expect(specFor('double.herzog')).toBe('double.herzog');
@@ -209,7 +289,7 @@ describe('walk system', () => {
     const waiting = s.bus.of('group:waiting');
     expect(waiting).toHaveLength(1);
     expect(waiting[0]).toMatchObject({ group: 'fuehrung', leader: 'imhoff' });
-    expect(waiting[0].dist).toBeGreaterThanOrEqual(25);
+    expect(waiting[0]!.dist).toBeGreaterThanOrEqual(25);
     expect(s.bus.of('walk:bark')).toEqual([{ npc: 'imhoff', id: 'imhoff.bark.wait' }]);
     expect(s.rt.groupList()[0]!.waiting).toBe(true);
     // a conversation is open: the 20 s re-bark stays silent
@@ -222,6 +302,38 @@ describe('walk system', () => {
     s.player.z = L.z;
     s.step(0.2);
     expect(s.bus.of('group:resumed')).toEqual([{ group: 'fuehrung', leader: 'imhoff' }]);
+  });
+
+  it('delivers a tour wait line through the bark system after the player falls behind', () => {
+    const s = setup();
+    const state = new GameStateStore(createInitialState());
+    state.mutable.systems.story = { ...createStorySlice(), active: true, chapter: 'tour', beat: 't14' };
+    const ctx = {
+      state,
+      events: s.bus,
+      content: new ContentDB([{ file: 'content/packs/tour.pack.json', pack: tourPack as ContentPack }]),
+      params: new URLSearchParams(),
+      era: { current: 'today' },
+      player: { position: s.player, yaw: 0, pitch: 0 },
+      ui: { modals: { count: 0 } },
+      systems: { get: () => ({ id: 'story' }) },
+    } as unknown as GameContext;
+    vi.stubGlobal('window', { addEventListener: () => {}, removeEventListener: () => {} });
+    try {
+      barks.init(ctx);
+      demo(s, 'einstieg');
+      const tickBarks = () => barks.update(DT);
+      s.step(1, undefined, tickBarks);
+      expect(s.bus.of('dialogue:say')).toEqual([]);
+      s.step(35, undefined, tickBarks);
+      expect(s.rt.groupList()[0]!.waiting).toBe(true);
+      expect(s.bus.of('dialogue:say')).toEqual([
+        expect.objectContaining({ speaker: 'imhoff', id: expect.stringMatching(/^imhoff\.bark\.wait\./) }),
+      ]);
+    } finally {
+      barks.dispose();
+      vi.unstubAllGlobals();
+    }
   });
 
   it('pauses while the player talks to the guide', () => {
@@ -345,6 +457,7 @@ describe('walk system', () => {
       const n = s.rt.npcs.get(m)!;
       expect(Math.hypot(n.x - L.x, n.z - L.z)).toBeLessThan(6);
       expect(n.speed).toBe(0);
+      expect(s.bodies.find((b) => b.spawn.npc === m)).toMatchObject({ pos: [n.x, 300, n.z], yaw: n.yaw });
     }
     // no catch-up run after the fade
     s.step(0.5);

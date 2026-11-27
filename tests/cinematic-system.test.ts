@@ -193,6 +193,26 @@ describe('cinematic system', () => {
     expect(s.named('cinematic:end')).toEqual([{ id: 'long', skipped: false }]);
   });
 
+  it('keeps each reduced-motion view fixed even as its subject moves', () => {
+    const s = setup({ reduced: true });
+    const target = { x: 0, y: 10, z: -5 };
+    const unregister = registerTarget('animal:stills-test', () => target);
+    try {
+      s.rt.play({ id: 'stills-test', keys: [{ t: 0, eye: { x: 0, z: 0 }, look: { target: 'animal:stills-test' } }, { t: 6 }] });
+      s.render();
+      const first = s.camera.quaternion.clone();
+      target.x = 7;
+      s.steps(60);
+      s.render();
+      expect(s.camera.quaternion.angleTo(first)).toBeCloseTo(0, 7);
+      s.steps(60);
+      s.render();
+      expect(s.camera.quaternion.angleTo(first)).toBeGreaterThan(0.5);
+    } finally {
+      unregister();
+    }
+  });
+
   it("reduced motion 'skip' ends at once, skipped", () => {
     const s = setup({ reduced: true });
     s.rt.play({ ...ORBIT, reduced: 'skip' });
