@@ -163,7 +163,7 @@ export function deserializeState(json: string): GameState {
   const s = mergeDefaults(createInitialState(), raw);
   s.version = STATE_VERSION;
   if (!isEra(s.era)) s.era = 'today';
-  if (isObj(s.systems.story)) s.systems.story = readStorySlice(s.systems.story, s.flags, s.inventory.clues);
+  if (isObj(s.systems.story)) s.systems.story = readStorySlice(s.systems.story);
   migrateLegacyPrologue(s);
   if (isObj(s.systems.story)) migrateStoryQuests(s.systems.story, s);
   if (isObj(s.systems.story)) migrateDieEngeReplay(s.systems.story, s.systems.combat?.groups);
