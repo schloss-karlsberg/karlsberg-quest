@@ -26,8 +26,9 @@ export default defineConfig({
     baseURL: `http://127.0.0.1:${PORT}/`,
     // The game already selects Niedrig for SwiftShader, with DPR 1, shorter LOD distances and no shadows.
     viewport: isCI ? { width: 640, height: 360 } : desktopViewport,
-    // Trace filmstrips compete with the game for software rendering. Keep DOM snapshots and failure screenshots.
-    trace: isCI ? { mode: 'retain-on-failure', screenshots: false } : 'off',
+    // No traces on CI: recording DOM snapshots around every evaluate/wait call over 30-minute chapter
+    // runs grew the browser processes past the runner's 16 GB (TASK-075). Failure screenshots stay.
+    trace: 'off',
     screenshot: isCI ? 'only-on-failure' : 'off',
     launchOptions: {
       // WebGL in headless Chromium: ANGLE on SwiftShader (software) is deterministic and needs no GPU.
