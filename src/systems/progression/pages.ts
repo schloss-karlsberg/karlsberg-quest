@@ -86,7 +86,7 @@ function renderGear(api: PageApi, talentHeading: HTMLElement): HTMLElement {
       h('div.kqp-g-row', [
         icon(id),
         h('span.kqp-g-name', api.name(id)),
-        h('button.kq-btn.kqp-g-btn', { 'data-testid': `gear-equip-${id}`, onclick: () => (core.equip(id), api.changed('equip')) }, 'Nehmen'),
+        h('button.kq-btn.kqp-g-btn', { 'data-testid': `gear-equip-${id}`, onclick: () => (core.equip(id), api.changed('equip')) }, 'Ausrüsten'),
       ]),
     ),
   ]);
@@ -118,7 +118,7 @@ function renderGear(api: PageApi, talentHeading: HTMLElement): HTMLElement {
         h('button.kq-btn.kqp-g-btn', { 'data-testid': `gear-equip-${id}`, onclick: () => (core.equip(id), api.changed('equip')) }, 'Anlegen'),
       ]),
     ),
-    !loose.length && !sl.equipped.charms.length ? h('p.kqp-g-empty', 'Noch keins. Die Leute hier geben dir eins, wenn du ihnen hilfst.') : null,
+    !loose.length && !sl.equipped.charms.length ? h('p.kqp-g-empty', 'Noch keine Amulette. Hilf den Leuten hier, um eines zu bekommen.') : null,
   ]);
 
   const statsEl = h('section.kqp-g-sec', [h('h4', 'Werte'), h('dl.kqp-g-stats', { 'data-testid': 'gear-stats' }, statRows(stats).flatMap(([k, v]) => [h('dt', k), h('dd', v)]))]);

@@ -109,7 +109,7 @@ export function renderQuests(el: HTMLElement, d: PageData): void {
     const turnin = ti === 'auto' ? null : ti === 'giver' ? giver : 'npc' in ti ? d.speaker(ti.npc) : d.speaker(ti.voice);
     const tracked = d.tracked().includes(q.id);
     const objs = q.objectives.filter((o) => !o.hidden || d.objectiveVisible(q, o.id) || s === 'done');
-    const items = (q.rewards?.items ?? []).map((i) => `${(i.count ?? 1) > 1 ? `${i.count}× ` : ''}${d.item(i.item)?.name_de ?? i.item}`);
+    const items = (q.rewards?.items ?? []).map((i) => `${(i.count ?? 1) > 1 ? `${i.count}× ` : ''}${d.item(i.item)?.name_de ?? t('common.unknownItem')}`);
     const facts = s === 'done' ? (q.history ?? []) : [];
     detail = h('div.kqj-qdetail', { dataset: { testid: 'journal-quest-detail', quest: q.id } }, [
       h('div.kqj-kick', [q.kind === 'main' ? t('journal.quests.main') : t('journal.quests.side'), q.era ? ` · ${eraLabel(q.era)}` : '']),

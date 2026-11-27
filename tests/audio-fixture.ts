@@ -23,7 +23,7 @@ class Source extends Node {
   private endedListeners: (() => void)[] = [];
   frequency = new Param();
   start = vi.fn();
-  stop = vi.fn();
+  stop = vi.fn<(when?: number) => void>();
   addEventListener(_type: string, listener: () => void) { this.endedListeners.push(listener); }
   end() {
     this.onended?.();
@@ -53,6 +53,7 @@ export class Context {
   createBuffer(_channels: number, length: number) { return { getChannelData: () => new Float32Array(length) }; }
   createBufferSource() { const s = new Source(); this.sources.push(s); return s; }
   createOscillator() { return this.createBufferSource(); }
+  createConstantSource() { return Object.assign(this.createBufferSource(), { offset: new Param() }); }
 }
 
 export const bus = (audio: AudioManager, name: Bus) => audio.bus(name) as unknown as Node;

@@ -194,7 +194,7 @@ const dialogue = [
   // 4.0 At the spring
   say('marlene.k4.zettel', 'marlene', 'Bin heim. Hab dir Suppe hingestellt. Mein Schwager sagt, in Homburg stecken überall Steine vom Karlsberg drin, in halb der Altstadt. Er sagt auch, in seinem Keller. Er sagt viel. Gute Nacht. M.', found('clue.k4.marlene', { step: 1 }), { once: true, src: [src('RLS', 'P: Steine der Ruine in Homburger Häusern')] }),
   say('marlene.k4.zettel_2', 'marlene', 'PS: Wenn ein altes Schloss in Homburg in hundert Häusern steckt, ist es dann weg oder überall? Frag ich mich nur so.', found('clue.k4.marlene', { step: 2 }), { once: true }),
-  say('laub.k4.gestaendnis_1', 'laub', 'Ich habe Ihnen etwas verschwiegen. Ich bin nicht verschollen, weil ich mich verlaufen habe. Ich war am alten Forsthaus, Standpunkt siebzehn. Am Tag vorher hatte ich in einem Graben eine Seite gefunden, alt, angesengt, mit Namen drauf. ‚Was der Hof schuldig blieb.‘ Ich dachte, wenn ich vermesse, wo die Seiten liegen, finde ich den Rest. Ein Geometer findet alles, wenn man ihm genug Standpunkte gibt.', beat('4.0'), { once: true, priority: 10 }),
+  say('laub.k4.gestaendnis_1', 'laub', 'Ich habe Ihnen etwas verschwiegen. Ich bin nicht verschollen, weil ich mich verlaufen habe. Ich war am alten Forsthaus, Standpunkt siebzehn. Am Tag vorher hatte ich in einem Graben eine Seite gefunden, alt, angesengt, mit Namen drauf. „Was der Hof schuldig blieb.“ Ich dachte, wenn ich vermesse, wo die Seiten liegen, finde ich den Rest. Ein Geometer findet alles, wenn man ihm genug Standpunkte gibt.', beat('4.0'), { once: true, priority: 10 }),
   // 4.1 Taleingang
   say('laub.k4.taleingang', 'laub', 'Die Leute holen sich ihr Geld zurück. In Steinen.', beat('4.1'), { once: true }),
   ...seq(echo('clue.k4.karren'), [

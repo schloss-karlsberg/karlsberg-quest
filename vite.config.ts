@@ -3,6 +3,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
+import { t } from './src/i18n/index.ts';
 import { blocksToHtml, collectNotes, escapeHtml, parseMarkdown } from './src/ui/releaseNotes.ts';
 
 const root = import.meta.dirname;
@@ -22,7 +23,7 @@ function gitBuild(): string {
 const build = gitBuild();
 
 /** All player notes (content/release-notes/vX.Y.Z.md) as one static page, newest first. */
-function renderNewsPage(): string {
+export function renderNewsPage(): string {
   let files: Record<string, string> = {};
   try {
     for (const f of readdirSync(NOTES_DIR)) if (f.endsWith('.md')) files[f] = readFileSync(resolve(NOTES_DIR, f), 'utf8');
@@ -88,7 +89,7 @@ footer { margin-top: 28px; font-size: 14px; color: var(--ink-soft); }
 <p class="sub">Neuigkeiten für Spielerinnen und Spieler</p>
 <a class="play" href="./">Zum Spiel</a>
 ${sections}
-<footer>Aktuelle Version ${escapeHtml(version)} · Build ${escapeHtml(build)} · <a href="./">Zurück zum Spiel</a></footer>
+<footer>Aktuelle ${escapeHtml(t('title.version', { version, build }))} · <a href="./">Zurück zum Spiel</a></footer>
 </main>
 </body>
 </html>

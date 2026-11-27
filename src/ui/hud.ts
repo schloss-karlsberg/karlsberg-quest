@@ -328,18 +328,21 @@ export class Hud {
       return;
     }
     // touch mode: the key cap becomes the icon of the touch button that answers it (src/ui/touch.ts)
-    const cap = top.key ? (this.touchIcon ? h('kbd.kq-touch-key', { 'data-key': top.key }, svg(this.touchIcon(top.key))) : h('kbd', top.key)) : null;
+    const icon = top.key && this.touchIcon?.(top.key);
+    const cap = this.touchIcon
+      ? (icon ? h('kbd.kq-touch-key', { 'data-key': top.key }, svg(icon)) : null)
+      : (top.key ? h('kbd', top.key) : null);
     this.promptEl.replaceChildren(...(cap ? [cap] : []), top.text);
     this.promptEl.classList.add('show');
   }
 
   /** Touch mode: prompt keys as touch icons (null: key caps); also hides the pointer-lock chip. */
-  setTouchIcons(fn: ((key: string) => string) | null): void {
+  setTouchIcons(fn: ((key: string) => string | null) | null): void {
     this.touchIcon = fn;
     if (fn) this.clickEl.classList.add('kq-hidden');
     this.renderPrompt();
   }
-  private touchIcon: ((key: string) => string) | null = null;
+  private touchIcon: ((key: string) => string | null) | null = null;
   /** Called with the shown prompt's key and text (null: none) whenever it changes (touch buttons). */
   onPrompt: ((key: string | null, text: string | null) => void) | null = null;
   private readonly prompts = new Map<string, { key: string | null; text: string; low: boolean }>();

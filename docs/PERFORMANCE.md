@@ -351,9 +351,12 @@ The fix (`systems/fx/shift/warm.ts`, `slices.ts`, `reveal.ts`) changes nothing o
    gathers everything not drawn now (the hidden palace, the other era's sets), the shift's own
    materials (stand-ins from `ShiftEffect.warmObjects`) and the next era's model templates (the
    story's shift target, else today ↔ 1789; their assets are prefetched, 7 MB for 1789). For each
-   distinct material × kind × vertex layout it makes one stand-in that shares the real buffers but
-   draws a single triangle. The stand-ins are compiled with `compileAsync` into the post target,
-   then each is drawn once into the post target (casters also into the shadow target,
+   distinct material × kind × vertex layout it makes one stand-in that draws a single primitive.
+   The effect's stand-ins borrow its geometries and restore their draw ranges after each draw.
+   This lets the effect release the uploaded buffers at teardown, even before the first shift.
+   Other stand-ins share the source buffers through temporary geometries. The stand-ins compile
+   with `compileAsync` into the post target, then each draws once into the post target (casters
+   also into the shadow target,
    `SunShadows.warm`). That builds the pipelines and uploads the buffers and textures. At most
    one program is used for the first time per frame. The other era's terrain textures are
    uploaded with `initTexture`. After every era change the pass runs again. It does not run on
@@ -565,6 +568,26 @@ change and historical redraw at 667 × 375 with touch emulation and low graphics
 In the review checkout, that benchmark measured 7.988 ms to allocate and paint the 1,424,375-cell
 terrain buffer and 0.010 ms per warmed present-day redraw. It excludes canvas upload and compositing.
 The browser timings are pending because the sandbox blocked the preview server.
+### 3.8 Fixed-step and render hot paths (TASK-033, 2026-11-26)
+
+`src/core/loop.ts` drives a 60 Hz simulation and a separately paced render callback. In
+`src/boot.ts` each fixed step polls input through the player and systems. Each drawn frame runs
+the camera, system overlays and world updates before the draw passes. The sweep prioritised work
+that recurs on these paths, including frames where the camera or displayed UI stays still.
+
+| Path | Finding and change |
+|---|---|
+| Terrain culling (`src/world/terrain.ts`, drawn frame) | A stationary view used to repeat the whole chunk scan and mark visible instance buffers for upload. Reuse the batches while the camera's view-projection matrix, position, far distance, LOD scale and detail eligibility match. Dataset replacement and relief installation invalidate the cache. The terrain test observes a full scan on the first update, zero box tests on the identical update and a new scan after a projection or LOD change. |
+| Hunt overlay (`src/systems/hunt/overlay.ts`, drawn frame) | Cache arrow SVG nodes and recalculate positions when the angle, node or viewport changes. Compare the vignette opacity in integer thousandths before formatting it. In the reduced-motion test, 180 frames easing toward full alert used to write `0.750` 180 times and now make zero writes after the first `0.750`. A changed displayed value still writes once. |
+| Wading (`src/player/player.ts`, fixed step) | Sample the proposed depth once. When it exceeds the wading limit, check the current depth to decide whether to block the move. Probe distinct axis positions only for blocked diagonal steps. Use the accepted probe for wading speed and `stats.inWater`. The tests count one query on a dry step, two on straight movement into the wading limit (previously four or five on the initial sweep), and three or four on blocked diagonal steps. |
+| Input and flight (`src/player/input.ts`, `src/player/player.ts`, fixed step) | Polls return early for empty key sets and use precomputed virtual codes and direct binding checks. Virtual touch actions still work with remapped keys. Flight reuses one player-owned target vector. The previous flight update constructed one `Vector3` per flying step in source. |
+
+Keep temporary math objects with their owner and reuse a query result within the step when its
+inputs match. For work cached across frames, track every input that can change the result and
+exercise both reuse and invalidation in tests. Compare DOM values at their written precision so
+that a change invisible to the player does not trigger formatting or a style assignment.
+Operation counts above come from unit tests and code inspection. Frame-time and garbage-collection
+effects still need a browser profile.
 
 ## 4. Loading
 

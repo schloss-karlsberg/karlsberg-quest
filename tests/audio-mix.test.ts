@@ -1,8 +1,9 @@
-import { PerspectiveCamera } from 'three';
+import { PerspectiveCamera, Scene, Vector3 } from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import tourRoute from '../content/routes/p-fuehrung.json';
 import tourStory from '../content/story/00-tour.story.json';
 import { AudioManager } from '../src/audio/audio';
+import type { DialogueLine } from '../src/content/types';
 import type { GameContext } from '../src/core/context';
 import type { Era } from '../src/core/era';
 import { EventBus } from '../src/core/events';
@@ -11,6 +12,8 @@ import { t } from '../src/i18n';
 import type { Stance } from '../src/player/stance';
 import ambience from '../src/systems/ambience';
 import { seededRng } from '../src/systems/barks/rules';
+import { EchoDirector } from '../src/systems/chronik/echo';
+import type { ChronikClue } from '../src/systems/chronik/types';
 import footsteps from '../src/systems/footsteps';
 import { speakerMeta } from '../src/systems/story/dialogue/speakers';
 import { Voice } from '../src/systems/story/dialogue/voice';
@@ -208,6 +211,64 @@ it('fades water with altitude and winter, routes dread to music, and stops both 
   } finally {
     ambience.dispose();
   }
+});
+
+it('disconnects both spatial audio nodes per echo after its tail on completion and abort', () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  const element = { append() {}, remove() {}, classList: { toggle() {}, add() {}, remove() {} } };
+  vi.stubGlobal('document', { createElement: () => ({ ...element }) });
+  const audio = new AudioManager();
+  audio.unlock();
+  const createSpatial = vi.spyOn(audio, 'createSource3D');
+  const { sources, currentTime } = audio.ctx as unknown as Context;
+  const events = new EventBus();
+  const scene = new Scene();
+  const onDone = vi.fn();
+  const ctx = {
+    audio, scene, events, t, player: { position: new Vector3(), yaw: 0 },
+    world: { heightAt: () => 0 }, era: { info: { night: false } },
+    post: { uniforms: { uDesaturate: { value: 0.1 } } }, settings: { state: { reducedMotion: true } },
+    content: { speakers: new Map() }, ui: { hud: { subtitle() {} } },
+  } as unknown as GameContext;
+  const clue: ChronikClue = {
+    id: 'test.echo', kind: 'echo', title_de: 'Echo', fiction: true,
+    where: { era: '1789', x: 0, z: -5, radius: 4 }, reveals: {},
+  };
+  const lines: DialogueLine[] = [{
+    id: 'test.line', speaker: 'test-fictional-speaker', text_de: 'Hallo.',
+    trigger: { event: 'echo:start', id: clue.id },
+  }];
+  const echo = new EchoDirector(ctx, () => lines, element as unknown as HTMLElement, onDone);
+  const liveConnections = () => createSpatial.mock.results.flatMap(({ value }) => (
+    [value.input, value.panner] as Node[]
+  )).reduce((sum, node) => sum + node.connections.length, 0);
+
+  for (const aborted of [true, false, true, false]) {
+    echo.start(clue);
+    expect(liveConnections()).toBe(2);
+    echo.update(2);
+    expect(liveConnections()).toBe(4);
+    expect(duckGain(audio, 'ambience')).toBe(0.38);
+    const whisper = sources.at(-1)!;
+    if (aborted) echo.finish(true);
+    else echo.update(echo.progress.total);
+    expect(echo.active).toBe(false);
+    expect(scene.children).toHaveLength(0);
+    expect(ctx.post.uniforms.uDesaturate!.value).toBe(0.1);
+    expect(vi.getTimerCount()).toBe(2);
+    expect(whisper.stop).toHaveBeenCalledExactlyOnceWith(expect.any(Number));
+    const stopAt = whisper.stop.mock.calls[0]![0];
+    expect(Number.isFinite(stopAt)).toBe(true);
+    expect(stopAt).toBeGreaterThan(currentTime);
+    whisper.end();
+    vi.runAllTimers();
+    expect(liveConnections()).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+    expect(duckGain(audio, 'ambience')).toBe(1);
+  }
+  expect(onDone).toHaveBeenCalledTimes(2);
+  expect(onDone).toHaveBeenLastCalledWith(clue, [{ speaker: 'test-fictional-speaker', text: 'Hallo.' }], false);
+  echo.dispose();
 });
 
 describe('tour sounds', () => {

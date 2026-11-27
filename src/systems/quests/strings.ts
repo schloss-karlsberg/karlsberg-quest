@@ -51,7 +51,7 @@ export const QUESTS_DE: Record<string, string> = {
   'journal.quests.mainstep': 'Hauptweg',
   'journal.quests.main': 'Hauptaufgabe',
   'journal.quests.side': 'Nebenaufgabe',
-  'journal.quests.era': 'Zeit: {era}',
+  'journal.quests.era': 'Epoche: {era}',
   'journal.codex.count': '{n} von {total}',
   'journal.codex.all': 'Alle',
   'journal.codex.new': 'Neu',
@@ -84,7 +84,7 @@ export const QUESTS_DE: Record<string, string> = {
   'journal.bestiary.note': 'Alles hier ist erfunden. Kein Geist hat je einen Menschen ersetzt.',
   'journal.bestiary.unknown': 'Noch nicht begegnet',
   'journal.bestiary.undone': '{n}× aufgelöst',
-  'journal.bestiary.eras': 'Zeiten: {eras}',
+  'journal.bestiary.eras': 'Epochen: {eras}',
 };
 
 addStrings('de', QUESTS_DE);
