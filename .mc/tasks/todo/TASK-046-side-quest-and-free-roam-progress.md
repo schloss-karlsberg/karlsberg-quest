@@ -107,6 +107,9 @@ removed. The browser regression is in `e2e/chapter-k3.spec.ts`.
   order (reassert with the combat recovery first), then settles saved progress and repairs
   deadlines while recovered payouts are collected. A second rebase (after #99) also validates a
   saved `replay` attempt in `normaliseSlice` like the earned quests.
+- Third rebase (after TASK-044): main had moved the Pacht deadline into `k4_9`'s entry with
+  `onResume` and added `QuestBook.cutoff`. The authored fail keeps both `afterShift` and `onResume`,
+  and `close` replaces `cutoff` (a repeated cutoff no longer re-fails a failed quest).
 - Gates after the rebase: typecheck, `pnpm test` (2002 passed, 0 failed), `pnpm validate` and
   `pnpm build` passed. The locked e2e runs on port 5434 cover `quests`, `chronik`, `chapter-k3` and `smoke`.
 
