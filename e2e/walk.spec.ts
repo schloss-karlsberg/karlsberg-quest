@@ -2,11 +2,13 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 import { warnIfShared } from '../scripts/dev/heavy-env.mjs';
 import { trackErrors } from './helpers/common';
+import { waitForHooks } from './helpers/pause';
+import { sampleRenderWork } from './helpers/render-work';
 
 /**
  * WP-16 tour walk (src/systems/walk): the guide walks p-fuehrung with the group, the leash
  * (waiting / resumed), the snap ahead after a teleport and the story's warp, a perf sample with
- * 16 bodies at the high and the low tier (table in the log, test-results/walk/perf.json) and
+ * 16 bodies at each quality tier (table in the log, test-results/walk/perf.json) and
  * screenshots of the walking group (test-results/walk/walk-*.png).
  *
  * KQ_WALK_QUERY (env, optional) is appended to every boot URL, so the walk runs with other switches
@@ -22,7 +24,7 @@ const START = { x: 524, z: -770 };
 
 async function boot(page: Page, query: string): Promise<void> {
   await page.goto(`./?notitle&nosave&fresh&x=${START.x}&z=${START.z + 6}${query}${EXTRA_QUERY}`);
-  await page.waitForFunction(() => !!window.kq?.walk && !!window.kq?.npc, null, { timeout: 180_000 });
+  await waitForHooks(page, ['walk', 'npc']);
   await page.evaluate(() => {
     const w = window as unknown as { rec: Rec };
     w.rec = [];
@@ -137,83 +139,53 @@ test('walk (c): a teleport > 60 m ahead snaps the guide to the stop ahead (skipp
   expect(errors).toEqual([]);
 });
 
-interface Sample {
-  tier: string;
-  group: boolean;
-  frames: number;
-  fps: number;
-  frameMs: number;
-  cpuMs: number;
-  calls: number;
-  triangles: number;
-  walkMs: number;
-}
-
-/**
- * Average frame / CPU ms, draw calls and triangles over at least `ms` of real time (perf monitor
- * per frame), longer until `minFrames` frames were drawn (SwiftShader at the high tier draws about
- * one frame a second), at most `maxMs`.
- */
-async function sample(page: Page, tier: string, group: boolean, ms = 5000, minFrames = 10, maxMs = 30_000): Promise<Sample> {
-  const r = await page.evaluate(async ([dur, minN, maxDur]) => {
-    const kq = window.kq!;
-    const perf = kq.ctx.perf as unknown as { onFrame: ((f: number, c: number, calls: number, tris: number) => void) | null };
-    const prev = perf.onFrame;
-    const acc = { n: 0, f: 0, c: 0, calls: 0, tris: 0, walk: 0 };
-    perf.onFrame = (f, c, calls, tris) => {
-      prev?.(f, c, calls, tris);
-      acc.n++;
-      acc.f += f;
-      acc.c += c;
-      acc.calls += calls;
-      acc.tris += tris;
-      acc.walk += kq.walk!.stats().ms;
-    };
-    const t0 = performance.now();
-    while (performance.now() - t0 < dur! || (acc.n < minN! && performance.now() - t0 < maxDur!)) await new Promise((res) => setTimeout(res, 100));
-    perf.onFrame = prev;
-    const secs = (performance.now() - t0) / 1000;
-    const n = Math.max(1, acc.n);
-    return { frames: acc.n, fps: acc.n / secs, frameMs: acc.f / n, cpuMs: acc.c / n, calls: acc.calls / n, triangles: acc.tris / n, walkMs: acc.walk / n };
-  }, [ms, minFrames, maxMs]);
-  return { tier, group, ...r };
-}
-
 const TIERS = (process.env.KQ_WALK_TIERS ?? 'high,medium,low').split(',');
+const SAMPLE = { frames: 8, ticksPerFrame: 15 };
+// Room for 183 primitive draws and 124k triangles in one pass (packed tour bodies, including
+// the stand-in guide option). Medium/high can also draw the group in the shadow pass.
+const GROUP_BUDGET = { calls: 190, triangles: 130_000 };
 
 test('walk (d): perf — 16 bodies vs. none at the high, medium and low tiers; screenshots', async ({ page }) => {
   test.setTimeout(840_000);
   warnIfShared('walk (d) perf'); // its frame times need heavy.sh --exclusive
-  const rows: Sample[] = [];
+  const rows = [];
   for (const tier of TIERS) {
-    await boot(page, `&q=${tier}`);
-    // stand at the car park looking south down the route
-    await page.evaluate(([x, z]) => window.kq!.teleport(x!, z! - 8, 180, -6), [START.x, START.z]);
-    await page.waitForTimeout(3000);
-    rows.push(await sample(page, tier, false));
-    await page.evaluate(() => {
-      const w = window.kq!.walk!;
+    await boot(page, `&manual&idle&q=${tier}`);
+    const setup = await page.evaluate(async ({ x, z }) => {
+      const k = window.kq!;
+      k.teleport(x, z - 8, 180, -6); // car park, looking south along the route
+      await k.avatar!.ready();
+      const w = k.walk!;
+      const startBodies = w.stats().bodies;
+      const before = new Set(k.ctx.people!.list().map((p) => p.id));
       w.demo();
       w.request({ op: 'follow', npc: 'child.compass', leader: 'imhoff' });
-    });
-    expect(await page.evaluate(() => window.kq!.walk!.stats().bodies)).toBe(16);
-    await page.waitForTimeout(1500);
-    rows.push(await sample(page, tier, true));
+      const groupIds = k.ctx.people!.list().map((p) => p.id).filter((id) => !before.has(id));
+      return { tier: k.ctx.quality.level, startBodies, bodies: w.stats().bodies, groupIds };
+    }, START);
+    expect(setup).toMatchObject({ tier: tier === 'med' ? 'medium' : tier, startBodies: 0, bodies: 16 });
+    expect(setup.groupIds).toHaveLength(16);
+    const work = await page.evaluate(sampleRenderWork, { ...SAMPLE, groupIds: setup.groupIds });
+    const { added } = work;
+    rows.push({ tier, ...work });
+
+    expect(work.loaded, `${tier} loaded bodies`).toBe(16);
+    expect(work.frames, `${tier} matched frames sampled`).toBe(SAMPLE.frames);
+    expect(work.missing, `${tier} bodies missing geometry in the main view`).toEqual([]);
+    const passes = tier === 'low' ? 1 : 2;
+    expect.soft(added.calls, `${tier} added draw calls`).toBeGreaterThan(0);
+    expect.soft(added.calls, `${tier} added draw calls`).toBeLessThanOrEqual(passes * GROUP_BUDGET.calls);
+    expect.soft(added.triangles, `${tier} added triangles`).toBeGreaterThan(0);
+    expect.soft(added.triangles, `${tier} added triangles`).toBeLessThanOrEqual(passes * GROUP_BUDGET.triangles);
+
     if (tier === TIERS[0]) {
       for (let i = 1; i <= 3; i++) {
         await page.evaluate(() => window.kq!.screenshotReady());
         await page.screenshot({ path: `${OUT}/walk-d-${tier}-${i}.png` });
-        await page.waitForTimeout(2500);
+        if (i < 3) await step(page, 150);
       }
     }
-    const st = await page.evaluate(() => ({ walk: window.kq!.walk!.stats(), people: (window.kq as unknown as { people?: { stats(): unknown } }).people?.stats() ?? null }));
-    console.log(`[walk d] ${tier}: stats ${JSON.stringify(st)}`);
   }
-  const f = (v: number, d = 1) => v.toFixed(d).padStart(9);
-  const lines = ['tier    group   frames      fps   frameMs    cpuMs      calls  triangles   walkMs'];
-  for (const r of rows) lines.push(`${r.tier.padEnd(7)} ${String(r.group).padEnd(6)} ${String(r.frames).padStart(6)} ${f(r.fps)} ${f(r.frameMs, 2)} ${f(r.cpuMs, 2)} ${f(r.calls, 0)} ${f(r.triangles, 0).padStart(10)} ${f(r.walkMs, 3)}`);
-  const label = (await page.evaluate(() => window.kq!.walk!.stats().people)) ? 'stand-in people v0.1 bodies' : 'no people API: walk bodies disabled';
-  console.log(`[walk d] perf (${label})\n${lines.join('\n')}`);
-  writeFileSync(`${OUT}/perf.json`, JSON.stringify({ label, rows }, null, 2));
-  for (const r of rows) expect(r.frames).toBeGreaterThanOrEqual(10);
+  console.table(rows.map(({ tier, added }) => ({ tier, addedCalls: added.calls, addedTriangles: added.triangles })));
+  writeFileSync(`${OUT}/perf.json`, JSON.stringify({ sample: SAMPLE, rows }, null, 2));
 });

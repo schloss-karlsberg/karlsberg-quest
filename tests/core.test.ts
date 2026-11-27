@@ -99,6 +99,12 @@ describe('render pacing (frame cap)', () => {
     expect(new Set(gaps(d30))).toEqual(new Set([4]));
   });
 
+  it('a paced pause menu draws every 8th frame on a 120 Hz screen', () => {
+    const draws = pattern(120, IDLE_RENDER.modalFps, 240);
+    expect(draws.length).toBe(30);
+    expect(new Set(gaps(draws))).toEqual(new Set([8]));
+  });
+
   it('steady under timestamp jitter (±1.5 ms at 120 Hz)', () => {
     expect(new Set(gaps(pattern(120, 60, 600, 0.0015)))).toEqual(new Set([2]));
     expect(new Set(gaps(pattern(120, 30, 600, 0.0015)))).toEqual(new Set([4]));

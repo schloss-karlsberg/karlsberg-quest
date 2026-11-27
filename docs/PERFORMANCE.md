@@ -33,9 +33,15 @@ the e2e test fails when a scene is over.
   culling; modules can register more switches in `baselineHooks`), then run the bench again.
 - **E2E**: `PERF_LABEL=after npx playwright test e2e/perf.spec.ts` writes
   `test-results/perf/bench-<label>.json` and `load-<label>.json`; `PERF_BASELINE=1` runs the
-  baseline, `PERF_FRAMES=n` changes the frames per scene. Headless Chromium uses SwiftShader (CPU
-  rasteriser): frame times there are 50–100× a real GPU and say little; calls, triangles, CPU
-  time and bytes are exact.
+  baseline, `PERF_FRAMES=n` changes the frames per scene. Headless Chromium uses SwiftShader
+  (a CPU rasteriser). Draw calls, triangles and bytes are suitable for e2e assertions. Frame
+  and CPU milliseconds depend on the machine and its load.
+- **Tour group workload (TASK-050).** `e2e/walk.spec.ts` loads all 16 bodies, then samples eight
+  stepped frames at the trailhead on each quality tier. Within each scene pass it draws the
+  group hidden and visible at the same camera pose and tick. All 16 bodies must submit triangles
+  to the main view on every sampled frame. `test-results/walk/perf.json` records the hidden and
+  visible peaks and the peak paired delta. The added work must be positive and fit within 190
+  draw calls and 130,000 triangles per pass, with room for shadows on Mittel and Hoch.
 - **Real GPU, headless**: Chromium with `--enable-gpu --ignore-gpu-blocklist --use-angle=metal`
   (add `--disable-gpu-vsync --disable-frame-rate-limit` for uncapped timing) and call `kq.bench()`.
 - **Present-day ground cover on Niedrig (TASK-008):** `e2e/gpu/tour-groundcover.gpu.ts` records six
@@ -682,6 +688,12 @@ re-rendered every frame. What changed:
 3. **Pixel-ratio caps** Hoch 1.25, Mittel 1.
 4. **Shadow re-use** every 2nd frame on every tier with shadows (Hoch and Mittel; Niedrig has none).
 5. **Energiesparen**, see above.
+
+The browser regression check waits for queued redraws to drain and observes the draw counter over
+60 animation callbacks. Pause and bullet time hold the last frame: at most two draws from
+asynchronous requests (a streamed asset, the delayed camera-zoom save) may fall in the window,
+while a redraw on every callback fails. Leaving bullet time must produce further draws after the
+badge redraw.
 
 Measured on the real GPU (Apple M5 Pro, ANGLE Metal, headless Chromium, 1512 × 982 at device
 pixel ratio 2 like a 14" MacBook Pro, `--disable-gpu-vsync --disable-frame-rate-limit` so the
