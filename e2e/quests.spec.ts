@@ -37,17 +37,30 @@ async function boot(page: Page): Promise<void> {
   await page.goto('./?notitle&nosave&fresh&manual&storytest');
   await waitForHooks(page, ['story', 'npc', 'quests']);
   await page.evaluate(() => {
-    const w = window as unknown as { rec: Rec; board: boolean };
+    const w = window as unknown as { rec: Rec; board: boolean; banners: string[] };
     w.rec = [];
     w.board = false;
+    w.banners = [];
     window.kq!.ctx.events.onAny((n, p) => {
       if (n !== 'player:step' && n !== 'lantern:oil') w.rec.push({ n, p: JSON.parse(JSON.stringify(p ?? null)) });
     });
-    // the old Chronik board must never show up again
+    const seen = new WeakSet<Element>();
     new MutationObserver(() => {
+      // the old Chronik board must never show up again
       if (document.querySelector('.ck-board')) w.board = true;
+      // a „Neue Aufgabe“ stamp leaves after 3.4–4.2 s of wall clock: read each one as it appears
+      for (const b of document.querySelectorAll('[data-testid="quest-banner"]')) {
+        if (seen.has(b)) continue;
+        seen.add(b);
+        w.banners.push(b.textContent ?? '');
+      }
     }).observe(document.body, { childList: true, subtree: true });
   });
+}
+
+/** Texts of the quest banners shown since boot (src/systems/quests/hud.ts `showBanner`). */
+async function banners(page: Page): Promise<string[]> {
+  return page.evaluate(() => (window as unknown as { banners: string[] }).banners);
 }
 
 /** Recorded payloads of `name`. */
@@ -157,7 +170,8 @@ test('quests: Hanne gives a task, the tracker counts, the turn-in tells the hist
   expect(await events(page, 'quest:accepted')).toEqual([{ id: Q }]);
   expect(await events(page, 'enemy:spawn')).toEqual([expect.objectContaining({ group: `${Q}.briefe`, kind: 'mahnbrief', count: 3, quest: Q, objective: 'briefe', era: '1789' })]);
   expect(((await events(page, 'loot:place')) as { id: string }[]).map((p) => p.id)).toEqual([`${Q}.marke.0`]);
-  await expect(page.getByTestId('quest-banner')).toContainText('TEST: Der Lohnzettel');
+  // (a few slow software frames for the round trips above outlast the stamp itself)
+  await expect.poll(() => banners(page)).toContainEqual(expect.stringContaining('TEST: Der Lohnzettel'));
   // back in the menu: the task now answers with progress lines (grey ?)
   await expect(page.getByTestId(`npc-topic-q:${Q}`).locator('.kqn-qg-active')).toHaveText('?');
   await page.evaluate(() => window.kq!.npc!.ask('bye'));
@@ -424,9 +438,17 @@ for (const [kapitel, quest, objective, before] of [
 ] as const) {
   test(`chapter ${kapitel} opener: the "there: Q" place has its marker in the present`, async ({ page }) => {
     const errors = trackErrors(page);
-    await page.goto(`./?notitle&nosave&fresh&kapitel=${kapitel}`);
+    await page.goto(`./?notitle&nosave&fresh&manual&kapitel=${kapitel}`);
     await waitForHooks(page, ['story', 'quests']);
-    await page.waitForFunction((q) => window.kq!.quests!.state().quests[q]?.state === 'active', quest, { polling: 200, timeout: 60_000 });
+    // The opener starts its quest on game time: the chapter card, then a delayed cue (chapter 4:
+    // about 10 s). Real time runs at most 8 fixed updates a frame, so a slow software renderer
+    // stretched that past a minute. Step a fixed budget of 40 s instead.
+    const state = await page.evaluate((q) => {
+      const k = window.kq!;
+      for (let i = 0; i < 2400 && k.quests!.state().quests[q]?.state !== 'active'; i += 10) k.step(10);
+      return k.quests!.state().quests[q]?.state;
+    }, quest);
+    expect(state).toBe('active');
     if (before) await page.evaluate(([q, o]) => window.kq!.quests!.progress(q, o), [quest, before] as const);
     await page.waitForFunction(
       ([q, o]) => {
