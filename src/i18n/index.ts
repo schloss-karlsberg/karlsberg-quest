@@ -30,6 +30,14 @@ export function hasString(key: string): boolean {
   return key in tables[locale];
 }
 
+/**
+ * `t` for a line that names keys: in touch mode the `<key>.touch` variant (touch words instead of
+ * keys, e.g. „Bewegungsregler“), when one is registered; otherwise the keyboard text.
+ */
+export function tInput(key: string, touch: boolean, params?: Record<string, string | number>): string {
+  return t(touch && hasString(`${key}.touch`) ? `${key}.touch` : key, params);
+}
+
 export function t(key: string, params?: Record<string, string | number>): string {
   let s = tables[locale][key];
   if (s === undefined) {

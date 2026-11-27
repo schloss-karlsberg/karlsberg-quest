@@ -2548,6 +2548,11 @@ Rules that came out of it:
   fills a caption's or toast's `{key}`: the key label on desktop, the touch button's German name in
   touch mode (`touchName`: Hieb, Ausweichen, Bannlicht, Ziel, Balsam, Aktion, Epoche, and the survey
   tool names). Combat, progression and tools use it for contextual hints.
+- **Touch variants of key hints.** A string that names a key with no touch button (Shift for sprint)
+  gets a `<id>.touch` twin with touch words („Bewegungsregler ganz nach vorn“); `tInput(id, touch)`
+  (`src/i18n`) picks it in touch mode (court hint card; the Laufschritt tip uses `TRAVEL_DE.sprintTouch`).
+  `tests/touch-wording.test.ts` fails on a registered string naming Shift without a touch twin and on
+  story objectives/toasts naming keys (the chapter 1 kennel chase lines are listed as known open).
 - **Prompts.** `hud.setTouchIcons(fn)` turns a prompt's key cap into the icon of the answering
   button (`touchIconFor`: E → hand, Q → hourglass …). `hud.onPrompt(key, text)` lights that button.
 - **Mobile tier.** On first run a coarse pointer gets `mobileLevel()` (`src/render/mobileDefaults.ts`):

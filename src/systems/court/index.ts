@@ -26,7 +26,7 @@
 import { Mesh, MeshBasicMaterial, RingGeometry } from 'three';
 import type { GameContext } from '../../core/context';
 import { defineSystem } from '../../core/systems';
-import { hasString, t } from '../../i18n';
+import { hasString, t, tInput } from '../../i18n';
 import { EYE_SVG, h, svg } from '../../ui/dom';
 import type { Ring } from '../../world/collision';
 import { pointInRing } from '../../world/collision';
@@ -541,7 +541,7 @@ class CourtRuntime {
     ui.cards.modal('court:hint', () => {
       const body: HTMLElement[] = [];
       if (tell) body.push(h('p.kq-court-why', t('court.hint.why', { tell: t(`court.tell.${tell}`) })));
-      if (tell && hasString(`court.hint.how.${tell}`)) body.push(h('p', h('b', t(`court.hint.how.${tell}`))));
+      if (tell && hasString(`court.hint.how.${tell}`)) body.push(h('p', h('b', tInput(`court.hint.how.${tell}`, this.ctx.input.touchMode))));
       body.push(h('p', t('court.hint.rules')), h('p.kq-court-lossless', t('court.hint.lossless')));
       const m = ui.modals.open({ title: t('court.hint.title'), body, actions: [{ label: t('court.hint.ok'), primary: true }], backdrop: 'still', className: 'kq-court-hint' });
       m.el.dataset.testid = 'court-hint';
