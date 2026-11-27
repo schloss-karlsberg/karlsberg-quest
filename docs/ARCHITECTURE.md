@@ -382,7 +382,9 @@ above the oil gauge, top centre under the threat eye, right edge under the toast
 `hud-vitals`, `hud-boss`, `hud-feed`; elements stack by order, an empty dock is hidden),
 `setMarker(id, bearingDeg|null, color)` (compass markers),
 `prompt(key, text, owner?)` (one prompt per owner, the newest shows; clearing yours reveals the
-one below: story uses `'story'`, Chronik `'chronik'`), `subtitle(speaker, text, ms, fiction)`, `setThreat(0..1)`,
+one below: story uses `'story'`, Chronik `'chronik'`), `subtitle(speaker, text, ms, fiction)`
+(at most three lines; a full box lets the oldest line go only after it has been up 1.5 s, newer lines
+wait in order meanwhile), `setThreat(0..1)`,
 `setLantern(oil|null, lit)`, `setStatus(text)`, `setStance`, `setEraLabel`, `noticeDock`,
 `stack(el, order)`. `hud.staged` is true while a boss reveal (`busy('reveal')`) or a staged climax
 (`busy('stage' | 'stage-…')`) holds the screen: edge markers (combat's attacker / wave arrows, the

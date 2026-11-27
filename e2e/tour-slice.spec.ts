@@ -24,20 +24,30 @@ const time = (page: Page) => page.evaluate(() => window.kq!.ctx.loop.time);
 const shown = (page: Page, pattern: string) =>
   page.evaluate((prefix) => window.kq!.story!.shown().filter((id) => id.startsWith(prefix)), pattern);
 
-type Caption = { text: string; t: number; wall: number };
+type Caption = { text: string; t: number; wall: number; gone?: number };
 /**
  * Sound captions stay up for a wall-clock 3.5 s while the test advances game time in bursts, so a
- * loaded software renderer can outlast them. The test records each line added to the subtitle
- * live region and checks that record.
+ * loaded software renderer can outlast them. The test records each line added to and removed from
+ * the subtitle live region and checks that record.
  */
-async function captionShown(page: Page, text: string): Promise<void> {
+async function captionShown(page: Page, text: string, minVisibleMs = 0): Promise<void> {
   const seen = await page.evaluate((want) => {
     const caps = (window as unknown as { tourCaptions: Caption[] }).tourCaptions;
     const c = caps.find((x) => x.text === want);
-    return c ? { ...c, ageMs: Math.round(performance.now() - c.wall), visible: [...document.querySelectorAll('.kq-subtitles > div')].some((e) => e.textContent === want) } : null;
+    if (!c) return null;
+    const now = performance.now();
+    return {
+      ...c,
+      ageMs: Math.round(now - c.wall),
+      visibleMs: Math.round((c.gone ?? now) - c.wall),
+      visible: [...document.querySelectorAll('.kq-subtitles > div')].some((e) => e.textContent === want),
+    };
   }, text);
   console.log(`[tour] caption ${text}: ${JSON.stringify(seen)}`);
   expect(seen, `caption ${text} shown`).not.toBeNull();
+  // Visible, not only added: the line stayed in the subtitle box at least this long (wall clock),
+  // or is still there now (TASK-073: the bark caption was pushed out ~28 ms after it appeared).
+  if (minVisibleMs > 0) expect(seen!.visible || seen!.visibleMs >= minVisibleMs, `caption ${text} visible ${seen!.visibleMs} ms`).toBe(true);
 }
 
 async function shot(page: Page, name: string): Promise<void> {
@@ -150,8 +160,20 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
     const k = window.kq!;
     const caps: Caption[] = [];
     (window as unknown as { tourCaptions: Caption[] }).tourCaptions = caps;
+    const byNode = new Map<Node, Caption>();
     new MutationObserver((records) => {
-      for (const r of records) for (const n of r.addedNodes) caps.push({ text: n.textContent ?? '', t: k.ctx.loop.time, wall: performance.now() });
+      for (const r of records) {
+        for (const n of r.addedNodes) {
+          const c: Caption = { text: n.textContent ?? '', t: k.ctx.loop.time, wall: performance.now() };
+          caps.push(c);
+          byNode.set(n, c);
+        }
+        for (const n of r.removedNodes) {
+          const c = byNode.get(n);
+          if (c && c.gone === undefined) c.gone = performance.now();
+          byNode.delete(n);
+        }
+      }
     }).observe(document.querySelector('.kq-subtitles')!, { childList: true });
     k.ctx.events.onAny((n, p) => {
       if (n === 'story:beat' || n.startsWith('animal:') || n === 'photo:good' || n === 'npc:arrived' || n === 'cinematic:end' || n === 'walk:bark' || n.startsWith('group:') || n.startsWith('shift:') || n.startsWith('quelle:'))
@@ -288,7 +310,7 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   await follow(page, 't8', 200);
   expect(await shown(page, 'imhoff.t.station2')).toEqual(['imhoff.t.station2', 'imhoff.t.station2a', 'imhoff.t.station2b', 'imhoff.t.station2c']);
   await page.evaluate(() => window.kq!.step(150));
-  await captionShown(page, '[Diane und Bijou bellen]');
+  await captionShown(page, '[Diane und Bijou bellen]', 1450);
   const framed = await page.evaluate(() => {
     const k = window.kq!;
     const { camera, world } = k.ctx;
