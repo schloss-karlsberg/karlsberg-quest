@@ -99,6 +99,7 @@ interface Party {
 }
 
 interface Credits {
+  owner: PartySlice;
   plan: CreditsPlan;
   t: number;
   /** Index of the next spotlight to emit. */
@@ -228,7 +229,7 @@ export class PartyRuntime {
     this.slice.variant = v;
     this.applyVisible();
     // a party re-issued after the credits (a resume into the free play) leaves the world awake
-    if (this.slice.credits !== 'done') this.setQuiet(true);
+    this.setQuiet(this.slice.credits !== 'done');
     this.deps.bus.emit('party:ready', { variant: v });
     return true;
   }
@@ -283,6 +284,7 @@ export class PartyRuntime {
     if (this.credits) this.finish(true);
     this.dropParty();
     this.slice.variant = null;
+    this.slice.credits = 'none';
     this.setQuiet(false);
   }
 
@@ -314,10 +316,10 @@ export class PartyRuntime {
     const centre = this.party?.layout.centre ?? TF01;
     const plan = creditsPlan(centre, round, lines.length, last);
     const reduced = this.deps.reduced();
-    const c: Credits = { plan, t: 0, spot: 0, cam: 'off', reduced, base: null, handedBack: false };
+    const c: Credits = { owner: this.slice, plan, t: 0, spot: 0, cam: 'off', reduced, base: null, handedBack: false };
     this.credits = c;
     this.spotlights.length = 0;
-    this.slice.credits = 'playing';
+    c.owner.credits = 'playing';
     this.setQuiet(true);
     this.deps.strip?.show(lines, reduced);
     this.deps.strip?.camera?.(false);
@@ -356,18 +358,23 @@ export class PartyRuntime {
     return { x: p.x, z: p.z, yaw: p.yaw ?? 0, pitch: p.pitch ?? 0 };
   }
 
-  private finish(skipped: boolean): void {
+  private stopCredits(): Credits | null {
     const c = this.credits;
-    if (!c) return;
+    if (!c) return null;
     this.credits = null;
     this.deps.strip?.hide();
     if (c.cam !== 'off') {
       c.cam = 'off';
       this.deps.bus.emit('cinematic:stop', { id: CREDITS_CINEMATIC });
     }
-    this.slice.credits = 'done';
-    // free play on the plateau after the credits: the world wakes up again
     this.setQuiet(false);
+    return c;
+  }
+
+  private finish(skipped: boolean): void {
+    const c = this.stopCredits();
+    if (!c || c.owner !== this.slice) return;
+    c.owner.credits = 'done';
     this.deps.bus.emit('credits:done', { skipped });
   }
 
@@ -375,28 +382,22 @@ export class PartyRuntime {
 
   /** The game started on a save whose credits were playing: they are not replayed. */
   private resumeCheck(): void {
-    if (this.credits || this.slice.credits !== 'playing') return;
-    this.slice.credits = 'done';
+    const saved = this.slice;
+    if (this.credits || saved.credits !== 'playing') return;
+    saved.credits = 'done';
+    if (saved.variant) this.set({ variant: saved.variant });
     this.deps.bus.emit('credits:done', { skipped: true });
   }
 
-  /** A load: live credits end (skipped), the loaded save's playing credits too, once; no party in the save → none here. */
+  /** Discard the live run; only credits recorded in the loaded slot count as skipped. */
   private afterLoad(): void {
-    const live = this.credits;
-    if (live) {
-      // the cinematic system ends its own play on a load
-      this.credits = null;
-      this.deps.strip?.hide();
-    }
+    this.stopCredits();
     const s = this.slice;
-    const held = s.credits === 'playing';
-    if (held) s.credits = 'done';
-    if (live) this.setQuiet(false);
-    if (live || held) this.deps.bus.emit('credits:done', { skipped: true });
-    if (!s.variant) {
+    if (this.party && this.party.variant !== s.variant) {
       this.dropParty();
       this.setQuiet(false);
     }
+    this.resumeCheck();
   }
 
   // ---- step -----------------------------------------------------------------------------------
