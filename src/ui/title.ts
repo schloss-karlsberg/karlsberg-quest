@@ -49,6 +49,7 @@ export class TitleScreen {
   private readonly extrasEl: HTMLElement;
   private readonly newsBadge: HTMLElement;
   private busy = false;
+  private hideTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(private readonly cb: TitleCallbacks, private readonly loader?: BootLoader) {
     this.startBtn = h('button.kq-btn.primary.kq-hidden', { disabled: true, 'data-testid': 'title-continue', onclick: () => this.start('continue') }, t('title.continue'));
@@ -194,17 +195,27 @@ export class TitleScreen {
   }
 
   show(): void {
+    this.cancelHide();
     this.el.inert = false;
     this.el.classList.remove('fade-out', 'kq-hidden');
     this.setReady();
   }
 
   hide(instant = false): void {
+    this.cancelHide();
     this.el.inert = true;
     if (instant) this.el.classList.add('kq-hidden');
     else {
       this.el.classList.add('fade-out');
-      setTimeout(() => this.el.classList.add('kq-hidden'), 950);
+      this.hideTimer = setTimeout(() => {
+        this.hideTimer = undefined;
+        this.el.classList.add('kq-hidden');
+      }, 950);
     }
+  }
+
+  private cancelHide(): void {
+    clearTimeout(this.hideTimer);
+    this.hideTimer = undefined;
   }
 }

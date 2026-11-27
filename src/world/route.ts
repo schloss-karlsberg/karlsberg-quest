@@ -2,8 +2,11 @@
  * Way-finding over the walkable ground: A* on a 2 m grid around start and goal, with a caller's
  * `blocked(x, z)` (footprints, set-dressing solids, interior walls, water). Used by the travel
  * system's Wegweiser so that a hint walks round a wing or through a door instead of pointing
- * through a wall (playtest round 2). Pure (no three.js); tests/route.test.ts.
+ * through a wall (playtest round 2). Pure (no three.js); tests/travel.test.ts.
  */
+
+const ROUTE_SAMPLE_STEP = 0.3;
+const DIAGONAL_COST = 1.4142;
 
 export interface RouteOptions {
   /** Grid cell (m). */
@@ -12,8 +15,10 @@ export interface RouteOptions {
   margin?: number;
   /** Largest box side (m); longer trips route towards the goal and stop at the box edge. */
   maxSide?: number;
-  /** Give up after this many expanded cells (falls back to the straight line). */
+  /** Give up after this many expanded cells and keep the best reachable route so far. */
   maxExpand?: number;
+  /** Collision probe at the exact start and on its first search edge (defaults to `blocked`). */
+  startBlocked?: (x: number, z: number) => boolean;
   /**
    * Cost factor of the ground at x/z (1 = plain ground; below 1 = preferred, e.g. 0.5 on an OSM
    * path, so the route follows the real Waldweg). Must be ≥ `minCost`. Without it every free cell
@@ -28,9 +33,9 @@ export interface RouteOptions {
 }
 
 export interface RouteResult {
-  /** Waypoints from start to (goal or the furthest reachable point towards it), simplified. */
+  /** Simplified waypoints towards the goal, with only the start if there is no drawable leg. */
   points: [number, number][];
-  /** True when the goal itself was reached by the search. */
+  /** True when the route reaches the requested goal. */
   complete: boolean;
   /** True when no search was needed (straight line is free). */
   straight: boolean;
@@ -38,28 +43,35 @@ export interface RouteResult {
   expanded: number;
 }
 
-/** Is the straight segment free (sampled every `step` m)? */
+/** Is the segment interior free? Checks the midpoint and samples at most `step` m apart. */
 export function lineFree(ax: number, az: number, bx: number, bz: number, blocked: (x: number, z: number) => boolean, step = 1): boolean {
-  const L = Math.hypot(bx - ax, bz - az);
-  const n = Math.max(1, Math.ceil(L / step));
-  for (let i = 1; i < n; i++) {
-    const t = i / n;
-    if (blocked(ax + (bx - ax) * t, az + (bz - az) * t)) return false;
+  const dx = bx - ax;
+  const dz = bz - az;
+  const samples = Math.max(2, Math.ceil(Math.hypot(dx, dz) / step));
+  if (blocked(ax + dx * 0.5, az + dz * 0.5)) return false;
+  for (let index = 1; index < samples; index++) {
+    if (index * 2 === samples) continue;
+    const t = index / samples;
+    if (blocked(ax + dx * t, az + dz * t)) return false;
   }
   return true;
 }
 
 /** A route from (sx, sz) to (gx, gz). */
 export function findRoute(sx: number, sz: number, gx: number, gz: number, blocked: (x: number, z: number) => boolean, opts: RouteOptions = {}): RouteResult {
+  const startBlocked = opts.startBlocked ?? blocked;
+  if (startBlocked(sx, sz)) return { points: [[sx, sz]], complete: false, straight: false, expanded: 0 };
+  const goalFree = !blocked(gx, gz);
+  // Take a free straight line as is, even with ground costs. Search and path preference apply
+  // when there is an obstacle to go around, such as the Weiher.
+  if (goalFree && lineFree(sx, sz, gx, gz, blocked, ROUTE_SAMPLE_STEP)) {
+    return { points: [[sx, sz], [gx, gz]], complete: true, straight: true, expanded: 0 };
+  }
   const cell = opts.cell ?? 2;
   const margin = opts.margin ?? 40;
   const maxSide = opts.maxSide ?? 420;
   const maxExpand = opts.maxExpand ?? 60000;
   const costAt = opts.cost;
-  const hScale = costAt ? Math.min(1, opts.minCost ?? 1) : 1;
-  // a free straight line is taken as is, also with ground costs: the search (and its price) is only
-  // paid where something stands in the way (the Weiher), and there the route follows the paths
-  if (lineFree(sx, sz, gx, gz, blocked)) return { points: [[sx, sz], [gx, gz]], complete: true, straight: true, expanded: 0 };
   // a far goal: aim for the point on the line at the box limit
   let tx = gx;
   let tz = gz;
@@ -71,14 +83,14 @@ export function findRoute(sx: number, sz: number, gx: number, gz: number, blocke
     tz = sz + ((gz - sz) / D) * reach;
     partial = true;
   }
-  const x0 = Math.min(sx, tx) - margin;
-  const z0 = Math.min(sz, tz) - margin;
-  const W = Math.ceil((Math.max(sx, tx) + margin - x0) / cell) + 1;
-  const H = Math.ceil((Math.max(sz, tz) + margin - z0) / cell) + 1;
+  // Anchor the grid at the exact start so the first move is checked from the player's position.
+  const startCol = Math.ceil((Math.max(0, sx - tx) + margin) / cell);
+  const startRow = Math.ceil((Math.max(0, sz - tz) + margin) / cell);
+  const W = startCol + Math.ceil((Math.max(0, tx - sx) + margin) / cell) + 1;
+  const H = startRow + Math.ceil((Math.max(0, tz - sz) + margin) / cell) + 1;
   const N = W * H;
-  const cx = (i: number) => x0 + (i % W) * cell;
-  const cz = (i: number) => z0 + Math.floor(i / W) * cell;
-  const idx = (x: number, z: number) => Math.round((z - z0) / cell) * W + Math.round((x - x0) / cell);
+  const cx = (i: number) => sx + (i % W - startCol) * cell;
+  const cz = (i: number) => sz + (Math.floor(i / W) - startRow) * cell;
   // 0 unknown, 1 free, 2 blocked
   const walk = new Uint8Array(N);
   const isFree = (i: number): boolean => {
@@ -89,25 +101,12 @@ export function findRoute(sx: number, sz: number, gx: number, gz: number, blocke
     }
     return w === 1;
   };
-  // the midpoint of every move is tested too (half-cell grid, cached): a thin wall between two
-  // free cells (an interior wall, a fence) must not be jumped — playtest round 2 found the
-  // Wegweiser leading into the corner of the east wing because a 2 m step crossed a wall
-  const W2 = 2 * W - 1;
-  const half = new Uint8Array(W2 * (2 * H - 1));
-  const midFree = (a: number, b: number): boolean => {
-    const k = (Math.floor(a / W) + Math.floor(b / W)) * W2 + (a % W) + (b % W);
-    let w = half[k]!;
-    if (w === 0) {
-      w = blocked((cx(a) + cx(b)) / 2, (cz(a) + cz(b)) / 2) ? 2 : 1;
-      half[k] = w;
-    }
-    return w === 1;
-  };
-  const start = idx(sx, sz);
-  let goal = idx(tx, tz);
-  let moved = false;
+  const start = startRow * W + startCol;
+  let goal = (startRow + Math.round((tz - sz) / cell)) * W + startCol + Math.round((tx - sx) / cell);
+  const offGridGoal = !partial && goalFree && (cx(goal) !== gx || cz(goal) !== gz);
+  const hScale = (costAt ? Math.min(1, opts.minCost ?? 1) : 1) * (offGridGoal ? DIAGONAL_COST / Math.SQRT2 : 1);
   // a goal inside something (a building's centre, a prop): accept the nearest free cell round it
-  if (!isFree(goal)) {
+  if (!offGridGoal && !isFree(goal)) {
     let best = -1;
     let bd = Infinity;
     const gi = goal % W;
@@ -127,10 +126,7 @@ export function findRoute(sx: number, sz: number, gx: number, gz: number, blocke
         }
       }
     }
-    if (best >= 0) {
-      goal = best;
-      moved = true;
-    }
+    if (best >= 0) goal = best;
   }
   // per-cell ground cost, cached (NaN: not looked up yet)
   const cc = costAt ? new Float32Array(N).fill(Number.NaN) : null;
@@ -186,39 +182,51 @@ export function findRoute(sx: number, sz: number, gx: number, gz: number, blocke
   const gi = goal % W;
   const gj = Math.floor(goal / W);
   const h = (i: number) => {
+    if (offGridGoal) return Math.hypot(gx - cx(i), gz - cz(i));
     const dx = Math.abs((i % W) - gi);
     const dz = Math.abs(Math.floor(i / W) - gj);
-    return (Math.max(dx, dz) + 0.4142 * Math.min(dx, dz)) * cell * hScale;
+    return (Math.max(dx, dz) + 0.4142 * Math.min(dx, dz)) * cell;
   };
   walk[start] = 1;
   g[start] = 0;
-  push(h(start), start);
+  push(h(start) * hScale, start);
   let best = start;
   let bestH = h(start);
   let expanded = 0;
-  let found = false;
+  let goalConnector = -1;
+  let goalCost = Infinity;
   const DIRS = [
     [1, 0, 1],
     [-1, 0, 1],
     [0, 1, 1],
     [0, -1, 1],
-    [1, 1, 1.4142],
-    [1, -1, 1.4142],
-    [-1, 1, 1.4142],
-    [-1, -1, 1.4142],
+    [1, 1, DIAGONAL_COST],
+    [1, -1, DIAGONAL_COST],
+    [-1, 1, DIAGONAL_COST],
+    [-1, -1, DIAGONAL_COST],
   ] as const;
-  while (heapF.length) {
+  while (heapF.length && heapF[0]! < goalCost) {
     const cur = pop();
     if (closed[cur]) continue;
     closed[cur] = 1;
-    if (cur === goal) {
-      found = true;
+    if (!offGridGoal && cur === goal) {
+      best = cur;
       break;
     }
     const hc = h(cur);
     if (hc < bestH) {
       bestH = hc;
       best = cur;
+    }
+    const curX = cx(cur);
+    const curZ = cz(cur);
+    const edgeBlocked = cur === start ? startBlocked : blocked;
+    if (offGridGoal && hc <= Math.SQRT2 * cell && lineFree(curX, curZ, gx, gz, edgeBlocked, ROUTE_SAMPLE_STEP)) {
+      const total = g[cur]! + (costAt ? segmentCost(curX, curZ, gx, gz, costAt) : hc);
+      if (total < goalCost) {
+        goalCost = total;
+        goalConnector = cur;
+      }
     }
     if (++expanded > maxExpand) break;
     const ci = cur % W;
@@ -231,17 +239,15 @@ export function findRoute(sx: number, sz: number, gx: number, gz: number, blocke
       if (closed[n] || !isFree(n)) continue;
       // no corner cutting
       if (di && dj && (!isFree(cj * W + ni) || !isFree(nj * W + ci))) continue;
-      if (!midFree(cur, n)) continue;
       const ng = g[cur]! + c * cell * (cc ? (cellCost(cur) + cellCost(n)) * 0.5 : 1);
-      if (ng < g[n]!) {
+      if (ng < g[n]! && lineFree(curX, curZ, cx(n), cz(n), edgeBlocked, ROUTE_SAMPLE_STEP)) {
         g[n] = ng;
         from[n] = cur;
-        push(ng + h(n), n);
+        push(ng + h(n) * hScale, n);
       }
     }
   }
-  const end = found ? goal : best;
-  if (end === start) return { points: [[sx, sz], [gx, gz]], complete: false, straight: true, expanded };
+  const end = goalConnector >= 0 ? goalConnector : best;
   const cells: number[] = [];
   for (let i = end; i >= 0; i = from[i]!) {
     cells.push(i);
@@ -249,9 +255,10 @@ export function findRoute(sx: number, sz: number, gx: number, gz: number, blocke
   }
   cells.reverse();
   const raw: [number, number][] = cells.map((i) => [cx(i), cz(i)]);
-  raw[0] = [sx, sz];
-  if (found && !partial && !moved) raw.push([gx, gz]);
-  return { points: simplify(raw, blocked, costAt), complete: found && !partial, straight: false, expanded };
+  if (goalConnector >= 0) raw.push([gx, gz]);
+  const points = simplify(raw, blocked, costAt);
+  const [lastX, lastZ] = points[points.length - 1]!;
+  return { points, complete: goalFree && lastX === gx && lastZ === gz, straight: false, expanded };
 }
 
 /** Cost of the straight segment a→b under a ground cost (sampled every `step` m). */
@@ -269,22 +276,21 @@ function segmentCost(ax: number, az: number, bx: number, bz: number, cost: (x: n
 /**
  * Drop waypoints whose neighbours see each other (string pulling). With a ground `cost` a shortcut
  * must also be no dearer than the stretch it replaces, so a route along a path is not pulled
- * straight across the forest beside it.
+ * straight across the forest beside it. Adjacent legs already passed clearance checks in A*.
  */
-export function simplify(pts: [number, number][], blocked: (x: number, z: number) => boolean, cost?: (x: number, z: number) => number): [number, number][] {
+function simplify(pts: [number, number][], blocked: (x: number, z: number) => boolean, cost?: (x: number, z: number) => number): [number, number][] {
   if (pts.length <= 2) return pts;
   // cost along the raw polyline up to each point
   const acc = [0];
   if (cost) for (let k = 1; k < pts.length; k++) acc.push(acc[k - 1]! + segmentCost(pts[k - 1]![0], pts[k - 1]![1], pts[k]![0], pts[k]![1], cost));
-  const ok = (i: number, j: number): boolean => {
-    if (!lineFree(pts[i]![0], pts[i]![1], pts[j]![0], pts[j]![1], blocked, 0.3)) return false;
-    return !cost || segmentCost(pts[i]![0], pts[i]![1], pts[j]![0], pts[j]![1], cost) <= (acc[j]! - acc[i]!) * 1.02 + 0.5;
-  };
+  const free = (i: number, j: number): boolean => lineFree(pts[i]![0], pts[i]![1], pts[j]![0], pts[j]![1], blocked, ROUTE_SAMPLE_STEP);
+  const shortcut = (i: number, j: number): boolean => free(i, j)
+    && (!cost || segmentCost(pts[i]![0], pts[i]![1], pts[j]![0], pts[j]![1], cost) <= (acc[j]! - acc[i]!) * 1.02 + 0.5);
   const out: [number, number][] = [pts[0]!];
   let i = 0;
   while (i < pts.length - 1) {
     let j = pts.length - 1;
-    while (j > i + 1 && !ok(i, j)) j--;
+    while (j > i + 1 && !shortcut(i, j)) j--;
     out.push(pts[j]!);
     i = j;
   }

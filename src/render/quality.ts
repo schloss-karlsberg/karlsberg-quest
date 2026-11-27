@@ -139,7 +139,6 @@ export class AutoQuality {
 }
 
 export interface QualityDeps {
-  renderer: { setPixelRatio(r: number): void; getPixelRatio(): number };
   post: PostFX;
   world: World;
   settings: SettingsStore;
@@ -185,17 +184,18 @@ export class QualityManager {
     return QUALITY_PRESETS[this.level];
   }
 
+  get pixelRatio(): number {
+    const s = this.d.settings.state;
+    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio : 1;
+    return pixelRatioFor(this.level, s.resolutionScale, dpr, s.powerSave);
+  }
+
   apply(): void {
     const s = this.d.settings.state;
     const p = this.preset;
-    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
     const save = s.powerSave === true;
-    const want = pixelRatioFor(this.level, s.resolutionScale, dpr, save);
     this.d.post.setSamples(this.noMsaa ? 0 : p.msaa);
-    if (Math.abs(this.d.renderer.getPixelRatio() - want) > 1e-3) {
-      this.d.renderer.setPixelRatio(want);
-      this.d.resize();
-    }
+    this.d.resize();
     this.d.world.terrain.lodScale = p.lodScale;
     this.d.world.forest.setDistances(p.treeNear, p.treeFar);
     this.d.post.setFeatures({ bloom: p.bloom, ao: p.ao && !save, grade: p.grade });
@@ -212,6 +212,7 @@ export class QualityManager {
   /** Per rendered frame while playing (`active` = game running, tab visible). */
   frame(frameMs: number, active: boolean): void {
     if (!active || !this.autoAllowed || !this.d.settings.state.autoQuality) {
+      this.auto.hold(0); // slow seconds must be consecutive while playing
       this.acc = 0;
       this.frames = 0;
       this.ms = 0;

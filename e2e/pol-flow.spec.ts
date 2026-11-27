@@ -19,8 +19,7 @@ test.describe.configure({ timeout: ciScale(600_000) });
 
 async function shot(page: Page, name: string): Promise<void> {
   await page.evaluate(() => window.kq!.screenshotReady());
-  await page.waitForTimeout(200);
-  await page.screenshot({ path: `${SCREENS}/pol-flow-${name}.png` });
+  await page.screenshot({ path: `${SCREENS}/pol-flow-${name}.png`, animations: 'disabled' });
 }
 
 type Box = { x: number; y: number; w: number; h: number; name: string };
@@ -126,7 +125,6 @@ test('HUD: the top-left column, skill cards, dialogue and subtitles do not overl
     });
     await expect(page.getByTestId('room-tag')).toBeVisible();
     await expect(page.getByTestId('dialogue')).toHaveClass(/kqs-show/);
-    await page.waitForTimeout(300);
     const bs = await boxes(page);
     expect(bs.map((b) => b.name)).toEqual(expect.arrayContaining(['dialogue', 'subtitles']));
     expect(bs.filter((b) => b.name.startsWith('topleft')).length).toBeGreaterThanOrEqual(3); // era, room, objective
@@ -254,8 +252,8 @@ test('endings: epilogue fits 1280×720, "Ende noch einmal wählen", ending C: th
   if (isCI) await page.setViewportSize(desktopViewport);
   const errors = trackErrors(page);
   // saving on: the field book before the choice goes to the 'ending' slot
-  await page.goto('./?notitle&fresh&manual');
-  await waitForHooks(page, ['story', 'hunt']);
+  await page.goto('./?notitle&fresh&manual&idle');
+  await waitForHooks(page, ['story', 'hunt', 'party']);
   await page.evaluate(() => {
     const k = window.kq!;
     k.ctx.state.mutable.flags['barks.quiet'] = true;
@@ -284,7 +282,6 @@ test('endings: epilogue fits 1280×720, "Ende noch einmal wählen", ending C: th
   await shot(page, 'epilogue-1280x720');
   await btn.click();
   await throughParty(page);
-  await page.evaluate(() => window.kq!.step(4));
   expect(await page.evaluate(() => window.kq!.story!.state().ending)).toBe('keep');
 
   // ending C afterword: the past at night, five hounds follow at a distance
@@ -292,7 +289,7 @@ test('endings: epilogue fits 1280×720, "Ende noch einmal wählen", ending C: th
     const k = window.kq!;
     k.teleport(1222, -1060, 0, 0);
     k.ctx.era.set('1789');
-    for (let i = 0; i < 40; i++) k.step(15);
+    k.step(600); // ten simulated seconds for the pack to settle into follow mode
   });
   const h = await page.evaluate(() => window.kq!.hunt!.state());
   expect(h?.mode).toBe('follow');
@@ -332,21 +329,21 @@ test('endings: epilogue fits 1280×720, "Ende noch einmal wählen", ending C: th
   await shot(page, 'pause-ending-again-choice');
   // the post-game save stays what the title test below needs (written on the title screen: leaving
   // the running game autosaves on visibilitychange and would overwrite it again)
-  await page.goto('./?manual');
+  await page.goto('./?manual&idle');
   await page.evaluate(([k, raw]) => raw && localStorage.setItem(k!, raw), [autoKey, autoRaw] as const);
 
   // the main menu: "Ende noch einmal wählen" loads the field book before the table
   await page.reload();
+  await waitForHooks(page, ['story']);
   const again = page.getByTestId('title-ending-again');
   await expect(again).toBeVisible({ timeout: 180_000 });
   await expect(again).toBeEnabled({ timeout: 180_000 });
   await shot(page, 'title-ending-again');
   await again.click();
-  await waitForHooks(page, ['story'], 60_000);
   // the table again: the choice opens 1.2 s into the resumed beat
   await page.evaluate(() => {
     const k = window.kq!;
-    for (let i = 0; i < 30 && k.ctx.ui.modals.count === 0; i++) k.step(10);
+    for (let i = 0; i < 30 && !document.querySelector('[data-testid="ending"]'); i++) k.step(10);
   });
   await expect(page.getByTestId('ending')).toBeVisible({ timeout: 20_000 });
   expect(await page.evaluate(() => window.kq!.story!.state().ending ?? null)).toBeNull();

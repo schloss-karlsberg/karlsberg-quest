@@ -39,6 +39,65 @@ function opts(o: Partial<PackOptions> = {}): PackOptions {
 }
 
 describe('the Warner’s trail (TrackField.addTrail)', () => {
+  it('expires ordinary prints on schedule among the held story trail', () => {
+    const tracks = new TrackField({ life: 30 });
+    const path = [{ x: 0, z: 0 }, { x: 0, z: -4 }];
+    tracks.addPlayer(0, 0, 0, 0, 1, 1, null);
+    const authored = tracks.addTrail(path, 0, 1, 1, 120);
+    tracks.addPack('paw', 1, 1, 1, 0, 0, 1, 1);
+    tracks.tick(20);
+    const fresh = tracks.addPlayer(0, -2, 0, tracks.now, -1, 1, null);
+    tracks.tick(16);
+
+    expect(tracks.prints).toHaveLength(authored + 1);
+    expect(tracks.prints.filter((print) => print.agent === -2)).toHaveLength(authored);
+    expect(tracks.playerPrintNear(0, 0, 3, tracks.now)).toBe(fresh);
+    expect(tracks.readPack(1, 1, 2, tracks.now)).toBeNull();
+
+    tracks.tick(20);
+    expect(tracks.playerPrintNear(0, 0, 3, tracks.now)).toBeNull();
+    expect(tracks.prints).toHaveLength(authored);
+
+    tracks.tick(120);
+    expect(tracks.prints).toHaveLength(0);
+  });
+
+  it('a patrol ignores the Warner’s prints after a player print expires', () => {
+    const tracks = new TrackField({ life: 30 });
+    const far = player({ x: -30, z: 150 });
+    const sim = new PackSim(walledWorld(), null, opts({ hounds: 1, from: { x: -30, z: 0 } }), far, tracks);
+    const authored = tracks.addTrail([{ x: -30, z: 0 }, { x: -30, z: -4 }], 0, 1, 1, 120);
+    tracks.addPlayer(far.x, far.z, 0, tracks.now, 1, 1, null);
+    tracks.tick(tracks.life + 5);
+
+    const events = sim.update(DT, far);
+    expect(tracks.prints).toHaveLength(authored);
+    expect(sim.state).toBe('calm');
+    expect(sim.tracking).toBe(false);
+    expect(events).not.toContainEqual(expect.objectContaining({ type: 'tracking', on: true }));
+
+    const { x, z } = sim.leader;
+    tracks.addPlayer(x, z, 0, tracks.now, 1, 1, null);
+    expect(sim.update(0.25, far)).toContainEqual({ type: 'tracking', on: true, x, z });
+    expect(sim.tracking).toBe(true);
+  });
+
+  it('keeps the last prints up to the cap and starts a fresh segment after clearing', () => {
+    const tracks = new TrackField({ max: 2 });
+    const first = tracks.addPlayer(0, 0, 0, 0, 1, 1, null)!;
+    tracks.addPlayer(0, 0, 0, 1, -1, 1, 'stone');
+    const second = tracks.addPlayer(0, -1, 0, 2, 1, 1, null)!;
+    const third = tracks.addPlayer(0, -2, 0, 3, -1, 1, null)!;
+    expect(tracks.prints).toEqual([second, third]);
+    expect(tracks.segmentEnd(first.seg)).toBeNull();
+    expect(tracks.segmentEnded(first.seg)).toBe(true);
+    tracks.clear();
+    expect(tracks.lastBreak).toBeNull();
+    expect(tracks.segmentEnded(third.seg)).toBe(true);
+    expect(tracks.playerPrintNear(0, -2, 1, 3)).toBeNull();
+    expect(tracks.addPlayer(0, -3, 0, 4, 1, 1, null)?.seg).toBe(third.seg + 1);
+  });
+
   it('lays alternating boot prints along a path, skips ground that takes none, and never counts as the player’s trail', () => {
     const T = new TrackField();
     const n = T.addTrail(
@@ -64,6 +123,79 @@ describe('the Warner’s trail (TrackField.addTrail)', () => {
     expect(T.prints.length).toBe(n);
     // the pack never mistakes them for the player's trail
     expect(T.playerPrintNear(0, -10, 5, T.now)).toBeNull();
+  });
+});
+
+describe('which prints the pack follows in the K2 sneak ("Augen im Nebel")', () => {
+  // the k2_2-augen threat: three sentries on beats across the way, the Warner's trail running
+  // through them, and your own fresh prints crossing every beat on the way to the hedge
+  const BEATS = [
+    { a: { x: 1501, z: -559 }, b: { x: 1485, z: -550 } },
+    { a: { x: 1480, z: -561 }, b: { x: 1496, z: -569 }, speed: 0.8 },
+    { a: { x: 1490, z: -580 }, b: { x: 1474, z: -571 } },
+  ];
+  const meadow: SimWorld = {
+    heightAt: () => 300,
+    surfaceAt: () => 'meadow',
+    coverAt: () => 0,
+    bounds: () => ({ x0: 0, z0: -3000, x1: 3000, z1: 0 }),
+    trailBreakAt: () => null,
+  };
+  /** Unseen and unheard at the hedge: only prints could give you away. */
+  const hidden = player({ x: 1478, z: -584, stance: 'crouch', visibility: 0, noise: 0 });
+
+  function field(): TrackField {
+    const T = new TrackField();
+    T.addTrail(
+      [
+        { x: 1537, z: -476 },
+        { x: 1500, z: -542 },
+        { x: 1423, z: -680 },
+      ],
+      0,
+      1.5,
+      0.85,
+      1500,
+    );
+    // your crouched walk from the Apfelallee to the hedge, 0.55 m strides
+    const from = { x: 1503, z: -536 };
+    const to = { x: 1478, z: -584 };
+    const n = Math.floor(Math.hypot(to.x - from.x, to.z - from.z) / 0.55);
+    for (let i = 0; i <= n; i++) T.addPlayer(from.x + ((to.x - from.x) * i) / n, from.z + ((to.z - from.z) * i) / n, 0.48, 0, i % 2 ? 1 : -1, 0.45, null);
+    return T;
+  }
+  function pack(T: TrackField, beats = true): PackSim {
+    const o = opts({ x: 1488, z: -572, radius: 34, intensity: 0.25, hounds: 3, from: { x: 1500, z: -566 } });
+    return new PackSim(meadow, null, beats ? { ...o, beats: BEATS } : o, hidden, T, makeMode);
+  }
+
+  it('sentries on their beats keep their noses up: neither the Warner’s prints nor yours set them tracking', () => {
+    const T = field();
+    const sim = pack(T);
+    const yours = T.prints.filter((p) => p.agent === -1);
+    let crossed = 0;
+    for (let i = 0; i < 40 / DT; i++) {
+      for (const e of sim.update(DT, hidden)) expect(e.type, JSON.stringify(e)).not.toBe('tracking');
+      for (const h of sim.hounds) if (yours.some((p) => Math.hypot(p.x - h.x, p.z - h.z) < 1.4)) crossed++;
+    }
+    expect(crossed).toBeGreaterThan(0); // they did walk over your prints, more than once
+    expect(sim.state).toBe('calm');
+    expect(sim.trail).toBeNull();
+  });
+
+  it('once they have noticed you, your prints (never the Warner’s) lead them on', () => {
+    const T = field();
+    // a searching pack casts round where it lost you: right where both trails meet
+    const sim = pack(T);
+    sim.setState('searching', true);
+    sim.lastKnown = { x: 1500, z: -542 };
+    for (let i = 0; i < 1 / DT && !sim.trail; i++) sim.update(DT, hidden);
+    expect(sim.trail?.seg).toBe(0);
+    // a roaming pack (no beats) puts its nose down on your prints when a hound crosses them
+    const roam = pack(field(), false);
+    let picked: number | null = null;
+    for (let i = 0; i < 60 / DT && picked === null; i++) for (const e of roam.update(DT, hidden)) if (e.type === 'tracking' && e.on) picked = roam.trail!.seg;
+    expect(picked).toBe(0);
   });
 });
 

@@ -396,12 +396,21 @@ export class CameraRig {
     return true;
   }
 
+  /** The shoulder offset for this boom length: shrinks as the boom gets short (a short boom at full
+   *  offset would park the lens beside the ear). */
+  private shoulderOffset(width: number, distance: number): number {
+    return width * (0.45 + 0.55 * smooth01(BOOM_MIN, NEAR_COMFORT + 0.4, distance));
+  }
+
+  /** How far the lens may sit beside the pivot, up to `reach`. Sweeps outward from the pivot so a
+   *  clear sample beyond a thin wall cannot hide the wall. */
+  private shoulderRoom(world: CameraWorld, reach: number, feetY: number, space: number): number {
+    return reach * this.sweep(world, this.pivot.x, this.pivot.z, this.pivot.x + _r.x * reach, this.pivot.z + _r.z * reach, feetY, space, 0);
+  }
+
   private clearShoulder(world: CameraWorld, width: number, distance: number, feetY: number, space: number): number {
-    const offset = width * (0.45 + 0.55 * smooth01(BOOM_MIN, NEAR_COMFORT + 0.4, distance));
-    for (let k = 1; k > 0; k -= 0.25) {
-      if (this.free(world, this.pivot.x + _r.x * offset * k, this.pivot.z + _r.z * offset * k, feetY, space)) return offset * k;
-    }
-    return 0;
+    const offset = this.shoulderOffset(width, distance);
+    return Math.min(offset, this.shoulderRoom(world, offset, feetY, space));
   }
 
   /** The boom ends at walls, room boundaries or steep ridges, and cranes over smaller slopes. */
@@ -423,13 +432,13 @@ export class CameraRig {
     return { free: boom, craneK };
   }
 
-  /** Free fraction (0..1) of the straight line a → b for the lens (walls and spaces only). */
-  private sweep(world: CameraWorld, ax: number, az: number, bx: number, bz: number, feetY: number, space0: number): number {
+  /** Free fraction (0..1) of the straight line a → b for the lens, with optional extra backoff. */
+  private sweep(world: CameraWorld, ax: number, az: number, bx: number, bz: number, feetY: number, space0: number, backoff = STEP): number {
     const L = Math.hypot(bx - ax, bz - az);
     const n = Math.max(1, Math.ceil(L / STEP));
     for (let i = 1; i <= n; i++) {
       const t = i / n;
-      if (!this.free(world, ax + (bx - ax) * t, az + (bz - az) * t, feetY, space0)) return Math.max(0, (i - 1) / n - 0.25 / Math.max(L, 0.25));
+      if (!this.free(world, ax + (bx - ax) * t, az + (bz - az) * t, feetY, space0)) return Math.max(0, (i - 1) / n - backoff / Math.max(L, STEP));
     }
     return 1;
   }
@@ -544,9 +553,12 @@ export class CameraRig {
       // standing in a doorway: the side behind the character is the space the boom keeps to
       space0 = world.space(o.x + sy * 0.9, o.z + cy * 0.9, o.y);
     }
-    // the shoulder: shrink it when a wall stands right beside the head, and as the boom gets short
-    // (a short boom at full offset would park the lens beside the ear)
-    const closeShoulder = this.clearShoulder(world, wantShoulder, this.distance, o.y, space0);
+    // the shoulder: shrink it when a wall stands right beside the head, and as the boom gets short.
+    // A shoulder wider than the wall allows is pulled in at once; widening eases.
+    const offset = this.shoulderOffset(wantShoulder, this.distance);
+    const allowed = this.shoulderRoom(world, Math.max(this.shoulder, offset), o.y, space0);
+    const closeShoulder = Math.min(offset, allowed);
+    this.shoulder = Math.min(this.shoulder, allowed);
     this.shoulder += (closeShoulder - this.shoulder) * Math.min(1, dt * 6);
     _s.copy(this.pivot).addScaledVector(_r, this.shoulder);
     _s.y += LIFT + this.lift + INDOOR_LIFT * ind;

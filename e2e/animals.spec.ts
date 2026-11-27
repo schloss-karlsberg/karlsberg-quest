@@ -294,6 +294,29 @@ test('animals (d): t10 opens on the deer with the reh shot, from the stop and fr
     await expect(sneak).toBeVisible();
     if (s.touch) await expect(sneak.locator('kbd')).toHaveAttribute('data-key', 'Ducken');
     else await expect(sneak.locator('kbd')).toHaveText('C');
+    if (s.touch) {
+      await page.evaluate(() => window.kq!.teleport(704, -758, 160, 0));
+      await step(page, 5);
+      const camera = page.getByTestId('touch-photo');
+      const shutter = page.getByTestId('touch-attack');
+      const photoPrompt = page.locator('.kq-prompt').filter({ hasText: 'Fotomodus öffnen' });
+      await expect(photoPrompt).toBeVisible();
+      await expect(camera).toHaveClass(/\bcue\b/);
+      // Gerold's phone-down briefing (imhoff.t.reh2) holds the scene; the camera opens once it ends
+      await expect
+        .poll(async () => {
+          await step(page, 15);
+          return page.evaluate(() => window.kq!.photo!.state().blocked);
+        }, { timeout: 30_000 })
+        .toBeNull();
+      expect(await page.evaluate(() => window.kq!.photo!.open())).toBe(true);
+      await expect(shutter).toHaveClass(/\bcue\b/);
+      await expect(shutter).toHaveAccessibleName('Auslöser: Foto machen');
+      await expect(camera).not.toHaveClass(/\bcue\b/);
+      await page.evaluate(() => window.kq!.photo!.close());
+      await expect(camera).toHaveClass(/\bcue\b/);
+      await expect(shutter).not.toHaveClass(/\bcue\b/);
+    }
   }
   expect(errors).toEqual([]);
 });

@@ -1,6 +1,7 @@
 import { type CDPSession, type Page, devices, expect, test } from '@playwright/test';
 import { ciScale } from './helpers/ci';
 import { SCREENS, trackErrors } from './helpers/common';
+import { run } from './helpers/k4';
 import { waitForHooks } from './helpers/pause';
 import { QUELLE_STAND } from './helpers/prolog';
 
@@ -217,10 +218,40 @@ test.describe('survey tools on a landscape phone', () => {
     await survey.tap();
     await menu.getByTestId('touch-fly').tap();
     await expect.poll(() => page.evaluate(() => window.kq!.ctx.player.flying)).toBe(true);
+    await expect(page.getByTestId('touch-crouch')).toHaveAccessibleName('Sinken');
+    await expect(page.getByTestId('touch-prone')).toBeHidden();
     await survey.tap();
     await expect(menu.getByTestId('touch-fly')).toHaveText('Landen');
     await menu.getByTestId('touch-fly').tap();
     await expect.poll(() => page.evaluate(() => window.kq!.ctx.player.flying)).toBe(false);
+  });
+
+  test('replaying an ending from Pause refreshes the controls after landing', async ({ page }) => {
+    await page.goto('./?notitle&fresh&manual&q=low');
+    await waitForHooks(page, ['story']);
+    expect(await page.evaluate(() => {
+      const { ctx } = window.kq!;
+      ctx.player.setStance('prone');
+      ctx.player.writeState(ctx.state.mutable.player);
+      const saved = ctx.save.save('ending', 'test');
+      // Offer the genuine Pause action using a minimal ending-slot fixture.
+      ctx.state.mutable.systems.story!.finished = true;
+      return saved;
+    })).toBe(true);
+
+    const prone = page.getByTestId('touch-prone');
+    await expect(prone).toBeVisible();
+    await page.getByTestId('touch-survey').tap();
+    await page.getByTestId('touch-fly').tap();
+    await run(page, 1);
+    await expect(page.getByTestId('touch-crouch')).toHaveAccessibleName('Sinken');
+    await expect(prone).toBeHidden();
+
+    await page.getByTestId('touch-pause').tap();
+    await page.getByTestId('pause-ending-again').tap();
+    await expect(prone).toBeVisible();
+    await expect(prone).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId('touch-crouch')).toHaveAccessibleName('Ducken (Schleichen)');
   });
 });
 
@@ -344,6 +375,92 @@ test.describe('touch at the Karlsbergquelle', () => {
     expect(await page.evaluate(() => window.kq!.quelle!.info().scene)).not.toBeNull();
     await expect(page.getByRole('dialog')).toHaveCount(0);
   });
+});
+
+test.describe('touch at the Chapter 4 kennel', () => {
+  test.use({ ...DEVICES['iphone-13'], viewport: { width: 667, height: 375 }, reducedMotion: 'reduce' });
+
+  for (const oneKey of [false, true]) {
+    test(oneKey ? 'one Hinlegen tap settles the gathered pack' : 'a stranded save finishes with Hinlegen then Laterne', async ({ page }) => {
+      test.setTimeout(240_000);
+      await page.goto('./?notitle&fresh&manual&q=low');
+      await waitForHooks(page, ['story', 'hunt', 'lantern']);
+      await page.evaluate((oneKey) => {
+        const k = window.kq!;
+        k.ctx.settings.update((s) => {
+          s.oneKey = oneKey;
+          s.gentleMode = false;
+        }, 'oneKey');
+        k.story!.goto('k4', 'k4_12');
+        k.teleport(1214, -1569, 30);
+        k.lantern!.toggle(false);
+      }, oneKey);
+      await run(page, 23);
+      const stance = () => page.evaluate(() => window.kq!.ctx.player.stance);
+      const lit = () => page.evaluate(() => window.kq!.lantern!.state().lit);
+      const phase = () => page.evaluate(() => window.kq!.hunt!.mode()?.phase);
+      expect(await stance()).toBe('stand');
+      expect(await lit()).toBe(false);
+      expect(await phase()).toBe('wait');
+
+      const crouch = page.getByTestId('touch-crouch');
+      const prone = page.getByRole('button', { name: 'Hinlegen', exact: true });
+      const lantern = page.getByRole('button', { name: 'Laterne', exact: true });
+      const prompt = page.locator('.kq-prompt.show');
+      const cue = /\bcue\b/;
+      if (!oneKey) {
+        await crouch.tap();
+        await run(page, 1);
+        expect(await stance()).toBe('crouch');
+        expect(await phase()).toBe('wait');
+        expect(await page.evaluate(() => window.kq!.ctx.save.save())).toBe(true);
+        await page.goto('./?manual&q=low');
+        await page.getByTestId('title-continue').tap({ timeout: 90_000 });
+        await waitForHooks(page, ['story', 'hunt', 'lantern']);
+        await run(page, 23);
+        expect(await stance()).toBe('crouch');
+        expect(await phase()).toBe('wait');
+        await expect(prompt).toHaveText('Hinlegen');
+        await expect(prone).toHaveClass(cue);
+
+        const survey = page.getByTestId('touch-survey');
+        const fly = page.getByTestId('touch-fly');
+        await survey.tap();
+        await fly.tap();
+        await run(page, 1);
+        await expect(prone).toBeHidden();
+        await expect(prompt).toHaveText('Landen');
+        await expect(survey).toHaveClass(cue);
+        await survey.tap();
+        await expect(fly).toHaveText('Landen');
+        await expect(fly).toHaveClass(cue);
+        await fly.tap();
+        await run(page, 1);
+        expect(await stance()).toBe('stand');
+        await expect(prompt).toHaveText('Hinlegen');
+      }
+
+      await expect(prone).toHaveClass(cue);
+      await prone.tap();
+      await run(page, 1);
+      expect(await stance()).toBe('prone');
+      if (!oneKey) {
+        expect(await phase()).toBe('wait');
+        expect(await lit()).toBe(false);
+        await expect(prompt).toHaveText('Laterne an');
+        await expect(prone).not.toHaveClass(cue);
+        await expect(lantern).toHaveClass(cue);
+        await lantern.tap();
+        await run(page, 1);
+        expect(await stance()).toBe('prone');
+      }
+      expect(await phase()).toBe('calm');
+      expect(await lit()).toBe(true);
+      await expect(lantern).not.toHaveClass(cue);
+      await run(page, 35);
+      expect(await page.evaluate(() => window.kq!.story!.state().beat)).toBe('k4_13');
+    });
+  }
 });
 
 test.describe('touch: title and settings by tap', () => {

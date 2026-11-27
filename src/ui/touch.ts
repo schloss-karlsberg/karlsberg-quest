@@ -3,7 +3,7 @@ import type { EventBus } from '../core/events';
 import type { SettingsStore } from '../core/save';
 import { addStrings, t } from '../i18n';
 import type { Action, Input } from '../player/input';
-import { TOUCH, TOUCH_SETTINGS, type TouchSetting, diffHeld, isTouchSetting, lookDelta, crouchButtonMode, rotateWanted, stickToMove, touchActive, touchIconFor, touchPromptIcon } from '../player/touchMap';
+import { TOUCH, TOUCH_BUTTON_ACTIONS, TOUCH_SETTINGS, type TouchSetting, diffHeld, isTouchSetting, lookDelta, crouchButtonMode, rotateWanted, stickToMove, touchActive, touchPromptIcon } from '../player/touchMap';
 import { h, svg } from './dom';
 import type { Hud } from './hud';
 import { PointerTap } from './pointerTap';
@@ -22,18 +22,20 @@ addStrings('de', {
   'touch.setting.auto': 'Auto',
   'touch.setting.on': 'An',
   'touch.setting.off': 'Aus',
-  'touch.setting.help': 'Stick, Wischen zum Umsehen und Knöpfe auf dem Bildschirm. Auto: an auf Telefon und Tablet oder sobald der Bildschirm berührt wird.',
+  'touch.setting.help': 'Mit dem Regler bewegen, zum Umsehen wischen und auf die Schaltflächen tippen. Auf Handys und Tablets ist die Touch-Steuerung automatisch an. Sie schaltet sich auch ein, sobald du den Bildschirm berührst.',
   'touch.attack': 'Hieb (halten: Wuchthieb)',
   'touch.dodge': 'Ausweichen',
   'touch.up': 'Steigen',
   'touch.down': 'Sinken',
   'touch.crouch': 'Ducken (Schleichen)',
+  'touch.prone': 'Hinlegen',
+  'touch.lantern': 'Laterne',
   'touch.bannlicht': 'Bannlicht',
-  'touch.lock': 'Ziel fassen',
+  'touch.lock': 'Ziel erfassen',
   'touch.balm': 'Balsam',
   'touch.interact': 'Interagieren (halten: Lauschen)',
   'touch.interact.short': 'Aktion',
-  'touch.shift': 'Epochenwechsel (halten: zurück)',
+  'touch.shift': 'Zeitsprung (halten: zurück zur Quelle)',
   'touch.fly': 'Geisterblick',
   'touch.land': 'Landen',
   'touch.survey': 'Erkunden',
@@ -42,7 +44,7 @@ addStrings('de', {
   'touch.plans': 'Planblatt',
   'touch.map': 'Karte',
   'touch.pause': 'Pause',
-  'touch.photo': 'Handy-Kamera',
+  'touch.photo': 'Fotomodus',
   'touch.shutter': 'Auslöser: Foto machen',
   'touch.relief': 'Relief',
   'touch.relief.0': 'Aus',
@@ -140,6 +142,7 @@ export class TouchControls {
   private readonly flyBtn: Btn;
   /** Crouch toggle on foot, hold to sink while flying (C on the keyboard). */
   private readonly crouchBtn: Btn;
+  private readonly proneBtn: HTMLButtonElement;
   private stance = 'stand';
   private readonly dodgeBtn: Btn;
   private readonly surveyBtn: HTMLButtonElement;
@@ -184,9 +187,13 @@ export class TouchControls {
     this.dodgeBtn = btn('dodge', I.dodge, t('touch.dodge'), ['dodge', 'up']);
     // 'crouch' toggles the stance on foot (the player ignores it while flying), 'down' sinks while
     // flying (nothing reads it on foot): the same pair as C
-    this.crouchBtn = btn('crouch', I.crouch, t('touch.crouch'), ['crouch', 'down']);
+    this.crouchBtn = btn('crouch', I.crouch, t('touch.crouch'), TOUCH_BUTTON_ACTIONS.crouch);
+    this.proneBtn = btn('prone', I.prone, t('touch.prone'), TOUCH_BUTTON_ACTIONS.prone).el;
     const shift = btn('shift', I.shift, t('touch.shift'), ['shift']);
     shift.el.append(h('i.kq-t-ring'));
+    deps.events.on('group:find', ({ prompt }) => {
+      shift.el.setAttribute('aria-label', t(prompt ? 'action.regroup.hold' : 'touch.shift'));
+    });
     const attack = btn('attack', I.attack, t('touch.attack'), ['attack', 'interact']);
     attack.el.append(h('i.kq-t-ring'));
     this.attackBtn = attack.el;
@@ -247,6 +254,8 @@ export class TouchControls {
       btn('balm', I.balm, t('touch.balm'), ['quickUse']).el,
       shift.el,
       this.crouchBtn.el,
+      this.proneBtn,
+      btn('lantern', I.lantern, t('touch.lantern'), TOUCH_BUTTON_ACTIONS.lantern).el,
       this.interactBtn.el,
     ]);
     this.el = h('div.kq-touch.kq-hidden', { 'data-testid': 'touch' }, [this.stick, skills, arc, top, survey]);
@@ -303,8 +312,9 @@ export class TouchControls {
     });
     // abilities unlock by level (combat: skillsForLevel); a fresh game or a loaded save may change them
     for (const ev of ['level:up', 'stats:changed', 'game:start', 'save:loaded'] as const) deps.events.on(ev, () => this.syncSkills());
-    // a load sets the stance without a player:stance event: read it back
-    for (const ev of ['game:start', 'save:loaded'] as const) deps.events.on(ev, () => this.syncFly());
+    // Boot restores the player after the save:loaded notification.
+    deps.events.on('player:restored', () => this.syncFly());
+    deps.events.on('game:start', () => this.syncFly());
     this.refresh();
   }
 
@@ -326,7 +336,10 @@ export class TouchControls {
     this.wanted = touchActive(this.deps.settings.state.touchControls, this.coarse, this.touchSeen);
     this.deps.input.touchMode = this.wanted;
     document.documentElement.toggleAttribute('data-kq-touch', this.wanted);
-    this.deps.hud.setTouchIcons(this.wanted ? (key) => TOUCH_ICONS[touchIconFor(key)] : null);
+    this.deps.hud.setTouchIcons(this.wanted ? (key) => {
+      const icon = touchPromptIcon(key, null);
+      return icon ? TOUCH_ICONS[icon] : null;
+    } : null);
     if (!this.wanted) this.releaseAll();
     this.syncVisible();
     this.syncFly();
@@ -371,6 +384,8 @@ export class TouchControls {
     this.attackBtn.classList.toggle('shutter', on);
     this.attackBtn.replaceChildren(svg(on ? TOUCH_ICONS.shutter : TOUCH_ICONS.attack), h('i.kq-t-ring'));
     this.attackBtn.setAttribute('aria-label', t(on ? 'touch.shutter' : 'touch.attack'));
+    const prompt = this.deps.hud.promptShown();
+    this.setPrompt(prompt?.key ?? null, prompt?.text ?? null);
   }
 
   /** Hide the ability buttons not learnt yet. */
@@ -386,11 +401,16 @@ export class TouchControls {
     this.flyBtn.el.classList.toggle('on', fl);
     this.flyBtn.el.textContent = t(fl ? 'touch.land' : 'touch.fly');
     this.surveyBtn.classList.toggle('on', fl);
-    const cr = crouchButtonMode(fl, this.deps.stance?.() ?? this.stance);
+    const stance = this.deps.stance?.() ?? this.stance;
+    const cr = crouchButtonMode(fl, stance);
     this.crouchBtn.el.replaceChildren(svg(TOUCH_ICONS[cr.icon]));
     this.crouchBtn.el.classList.toggle('on', cr.on);
     this.crouchBtn.el.setAttribute('aria-label', t(cr.label));
     this.crouchBtn.el.setAttribute('aria-pressed', String(cr.on));
+    const prone = stance === 'prone';
+    this.proneBtn.classList.toggle('kq-hidden', fl);
+    this.proneBtn.classList.toggle('on', prone);
+    this.proneBtn.setAttribute('aria-pressed', String(prone));
     this.dodgeBtn.el.replaceChildren(svg(fl ? TOUCH_ICONS.up : TOUCH_ICONS.dodge));
     this.dodgeBtn.el.setAttribute('aria-label', t(fl ? 'touch.up' : 'touch.dodge'));
   }
@@ -400,7 +420,7 @@ export class TouchControls {
    * an interact prompt's text ("Lauschen", "Untersuchen" …).
    */
   setPrompt(key: string | null, text: string | null): void {
-    const icon = touchPromptIcon(key, text);
+    const icon = touchPromptIcon(key, text, this.attackBtn.classList.contains('shutter'));
     const mine = icon === 'interact' && !!text?.trim();
     this.interactText.textContent = mine ? text! : t('touch.interact.short');
     this.interactBtn.el.classList.toggle('lit', mine);

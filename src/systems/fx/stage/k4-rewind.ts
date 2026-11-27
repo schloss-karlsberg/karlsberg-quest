@@ -11,6 +11,7 @@
  */
 import {
   BoxGeometry,
+  type BufferGeometry,
   Color,
   CylinderGeometry,
   Group,
@@ -98,6 +99,8 @@ export class RewindPiece implements Piece {
   private readonly mat: ShaderMaterial;
   private readonly cartMat: ShaderMaterial;
   private readonly carts: Cart[] = [];
+  private readonly cartGeo: BufferGeometry;
+  private readonly wheelGeo: BufferGeometry;
   private readonly dust: GlowPoints;
   private readonly dustHome: Float32Array;
   private readonly dustOff: Float32Array;
@@ -145,8 +148,8 @@ export class RewindPiece implements Piece {
     slots.push({ at: slot(0, 10 * BH + 0.06), w: 2.9, row: 10.2, frame: true });
 
     // carts: far down the slope, they roll backwards up to the wall's foot
-    const cartGeo = cartGeometry();
-    const wheelGeo = wheelGeometry();
+    const cartGeo = this.cartGeo = cartGeometry();
+    const wheelGeo = this.wheelGeo = wheelGeometry();
     this.cartMat = solidMaterial(0.55, new Color(0.95, 0.8, 0.55));
     const night = ctx.era.info.night;
     for (let i = 0; i < CARTS; i++) {
@@ -365,14 +368,13 @@ export class RewindPiece implements Piece {
 
   dispose(): void {
     this.group.removeFromParent();
+    this.mesh.dispose();
     this.mesh.geometry.dispose();
     this.mat.dispose();
     this.cartMat.dispose();
-    for (const c of this.carts) {
-      c.carter.dispose();
-      (c.group.children[0] as Mesh).geometry.dispose();
-      c.wheels[0]?.geometry.dispose();
-    }
+    this.cartGeo.dispose();
+    this.wheelGeo.dispose();
+    for (const c of this.carts) c.carter.dispose();
     this.dust.dispose();
     const u = this.ctx.post.uniforms;
     if (!this.reduced) u.uShift!.value = 0;

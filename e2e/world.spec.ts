@@ -70,7 +70,9 @@ test.describe('world', () => {
       k.step(4);
     });
     expect(await page.evaluate(() => window.kq!.travel!.state().activated)).toContain('ehrenhof');
-    await expect(page.getByTestId('travel-card-activated')).toBeVisible();
+    const activatedCard = page.getByTestId('travel-card-activated');
+    await expect(activatedCard).toBeVisible();
+    await expect(activatedCard).toContainText('Reisepunkt entdeckt: Ehrenhof');
     await look(page, '1789', 1214, -1112, 1230, -1127, 4, 10);
     await shot(page, 'tripod-activated');
     // the map: M opens it, the activated points have a "Hinreisen" button
