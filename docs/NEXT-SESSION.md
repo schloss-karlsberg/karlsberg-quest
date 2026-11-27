@@ -407,7 +407,7 @@ Owner of the tour systems (`src/systems/walk/` etc.) and of the mobile/UI follow
 - Canvas 2D redraws at about 10 Hz with zero additional 3D draw calls. See
   [the minimap draw-cost notes](PERFORMANCE.md#38-minimap-task-015).
 
-### 7.2 Tour playtest findings still open
+### 7.2 Tour playtest findings
 
 Source: the playtest report of 2026-11-21 (tour-playtest @ 69c1fc0). It lives in a temp folder
 (`playtest-tour/report.md` in the playtester's scratchpad), so the essence is copied here.
@@ -418,6 +418,9 @@ Source: the playtest report of 2026-11-21 (tour-playtest @ 69c1fc0). It lives in
 - TASK-022 addresses findings 5–6 and the slice findings on walker dithering, the group disappearing
   in view and wait-bark coverage. See the [tour systems notes](design/tour/systems.md).
 - TASK-016 addresses findings 7, 9, 10, 11 and 18. See the [tour systems notes](design/tour/systems.md).
+- TASK-018 addresses findings 8, 14 and 16. TASK-007 had already removed the lantern gate in
+  finding 15. TASK-018 also addresses the three MR 14 items and the chapter card, Quelle prompt
+  and radio, and Bussole objective items from the slice polish list below.
 
 | # | Severity | Essence |
 |---|---|---|

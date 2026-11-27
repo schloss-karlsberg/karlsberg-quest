@@ -4,7 +4,7 @@
  *
  * Any event can trigger barks: a bark line's trigger is matched when the event fires (era,
  * flags, payload), the request then waits up to REQUEST_TTL seconds for a quiet moment and the
- * global gap. Synthesised events (emitted here, story conditions may listen too):
+ * global gap (the guide's call-out has its own shorter cooldown). Synthesised events (emitted here, story conditions may listen too):
  *   'bark:idle'        – 60 s of game time without player input (once until the next input)
  *   'bark:enter-fire'  – a fire threat starts, or the player enters a burning room
  *                        (fire:room 'burning' + room:enter {roomId} from the interiors feature)
@@ -18,20 +18,23 @@ import '../contracts';
 import type { GameContext } from '../../core/context';
 import { defineSystem } from '../../core/systems';
 import type { DialogueLine } from '../../content/types';
-import { isBarkLine, matchTrigger } from '../../content/triggers';
+import { barkGroup, isBarkLine, matchTrigger } from '../../content/triggers';
+import { inTourQuelle } from '../quelle/tour';
 import {
   type BarkMemory,
+  CALLOUT_COOLDOWN,
   BUILTIN_MEMORIALS,
   IDLE_AFTER,
   type MemorialZone,
   REQUEST_TTL,
+  calloutGroup,
   chooseBark,
   lineSeconds,
   memorialAt,
   newMemory,
   quietReason,
-  ready,
   record,
+  requestReady,
 } from './rules';
 
 declare module '../../core/events' {
@@ -72,7 +75,8 @@ declare module '../../debug/hooks' {
 }
 
 interface Request {
-  event: string;
+  key: string;
+  callout: string | null;
   lines: DialogueLine[];
   until: number;
 }
@@ -189,16 +193,25 @@ class BarksRuntime {
     const lines = this.ctx.content.dialogueFor(name).filter((l) => isBarkLine(l.id) && !this.mutedLines.has(l.id));
     if (!lines.length) return;
     const st = this.ctx.state.state;
-    const story = (st.systems as Record<string, unknown>).story as { chapter?: string | null; beat?: string | null } | undefined;
+    const story = st.systems.story;
     const c = { era: this.ctx.era.current, flags: st.flags, chapter: story?.chapter ?? null, beat: story?.beat ?? null, clues: st.inventory.clues };
     // flag `laub.silent`: the compass does not talk yet (the prologue, before Laub introduces himself)
     const noLaub = st.flags['laub.silent'] === true;
-    const matching = lines.filter((l) => matchTrigger(l, name, payload, c) && !(noLaub && l.speaker === 'laub'));
+    const matching = lines.filter((l) => matchTrigger(l, name, payload, c) && !(noLaub && l.speaker === 'laub') && this.allowedAtQuelle(l));
     if (!matching.length) return;
-    // one waiting request per event
-    this.requests = this.requests.filter((r) => r.event !== name);
-    this.requests.push({ event: name, lines: matching, until: this.now + REQUEST_TTL });
-    if (this.requests.length > 4) this.requests.shift();
+    const callout = calloutGroup(matching[0]!);
+    // The guide's waiting bark and call-out share an event, but can both be pending.
+    const key = callout ?? name;
+    this.requests = this.requests.filter((r) => r.key !== key);
+    this.requests.push({ key, callout, lines: matching, until: this.now + REQUEST_TTL });
+    if (this.requests.length > 4) {
+      const ordinary = this.requests.findIndex((r) => r.callout === null);
+      this.requests.splice(Math.max(0, ordinary), 1);
+    }
+  }
+
+  private allowedAtQuelle(line: DialogueLine): boolean {
+    return barkGroup(line.id) !== 'marlene.gen' || !inTourQuelle(this.ctx.state.state.systems.story);
   }
 
   quiet(): string | null {
@@ -234,18 +247,33 @@ class BarksRuntime {
       }
     }
     if (!this.requests.length) return;
-    this.requests = this.requests.filter((r) => r.until >= s.t);
-    if (!this.requests.length || !ready(s.mem, s.t) || this.quiet()) return;
-    // newest request first (the moment it belongs to)
     for (let i = this.requests.length - 1; i >= 0; i--) {
+      if (this.requests[i]!.until < s.t) this.requests.splice(i, 1);
+    }
+    let i = this.nextRequest(s);
+    if (i < 0 || this.quiet()) return;
+    for (; i >= 0; i = this.nextRequest(s)) {
       const r = this.requests[i]!;
-      const line = chooseBark(r.lines, s.mem, s.t, Math.random);
-      if (!line) continue;
       this.requests.splice(i, 1);
+      const lines = r.lines.filter((l) => this.allowedAtQuelle(l));
+      const line = chooseBark(lines, s.mem, s.t, Math.random, r.callout ? CALLOUT_COOLDOWN : undefined);
+      if (!line) continue;
       this.say(line);
       return;
     }
-    this.requests = [];
+  }
+
+  /** Newest eligible call-out first, then newest ordinary request if the global gap allows it. */
+  private nextRequest(s: BarksSlice): number {
+    const ordinaryReady = requestReady(s.mem, s.t, null);
+    let ordinary = -1;
+    for (let i = this.requests.length - 1; i >= 0; i--) {
+      const callout = this.requests[i]!.callout;
+      if (callout !== null) {
+        if (requestReady(s.mem, s.t, callout)) return i;
+      } else if (ordinaryReady && ordinary < 0) ordinary = i;
+    }
+    return ordinary;
   }
 
   /** window.kq appears after every system's init: install the hooks on the first frame. */
@@ -274,7 +302,7 @@ class BarksRuntime {
         t: this.now,
         last: this.slice.mem.last,
         quiet: this.quiet(),
-        pending: this.requests.map((r) => r.event),
+        pending: this.requests.map((r) => r.callout ? 'walk:bark' : r.key),
         idle: this.idleT,
         memorials: this.slice.memorials.map((m) => m.id),
         spoken: [...this.spoken],

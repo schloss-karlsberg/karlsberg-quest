@@ -48,9 +48,9 @@ describe('presentation motion', () => {
     expect(storyFadeSeconds(0, true)).toBe(0);
     const card = new CardLineHold();
     card.show(true, 1);
-    expect(card.tick(1, true)).toBe(true);
+    expect(card.tick(1, undefined, true)).toBe(true);
     expect(card.holding()).toBe(true);
-    card.tick(0.2, true);
+    card.tick(0.2, undefined, true);
     expect(card.holding()).toBe(false);
   });
 

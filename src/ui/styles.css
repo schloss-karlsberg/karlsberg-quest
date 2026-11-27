@@ -208,7 +208,8 @@ body {
   color: var(--ink-soft);
   line-height: 1.4;
 }
-.kq-title:has(> .kq-loader:not([hidden])) {
+/* Keep the action positions when the boot loader disappears. */
+.kq-title:has(> .kq-loader) {
   padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
   align-items: safe center;
   overflow-y: auto;

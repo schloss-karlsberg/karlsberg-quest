@@ -58,6 +58,10 @@
   gap: 7px;
   align-items: baseline;
 }
+.kqq-tq-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .kqq-tq:not(.kqq-main) .kqq-tq-title {
   color: #e8e4da;
   font-size: 15px;

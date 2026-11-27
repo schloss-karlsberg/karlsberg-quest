@@ -69,6 +69,12 @@ visitor occupies a run waypoint, a dog can round it from the edge of the collisi
 
 **What it does.** Gerold walks the route stop by stop. Fourteen visitors follow him in a loose cluster, and two dogs follow Jost. At each stop the group gathers around the guide. Gerold speaks when the player is within 12 m. If the player falls more than 25 m behind, the group waits and Gerold requests a wait bark. After the Quelle stop the group continues towards the plateau through the Bussole beat. The era shift hides today's group and the tour's chapter cleanup disposes of it.
 
+The guide's compass marker uses the gold objective diamond. Its distance label has its own row on
+the strip and at either edge. As soon as the Weiher dialogue ends, the next HUD frame points to
+the Quelle; only routine updates to markers use the 10 Hz refresh. The guide's „Hier drüben!“
+call-out bypasses the 45 s bark gap. Its two variants share a 15 s cooldown, and it still waits
+for open dialogue and modals to clear.
+
 **Reusable code (audit §8).** **No NPC path-walk exists**: only `spawn`/`despawn` (`story/types.ts:424`). Templates:
 - `npc:follow` escort (`src/systems/npc/index.ts:122–165`, `:512` `followStep`, 2.4 m behind) — follower logic for the group around the guide.
 - quests `escort` objective (`quests/index.ts:383–385`, `rpg/types.ts:99, :150`) — the "wait for the player" leash.
@@ -377,6 +383,15 @@ declare module '../../debug/hooks' {
 - `src/systems/quelle/` handles the reach and facing checks, the E or touch prompt and the time
   travel scene. The spring keeps its usual interaction claim through `e.owner` while the prompt is
   up.
+- The tour detects the Bussole from the forecourt in front of the trough. On pickup, the objective
+  immediately changes to „Laub zuhören“. Once Laub finishes his instruction, the tour offers
+  „Wasser berühren“ from up to 3.25 m away, facing the water. Continuing a save in this beat plays
+  the remaining lines from the saved dialogue progress. The water unlock and its objective are
+  saved together as soon as the instruction ends. Marlene's ambient radio is quiet from the
+  approach to the first shift.
+- The spring scene, time shifts and in-game cinematics hide interaction prompts. The chapter card's
+  usual 5.5 s hold also has an elapsed-time cap during slow rendering. Game pauses and hidden tabs
+  suspend both clocks.
 - `tests/story.test.ts` covers home-ring membership, the wake pose and return shifts.
   `e2e/quelle.spec.ts` covers the desktop interaction and Q return. `e2e/touch.spec.ts` covers
   the water action and Pause chapter page on a landscape phone.
