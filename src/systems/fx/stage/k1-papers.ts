@@ -109,6 +109,7 @@ export class PapersPiece implements Piece {
 
   dispose(): void {
     this.mesh.removeFromParent();
+    this.mesh.dispose();
     this.mesh.geometry.dispose();
     (this.mesh.material as { dispose(): void }).dispose();
   }
