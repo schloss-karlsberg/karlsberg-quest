@@ -1,9 +1,11 @@
 import { PerspectiveCamera, Scene } from 'three';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import k2 from '../content/story/02-kapitel-2.story.json';
 import type { GameContext } from '../src/core/context';
 import { EventBus } from '../src/core/events';
 import { CameraRig } from '../src/player/camera';
+import { phonePose } from '../src/player/pose';
+import { CLOSE_S, OPEN_S } from '../src/systems/photo/raise';
 import photoSystem, { showViewfinder, type PhotoHooks } from '../src/systems/photo';
 import { DialoguePresenter } from '../src/systems/story/dialogue/presenter';
 import { speakerMeta } from '../src/systems/story/dialogue/speakers';
@@ -29,7 +31,8 @@ class TestElement extends EventTarget {
   getContext = () => null;
 }
 
-function phoneHarness() {
+/** `player`: extra player fields (thirdPerson, reducedMotion, …); `pressed`: the actions pressed this tick. */
+function phoneHarness(player: Record<string, unknown> = {}) {
   const root = new TestElement();
   const win = Object.assign(new EventTarget(), { kq: {} as { photo: PhotoHooks }, setTimeout: vi.fn() });
   vi.stubGlobal('window', win);
@@ -43,20 +46,31 @@ function phoneHarness() {
   vi.stubGlobal('requestAnimationFrame', vi.fn());
   const events = new EventBus();
   const rig = new CameraRig();
+  const pressed = new Set<string>();
   const modals = { count: 0 } as ModalManager;
   photoSystem.init({
     events,
     era: { current: 'today' },
-    player: { rig },
-    input: { enabled: true, muted: new Set() },
+    player: { rig, position: { x: 0, y: 0, z: 0 }, ...player },
+    input: { enabled: true, muted: new Set(), wasPressed: (a: string) => pressed.has(a) },
     pause: { paused: false },
     ui: { root: new TestElement(), modals, cards: { hold: vi.fn() }, toast: vi.fn() },
     world: { heightAt: () => 0 },
-    state: { subscribe: vi.fn() },
+    state: { subscribe: vi.fn(), state: { meta: { playSeconds: 0 } }, slice: (_id: string, make: () => unknown) => make() },
     scene: new Scene(),
     camera: new PerspectiveCamera(),
   } as unknown as GameContext);
-  return { photo: win.kq.photo, events, rig, root, modals };
+  /** One game tick with these actions pressed. */
+  const tick = (...actions: string[]) => {
+    for (const a of actions) pressed.add(a);
+    photoSystem.update!(1 / 60);
+    pressed.clear();
+  };
+  /** Frames of wall-clock time. */
+  const frames = (seconds: number) => {
+    for (let t = 0; t < seconds - 1e-9; t += 1 / 60) photoSystem.frame!(1 / 60);
+  };
+  return { photo: win.kq.photo, events, rig, root, modals, tick, frames };
 }
 
 afterEach(() => {
@@ -209,4 +223,94 @@ it('suspends the measuring scene and ignores picks without clearing the first en
   } finally {
     measure.dispose();
   }
+});
+
+describe('the phone comes out of the pocket (TASK-005)', () => {
+  const walking = { thirdPerson: true, reducedMotion: false, flying: false };
+
+  it('N plays the move: the hand out of the pocket, the camera glides in, then camera mode', () => {
+    const { photo, rig, tick, frames } = phoneHarness(walking);
+    tick('photo');
+    expect(photo.state().open).toBe(true);
+    expect(rig.photoMode).toBe(true);
+    expect(rig.photoGlide).toBe(0);
+    expect(phonePose.inHand).toBe(false);
+    frames(0.45);
+    expect(phonePose.inHand).toBe(true);
+    expect(rig.photoGlide).toBeGreaterThan(0);
+    expect(rig.photoGlide).toBeLessThan(1);
+    frames(OPEN_S);
+    expect(rig.photoGlide).toBe(1);
+    expect(phonePose).toEqual({ raise: 1, inHand: true });
+  });
+
+  it('N or the shutter during the move skips to camera mode; the shutter takes no picture then', () => {
+    const a = phoneHarness(walking);
+    a.tick('photo');
+    a.frames(0.2);
+    a.tick('photo');
+    expect(a.rig.photoGlide).toBe(1);
+    expect(a.photo.state().open).toBe(true);
+    photoSystem.dispose();
+    const b = phoneHarness(walking);
+    b.tick('photo');
+    b.frames(0.2);
+    b.tick('attack');
+    expect(b.rig.photoGlide).toBe(1);
+    expect(b.photo.state().lastShot).toBeNull();
+  });
+
+  it('N in camera mode plays it backwards; the phone is gone and photo mode off at the end', () => {
+    const { photo, events, rig, root, tick, frames } = phoneHarness(walking);
+    const closed = vi.fn();
+    events.on('photo:close', closed);
+    tick('photo');
+    frames(OPEN_S + 0.05);
+    tick('photo');
+    expect(photo.state().open).toBe(false);
+    expect(closed).toHaveBeenCalledOnce();
+    // still gliding out
+    expect(rig.photoMode).toBe(true);
+    frames(0.3);
+    expect(rig.photoGlide).toBeLessThan(1);
+    expect(root.toggleAttribute).toHaveBeenLastCalledWith('data-kq-photo', false);
+    frames(CLOSE_S);
+    expect(rig.photoMode).toBe(false);
+    expect(phonePose).toEqual({ raise: 0, inHand: false });
+  });
+
+  it('a forced close in the middle of either move snaps shut in the same call', () => {
+    for (const mid of ['opening', 'closing'] as const) {
+      const { events, rig, root, tick, frames } = phoneHarness(walking);
+      tick('photo');
+      if (mid === 'closing') {
+        frames(OPEN_S + 0.05);
+        tick('photo');
+      }
+      frames(0.3);
+      expect(rig.photoMode).toBe(true);
+      events.emit('era:change', { from: 'today', to: '1789' });
+      expect(rig.photoMode).toBe(false);
+      expect(phonePose).toEqual({ raise: 0, inHand: false });
+      expect(root.toggleAttribute).toHaveBeenLastCalledWith('data-kq-photo', false);
+      photoSystem.dispose();
+    }
+  });
+
+  it('reduced motion and first person cut straight to the lens, with no phone in hand', () => {
+    for (const player of [{ ...walking, reducedMotion: true }, { ...walking, thirdPerson: false }]) {
+      const { rig, tick } = phoneHarness(player);
+      tick('photo');
+      expect(rig.photoMode).toBe(true);
+      expect(rig.photoGlide).toBe(1);
+      expect(phonePose.inHand).toBe(false);
+      photoSystem.dispose();
+    }
+  });
+
+  it('the kq.photo.open() hook stays instant for tests', () => {
+    const { photo, rig } = phoneHarness(walking);
+    expect(photo.open()).toBe(true);
+    expect(rig.photoGlide).toBe(1);
+  });
 });

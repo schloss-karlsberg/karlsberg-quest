@@ -142,7 +142,7 @@ it('reuses the phone chrome and key handler through repeated forced closes', () 
   const events = new EventBus();
   const onClose = vi.fn();
   events.on('photo:close', onClose);
-  const rig = { setPhoto: vi.fn(), setFovScale: vi.fn(), snapFov: vi.fn() };
+  const rig = { setPhoto: vi.fn(), setPhotoBlend: vi.fn(), setFovScale: vi.fn(), snapFov: vi.fn() };
   const muted = new Set(['walk']);
   const era = { current: 'today' as Era };
   const state = new GameStateStore(createInitialState());

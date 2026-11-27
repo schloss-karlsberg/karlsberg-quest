@@ -650,7 +650,7 @@ export class PhotoCore {
 
 /** The bits of the camera rig (src/player/camera.ts `CameraRig`) the phone drives. */
 export interface PhotoLensRig<C> {
-  setPhoto(on: boolean): void;
+  setPhoto(on: boolean, glide?: boolean): void;
   setFovScale(k: number): void;
   snapFov(camera: C): void;
 }
@@ -662,8 +662,8 @@ export interface PhotoLensRig<C> {
  * this call and the rig writes `camera.fov` no more, so a takeover that captures the fov next
  * never captures a half-zoomed lens.
  */
-export function lensDown<C>(rig: PhotoLensRig<C>, camera: C, forced: boolean): void {
-  rig.setPhoto(false);
+export function lensDown<C>(rig: PhotoLensRig<C>, camera: C, forced: boolean, glide = false): void {
+  rig.setPhoto(false, glide);
   if (forced) rig.snapFov(camera);
   else rig.setFovScale(1);
 }
