@@ -9,7 +9,7 @@ const ZONE_GAP = 18;
 const SUB_MAX = 3;
 const SUB_MIN_MS = 1500;
 
-type SubtitleLine = { el: HTMLElement; ms: number; shownAt: number; timer: ReturnType<typeof setTimeout> | undefined };
+type SubtitleLine = { el: HTMLElement; ms: number; shownAt: number; timer: ReturnType<typeof setTimeout> | undefined; sound: boolean };
 
 const MOUSE_SVG = `<svg viewBox="0 0 24 32" class="kq-ctp-mouse" aria-hidden="true"><rect x="3" y="2" width="18" height="28" rx="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v10M3 12h18" stroke="currentColor" stroke-width="1.4" fill="none"/><path d="M4 11V11a8 8 0 0 1 8-8v9z" fill="currentColor" opacity="0.85"/></svg>`;
 
@@ -134,6 +134,16 @@ export class Hud {
     const v = this.action.get(reason);
     // a reason released without linger is off at once (tickCalm only prunes the map)
     return v !== undefined && (v === Infinity || v > this.calmClock);
+  }
+
+  /**
+   * Sound captions in the subtitle box now: lines without a speaker („[Diane und Bijou bellen]“).
+   * Spoken subtitles do not count, so a card is not held back for a whole conversation (TASK-074).
+   */
+  get captionLines(): number {
+    let n = 0;
+    for (const line of this.subsShown) if (line.sound) n++;
+    return n;
   }
 
   /** Something action-heavy is on (or just ended): keep the centre of the screen clear. */
@@ -400,6 +410,7 @@ export class Hud {
       ms,
       shownAt: 0,
       timer: undefined,
+      sound: speaker === null,
     };
     this.subsQueued.push(line);
     this.flushSubtitles();

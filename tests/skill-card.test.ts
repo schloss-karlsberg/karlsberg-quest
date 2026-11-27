@@ -4,7 +4,7 @@ import { EventBus } from '../src/core/events';
 import { createInitialState, GameStateStore } from '../src/core/state';
 import { SETTLE, UnlockCards } from '../src/systems/skills/card';
 import skills from '../src/systems/skills/index';
-import { CardDirector } from '../src/ui/cards';
+import { CardDirector, captionCoversCard } from '../src/ui/cards';
 
 class CardElement {
   readonly classes = new Set<string>();
@@ -147,6 +147,53 @@ describe('skill notices on short touch layouts', () => {
       advance(8);
       expect(queue.child).toBeUndefined();
       expect(remark.mock.calls.map(([line]) => line.id)).toEqual(['laub.skill.relief.2', 'laub.skill.kartograf.3']);
+    } finally {
+      skills.dispose();
+    }
+  });
+});
+
+describe('sound captions on short touch layouts (TASK-074)', () => {
+  it('holds a card back only on a short touch layout while a caption is up', () => {
+    expect(captionCoversCard(true, 375, 1)).toBe(true);
+    expect(captionCoversCard(true, 375, 0)).toBe(false);
+    expect(captionCoversCard(false, 375, 2)).toBe(false); // desktop / mouse
+    expect(captionCoversCard(true, 820, 1)).toBe(false); // tablet / portrait: the card has room
+  });
+
+  it('steps the skill card aside while a caption shares the band and brings it back after', () => {
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => callback(0));
+    vi.stubGlobal('window', { innerHeight: 375 });
+    const layer = new CardElement();
+    const director = new CardDirector({ inAction: false, showToast: vi.fn(), holdToast: vi.fn(), closeToast: vi.fn() }, { count: 0 });
+    const hud = { captionLines: 0 };
+    const state = new GameStateStore(createInitialState());
+    const ctx = {
+      input: { touchMode: true, touchStickActive: false }, state, events: new EventBus(),
+      ui: { layer: () => layer, cards: director, hud },
+      settings: { state: { reducedMotion: true } },
+      pause: { paused: false, reasons: new Set() },
+      t: (key: string) => key,
+    } as unknown as GameContext;
+    const advance = (frames: number) => {
+      for (let i = 0; i < frames; i++) skills.update(0.1, ctx);
+    };
+    skills.init(ctx);
+    try {
+      state.update((st) => { st.skills = { relief: 2 }; }, 'skill');
+      advance(8);
+      const card = layer.child!.child!;
+      expect(card.classes).toContain('kqk-in');
+      expect(card.classes).not.toContain('kqk-held');
+
+      hud.captionLines = 1;
+      advance(100); // longer than the card's own time: its clock stops while held
+      expect(layer.child!.child).toBe(card);
+      expect(card.classes).toContain('kqk-held');
+
+      hud.captionLines = 0;
+      advance(1);
+      expect(card.classes).not.toContain('kqk-held');
     } finally {
       skills.dispose();
     }

@@ -5,6 +5,7 @@
  * It reports, for the current screen state:
  *  - taps: every visible interactive element with its box; `small` when under 44×44 CSS px
  *  - overlaps: intersections between visible HUD / overlay regions and interactive elements
+ *  - caption-covered: a subtitle line under a visible level or skill card (TASK-074)
  *  - text: visible text under 12 CSS px; low contrast against the nearest opaque background
  *  - clipped: text cut by overflow (ellipsis or hidden overflow)
  *  - offscreen: interactive elements partly outside the viewport
@@ -145,6 +146,20 @@ export function measureUi(insets: { top: number; right: number; bottom: number; 
       const text = (el: Element) => el.matches('.kq-subtitles, [data-testid=dialogue], [data-testid=quest-tracker], .kq-prompt, [data-testid=npc-talk], [data-testid=skill-card], .kq-modal, .kqt-card, .kqc-tell span, .kq-party-strip');
       const sev: Issue['sev'] = both ? 'S1' : (interactive(a) && text(b)) || (interactive(b) && text(a)) ? 'S2' : 'S3';
       issues.push({ sev, kind: 'overlap', what: `${name(a)} ∩ ${name(b)}`, box: { x: r2(Math.max(ra.left, rb.left)), y: r2(Math.max(ra.top, rb.top)), w: r2(x.w), h: r2(x.h) } });
+    }
+  }
+
+  // ---- captions under a card (TASK-074) ---------------------------------------------------------
+  // A subtitle line (sound caption or spoken subtitle) must stay fully readable: any intersection
+  // with a visible level or skill card is reported, however small (the general overlap rule above
+  // ignores slivers under 24 px² and rates caption over card S3 only).
+  const cards = [...document.querySelectorAll('[data-testid=level-card], [data-testid=skill-card]')].filter((el) => shown(el));
+  for (const line of document.querySelectorAll('.kq-subtitles .line')) {
+    if (!shown(line)) continue;
+    const rl = line.getBoundingClientRect();
+    for (const card of cards) {
+      const x = inter(rl, visibleRect(card));
+      if (x) issues.push({ sev: 'S2', kind: 'caption-covered', what: `${name(line)} ∩ ${name(card)}`, box: { x: r2(Math.max(rl.left, card.getBoundingClientRect().left)), y: r2(Math.max(rl.top, card.getBoundingClientRect().top)), w: r2(x.w), h: r2(x.h) } });
     }
   }
 

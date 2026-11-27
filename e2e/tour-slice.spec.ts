@@ -26,12 +26,13 @@ const shown = (page: Page, pattern: string) =>
   page.evaluate((prefix) => window.kq!.story!.shown().filter((id) => id.startsWith(prefix)), pattern);
 
 type Caption = { text: string; t: number; wall: number; gone?: number };
+type Push = { text: string; ageMs: number };
 /**
  * Sound captions stay up for a wall-clock 3.5 s while the test advances game time in bursts, so a
  * loaded software renderer can outlast them. The test records each line added to and removed from
  * the subtitle live region and checks that record.
  */
-async function captionShown(page: Page, text: string, minVisibleMs = 0): Promise<void> {
+async function captionShown(page: Page, text: string): Promise<void> {
   const seen = await page.evaluate((want) => {
     const caps = (window as unknown as { tourCaptions: Caption[] }).tourCaptions;
     const c = caps.find((x) => x.text === want);
@@ -46,9 +47,19 @@ async function captionShown(page: Page, text: string, minVisibleMs = 0): Promise
   }, text);
   console.log(`[tour] caption ${text}: ${JSON.stringify(seen)}`);
   expect(seen, `caption ${text} shown`).not.toBeNull();
-  // Visible, not only added: the line stayed in the subtitle box at least this long (wall clock),
-  // or is still there now (TASK-073: the bark caption was pushed out ~28 ms after it appeared).
-  if (minVisibleMs > 0) expect(seen!.visible || seen!.visibleMs >= minVisibleMs, `caption ${text} visible ${seen!.visibleMs} ms`).toBe(true);
+}
+
+/**
+ * TASK-073: a full subtitle box pushes its oldest line out only after that line had its minimum
+ * time (src/ui/hud.ts SUB_MIN_MS). The MutationObserver record above can't show this: its
+ * callbacks run only when a long synchronous kq.step burst ends, so under load an add and the
+ * line's own timeout can be stamped ~10 ms apart although the line was up for its full 3.5 s
+ * (probe: added at t=154.33, own timer at 3.8 s wall, game time +0.45 s). So the spec wraps the
+ * HUD's drop and records each push (a drop to make room, flush=false) with the line's age.
+ */
+async function expectNotPushedEarly(page: Page, text: string): Promise<void> {
+  const pushes = await page.evaluate((want) => (window as unknown as { tourPushes: Push[] }).tourPushes.filter((x) => x.text === want), text);
+  expect(pushes.filter((x) => x.ageMs < 1500), `caption ${text} pushed out early: ${JSON.stringify(pushes)}`).toEqual([]);
 }
 
 async function shot(page: Page, name: string): Promise<void> {
@@ -176,6 +187,15 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
         }
       }
     }).observe(document.querySelector('.kq-subtitles')!, { childList: true });
+    // record pushes out of a full subtitle box (see expectNotPushedEarly); dropSubtitle is private
+    const pushes: Push[] = [];
+    (window as unknown as { tourPushes: Push[] }).tourPushes = pushes;
+    const hud = k.ctx.ui.hud as unknown as { dropSubtitle(line: { el: HTMLElement; shownAt: number }, flush?: boolean): void };
+    const drop = hud.dropSubtitle.bind(hud);
+    hud.dropSubtitle = (line, flush = true) => {
+      if (!flush) pushes.push({ text: line.el.textContent ?? '', ageMs: Math.round(performance.now() - line.shownAt) });
+      drop(line, flush);
+    };
     k.ctx.events.onAny((n, p) => {
       if (n === 'story:beat' || n.startsWith('animal:') || n === 'photo:good' || n === 'npc:arrived' || n === 'cinematic:end' || n === 'walk:bark' || n.startsWith('group:') || n.startsWith('shift:') || n.startsWith('quelle:'))
         w.tourRec.push({ n, p: JSON.parse(JSON.stringify(p ?? null)), t: k.ctx.loop.time });
@@ -311,7 +331,8 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   await follow(page, 't8', 200);
   expect(await shown(page, 'imhoff.t.station2')).toEqual(['imhoff.t.station2', 'imhoff.t.station2a', 'imhoff.t.station2b', 'imhoff.t.station2c']);
   await page.evaluate(() => window.kq!.step(150));
-  await captionShown(page, '[Diane und Bijou bellen]', 1450);
+  await captionShown(page, '[Diane und Bijou bellen]');
+  await expectNotPushedEarly(page, '[Diane und Bijou bellen]');
   const framed = await page.evaluate(() => {
     const k = window.kq!;
     const { camera, world } = k.ctx;
