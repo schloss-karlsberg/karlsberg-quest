@@ -29,7 +29,7 @@ it.each([true, false])('counts visible skill-card time only in fixed updates (ma
   // CSS entrance callbacks never run in this fixture.
   vi.stubGlobal('requestAnimationFrame', vi.fn());
   const ctx = {
-    events, state: new GameStateStore(createInitialState()), loop: { manual }, pause,
+    events, state: new GameStateStore(createInitialState()), loop: { manual }, pause, input: { touchMode: false, touchStickActive: false },
     ui: { cards: director, layer: () => layer }, settings: { state: { reducedMotion: manual } },
     audio: { bus: () => null }, t: () => 'Test', save: { autosave: vi.fn() },
   } as unknown as GameContext;

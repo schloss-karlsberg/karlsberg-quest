@@ -69,7 +69,7 @@ function setupSkills() {
     step(frames: number) {
       for (let i = 0; i < frames; i++) {
         cards.tick(0.1);
-        skills.frame(0.1, ctx);
+        skills.update(0.1, ctx);
       }
     },
   };
