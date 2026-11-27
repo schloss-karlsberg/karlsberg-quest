@@ -583,6 +583,8 @@ class Combat {
     ctx.save.hold('combat:step', true);
     try {
       for (const e of evs) this.onEvent(e, inp);
+      // that autosave carries the vitals after this step's hits and kill rewards (a level-up heals)
+      this.syncResources();
     } finally {
       ctx.save.hold('combat:step', false);
     }
