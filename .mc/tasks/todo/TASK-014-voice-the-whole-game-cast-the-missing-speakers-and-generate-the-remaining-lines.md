@@ -162,10 +162,10 @@ The modern doubles retain their own identities. All twenty designs start from a 
 
 ### Owner commands
 
-From a terminal, render the four design batches, then open the offline comparison:
+From a terminal, render the four design batches, then open the offline comparison: (`<voices-worktree>` is your local voices checkout, `<moss-service>` your local MOSS service checkout):
 
 ```sh
-cd "/Users/sebastian/develop/experiements/karlsberg-quest-voices/casting-cast3"
+cd "<voices-worktree>/casting-cast3"
 (
   for batch in "$PWD"/batches/design-*.json; do
     "$HOME/kq-models/scripts/run_batch.sh" "$batch" "$PWD/raw/design" || exit $?
@@ -176,7 +176,7 @@ cd "/Users/sebastian/develop/experiements/karlsberg-quest-voices/casting-cast3"
 Select one seed per role. Copy the exact `python3 queue-picks.py --jost …` command shown under **Auswahl in die Warteschlange legen** and execute it. From the same directory, `python3 queue-picks.py` also accepts the ten choices interactively. The helper checks each raw WAV against the pinned, reference-free MOSS design log, registers its hash, submits 20 audition jobs and writes `submission.json` with the selected references, requests and receipts.
 
 ```sh
-/Users/sebastian/develop/experiements/moss-service/bin/moss-run
+<moss-service>/bin/moss-run
 open ./index.html
 ```
 
