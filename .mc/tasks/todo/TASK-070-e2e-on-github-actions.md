@@ -18,7 +18,7 @@ milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-26
-updated: 2026-11-26
+updated: 2026-11-27
 ---
 
 # Run sharded end-to-end tests on GitHub Actions
@@ -39,6 +39,7 @@ without waiting for the shared development machine.
 - [x] The contributing guide, agent commands, e2e architecture and PRD describe the change.
 - [x] Validate workflow YAML, list the CI shards and skips, and run the four gates.
 - [ ] Run the touched specs plus smoke under the local lock when loopback is available.
+- [ ] Confirm the updated hosted suite completes, with any remaining failures coming from assertions.
 
 ## Plan
 
@@ -95,11 +96,59 @@ provide the Linux timing baseline.
 - 2026-11-26 — The sandbox denied `git add` at the worktree's `index.lock`. The changes
   remain in the worktree.
 
+### Fix round 1 · 2026-11-27
+
+- Reviewed PR #92's first hosted run (45907871976). The build took 22 seconds. Timeouts
+  dominated across the eight shards. Five supplied logs show the 75-minute suite deadline,
+  and the runner sent exit 143 on the campaign and animals shards. The downloaded shard 3
+  log contains `BlobNotFound`. The GitHub CLI returned job metadata but could not retrieve
+  its full log.
+- The hosted default is 640×360. The existing SwiftShader detection selects Niedrig with
+  pixel ratio 1, no shadows or MSAA, terrain LOD scale 0.6 and a 480 m far tree ring. It
+  already supplies the cheap preset, so the viewport change requires no new game flag or
+  settings override. Explicit tiers still work. Preserve desktop viewports for
+  art, scenery, readability, render budgets, framerate and specific pixel or layout
+  checks. Device-sized touch tests keep their viewport. Local runs retain 1280×720,
+  their earlier deadlines, port overrides and `heavy.sh` slot paths.
+- The campaign and animals already use a single Playwright page per test. The campaign's
+  screenshots were resetting its viewport to 1280×720. CI now captures them at 640×360.
+  The three demo animals cases use the existing `?manual&faststep` option to defer paint
+  while stepping behaviour. The deer pixel coverage case keeps full rendering. Playwright's
+  Chromium defaults already include `--disable-dev-shm-usage`. CI traces omit filmstrips
+  and keep snapshots and still failure screenshots. The logs have no OOM or crash
+  diagnostic that establishes what caused the runner shutdowns.
+- The matrix reserves one of 16 jobs for the campaign. The other 15 distribute the chapters
+  and give extra weight to the costly render and gameplay specs seen in the first run,
+  including animals, fx, the bench route, and art polish. The resulting non-campaign shards
+  score 22–23 estimated units each. These are relative weights. Recalibrate from completed
+  hosted durations. The shared timeout helper triples the default test and expect
+  budgets, explicit test budgets, and explicit screenshot budgets on CI. Regular shards
+  have 180 minutes within 205-minute jobs. The campaign has 240 within 270. The extra
+  time covers setup and diagnostics. Test retries remain at zero.
+- Workflow YAML and shell steps validated. `CI=1 pnpm exec playwright test --list --shard=1/16`
+  listed 16 cases in six files. The workflow's 16 weighted lists cover 59 files and 207
+  runnable cases, with the same five local-only skips
+  (four timed framerate checks and one walk sample). A `chapter-k2 smoke` dispatch listed
+  exactly those files. Local discovery listed all 212 cases as runnable. The local config
+  check also verified slot 2 on port 5283 with `test-results/artifacts-slot2`.
+- The four gates passed. Vitest reported `Tests  2135 passed | 10 todo (2145)`.
+  Content validation reported 30 warnings. The local smoke attempt timed out in the
+  `heavy.sh` queue, and the sandbox independently denied a loopback bind with `EPERM`.
+- The sandbox denied creation of the worktree's Git `index.lock`. The fix is unstaged.
+  The intended commit is `ci(env): lighten and rebalance hosted Playwright runs`.
+
+The four assertion messages visible in the supplied logs represent two failed checks.
+The GitHub reporter printed each in the live annotation and again in the summary.
+
+| Log | Failed assertion | Assessment |
+| --- | --- | --- |
+| Shard 2, twice | `notes.spec.ts` F8 note should include the `Testereignis` toast event | Likely sensitive to hosted load. The note snapshots a 30-second wall-clock event window and synchronously captures the rendered view. |
+| Shard 4, twice | `chapter-k2.spec.ts` via `helpers/k2.ts` expected the player to reach the sneak waypoint | Genuine playthrough assertion. The walk has a fixed simulation step budget, so a real route or setup flake is plausible. It needs a hosted rerun to distinguish that from a timing-sensitive setup. |
+
 ## Follow-ups
 
-- The sandbox denied a bind on `127.0.0.1` with `EPERM`. Run `e2e/framerate.spec.ts`,
-  `e2e/walk.spec.ts` and `e2e/smoke.spec.ts` locally, one file at a time. The timing cases
-  use the exclusive lane.
-- Check the first hosted PR run for Linux browser compatibility and per-shard durations.
-  Calibrate the weights from those durations.
-- Stage and commit the implementation and documentation outside this sandbox.
+- Run the full updated hosted matrix. Check for runner shutdowns and unfinished shards.
+  Recheck both assertion failures with `chapter-k2 notes` if they persist.
+- Verify `e2e/smoke.spec.ts`, `e2e/animals.spec.ts`, `e2e/campaign.spec.ts`, graphics and
+  layout opt-outs where loopback is available. Use the exclusive lane for local
+  `e2e/framerate.spec.ts`, `e2e/walk.spec.ts` and `e2e/perf.spec.ts`.

@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale, isCI } from './helpers/ci';
 import { warnIfShared } from '../scripts/dev/heavy-env.mjs';
 import { trackErrors } from './helpers/common';
 
@@ -15,7 +16,7 @@ import { trackErrors } from './helpers/common';
 const OUT = 'test-results/walk';
 const EXTRA_QUERY = process.env.KQ_WALK_QUERY ?? '';
 mkdirSync(OUT, { recursive: true });
-test.describe.configure({ timeout: 300_000 });
+test.describe.configure({ timeout: ciScale(300_000) });
 
 type Rec = { n: string; p: any }[];
 const START = { x: 524, z: -770 };
@@ -181,12 +182,12 @@ async function sample(page: Page, tier: string, group: boolean, ms = 5000, minFr
 
 const TIERS = (process.env.KQ_WALK_TIERS ?? 'high,medium,low').split(',');
 
-const perfCheck = process.env.CI ? {
+const perfCheck = isCI ? {
   annotation: { type: 'skip', description: 'The minimum frame count in the timed sample needs a quiet local machine.' },
 } : {};
 
 test('walk (d): perf — 16 bodies vs. none at the high, medium and low tiers; screenshots', perfCheck, async ({ page }) => {
-  test.setTimeout(840_000);
+  test.setTimeout(ciScale(840_000));
   warnIfShared('walk (d) perf'); // its frame times need heavy.sh --exclusive
   const rows: Sample[] = [];
   for (const tier of TIERS) {

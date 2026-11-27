@@ -1,4 +1,5 @@
 import { type Page, expect } from '@playwright/test';
+import { ciScale } from './ci';
 import { type PlayOptions, SCREENS, throughParty } from './common';
 import { type Any, clearCards, install, killGroup, questTalk, takeAll, voiceStance } from './k3';
 import { waitForHooks } from './pause';
@@ -58,7 +59,7 @@ export async function shot(page: Page, name: string): Promise<void> {
     return window.kq!.screenshotReady();
   });
   await page.waitForTimeout(150);
-  await page.screenshot({ path: `${SCREENS}/cnb-k4-${name}.png`, timeout: 150_000 });
+  await page.screenshot({ path: `${SCREENS}/cnb-k4-${name}.png`, timeout: ciScale(150_000) });
 }
 
 /** Seconds of game time (60 Hz fixed steps), in chunks so the page stays responsive. */

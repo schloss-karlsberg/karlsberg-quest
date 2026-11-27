@@ -1,4 +1,5 @@
 import { defineConfig } from '@playwright/test';
+import { ciScale, desktopViewport, isCI } from './e2e/helpers/ci';
 import { slotDir, slotPort } from './scripts/dev/heavy-env.mjs';
 
 // KQ_E2E_PORT: run several worktrees' suites side by side without reusing each other's server.
@@ -7,25 +8,27 @@ import { slotDir, slotPort } from './scripts/dev/heavy-env.mjs';
 // start) is test-results/artifacts in slot 0 and test-results/artifacts-slot<k> in slot k, so two
 // jobs from the same checkout never wipe each other's.
 const PORT = slotPort(5281, 'KQ_E2E_PORT');
-const ci = !!process.env.CI;
+const shardMinutes = process.env.KQ_E2E_CAMPAIGN === '1' ? 240 : 180;
 
 export default defineConfig({
   testDir: 'e2e',
-  timeout: 120_000,
-  expect: { timeout: 30_000 },
+  timeout: ciScale(120_000),
+  expect: { timeout: ciScale(30_000) },
   fullyParallel: false,
   workers: 1,
   retries: 0,
-  forbidOnly: ci,
-  // Leave time for setup and artifact upload within the hosted job's 90-minute deadline.
-  globalTimeout: ci ? 75 * 60_000 : 0,
-  reporter: ci ? [['github'], ['html', { outputFolder: 'test-results/playwright-report', open: 'never' }]] : [['list']],
+  forbidOnly: isCI,
+  // Keep setup and artifact upload headroom in the corresponding e2e.yml job budgets.
+  globalTimeout: isCI ? shardMinutes * 60_000 : 0,
+  reporter: isCI ? [['github'], ['html', { outputFolder: 'test-results/playwright-report', open: 'never' }]] : [['list']],
   outputDir: slotDir('test-results/artifacts'),
   use: {
     baseURL: `http://127.0.0.1:${PORT}/`,
-    viewport: { width: 1280, height: 720 },
-    trace: ci ? 'retain-on-failure' : 'off',
-    screenshot: ci ? 'only-on-failure' : 'off',
+    // The game already selects Niedrig for SwiftShader, with DPR 1, shorter LOD distances and no shadows.
+    viewport: isCI ? { width: 640, height: 360 } : desktopViewport,
+    // Trace filmstrips compete with the game for software rendering. Keep DOM snapshots and failure screenshots.
+    trace: isCI ? { mode: 'retain-on-failure', screenshots: false } : 'off',
+    screenshot: isCI ? 'only-on-failure' : 'off',
     launchOptions: {
       // WebGL in headless Chromium: ANGLE on SwiftShader (software) is deterministic and needs no GPU.
       args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
@@ -34,7 +37,7 @@ export default defineConfig({
   webServer: {
     command: `pnpm exec vite preview --port ${PORT} --strictPort --host 127.0.0.1`,
     url: `http://127.0.0.1:${PORT}/`,
-    reuseExistingServer: !ci,
+    reuseExistingServer: !isCI,
     timeout: 60_000,
   },
 });

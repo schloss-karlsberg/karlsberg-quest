@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { openPause, waitForHooks } from './helpers/pause';
 import { SCREENS } from './helpers/common';
 
@@ -13,7 +14,7 @@ import { SCREENS } from './helpers/common';
  * Screenshots: test-results/screens/qst-*.png
  */
 mkdirSync(SCREENS, { recursive: true });
-test.describe.configure({ timeout: 300_000 });
+test.describe.configure({ timeout: ciScale(300_000) });
 
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];
 const Q = 'q.test.lohnzettel';
@@ -80,7 +81,7 @@ async function killOne(page: Page, i: number): Promise<void> {
 }
 
 test('quests: Hanne gives a task, the tracker counts, the turn-in tells the history; the quest log keeps it', async ({ page }) => {
-  test.setTimeout(900_000);
+  test.setTimeout(ciScale(900_000));
   const errors = trackErrors(page);
   await boot(page);
   await page.evaluate(() => {

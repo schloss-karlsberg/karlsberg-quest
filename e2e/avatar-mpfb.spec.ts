@@ -1,4 +1,5 @@
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import type { SkinnedMesh } from 'three';
 import { trackErrors } from './helpers/common';
 
@@ -22,7 +23,7 @@ async function pieces(page: Page): Promise<{ default: boolean[]; court: boolean[
 }
 
 test('the MPFB avatar loads and swaps into the court costume and back', async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(ciScale(180_000));
   const errors = trackErrors(page);
   await page.goto('./?avatar=mpfb&notitle&nosave&fresh&manual');
   await page.waitForFunction(() => window.kq?.avatar !== undefined, null, { timeout: 120_000 });

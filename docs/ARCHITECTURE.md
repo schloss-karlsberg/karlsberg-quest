@@ -693,11 +693,14 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   Chronik's measuring clue) → the story's pack in 1793-02 leaving snow tracks
   (`int-r2-*.png`). Unit rules of the integration: `tests/integration-round2.test.ts`.
   `KQ_E2E_PORT` picks the preview port (default 5281, or 5281 + k inside `scripts/dev/heavy.sh` slot k; an existing server on it is reused).
-- Hosted e2e (`.github/workflows/e2e.yml`) builds `dist/` once and shares it with up to eight Linux
-  jobs. Each job runs one Chromium worker with the same SwiftShader launch args as local runs.
-  `scripts/dev/plan-e2e-shards.ts` uses Playwright discovery to assign whole files and balances
-  runnable test counts with extra weight for longer playthroughs. The campaign gets its own shard
-  in the full suite. A failed job uploads `test-results/`, including its HTML report.
+- Hosted e2e (`.github/workflows/e2e.yml`) builds `dist/` once and shares it with up to 16 Linux
+  jobs. Each runs one Chromium worker with SwiftShader, whose Niedrig preset uses pixel ratio 1,
+  shorter LOD distances and no shadows. `playwright.config.ts` defaults to a 640×360 viewport on
+  CI. A spec can set its own viewport or tier for layout and rendering checks.
+  `scripts/dev/plan-e2e-shards.ts` assigns whole files based on runnable case counts and allowances
+  for long playthroughs and expensive rendering. The campaign runs alone with a 240-minute suite
+  deadline. Other shards have 180 minutes. Failed jobs upload `test-results/` with the HTML report,
+  traces and screenshots.
 - E2E (`e2e/smoke.spec.ts`, Chromium + SwiftShader WebGL): title → content note → name → paper map → "Tour starten" → game
   starts; every era and scan mode render with no console errors / failed requests; walking,
   crouch, spirit view rules and a save round trip.

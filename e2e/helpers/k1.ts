@@ -1,4 +1,5 @@
 import { type Page, expect } from '@playwright/test';
+import { ciScale } from './ci';
 import { type PlayOptions, SCREENS } from './common';
 import { waitForHooks } from './pause';
 import { cna, fight, flag, holdHome, installQuestPlay, pickUp, qn, qs, talkQuest, until, untilQuest } from './prolog';
@@ -109,7 +110,7 @@ export async function shot(page: Page, name: string): Promise<void> {
   if (!SHOTS) return;
   await page.evaluate(() => window.kq!.screenshotReady());
   await page.waitForTimeout(150);
-  await page.screenshot({ path: `${SCREENS}/ch-k1-${name}.png`, timeout: 400_000 });
+  await page.screenshot({ path: `${SCREENS}/ch-k1-${name}.png`, timeout: ciScale(400_000) });
 }
 
 export const story = (page: Page) => page.evaluate(() => window.kq!.story!.state());

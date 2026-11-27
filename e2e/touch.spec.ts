@@ -1,4 +1,5 @@
 import { type CDPSession, type Page, devices, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SCREENS, trackErrors } from './helpers/common';
 import { waitForHooks } from './helpers/pause';
 import { QUELLE_STAND } from './helpers/prolog';
@@ -82,7 +83,7 @@ for (const [name, device] of Object.entries(DEVICES)) {
     test.use({ ...device });
 
     test('walk, look, hit and navigate Pause', async ({ page }) => {
-      test.setTimeout(240_000);
+      test.setTimeout(ciScale(240_000));
       const errors = trackErrors(page);
       await bootField(page);
       const cdp = await page.context().newCDPSession(page);
@@ -227,7 +228,7 @@ test.describe('notices on a small landscape phone', () => {
   test.use({ ...DEVICES['iphone-13'], viewport: { width: 667, height: 375 } });
 
   test('outside taps dismiss, while drags, action buttons and modal scrolling still work', async ({ page }) => {
-    test.setTimeout(240_000);
+    test.setTimeout(ciScale(240_000));
     await bootField(page);
     const finger = new Finger(await page.context().newCDPSession(page), 1);
     const text = 'Codex ergänzt: Wasser, das sich erinnert – die Aufzeichnungen der Vermessungskommission';
@@ -308,7 +309,7 @@ test.describe('touch at the Karlsbergquelle', () => {
   test.use({ ...DEVICES['iphone-13'], reducedMotion: 'reduce' });
 
   test('uses Pause for chapters and Aktion for the water', async ({ page }) => {
-    test.setTimeout(240_000);
+    test.setTimeout(ciScale(240_000));
     await page.goto('./?notitle&nosave&fresh&manual&q=low');
     await waitForHooks(page, ['story', 'quelle']);
     await page.evaluate(({ x, z, yaw }) => {
@@ -349,7 +350,7 @@ test.describe('touch: title and settings by tap', () => {
   test.use({ ...DEVICES['iphone-13'] });
 
   test('new game by taps; Touch-Steuerung Aus hides the controls', async ({ page }) => {
-    test.setTimeout(240_000);
+    test.setTimeout(ciScale(240_000));
     const errors = trackErrors(page);
     await page.goto('./?nosave&fresh');
     const start = page.getByTestId('title-new');
@@ -386,7 +387,7 @@ test.describe('touch: title and settings by tap', () => {
   });
 
   test('portrait keeps title menus usable and shows the rotate overlay during play', async ({ page }) => {
-    test.setTimeout(240_000);
+    test.setTimeout(ciScale(240_000));
     await page.setViewportSize({ width: 375, height: 667 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('./?nosave&fresh');

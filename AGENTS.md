@@ -31,7 +31,7 @@ pnpm assets:pack <in.glb> public/assets/models/<track>/<name>.glb        # pack 
 ```
 
 On a shared machine, wrap e2e and GPU runs in `scripts/dev/heavy.sh` if present.
-E2E runs on CI for every PR. Run a subset with `gh workflow run e2e.yml -f specs="chapter-k2 smoke" --ref <branch>`.
+CI runs e2e in up to 16 SwiftShader shards with a 640×360 default viewport. Run a subset with `gh workflow run e2e.yml -f specs="chapter-k2 smoke" --ref <branch>`.
 
 ## Rules
 

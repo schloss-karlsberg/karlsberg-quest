@@ -1,4 +1,5 @@
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SCREENS, trackErrors } from './helpers/common';
 
 /**
@@ -78,7 +79,7 @@ async function frames(page: Page, n: number): Promise<void> {
 }
 
 test.describe('third-person camera (round 10)', () => {
-  test.describe.configure({ timeout: 420_000 });
+  test.describe.configure({ timeout: ciScale(420_000) });
 
   test('F-03 / F-07 / F-08: fights on the forest slopes', async ({ page }) => {
     const errors = trackErrors(page);

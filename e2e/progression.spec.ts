@@ -1,4 +1,5 @@
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { openPause, waitForHooks } from './helpers/pause';
 import { SCREENS, trackErrors } from './helpers/common';
 
@@ -8,7 +9,7 @@ import { SCREENS, trackErrors } from './helpers/common';
  * (walk over it → feed → H uses it), enemy loot drops, and the combined equipment and talents page.
  * Runs the test chapter (`?storytest`, beat q1). Screenshots: test-results/screens/prg-*.png.
  */
-test.describe.configure({ timeout: 420_000 });
+test.describe.configure({ timeout: ciScale(420_000) });
 
 type Rec = { n: string; p: Record<string, unknown> }[];
 
@@ -40,7 +41,7 @@ const prog = (page: Page) => page.evaluate(() => window.kq!.progression!.state()
 async function shot(page: Page, name: string): Promise<void> {
   await page.evaluate(() => window.kq!.screenshotReady());
   await page.waitForTimeout(250);
-  await page.screenshot({ path: `${SCREENS}/prg-${name}.png`, timeout: 200_000 });
+  await page.screenshot({ path: `${SCREENS}/prg-${name}.png`, timeout: ciScale(200_000) });
 }
 
 /** Skip dialogue lines so they do not cover the picture. */

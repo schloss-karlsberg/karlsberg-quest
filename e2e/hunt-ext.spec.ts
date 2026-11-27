@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SCREENS } from './helpers/common';
 
 /**
@@ -27,7 +28,7 @@ async function shot(page: Page, name: string): Promise<void> {
   // the story's ambient dialogue (Laub reacting to the horn) would cover the feature views
   await page.addStyleTag({ content: '.kqs-dlg { visibility: hidden !important; }' });
   await page.evaluate(() => window.kq!.screenshotReady());
-  await page.screenshot({ path: `${SCREENS}/${name}.png`, timeout: 150_000 });
+  await page.screenshot({ path: `${SCREENS}/${name}.png`, timeout: ciScale(150_000) });
 }
 
 /** Apfelallee (frost night of 1793-02). */
@@ -104,7 +105,7 @@ test.describe('hunt extensions', () => {
   });
 
   test('drive mode: the pack herds from behind and the flanks; turning back brings you home', async ({ page }) => {
-    test.setTimeout(240_000);
+    test.setTimeout(ciScale(240_000));
     const errors = trackErrors(page);
     const st = await page.evaluate(
       ({ h, z }) => {
@@ -159,7 +160,7 @@ test.describe('hunt extensions', () => {
   });
 
   test('finale at the kennel: the circle, lying down with the light, the calm', async ({ page }) => {
-    test.setTimeout(240_000);
+    test.setTimeout(ciScale(240_000));
     const errors = trackErrors(page);
     const gathered = await page.evaluate((z) => {
       const k = window.kq!;
@@ -243,7 +244,7 @@ test.describe('menagerie', () => {
   });
 
   test('cassowary: it charges, you go down, you get up', async ({ page }) => {
-    test.setTimeout(240_000);
+    test.setTimeout(ciScale(240_000));
     const errors = trackErrors(page);
     const charge = await page.evaluate(() => {
       const k = window.kq!;
@@ -293,7 +294,7 @@ test.describe('menagerie', () => {
   });
 
   test('1793-07: dromedaries on the dam, the jaguar beyond the lantern light', async ({ page }) => {
-    test.setTimeout(240_000);
+    test.setTimeout(ciScale(240_000));
     const errors = trackErrors(page);
     await page.evaluate(() => {
       const k = window.kq!;

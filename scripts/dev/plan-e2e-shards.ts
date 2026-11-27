@@ -7,19 +7,25 @@ type ListedSuite = {
 
 type ListedFile = ListedSuite & { file: string };
 
-const MAX_SHARDS = 8;
+// Leave room for the PR-title job and other checks in the 20-job hosted runner pool.
+const MAX_SHARDS = 16;
+const CAMPAIGN = 'campaign.spec.ts';
 
 // One unit per runnable test, plus an estimate for the extra steps, loads and screenshots in
-// longer playthroughs. Update these estimates using hosted durations once they are available.
+// longer playthroughs and render-heavy checks. Run 45907871976 stopped early on several such specs.
 const extraWork = new Map([
-  ['campaign.spec.ts', 46],
+  ['animals.spec.ts', 10],
   ['chapter-k1.spec.ts', 16],
+  ['chapter-k1-disguise.spec.ts', 9],
   ['chapter-k2.spec.ts', 14],
   ['chapter-k3.spec.ts', 17],
   ['chapter-k4.spec.ts', 13],
+  ['fx.spec.ts', 8],
   ['integration.spec.ts', 6],
+  ['perf.spec.ts', 12],
+  ['polish-art.spec.ts', 8],
+  ['scenery.spec.ts', 8],
   ['tour-slice.spec.ts', 12],
-  ['walk.spec.ts', 8],
 ]);
 
 function runnableTests(suite: ListedSuite): number {
@@ -39,13 +45,16 @@ export function planE2eShards(files: ListedFile[], requested = '') {
     if (!file) throw new Error(`Unknown e2e spec ${JSON.stringify(input)}.`);
     return file;
   }));
-  const weighted = (selection.size ? [...selection] : files).map((suite) => {
+  const selected = selection.size ? [...selection] : files;
+  const campaign = selected.some((suite) => suite.file === CAMPAIGN);
+  const weighted = selected.filter((suite) => suite.file !== CAMPAIGN).map((suite) => {
     const count = runnableTests(suite);
     return { file: suite.file, weight: count ? count + (extraWork.get(suite.file) ?? 0) : 0 };
   });
   weighted.sort((a, b) => b.weight - a.weight || a.file.localeCompare(b.file, 'en'));
 
-  const shards = Array.from({ length: Math.min(weighted.length, MAX_SHARDS) }, () => ({ files: [] as string[], weight: 0 }));
+  const regularSlots = MAX_SHARDS - Number(campaign);
+  const shards = Array.from({ length: Math.min(weighted.length, regularSlots) }, () => ({ files: [] as string[], weight: 0 }));
   for (const spec of weighted) {
     // Assign one file to each shard before adding work to the lightest one.
     const shard = shards.find((candidate) => !candidate.files.length)
@@ -54,7 +63,9 @@ export function planE2eShards(files: ListedFile[], requested = '') {
     shard.weight += spec.weight;
   }
 
-  return { include: shards.map(({ files: specs }, i) => ({ shard: i + 1, specs: specs.join('\n') })) };
+  const lists = shards.map(({ files }) => files);
+  if (campaign) lists.unshift([CAMPAIGN]);
+  return { include: lists.map((specs, i) => ({ shard: i + 1, specs: specs.join('\n'), campaign: specs[0] === CAMPAIGN })) };
 }
 
 if (import.meta.main) {

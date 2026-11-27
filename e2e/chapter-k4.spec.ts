@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { trackErrors } from './helpers/common';
 import { install, killGroup } from './helpers/k3';
 import { beat, boot, events, examineHere, playK4, run, settleShift, shot, story, walk } from './helpers/k4';
@@ -9,7 +10,7 @@ import { beat, boot, events, examineHere, playK4, run, settleShift, shot, story,
  * Screenshots: test-results/screens/cnb-k4-*.png
  */
 // software WebGL on a busy machine: the full chapter takes 13–20 min headless
-test.describe.configure({ timeout: 1_800_000 });
+test.describe.configure({ timeout: ciScale(1_800_000) });
 
 test('chapter 4: Der Steinbruch, from the station to the kennel, and the endings', async ({ page }) => {
   const errors = trackErrors(page);

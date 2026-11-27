@@ -1,14 +1,15 @@
 import { expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SCREENS, trackErrors } from './helpers/common';
 import { openPause, waitForHooks } from './helpers/pause';
 import { newGame } from './helpers/prolog';
 
 // Tour onboarding, queued clue pages and the order in which Escape dismisses UI.
-test.describe.configure({ timeout: 600_000 });
+test.describe.configure({ timeout: ciScale(600_000) });
 
 async function shot(page: import('@playwright/test').Page, name: string): Promise<void> {
   await page.evaluate(() => window.kq!.screenshotReady()).catch(() => undefined);
-  await page.screenshot({ path: `${SCREENS}/s5-pacing-${name}.png`, timeout: 90_000 }).catch(() => undefined);
+  await page.screenshot({ path: `${SCREENS}/s5-pacing-${name}.png`, timeout: ciScale(90_000) }).catch(() => undefined);
 }
 
 test('the tour gives the player movement during its opening card', async ({ page }) => {

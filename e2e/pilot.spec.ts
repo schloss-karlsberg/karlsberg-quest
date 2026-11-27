@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import jpeg from 'jpeg-js';
 import { SCREENS, trackErrors } from './helpers/common';
 
@@ -42,7 +43,7 @@ function stats(dataUrl: string): { w: number; h: number; mean: number; sd: numbe
 }
 
 test('pilot: act, observe, frames, look, telegraph, dialogue', async ({ page }) => {
-  test.setTimeout(300_000);
+  test.setTimeout(ciScale(300_000));
   const errors = trackErrors(page);
   await page.goto('./?notitle&nosave&fresh&manual');
   await page.waitForFunction(() => window.kq?.combat !== undefined && window.kq?.pilot !== undefined, null, { timeout: 90_000 });

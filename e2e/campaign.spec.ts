@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale, desktopViewport, isCI } from './helpers/ci';
 import { SCREENS, throughParty, trackErrors } from './helpers/common';
 import { K1_START, distTo, playK1 } from './helpers/k1';
 import { playK2 } from './helpers/k2';
@@ -36,7 +37,7 @@ import { expectHandover, throughTour } from './helpers/tour';
  * Screenshots: test-results/screens/campaign-*.png (each chapter's start, the reload, the ending).
  * CAMPAIGN_FASTSTEP=0 runs the same checks with ordinary manual drawing and voice playback.
  */
-test.describe.configure({ timeout: 4 * 3_600_000 });
+test.describe.configure({ timeout: ciScale(4 * 3_600_000) });
 const fastStep = process.env.CAMPAIGN_FASTSTEP !== '0';
 const clockParams = fastStep ? 'manual&faststep' : 'manual';
 
@@ -44,10 +45,10 @@ async function shot(page: Page, name: string): Promise<void> {
   // software WebGL on a loaded machine: a frame can stall; one retry, then go on
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      await page.setViewportSize({ width: 1280, height: 720 });
+      if (!isCI) await page.setViewportSize(desktopViewport);
       await page.evaluate(() => window.kq!.screenshotReady());
       await page.waitForTimeout(250);
-      await page.screenshot({ path: `${SCREENS}/campaign-${name}.png`, timeout: 150_000 });
+      await page.screenshot({ path: `${SCREENS}/campaign-${name}.png`, timeout: ciScale(150_000) });
       return;
     } catch (e) {
       if (attempt === 1) console.warn(`screenshot ${name} skipped: ${(e as Error).message.split('\n')[0]}`);
@@ -376,7 +377,7 @@ const ENDINGS = [
 ] as const;
 
 test('campaign: all three endings render their scene, epilogue and credits', async ({ page }) => {
-  test.setTimeout(1_800_000);
+  test.setTimeout(ciScale(1_800_000));
   const errors = trackErrors(page);
   for (const e of ENDINGS) {
     await page.goto(`./?notitle&nosave&fresh&${clockParams}`);

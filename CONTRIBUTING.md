@@ -59,9 +59,17 @@ pnpm build        # production build
 ### End-to-end tests
 
 The GitHub Actions e2e workflow runs on every opened, updated or reopened pull request and on
-pushes to `main`. It builds once and runs the suite on eight hosted runners, each with one
-Chromium worker and SwiftShader. A newer run cancels the previous run for the same PR. Failed
-shards upload their HTML report, traces and screenshots as an `e2e-results-*` artifact.
+pushes to `main`. It builds once and runs up to 16 file-level shards, each with one Chromium
+worker and SwiftShader. Hosted tests default to 640×360 and SwiftShader selects Niedrig, which
+uses pixel ratio 1, shorter terrain and tree LOD distances, and no shadows. Touch layouts,
+reference screenshots and render checks can specify their own viewport or graphics tier.
+A newer run cancels the previous run for the same PR. Failed shards upload their HTML report,
+traces with DOM snapshots, and still screenshots as an `e2e-results-*` artifact.
+
+The hosted suite runs with zero retries. The default test and assertion timeouts and explicit
+test and screenshot timeouts are tripled through `ciScale` in `e2e/helpers/ci.ts`. The campaign
+runs alone with a 240-minute Playwright deadline in a 270-minute job. Other shards have
+180 minutes inside a 205-minute job.
 
 Use the Actions tab or the command below to run selected spec names on a branch. Leave `specs`
 blank to run the full suite.

@@ -55,7 +55,8 @@ jobs:
     name: Playwright shard ${{ matrix.shard }}
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    # Playwright has 180 minutes, or 240 for the campaign. Reserve time for setup and upload.
+    timeout-minutes: ${{ matrix.campaign && 270 || 205 }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.build.outputs.matrix) }}
@@ -88,6 +89,7 @@ jobs:
       - name: Run Playwright
         env:
           SPEC_FILES: ${{ matrix.specs }}
+          KQ_E2E_CAMPAIGN: ${{ matrix.campaign && '1' || '0' }}
         run: |
           printf '%s\n' "$SPEC_FILES" > "$RUNNER_TEMP/e2e-specs.txt"
           pnpm exec playwright test --test-list "$RUNNER_TEMP/e2e-specs.txt" --workers=1

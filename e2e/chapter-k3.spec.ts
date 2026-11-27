@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { trackErrors } from './helpers/common';
 import { type Any, flags, install, playK3, story } from './helpers/k3';
 
@@ -9,7 +10,7 @@ import { type Any, flags, install, playK3, story } from './helpers/k3';
  * Screenshots: test-results/screens/cnb-k3-*.png.
  */
 test('chapter 3 "Die Nacht": played through', async ({ page }) => {
-  test.setTimeout(3_600_000);
+  test.setTimeout(ciScale(3_600_000));
   const errors = trackErrors(page);
   await page.goto('./?notitle&nosave&fresh&manual');
   await page.waitForFunction(
@@ -34,7 +35,7 @@ test('chapter 3 "Die Nacht": played through', async ({ page }) => {
 
 /** W5 without a choice: after 40 s Hanne takes you by the arm, nothing is saved; that is no failure. */
 test('chapter 3: the Festsaal fuse runs out → "nichts", and the table stays empty', async ({ page }) => {
-  test.setTimeout(600_000);
+  test.setTimeout(ciScale(600_000));
   const errors = trackErrors(page);
   await page.goto('./?notitle&nosave&fresh&manual');
   await page.waitForFunction(() => !!(window.kq as Any)?.story && !!(window.kq as Any)?.interiors && !!(window.kq as Any)?.npc, null, { timeout: 180_000 });

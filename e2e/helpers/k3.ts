@@ -1,4 +1,5 @@
 import { type Page, expect } from '@playwright/test';
+import { ciScale } from './ci';
 import { type PlayOptions, SCREENS } from './common';
 
 /**
@@ -47,7 +48,7 @@ export async function shot(page: Page, name: string): Promise<void> {
   await page.evaluate(() => (window.kq as Any).story?.finishTyping());
   await page.evaluate(() => window.kq!.screenshotReady());
   await page.waitForTimeout(150);
-  await page.screenshot({ path: `${SCREENS}/cnb-k3-${name}.png`, timeout: 150_000 });
+  await page.screenshot({ path: `${SCREENS}/cnb-k3-${name}.png`, timeout: ciScale(150_000) });
 }
 
 /**

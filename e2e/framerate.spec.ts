@@ -1,4 +1,5 @@
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale, desktopViewport, isCI } from './helpers/ci';
 import { warnIfShared } from '../scripts/dev/heavy-env.mjs';
 import { trackErrors } from './helpers/common';
 
@@ -26,12 +27,13 @@ async function boot(page: Page, query: string): Promise<void> {
   await page.waitForFunction(() => window.kq?.pilot !== undefined && !!(window as unknown as { __kqReady?: Record<string, number> }).__kqReady?.ready, null, { timeout: 120_000 });
 }
 
-const timingCheck = process.env.CI ? {
+const timingCheck = isCI ? {
   annotation: { type: 'skip', description: 'Wall-clock render pacing measurements require a quiet local machine.' },
 } : {};
 
 test.describe('render pacing', () => {
-  test.describe.configure({ timeout: 300_000 });
+  test.use({ viewport: desktopViewport });
+  test.describe.configure({ timeout: ciScale(300_000) });
   test.beforeAll(() => warnIfShared('framerate.spec.ts')); // frame rates need heavy.sh --exclusive
 
   test('pause menu: at most 15 fps, and with ?idle its frame is held', timingCheck, async ({ page }) => {

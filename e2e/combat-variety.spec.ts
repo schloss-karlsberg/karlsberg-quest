@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SCREENS } from './helpers/common';
 
 /**
@@ -28,7 +29,7 @@ const FIELD = { x: 1452, z: -640, yaw: 330 };
 
 async function shot(page: Page, name: string): Promise<void> {
   await page.evaluate(() => window.kq!.screenshotReady());
-  await page.screenshot({ path: `${SCREENS}/s5-combat-${name}.png`, timeout: 150_000 });
+  await page.screenshot({ path: `${SCREENS}/s5-combat-${name}.png`, timeout: ciScale(150_000) });
 }
 
 async function arrive(page: Page, era: string, level = 6, pitch = -4): Promise<void> {
@@ -60,7 +61,7 @@ test.describe('combat variety', () => {
   });
 
   test('the Foliant blocks, the Wuchthieb breaks its guard; the ability row shows', async ({ page }) => {
-    test.setTimeout(600_000);
+    test.setTimeout(ciScale(600_000));
     const errors = trackErrors(page);
     await arrive(page, '1789');
     // three slots at level 6, keys T / Z(Y) / U
@@ -96,7 +97,7 @@ test.describe('combat variety', () => {
   });
 
   test('abilities: Erdstoß ring, Wirbel, Ausfall; cooldown rings fill', async ({ page }) => {
-    test.setTimeout(600_000);
+    test.setTimeout(ciScale(600_000));
     const errors = trackErrors(page);
     await arrive(page, '1789');
     const out = await page.evaluate(() => {
@@ -149,7 +150,7 @@ test.describe('combat variety', () => {
   });
 
   test('the Scherbling throws the Bannlicht back', async ({ page }) => {
-    test.setTimeout(600_000);
+    test.setTimeout(ciScale(600_000));
     const errors = trackErrors(page);
     await arrive(page, '1793-07', 6, 2);
     const ref = await page.evaluate(() => {
@@ -168,7 +169,7 @@ test.describe('combat variety', () => {
   });
 
   test('the summer rains embers; the Rufer calls out of the fog', async ({ page }) => {
-    test.setTimeout(600_000);
+    test.setTimeout(ciScale(600_000));
     const errors = trackErrors(page);
     await arrive(page, '1793-07', 6, 2);
     // the summer's ember rain: a pack fight with hazards
@@ -198,7 +199,7 @@ test.describe('combat variety', () => {
   });
 
   test('a pack worth the name brings a second wave from another side', async ({ page }) => {
-    test.setTimeout(600_000);
+    test.setTimeout(ciScale(600_000));
     const errors = trackErrors(page);
     await arrive(page, '1789', 6, 2);
     const w = await page.evaluate(() => {

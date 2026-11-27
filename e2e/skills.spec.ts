@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SCREENS } from './helpers/common';
 
 /**
@@ -25,7 +26,7 @@ function trackErrors(page: Page): string[] {
 
 async function shot(page: Page, name: string): Promise<void> {
   await page.evaluate(() => window.kq!.screenshotReady());
-  await page.screenshot({ path: `${SCREENS}/skills-${name}.png`, timeout: 150_000 });
+  await page.screenshot({ path: `${SCREENS}/skills-${name}.png`, timeout: ciScale(150_000) });
 }
 
 /** Record events of the given types into window.__ev. */

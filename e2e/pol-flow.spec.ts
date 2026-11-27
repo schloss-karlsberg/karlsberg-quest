@@ -1,4 +1,5 @@
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale, desktopViewport, isCI } from './helpers/ci';
 import { waitForHooks } from './helpers/pause';
 import { SCREENS, throughParty, trackErrors } from './helpers/common';
 import { boot as bootK1, ensureHelpers, flush, story, upd, walk } from './helpers/k1';
@@ -14,7 +15,7 @@ import { boot as bootK1, ensureHelpers, flush, story, upd, walk } from './helper
  *   "Ende noch einmal wählen"; ending C lets the five hounds follow you at night.
  * Screenshots: test-results/screens/pol-flow-*.png.
  */
-test.describe.configure({ timeout: 600_000 });
+test.describe.configure({ timeout: ciScale(600_000) });
 
 async function shot(page: Page, name: string): Promise<void> {
   await page.evaluate(() => window.kq!.screenshotReady());
@@ -250,6 +251,7 @@ test('the printout card sketches the palace site', async ({ page }) => {
 });
 
 test('endings: epilogue fits 1280×720, "Ende noch einmal wählen", ending C: the hounds follow', async ({ page }) => {
+  if (isCI) await page.setViewportSize(desktopViewport);
   const errors = trackErrors(page);
   // saving on: the field book before the choice goes to the 'ending' slot
   await page.goto('./?notitle&fresh&manual');

@@ -1,4 +1,5 @@
 import { type Page, expect } from '@playwright/test';
+import { ciScale } from './ci';
 import { waitForHooks } from './pause';
 import { SCREENS } from './common';
 
@@ -10,7 +11,7 @@ async function snap(page: Page, file: string): Promise<void> {
     try {
       await page.evaluate(() => window.kq!.screenshotReady());
       await page.waitForTimeout(200);
-      await page.screenshot({ path: `${SCREENS}/${file}.png`, timeout: 90_000 });
+      await page.screenshot({ path: `${SCREENS}/${file}.png`, timeout: ciScale(90_000) });
       return;
     } catch (e) {
       if (attempt === 1) console.warn(`screenshot ${file} skipped: ${(e as Error).message.split('\n')[0]}`);
