@@ -279,17 +279,21 @@ describe('tour slice v0 (00-tour.story.json)', () => {
   });
 
   it('plays all three parking-lot greetings in order and can leave without an interaction or after a saved talk', () => {
-    const context = { era: 'today', flags: {}, chapter: 'tour', beat: 't2' } as const;
+    const context = { era: 'today', flags: { 'tour.station1.ready': true }, chapter: 'tour', beat: 't2' };
     const ids = ['imhoff.t.station1', 'imhoff.t.station1a', 'imhoff.t.station1b'];
     expect(answer(pack.dialogue, 'imhoff', 'tour', 'greet', context, new Set()).map((line) => line.id)).toEqual(ids);
     expect(answer(pack.dialogue, 'imhoff', 'tour', 'greet', context, new Set(ids))).toEqual([]);
+    // the car-park talk belongs to stop 1 (TASK-076): not before t2 is ready, not at the later stops
+    expect(answer(pack.dialogue, 'imhoff', 'tour', 'greet', { ...context, flags: {} }, new Set())).toEqual([]);
 
     const skipped = harness();
     skipped.engine.goto('tour', 't2');
     skipped.tick(59);
     expect(skipped.beat()).toBe('t2');
+    expect(skipped.flags['tour.station1.ready']).toBe(true);
     skipped.tick(1);
     expect(skipped.beat()).toBe('t3');
+    expect(skipped.flags['tour.station1.ready']).toBeFalsy();
 
     const resumed = harness();
     resumed.engine.goto('tour', 't2');

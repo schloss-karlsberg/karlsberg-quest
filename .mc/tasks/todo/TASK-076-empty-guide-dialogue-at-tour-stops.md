@@ -83,7 +83,7 @@ who skipped the talk at the car park does not get the car-park talk at the Felse
 **Steps:**
 - [x] 1. `offersTalk()` in `logic.ts` with unit tests (`tests/story-ext.test.ts`).
 - [x] 2. npc system: `update()` offers E only to NPCs with something to say; `open()` guard; cached talk lines.
-- [ ] 3. Tour content: stop-1 greetings need `tour.station1.ready`; t2's `exit` clears it; update `tests/tour-slice.test.ts`.
+- [x] 3. Tour content: stop-1 greetings need `tour.station1.ready`; t2's `exit` clears it; update `tests/tour-slice.test.ts`.
 - [ ] 4. Content check `tests/npc-talk.test.ts`: no beat waits for a talk with an NPC that has nothing to say then.
 - [ ] 5. e2e test in `e2e/tour-slice.spec.ts` (t2, t6, t13, t15, forced open).
 - [ ] 6. Docs (`docs/ARCHITECTURE.md` npc note).
@@ -115,3 +115,4 @@ because at the stops the guide is already talking in the speech box.
 - 2026-11-27: before screenshots (real GPU, Iris Xe) in `test-results/contribute/TASK-076/`: the E prompt at t2, the first talk, the prompt at t6 during the guide's talk, and the empty box (only „Auf Wiedersehen“) after E at t6 and t13.
 - 2026-11-27: step 1 done - `offersTalk()` in `src/systems/npc/logic.ts`; `tests/story-ext.test.ts`: the guide, Hanne (k1, k3g), a silent figure, quest topics, and a check that it agrees with `answer` / `availableTopics` for every NPC in the k1, k3, tour and endings packs.
 - 2026-11-27: step 2 done - `src/systems/npc/index.ts`: the nearest-NPC choice skips a placement with nothing to say (no prompt, no `npc.near`); `open()` says „(Schweigt und sieht dich an.)“ when there is no greeting, topic or quest topic; talk lines cached per NPC and chapter. `tests/npc-encounter.test.ts`: the reload case gives Soll a question so it still reopens; new case (no E once all is said, a forced open shows the silent line) fails on the old code.
+- 2026-11-27: step 3 done - the three stop-1 greetings in `content/packs/tour.pack.json` need `tour.station1.ready`; t2's `exit` clears it. `tests/tour-slice.test.ts`: no car-park talk without the flag, the flag is gone after t2. `pnpm validate` green (28 warnings, none new).
