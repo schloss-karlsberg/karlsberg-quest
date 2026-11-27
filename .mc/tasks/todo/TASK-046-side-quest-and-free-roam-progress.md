@@ -103,8 +103,10 @@ removed. The browser regression is in `e2e/chapter-k3.spec.ts`.
 - The four branch commits were squashed into one and rebased onto main after #69 (TASK-040).
   The quest chapter cleanup had moved to `QuestBook.dropEarlier`, so the side-quest `close` rule
   now lives there. TASK-040's saved-calm credit (`settleCalm`) runs for every calm objective, and
-  the cassowary receipt stays as the fallback once its spawn record is gone. Restore settles saved
-  progress and repairs deadlines while recovered payouts are collected, then reasserts spawns.
+  the cassowary receipt stays as the fallback once its spawn record is gone. Restore keeps main's
+  order (reassert with the combat recovery first), then settles saved progress and repairs
+  deadlines while recovered payouts are collected. A second rebase (after #99) also validates a
+  saved `replay` attempt in `normaliseSlice` like the earned quests.
 - Gates after the rebase: typecheck, `pnpm test` (2002 passed, 0 failed), `pnpm validate` and
   `pnpm build` passed. The locked e2e runs on port 5434 cover `quests`, `chronik`, `chapter-k3` and `smoke`.
 

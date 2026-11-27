@@ -296,6 +296,12 @@ describe('Chapter 1 save recovery', () => {
 });
 
 describe('optional progress across chapter windows and saves', () => {
+  it('normalises a saved replay attempt and drops a corrupt one', () => {
+    const ok = normaliseSlice({ quests: {}, replay: { chapter: 'k3', quests: { a: { state: 'hidden' }, b: { state: 'bogus' } } } } as never);
+    expect(ok.replay?.quests).toEqual({ a: { state: 'hidden', counts: {}, t: 0 } });
+    expect(normaliseSlice({ quests: {}, replay: { chapter: 3, quests: [] } } as never).replay).toBeUndefined();
+  });
+
   it('accepts a giver placed with a sub-chapter of the running chapter (Hanne in the garden, k3g)', () => {
     expect(giverPlacedIn({ chapter: 'k3g' }, 'k3')).toBe(true);
     expect(giverPlacedIn({ chapter: 'k3' }, 'k3')).toBe(true);
