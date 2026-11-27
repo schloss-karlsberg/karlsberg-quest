@@ -34,7 +34,7 @@ Only at 2× zoom did they read as deer (screenshot below). A first-time player s
 with "nothing" in it, and the game's own „Tipp“ toast appears.
 
 Screenshot at 2× (1× shows only ferns at this size):
-`/private/tmp/claude-501/-Users-sebastian-develop-experiements-karlsberg-quest/39f9dec0-f81c-46df-91c2-f012b96a53a5/scratchpad/playtest/shots/d02-deer-viewfinder-2x.jpg`
+local screenshot `d02-deer-viewfinder-2x.jpg` (not committed)
 
 The deer meshes were present and visible (`kq.fauna.list()`: ready, visible, 0.75 / 0.68 m), so
 this is staging, not a render bug.

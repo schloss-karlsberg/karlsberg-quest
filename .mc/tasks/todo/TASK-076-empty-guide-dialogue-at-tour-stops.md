@@ -40,7 +40,7 @@ and the Quelle (t15). A first-time player who follows the prompt sees a broken, 
    radio box.
 
 Screenshot (scratchpad of the playtest session):
-`/private/tmp/claude-501/-Users-sebastian-develop-experiements-karlsberg-quest/39f9dec0-f81c-46df-91c2-f012b96a53a5/scratchpad/playtest/shots/d01-t6-empty-guide-dialog.jpg`
+local screenshot `d01-t6-empty-guide-dialog.jpg` (not committed)
 
 ## Likely cause
 

@@ -33,7 +33,7 @@ real GPU). A few seconds into the tour, after pushing the touch stick fully, the
 has no Shift key. The toast also covers the „Vögel zwitschern.“ caption (see TASK-085).
 
 Screenshot:
-`/private/tmp/claude-501/-Users-sebastian-develop-experiements-karlsberg-quest/39f9dec0-f81c-46df-91c2-f012b96a53a5/scratchpad/playtest/shots/p06-after-walk.png`
+local screenshot `p06-after-walk.png` (not committed)
 
 Other keyboard-only lines found with grep (not seen on the phone in this session):
 

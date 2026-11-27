@@ -33,7 +33,7 @@ few degrees off the member in front) did not move the player at all for 30 s: th
 stops the player dead with no sliding. Only a sideways step got past. Then the guide moved on.
 
 Screenshot:
-`/private/tmp/claude-501/-Users-sebastian-develop-experiements-karlsberg-quest/39f9dec0-f81c-46df-91c2-f012b96a53a5/scratchpad/playtest/shots/d03-dam-blocked-by-group.jpg`
+local screenshot `d03-dam-blocked-by-group.jpg` (not committed)
 
 ## Acceptance criteria
 

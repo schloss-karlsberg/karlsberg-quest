@@ -34,7 +34,7 @@ of the skill and level cards on phones; these overlaps are still there:
    someone talks almost all the time, so the current objective is hidden most of the time.
 2. **Phone: the tip toast covers the sound caption.** The „Laufschritt …“ toast (right of centre)
    was drawn over „Vögel zwitschern.“ (screenshot
-   `/private/tmp/claude-501/-Users-sebastian-develop-experiements-karlsberg-quest/39f9dec0-f81c-46df-91c2-f012b96a53a5/scratchpad/playtest/shots/p06-after-walk.png`).
+   local screenshot `p06-after-walk.png` (not committed)).
 3. **Desktop (1309×688): the level card covers the speech box.** At the start of chapter 1 the
    „Stufe III“ card sat on top of Laub's speech box for several seconds, so his line could not be
    read; with `?kapitel=4` the „Stufe IX“ card covered the chapter title card („Der Steinbruch“).
