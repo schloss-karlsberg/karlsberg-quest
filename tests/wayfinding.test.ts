@@ -69,6 +69,17 @@ describe('objectiveTarget', () => {
     expect(targetVisible({ x: 0, z: 0, r: 4, room: 'saal', kind: 'zone' }, 'today')).toBe(false);
     expect(targetVisible({ x: 0, z: 0, r: 4, kind: 'zone' }, 'today')).toBe(true);
   });
+
+  it('a reach place ("there: Q") shows from every era, with a hint to shift there (TASK-083)', () => {
+    const o = obj({ type: 'reach', text_de: 'Im Ehrenhof: Q – in den Juli 1793', where: { x: 1210, z: -1114, r: 30, era: '1793-07' } } as never);
+    const t = objectiveTarget(Q, o, deps());
+    expect(targetVisible(t, 'today')).toBe(true);
+    expect(targetVisible(t, '1793-07')).toBe(true);
+    const h = hintFor(o, { target: t, player: { x: 1200, z: -800 }, otherEra: '1793-07' });
+    expect(h).toMatch(/^Zur Markierung gehen \(.*Norden.*\), dort Q halten/);
+    // other kinds still hide in another era
+    expect(targetVisible(objectiveTarget(Q, obj({ type: 'kill', where: { x: 1, z: 1, era: '1789' } } as never), deps()), 'today')).toBe(false);
+  });
 });
 
 describe('hint text', () => {

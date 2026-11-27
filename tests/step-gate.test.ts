@@ -5,16 +5,19 @@ import { type FenceGl, StepDrawGate } from '../src/debug/stepGate';
 function fakeGl() {
   const fences = new Map<object, boolean>();
   let lost = false;
+  // fences of the context before a restore: the driver no longer knows them
+  const stale = new Set<object>();
   const gl = {
     SYNC_GPU_COMMANDS_COMPLETE: 0x9117,
     SYNC_STATUS: 0x9114,
     SIGNALED: 0x9119,
+    UNSIGNALED: 0x9118,
     fenceSync: () => {
       const f = {};
       fences.set(f, false);
       return f as WebGLSync;
     },
-    getSyncParameter: (f: WebGLSync) => (fences.get(f) ? 0x9119 : 0x9118),
+    getSyncParameter: (f: WebGLSync) => (stale.has(f) ? null : fences.get(f) ? 0x9119 : 0x9118),
     deleteSync: (f: WebGLSync | null) => {
       if (f) fences.delete(f);
     },
@@ -25,6 +28,10 @@ function fakeGl() {
     gl,
     gpuDone: () => fences.forEach((_, f) => fences.set(f, true)),
     lose: () => (lost = true),
+    restore: () => {
+      lost = false;
+      fences.forEach((_, f) => stale.add(f));
+    },
     live: () => fences.size,
   };
 }
@@ -62,5 +69,36 @@ describe('StepDrawGate (TASK-075)', () => {
     expect(gate.ready()).toBe(false);
     g.lose();
     expect(gate.ready()).toBe(true);
+  });
+
+  it('does not block forever on a fence from before a context restore', () => {
+    const g = fakeGl();
+    const gate = new StepDrawGate(g.gl);
+    gate.drew();
+    g.lose();
+    g.restore();
+    gate.reset();
+    expect(gate.ready()).toBe(true);
+    gate.drew();
+    expect(gate.ready()).toBe(false);
+  });
+
+  it('treats a null or throwing sync status as ready', () => {
+    const g = fakeGl();
+    const gate = new StepDrawGate(g.gl);
+    gate.drew();
+    // lost and restored with no step in between, and no reset: the status reads null
+    g.lose();
+    g.restore();
+    expect(gate.ready()).toBe(true);
+    gate.drew();
+    const throwing = new StepDrawGate({
+      ...g.gl,
+      getSyncParameter: () => {
+        throw new Error('INVALID_OPERATION');
+      },
+    } as FenceGl);
+    throwing.drew();
+    expect(throwing.ready()).toBe(true);
   });
 });

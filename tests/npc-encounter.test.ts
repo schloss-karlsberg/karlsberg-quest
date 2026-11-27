@@ -61,7 +61,8 @@ describe('campaign NPC encounters', () => {
     state.replace(JSON.parse(snapshot));
     events.emit('save:loaded', { slot: 'auto' });
     npc.update(1 / 60);
-    expect(hold.mock.calls).toEqual([['talk', true], ['talk', false], ['talk', true]]);
+    // the greeting is said and there is no topic: no new conversation, not an empty one (TASK-076)
+    expect(hold.mock.calls).toEqual([['talk', true], ['talk', false]]);
     expect(grants).toHaveBeenCalledTimes(1);
     expect(say).toHaveBeenCalledTimes(1);
     events.emit('npc:spawn', { npc: 'soll', chapter: 'k2', x: 1, z: 0 });

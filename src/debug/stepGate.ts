@@ -14,7 +14,7 @@
  */
 export type FenceGl = Pick<
   WebGL2RenderingContext,
-  'fenceSync' | 'getSyncParameter' | 'deleteSync' | 'flush' | 'isContextLost' | 'SYNC_GPU_COMMANDS_COMPLETE' | 'SYNC_STATUS' | 'SIGNALED'
+  'fenceSync' | 'getSyncParameter' | 'deleteSync' | 'flush' | 'isContextLost' | 'SYNC_GPU_COMMANDS_COMPLETE' | 'SYNC_STATUS' | 'SIGNALED' | 'UNSIGNALED'
 >;
 
 export class StepDrawGate {
@@ -30,10 +30,26 @@ export class StepDrawGate {
       this.fence = null;
       return true;
     }
-    if (gl.getSyncParameter(fence, gl.SYNC_STATUS) !== gl.SIGNALED) return false;
-    gl.deleteSync(fence);
+    let status: unknown;
+    try {
+      status = gl.getSyncParameter(fence, gl.SYNC_STATUS);
+    } catch {
+      status = null;
+    }
+    if (status === gl.UNSIGNALED) return false;
+    // SIGNALED, or no answer at all (a fence from before a context restore reads null or raises
+    // INVALID_OPERATION and would never signal): drop it and let the draw run
+    if (status === gl.SIGNALED) gl.deleteSync(fence);
     this.fence = null;
     return true;
+  }
+
+  /**
+   * Forget the fence, on context loss and on restore. A fence from the old context never signals
+   * in the new one, and deleting a lost context's sync is pointless, so it is just dropped.
+   */
+  reset(): void {
+    this.fence = null;
   }
 
   /** A stepped draw was issued: fence it, so the next step can tell when the GPU is done. */

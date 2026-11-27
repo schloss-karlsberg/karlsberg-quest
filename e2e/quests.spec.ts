@@ -415,3 +415,34 @@ test('quests: save and load keep the task and its count; reset withdraws the wor
   await page.evaluate(() => window.kq!.ctx.save.delete('auto'));
   expect(errors).toEqual([]);
 });
+
+// TASK-083: the chapter 3 and 4 openers ask for a walk and then a Q shift. Their places are tagged
+// with the destination era; the marker must still show in the present, before the shift.
+for (const [kapitel, quest, objective, before] of [
+  [3, 'q.k3.nachmittag', 'ehrenhof', null],
+  [4, 'q.k4.zettel', 'tal', 'zettel'],
+] as const) {
+  test(`chapter ${kapitel} opener: the "there: Q" place has its marker in the present`, async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto(`./?notitle&nosave&fresh&kapitel=${kapitel}`);
+    await waitForHooks(page, ['story', 'quests']);
+    await page.waitForFunction((q) => window.kq!.quests!.state().quests[q]?.state === 'active', quest, { polling: 200, timeout: 60_000 });
+    if (before) await page.evaluate(([q, o]) => window.kq!.quests!.progress(q, o), [quest, before] as const);
+    await page.waitForFunction(
+      ([q, o]) => {
+        const k = window.kq!;
+        const lead = k.quests!.lead();
+        return k.ctx.era.current === 'today' && lead?.quest === q && lead.objective === o && lead.x !== null;
+      },
+      [quest, objective] as const,
+      { polling: 200, timeout: 30_000 },
+    );
+    // the waymark box is 0×0 (its icon, distance and label are placed around the point): check the icon
+    const mark = page.getByTestId('waymark');
+    await expect(mark.locator('.kq-wm-icon')).toBeVisible();
+    await expect.poll(() => mark.evaluate((el) => Number((el as HTMLElement).style.opacity))).toBeGreaterThan(0.5);
+    await expect(mark.locator('.kq-wm-dist')).toHaveText(/\d+ m|km/);
+    await page.screenshot({ path: `${SCREENS}/qst-k${kapitel}-opener-marker.png` });
+    expect(errors).toEqual([]);
+  });
+}

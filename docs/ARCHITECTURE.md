@@ -1301,6 +1301,11 @@ Round-4 (polish: set dressing) integration rules:
   afterwards back to its placement yaw in 1.2 s; the rigged head looks at a player within 9 m, the
   procedural figure (no head look) slowly turns to a player within 8 m instead. Reduced motion
   snaps the turn and calms the figure.
+- Talk prompt (TASK-076): „E Mit … sprechen“ is offered only while the person has something to say
+  (`hasWords` in `logic.ts`: a greeting not yet said, a topic, or a quest topic; re-checked four times a
+  second). Otherwise E stays free for other owners and no `npc.near` is set. The guide at the later
+  tour stops speaks through the radio box only. A person with no lines at all keeps „(Schweigt und
+  sieht dich an.)“, and a conversation never opens with an empty box (`tests/npc-has-words.test.ts`).
   On medium / high the figure is replaced by a `RiggedGhost` (`rigged.ts`, models from
   `characters/`) once the model is loaded: same shader look, idle / walk / talk / gesture clips,
   head look at the player; the procedural figure stays for `low`, while loading and for the kneel pose.
@@ -2375,7 +2380,8 @@ Each RPG track adds its own subsection here when it fills its system in.
   objective zones (≤ 200 m, era tint, fades inside); the lead is gold, 90 m tall, ≤ 420 m.
 - `wayfinding.ts` (pure, `tests/wayfinding.test.ts`): `objectiveTarget` (a place for every
   objective type, clue places from the content packs; none for a clue with `anchor: "portable"`,
-  the tablet's nominal spot is no place: playtest round 10, F-25), `hintFor` / `storyHint`, `StallWatch`
+  the tablet's nominal spot is no place: playtest round 10, F-25; a `reach` place is `anyEra`: shown
+  from every era, so „Im Ehrenhof: Q – in den Juli 1793“ has its marker in the present, TASK-083), `hintFor` / `storyHint`, `StallWatch`
   (60 s). `index.ts` picks the lead (`computeLead`: main quest, else the story objective, else side
   quests), drives compass + `hud.waymark` (`src/ui/waymark.ts`) + beacons and the stall hint;
   a goal behind walls leads door by door (`world.routeTo`, set by interiors: breadth-first over the
@@ -2561,6 +2567,11 @@ Rules that came out of it:
   fills a caption's or toast's `{key}`: the key label on desktop, the touch button's German name in
   touch mode (`touchName`: Hieb, Ausweichen, Bannlicht, Ziel, Balsam, Aktion, Epoche, and the survey
   tool names). Combat, progression and tools use it for contextual hints.
+- **Touch variants of key hints.** A string that names a key with no touch button (Shift for sprint)
+  gets a `<id>.touch` twin with touch words („Bewegungsregler ganz nach vorn“); `tInput(id, touch)`
+  (`src/i18n`) picks it in touch mode (court hint card; the Laufschritt tip uses `TRAVEL_DE.sprintTouch`).
+  `tests/touch-wording.test.ts` fails on a registered string naming Shift without a touch twin and on
+  story objectives/toasts naming keys (the chapter 1 kennel chase lines are listed as known open).
 - **Prompts.** `hud.setTouchIcons(fn)` turns a prompt's key cap into the icon of the answering
   button (`touchIconFor`: E → hand, Q → hourglass …). `hud.onPrompt(key, text)` lights that button.
 - **Mobile tier.** On first run a coarse pointer gets `mobileLevel()` (`src/render/mobileDefaults.ts`):

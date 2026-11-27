@@ -97,6 +97,10 @@ export function installDebug(ctx: GameContext, info: DebugInfo): KqHooks {
   const drawStep = !fastManualSteps(ctx.params);
   const gl = ctx.renderer.getContext();
   const gate = new StepDrawGate('fenceSync' in gl ? gl : null);
+  // a fence from before a context loss never signals after the restore
+  const canvas = ctx.renderer.domElement;
+  canvas.addEventListener('webglcontextlost', () => gate.reset());
+  canvas.addEventListener('webglcontextrestored', () => gate.reset());
   const stepAndDraw = (n: number, force = false) => {
     const draw = force || (drawStep && gate.ready());
     ctx.loop.step(n, draw);
