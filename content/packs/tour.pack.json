@@ -39,21 +39,21 @@
       "id": "imhoff.t.station1",
       "speaker": "imhoff",
       "text_de": "Der Karlsberger Hof hier unten war das Baumagazin des Schlosses.",
-      "trigger": { "event": "npc:talk", "npc": "imhoff", "chapter": "tour", "topic": "greet", "step": 1 },
+      "trigger": { "event": "npc:talk", "npc": "imhoff", "chapter": "tour", "topic": "greet", "step": 1, "flag": "tour.station1.ready" },
       "once": true
     },
     {
       "id": "imhoff.t.station1a",
       "speaker": "imhoff",
       "text_de": "Da lagerte man Baumaterial. Im selben Gebäude gab es auch Wohnungen.",
-      "trigger": { "event": "npc:talk", "npc": "imhoff", "chapter": "tour", "topic": "greet", "step": 2 },
+      "trigger": { "event": "npc:talk", "npc": "imhoff", "chapter": "tour", "topic": "greet", "step": 2, "flag": "tour.station1.ready" },
       "once": true
     },
     {
       "id": "imhoff.t.station1b",
       "speaker": "imhoff",
       "text_de": "Und das Schloss da oben? Am 28. Juli 1793 ist es abgebrannt.",
-      "trigger": { "event": "npc:talk", "npc": "imhoff", "chapter": "tour", "topic": "greet", "step": 3 },
+      "trigger": { "event": "npc:talk", "npc": "imhoff", "chapter": "tour", "topic": "greet", "step": 3, "flag": "tour.station1.ready" },
       "once": true
     }
   ]

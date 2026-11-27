@@ -102,7 +102,7 @@
           ] }
         ]
       },
-      "exit": [{ "do": "prompt", "key": null, "text": null }]
+      "exit": [{ "do": "prompt", "key": null, "text": null }, { "do": "flag", "set": { "tour.station1.ready": null } }]
     },
     {
       "id": "t3",
