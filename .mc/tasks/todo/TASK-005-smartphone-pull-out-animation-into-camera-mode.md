@@ -101,7 +101,7 @@ _Status: approved 2026-11-27_
 - Docs: `docs/ARCHITECTURE.md` (photo, camera, avatar), `docs/ACTION-RPG.md` §14, `docs/PRD.md` changelog.
 
 **Steps:**
-- [ ] 1. `PhoneRaise` timeline with unit tests (durations ≤ 1 s, reverse, skip, snap shut, reduced motion, first person).
+- [x] 1. `PhoneRaise` timeline with unit tests (durations ≤ 1 s, reverse, skip, snap shut, reduced motion, first person).
 - [ ] 2. Camera blend in `CameraRig` with `tests/camera-photo.test.ts` (k 0 = third person, 1 = lens, in between on the line; first person ignores it).
 - [ ] 3. Photo system wiring: animated open / close, skip, forced snap, instant hook, shots snap to the end, viewfinder fade; `tests/photo.test.ts`.
 - [ ] 4. Avatar: phone mesh and arm pose. Find the `Interact` frames for pocket and face on both avatars (MPFB and `?avatar=surveyor`), checked with screenshots; if the clip doesn't fit, a procedural turn of the arm bones instead.
@@ -140,3 +140,4 @@ _Status: approved 2026-11-27_
 
 - Branch: `feat/task-005-phone-pull-out`
 - 2026-11-27: before screenshots (real GPU, Iris Xe) in `test-results/contribute/TASK-005/`: free roam at x 704, z -779; the frame before N (character from behind) and right after N (already in camera mode, no move in between). Note: a GPU screenshot takes about 2 s, so the after frames are taken with `?manual` and `kq.step` at fixed times.
+- 2026-11-27: step 1 done - `src/systems/photo/raise.ts`: `PhoneRaise` (one progress value, open 0.9 s = reach 0.3 + raise and glide 0.45 + viewfinder 0.15; close 0.7 s, the same curve backwards; a cut of 0.15 s for reduced motion / first person) and the pure `raiseAt(p, cut)`. `tests/photo-raise.test.ts` (7): order of hand / lens / viewfinder, reverse, skip, forced snap from anywhere, turning round, the cut, broken frame times.
