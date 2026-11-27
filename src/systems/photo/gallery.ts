@@ -38,6 +38,8 @@ export class GalleryView {
   private lib: PhotoLibrary | null = null;
   private index = -1;
   private current: { id: number; file: File } | null = null;
+  /** The object URL of the picture shown full-size; revoked when the viewer moves on. */
+  private fullUrl: string | null = null;
   /** Löschen was pressed once on this photo: the button asks „Wirklich löschen?“ and the next press deletes. */
   private armed = false;
   private cap = 100;
@@ -97,6 +99,7 @@ export class GalleryView {
   private revokeAll(): void {
     for (const u of this.urls) URL.revokeObjectURL(u);
     this.urls.clear();
+    this.fullUrl = null;
   }
 
   private when(at: string): string {
@@ -156,7 +159,13 @@ export class GalleryView {
     this.armed = false;
     this.current = { id: p.id, file: new File([blob], photoFileName(p.at), { type: blob.type || 'image/jpeg' }) };
     // width / height from the metadata: the layout stands before the picture has decoded (the buttons do not jump)
-    const img = h('img.kq-gallery-full', { src: this.url(blob), alt: t('photo.gallery.item', { when: this.when(p.at), era: this.d.eraLabel(p.era) }), 'data-testid': 'gallery-full', draggable: 'false', width: p.width || undefined, height: p.height || undefined });
+    // only one full-size picture is held at a time while stepping through the photos
+    if (this.fullUrl) {
+      URL.revokeObjectURL(this.fullUrl);
+      this.urls.delete(this.fullUrl);
+    }
+    this.fullUrl = this.url(blob);
+    const img = h('img.kq-gallery-full', { src: this.fullUrl, alt: t('photo.gallery.item', { when: this.when(p.at), era: this.d.eraLabel(p.era) }), 'data-testid': 'gallery-full', draggable: 'false', width: p.width || undefined, height: p.height || undefined });
     let x0: number | null = null;
     img.addEventListener('pointerdown', (e) => (x0 = e.clientX));
     img.addEventListener('pointerup', (e) => {

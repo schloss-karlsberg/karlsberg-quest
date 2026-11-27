@@ -2172,7 +2172,7 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
   - The modal: a newest-first grid with the count and a device-only hint (Safari may clear site
     data after about seven days without a visit; the memory store says „bis zum Neuladen“).
   - A photo opens full-size, with ‹ › / arrow keys / a swipe, Teilen, Herunterladen and Löschen
-    (a second press within 4 s). Herunterladen uses an object URL and `<a download>`
+    (the first press asks „Wirklich?“, the second deletes). Herunterladen uses an object URL and `<a download>`
     (`karlsberg-quest-YYYY-MM-DD-HH-MM-SS.jpg`). Teilen calls `navigator.share({ files })` from
     the click when `navigator.canShare({ files })` says yes; otherwise, or when sharing fails, it
     downloads. Object URLs are revoked when the grid is rebuilt and when the gallery closes.
