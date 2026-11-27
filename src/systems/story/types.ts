@@ -698,6 +698,8 @@ export interface Reaction {
   repeat?: boolean;
   /** With `repeat`: not again within this many seconds (game time) of the last firing. */
   cooldown?: number;
+  /** Drop this reaction's pending (delayed) actions when a shift starts or the era changes. */
+  sameEra?: boolean;
 }
 
 export interface Beat {

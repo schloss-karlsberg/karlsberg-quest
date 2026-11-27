@@ -31,6 +31,7 @@ import { endingScenes } from './endings/scenes';
 import { EndingStage } from './endings/stage';
 import { EndingScreen } from './endings/ui';
 import { HOME, atHome, bringHome } from './hub/home';
+import { migrateInterruptedHunt } from './migrate';
 import { ObjectiveView, objectivePoint } from './objectives';
 import { StoryOverlays, cardClockDt } from './overlays';
 import { keepsOnBeatExit, retireScheduled, takeDueActions, type Scheduled } from './schedule';
@@ -207,6 +208,8 @@ const ASSEMBLED_EVENTS = new Set(['epilog:line', 'story:ending']);
 interface RunScope {
   beat: string | null;
   where: { x: number; z: number; r: number } | null;
+  /** The era visit a `sameEra` reaction belongs to. */
+  eraVisit?: number;
 }
 
 /** Barks and skill remarks: low priority in the dialogue queue (hints are not: the player is stuck). */
@@ -234,6 +237,8 @@ class StoryRuntime {
   readonly clips: VoiceClips | null;
   private time = 0;
   private gen = 0;
+  /** Counts era visits: a shift or era change ends the current one (`sameEra` reactions). */
+  private eraVisit = 0;
   private queue: Scheduled[] = [];
   /**
    * The opening beat's timeline while the chapter card shows (M-11): `at` relative to the beat's
@@ -305,7 +310,8 @@ class StoryRuntime {
   constructor(private readonly ctx: GameContext, credits: ReturnType<typeof creditSections>) {
     this.files = storiesInPlay(loadBundledStories(), ctx.params);
     this.engine = new StoryEngine(this.files, () => this.slice, {
-      run: (actions, o) => this.run(actions, o.resume, { beat: o.beat ?? null, where: o.where ?? null }, o.source),
+      run: (actions, o) =>
+        this.run(actions, o.resume, { beat: o.beat ?? null, where: o.where ?? null, eraVisit: o.sameEra ? this.eraVisit : undefined }, o.source),
       chapterEntered: (f, o) => this.chapterEntered(f, o),
       beatEntered: (ch, b, o) => {
         // the last beat's delayed lines are stale now; its delayed state changes happen at once
@@ -447,6 +453,7 @@ class StoryRuntime {
     });
     ctx.events.on('echo:end', () => ctx.ui.hud.setEraLabel(t(ERA_INFO[ctx.era.current].labelKey)));
     ctx.events.on('era:change', ({ to }) => {
+      this.leaveEraVisit();
       this.slice.room = null;
       this.dropShiftObjective(to);
       if (to === 'today' || this.slice.lookPast?.era === to) this.applyLook();
@@ -461,6 +468,7 @@ class StoryRuntime {
     ctx.events.on('cinematic:start', () => this.clearPrompt());
     ctx.events.on('shift:begin', () => {
       this.clearPrompt();
+      this.leaveEraVisit();
       this.shiftPending = null;
       this.shifting = true;
     });
@@ -537,6 +545,8 @@ class StoryRuntime {
   }
 
   private resumeFromSave(): void {
+    // a title Continue keeps the live state but drops the queue that would spawn Jost's pack
+    migrateInterruptedHunt(this.slice, this.ctx.state.mutable);
     this.engine.resume(false);
     const s = this.slice;
     // The modal is transient, but e2 already saved the ending and is waiting for its button.
@@ -721,8 +731,14 @@ class StoryRuntime {
     }
   }
 
+  /** The player leaves the era: pending actions of `sameEra` reactions from this visit never run. */
+  private leaveEraVisit(): void {
+    const visit = this.eraVisit++;
+    this.queue = this.queue.filter((action) => action.eraVisit !== visit);
+  }
+
   private schedule(delay: number, fn: () => void, scope: RunScope | null = null, keep = true, ready?: () => boolean): void {
-    this.queue.push({ at: this.time + delay, gen: this.gen, fn: () => this.withScope(scope, fn), beat: scope?.beat ?? null, keep, ready });
+    this.queue.push({ at: this.time + delay, gen: this.gen, fn: () => this.withScope(scope, fn), beat: scope?.beat ?? null, keep, ready, eraVisit: scope?.eraVisit });
   }
 
   /**

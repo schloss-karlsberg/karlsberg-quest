@@ -9,6 +9,8 @@ export interface Scheduled {
   beat: string | null;
   /** Run this state change immediately when its beat ends. */
   keep: boolean;
+  /** Set for `sameEra` reactions: dropped (not run) when the player leaves this era visit. */
+  eraVisit?: number;
 }
 
 const PRESENTATION = new Set<Action['do']>(['say', 'toast', 'sound', 'card', 'prompt', 'echo', 'choice']);

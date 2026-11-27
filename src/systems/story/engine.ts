@@ -138,6 +138,8 @@ export interface RunOptions {
   beat?: string | null;
   /** The place a reaction is about (its first `enter` circle): lines about it go stale elsewhere. */
   where?: { x: number; z: number; r: number } | null;
+  /** From a `sameEra` reaction: its pending actions are dropped when the player leaves the era. */
+  sameEra?: boolean;
 }
 
 export interface StoryHost {
@@ -514,7 +516,7 @@ export class StoryEngine {
         if (!now) continue;
         s.fired.push(tag);
       }
-      this.host.run(r.do, { resume: false, source: `${this.s.chapter}/${tag}`, beat: scope === 'b' ? s.beat : null, where: whereOf(r.when) });
+      this.host.run(r.do, { resume: false, source: `${this.s.chapter}/${tag}`, beat: scope === 'b' ? s.beat : null, where: whereOf(r.when), sameEra: r.sameEra });
     }
   }
 }
