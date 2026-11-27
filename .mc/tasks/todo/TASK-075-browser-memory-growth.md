@@ -76,8 +76,17 @@ docs/PERFORMANCE.md §3.9.
 - **Left open.** Specs that step once per evaluate are still paced by the rAF loop's own full draws
   (every frame in `?manual` under WebDriver, about 1.6 fps on SwiftShader). Measurement loops that
   call `loop.renderOnce` directly (minimap, tour-slice FOV) are not gated.
+- **Hidden timing in specs.** Under WebDriver in `?manual`, animation frames run frame-driven UI
+  clocks (the card gap) in real time. With the GPU backlog gone, more of those frames run while a
+  spec waits.
+  - Before the rebase, chapter-k2 "played through" failed on every run with the gate: Jost's
+    parforce stayed offered behind a queued echo card. The base build passed.
+  - #116 (talkQuest puts pages away first) covers this.
+  - Other specs may hide the same kind of dependency. The hosted full suite is the gate for that.
 
 ## Progress
 
 - 2026-11-27: Branch `dev/task-075` from `origin/main` (`b8162d33`).
 - 2026-11-27: Root cause found in the Linux container; step gate, guards and docs added.
+- 2026-11-27: Rebased onto `origin/main` (#116). Local e2e on the gate: smoke, photo, cinematic,
+  camera, framerate and walk all pass; chapter-k2 3/3 after the rebase.
