@@ -4,6 +4,7 @@
  * ids fall back to a neutral cameo. Ids may be namespaced ("sp.laub" → "laub").
  */
 import type { ContentDB } from '../../../content/db';
+import { t } from '../../../i18n';
 
 export type PortraitKind = 'compass' | 'radio' | 'ledger' | 'widow' | 'boy' | 'hunter' | 'carter' | 'wig' | 'servant' | 'device' | 'cameo';
 
@@ -81,7 +82,7 @@ export function speakerMeta(id: string, content?: ContentDB): SpeakerMeta {
   if (b) return { id: key, ...b, name: c?.name_de ?? b.name, historical: c?.historical ?? b.historical };
   return {
     id,
-    name: c?.name_de ?? id,
+    name: c?.name_de ?? t('common.unknownPerson'),
     portrait: c?.historical ? 'wig' : 'cameo',
     historical: c?.historical ?? false,
     echo: c?.historical ?? false,

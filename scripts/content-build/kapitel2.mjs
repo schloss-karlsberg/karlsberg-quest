@@ -164,7 +164,7 @@ const cases = [{
     { id: 'entry.k2.5', kind: 'fact', factId: 'cx.18', text_de: 'Beim Abschied ließ der Herzog Mannlich zurück, um vor allem über {was} zu wachen.',
       blanks: [{ id: 'was', category: 'object', correct: 'n.galerie_sammlung', accepts: ['n.galerie_sammlung', 'n.naturalienkabinett', 'n.bibliothek'],
         labels_de: { 'n.galerie_sammlung': 'seine Galerie', 'n.naturalienkabinett': 'sein Naturalienkabinett', 'n.bibliothek': 'seine Bibliothek' } }] },
-    { id: 'entry.k2.6', kind: 'fact', factId: 'cx.19', text_de: 'Als der General nach den Feuern im Wald fragte, antwortete ein Handwerker: ‚Das sind {was}.‘',
+    { id: 'entry.k2.6', kind: 'fact', factId: 'cx.19', text_de: 'Als der General nach den Feuern im Wald fragte, antwortete ein Handwerker: „Das sind {was}.“',
       blanks: [{ id: 'was', category: 'object', correct: 'n.kalkoefen', accepts: ['n.kalkoefen', 'n.fackeln', 'n.wachfeuer', 'n.koehlermeiler'] }] },
     { id: 'entry.k2.7', kind: 'reading', flag: 'flag.k2_lichter', text_de: 'Die Lichter im Wald waren in Wahrheit {was}.',
       blanks: [{ id: 'was', accepts: ['n.kalkoefen', 'n.fackeln', 'n.wachfeuer', 'n.r_laterne'] }] },

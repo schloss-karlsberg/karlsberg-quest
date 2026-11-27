@@ -23,6 +23,7 @@
  */
 import { defineSystem } from '../../core/systems';
 import type { GameContext } from '../../core/context';
+import { t } from '../../i18n';
 import { actionLabel } from '../../ui/actionLabel';
 import { peopleOf, peopleSpecs, walkBodies } from './bodies';
 import { createFindState, stepFind, type FindState } from './find';
@@ -194,7 +195,7 @@ class WalkSystem {
     if (prompt !== this.promptUp) {
       this.promptUp = prompt;
       const touch = this.ctx.input.touchMode;
-      if (prompt) hud.prompt(actionLabel(this.ctx.input, 'shift', 0, 'KeyQ'), touch ? 'Halten: zur Gruppe' : 'Gedrückt halten: zur Gruppe', 'walk');
+      if (prompt) hud.prompt(actionLabel(this.ctx.input, 'shift', 0, 'KeyQ'), touch ? t('action.regroup.hold') : 'Gedrückt halten: zur Gruppe', 'walk');
       else hud.prompt(null, undefined, 'walk');
       this.ctx.events.emit('group:find', { group, prompt });
     }

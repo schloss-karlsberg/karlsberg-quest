@@ -143,7 +143,7 @@
         { "do": "loot", "id": "tour.kastanie.07", "item": "item.kastanie", "x": 659.9, "z": -564.8, "era": "today", "group": "tour.kastanien" },
         { "do": "loot", "id": "tour.kastanie.08", "item": "item.kastanie", "x": 662.9, "z": -567.3, "era": "today", "group": "tour.kastanien" },
         { "do": "loot", "id": "tour.kastanie.09", "item": "item.kastanie", "x": 667.5, "z": -567.4, "era": "today", "group": "tour.kastanien" },
-        { "do": "prompt", "key": "Shift", "text": "Rennen, wenn die Gruppe zu weit vorn ist", "touch": "Stick ganz vor: Rennen", "delay": 4 }
+        { "do": "prompt", "key": "Umschalt", "text": "Rennen, wenn die Gruppe zu weit vorn ist", "touch": "Zum Rennen ganz vor", "delay": 4 }
       ],
       "on": [{ "id": "prompt-weg", "when": { "timer": 12 }, "do": [{ "do": "prompt", "key": null, "text": null }] }],
       "complete": { "event": "npc:arrived", "match": { "npc": "imhoff", "at": "felsen" } },
@@ -244,7 +244,7 @@
         {
           "id": "handy",
           "when": { "all": [{ "not": { "flag": "tour.reh.photo" } }, { "any": [{ "enter": { "x": 698, "z": -773, "r": 26, "era": "today" } }, { "timer": 20 }] }] },
-          "do": [{ "do": "prompt", "key": "N", "text": "Handy-Kamera · Klick: Foto · beide Tiere in die Bildmitte", "touch": "Handy-Knopf oben: Foto" }]
+          "do": [{ "do": "prompt", "key": "N", "text": "Fotomodus · Klick: Foto · beide Tiere in die Bildmitte", "touch": "Fotomodus öffnen" }]
         },
         {
           "id": "foto-alert",
