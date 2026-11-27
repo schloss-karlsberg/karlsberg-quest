@@ -1,6 +1,7 @@
 import { type PerspectiveCamera, Vector3 } from 'three';
 import type { EventBus } from '../core/events';
 import type { PlayerState } from '../core/state';
+import { PLAYER_RADIUS } from '../world/crowd';
 import { CameraRig, type CameraMode, type CameraWorld, PITCH_MAX_3P, PITCH_MIN_3P, PITCH_REST_3P } from './camera';
 import type { Input } from './input';
 import { KEY_TURN_RATE, type KeyTurnRates, stepKeyTurn } from './keyTurn';
@@ -11,6 +12,8 @@ export interface PlayerWorld {
   heightAt(x: number, z: number): number;
   /** Footprint collision (returns the corrected position). */
   collide(x: number, z: number, radius: number): { x: number; z: number; hit: boolean };
+  /** Local moving-body collision before slope, water and static footprint checks. */
+  separate?(x: number, z: number, radius: number, from: Vector3): { x: number; z: number };
   /** Allowed x/z area (inclusive). */
   bounds(): { x0: number; z0: number; x1: number; z1: number };
   surfaceAt(x: number, z: number): string;
@@ -45,7 +48,8 @@ export interface PlayerStats {
 const SLOPE_LIMIT_DEG = 42;
 /** Wading stops this far into a lake (m from the shore line); deeper water blocks like a wall. */
 export const WADE_LIMIT_M = 0.8;
-export const PLAYER_RADIUS = 0.35;
+/** The player's footprint radius (shared with the tour crowd). */
+export { PLAYER_RADIUS };
 const FLY_SPEED = 28;
 const FLY_FAST = 95;
 const FLY_MIN_AGL = 2.5;
@@ -288,6 +292,12 @@ export class Player {
       nz += this.push.vz * k * dt;
       this.push.t = Math.max(0, this.push.t - dt);
       moving = true;
+    }
+    if (!this.frozen && this.world.separate) {
+      const p = this.world.separate(nx, nz, PLAYER_RADIUS, this.position);
+      moving ||= p.x !== nx || p.z !== nz;
+      nx = p.x;
+      nz = p.z;
     }
     this.stats.onSlopeLimit = false;
     if (moving) {

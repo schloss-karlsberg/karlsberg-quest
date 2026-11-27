@@ -2,7 +2,7 @@ import { type Era, isEra } from './era';
 import { migrateLegacyPrologue, restoreTourStaff } from './legacy-prologue';
 import type { Stance } from '../player/stance';
 import { migrateSchuldbuchRewards } from '../systems/quests/migrate';
-import { migrateDieEngeReplay, migrateStoryFlags, migrateStoryQuests, readStorySlice } from '../systems/story/migrate';
+import { migrateDieEngeReplay, migrateStoryFlags, migrateStoryQuests, migrateTourDeparture, readStorySlice } from '../systems/story/migrate';
 import { livePointIds } from '../systems/travel/points';
 
 /**
@@ -169,6 +169,7 @@ export function deserializeState(json: string): GameState {
   if (isObj(s.systems.story)) migrateDieEngeReplay(s.systems.story, s.systems.combat?.groups);
   migrateSchuldbuchRewards(s);
   if (isObj(s.systems.story)) migrateStoryFlags(s.systems.story, s.flags);
+  if (isObj(s.systems.story)) migrateTourDeparture(s.systems.story, s.systems.walk);
   const travel = s.systems.travel;
   if (isObj(travel)) {
     travel.activated = livePointIds(travel.activated);

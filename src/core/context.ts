@@ -10,6 +10,7 @@ import type { PerfMonitor } from '../render/perf';
 import type { PostFX } from '../render/post';
 import type { QualityManager } from '../render/quality';
 import type { UI } from '../ui/ui';
+import type { TourCrowd } from '../world/crowd';
 import type { World } from '../world/world';
 import type { Era, EraInfo } from './era';
 import type { EventBus } from './events';
@@ -75,6 +76,8 @@ export interface GameContext {
   player: Player;
   input: Input;
   world: World;
+  /** Live collision circles supplied by the tour walkers and animals. */
+  tourCrowd: TourCrowd;
   /** Prepared static data (heights, rooms, POIs, path graph, attribution). */
   data: GameData;
   state: GameStateStore;

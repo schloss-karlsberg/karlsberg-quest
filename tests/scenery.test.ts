@@ -88,6 +88,13 @@ describe('present-day tour dressing', () => {
         expect(collider.solidAt(px, pz, 1.25), `group corridor at ${px}/${pz}`).toBe(false);
       }
     }
+    const slots = tour.stops.find((stop) => stop.id === 'felsen')?.slots ?? [];
+    expect(slots).toHaveLength(14);
+    for (const [x, z] of slots as [number, number][]) {
+      expect(h2025.slopeDeg(x, z)).toBeLessThan(32);
+      expect(pathAt(x, z)).toBeGreaterThan(0.2);
+      expect(collider.solidAt(x, z, 0.32)).toBe(false);
+    }
   });
 
   it('loads the materials used by the Karlsberger Hof bench and wayfinder with the opening', () => {

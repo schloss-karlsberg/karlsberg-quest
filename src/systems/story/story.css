@@ -196,6 +196,35 @@ body.kq-in-combat .kqs-dlg-body::before {
   padding: 0 5px;
   font-size: 12px;
 }
+
+/* Radio and Felsenpfad lines sit below the compass, above the character. The short landscape
+   touch layout already docks dialogue against its safe top and side insets. */
+body .kqs-dlg.kqs-dlg-raised {
+  top: calc(56px + env(safe-area-inset-top, 0px));
+  bottom: auto;
+  align-items: flex-start;
+  width: min(480px, 92vw);
+}
+.kqs-dlg.kqs-dlg-raised .kqs-portrait {
+  width: 54px;
+  height: 54px;
+}
+.kqs-dlg.kqs-dlg-raised .kqs-dlg-body {
+  min-width: 0;
+  max-height: min(130px, 24vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 6px 12px;
+}
+.kqs-dlg.kqs-dlg-raised .kqs-dlg-body::before {
+  display: none;
+}
+@media (max-height: 500px) {
+  html[data-kq-touch] body .kqs-dlg.kqs-dlg-raised .kqs-dlg-body {
+    max-height: 24vh;
+  }
+}
 .kqs-dlg.kqs-echo .kqs-dlg-body {
   background:
     radial-gradient(ellipse at 50% 50%, rgba(255, 250, 235, 0.15), transparent 70%),
@@ -1262,7 +1291,7 @@ html[data-kq-reduced-motion] .kqs-curtain.kqs-down {
   display: none;
 }
 /* a dialogue card on screen: hunt / sound captions move above it instead of under it */
-.kq-root:has(.kqs-dlg.kqs-show) .kq-subtitles {
+.kq-root:has(.kqs-dlg.kqs-show:not(.kqs-dlg-raised)) .kq-subtitles {
   bottom: 262px;
 }
 

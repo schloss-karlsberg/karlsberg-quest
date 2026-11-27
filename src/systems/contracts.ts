@@ -99,6 +99,8 @@ declare module '../core/events' {
        */
       lore?: boolean;
     };
+    /** The speaker currently presented by the story card, or null between lines. */
+    'dialogue:active': { speaker: string | null };
     /**
      * `resume`: the chapter / beat is entered again after a load or a capture, not reached anew.
      * `replay`: completed main quests that get a fresh attempt (chapter select).

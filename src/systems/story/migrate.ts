@@ -5,6 +5,7 @@ import type { GameState } from '../../core/state';
 import { createQuestSlice } from '../quests/logic';
 import { HOME } from './hub/home';
 import type { EndingId, LookTime } from './types';
+import type { WalkSlice } from '../walk/types';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -126,6 +127,15 @@ export function migrateStoryFlags(story: StorySlice, flags: Record<string, boole
   story.room = null;
   delete flags['interior.room'];
   delete flags['interior.building'];
+}
+
+/** Restore an unfinished first tour departure (needs the saved walk slice). */
+export function migrateTourDeparture(story: StorySlice, walk?: WalkSlice): void {
+  if (story.chapter !== 'tour' || story.beat !== 't3' || !Array.isArray(story.said)) return;
+  // The autosave can mark the line as said while it is still playing. Only its continuation
+  // sets Gerold's saved destination to Abzweig, so that destination records completion.
+  const departed = Array.isArray(walk?.walkers) && walk.walkers.some((w) => w?.npc === 'imhoff' && w.route === 'p-fuehrung' && w.to === 'abzweig');
+  if (!departed) story.said = story.said.filter((id) => id !== 'imhoff.t.los');
 }
 
 /** Update persisted labels and the return objective from before the spring became home. */

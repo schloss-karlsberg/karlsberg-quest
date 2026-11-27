@@ -227,6 +227,7 @@ class StoryRuntime {
   readonly endings: EndingScreen;
   readonly stage: EndingStage;
   readonly voice: Voice;
+  private activeSpeaker: string | null = null;
   /** Recorded clips, when browser playback is enabled. */
   readonly clips: VoiceClips | null;
   private time = 0;
@@ -1332,6 +1333,7 @@ class StoryRuntime {
       fiction: p.fiction,
       phoneDown: p.phoneDown,
       source: src ? (src.label ?? src.url) : undefined,
+      raised: this.slice.chapter === 'tour' && (sc?.beat ?? this.slice.beat) === 't6',
       beat: p.keep ? null : sc ? sc.beat : this.slice.beat,
       where,
       priority: p.priority ?? (low ? 'low' : 'normal'),
@@ -1608,6 +1610,11 @@ class StoryRuntime {
     // during an echo (playtest round 5: the level card over Laub's „Jetzt. Hinlegen …“ and over the
     // carts' echo; the hunt system holds them while a pack is out, W8 included)
     const cur = this.presenter.current;
+    const speaker = cur && cur.priority !== 'low' ? cur.speaker : null;
+    if (speaker !== this.activeSpeaker) {
+      this.activeSpeaker = speaker;
+      ctx.events.emit('dialogue:active', { speaker });
+    }
     ctx.ui.cards.soft('dialogue', !!cur && cur.priority !== 'low');
     ctx.ui.cards.hold('echo', this.echoHold);
     this.overlays.tickChoice(dt);
@@ -1883,6 +1890,8 @@ let rt: StoryRuntime | null = null;
 
 export default defineSystem({
   id: 'story',
+  // A story resume can issue walk commands immediately on save:loaded. Restore the route first.
+  after: ['walk'],
   async init(ctx) {
     rt = new StoryRuntime(ctx, creditSections(await ctx.assets.licences()));
   },

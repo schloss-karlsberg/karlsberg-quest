@@ -15,12 +15,29 @@ import { expectHandover } from './helpers/tour';
 const OUT = 'test-results/tour';
 mkdirSync(OUT, { recursive: true });
 test.describe.configure({ timeout: 600_000 });
+test.use({ isMobile: true, hasTouch: true });
 
 type K = NonNullable<typeof window.kq>;
 const beat = (page: Page) => page.evaluate(() => window.kq!.story!.state().beat as string);
 const time = (page: Page) => page.evaluate(() => window.kq!.ctx.loop.time);
 const shown = (page: Page, pattern: string) =>
   page.evaluate((prefix) => window.kq!.story!.shown().filter((id) => id.startsWith(prefix)), pattern);
+
+type Caption = { text: string; t: number; wall: number };
+/**
+ * Sound captions stay up for a wall-clock 3.5 s while the test advances game time in bursts, so a
+ * loaded software renderer can outlast them. The test records each line added to the subtitle
+ * live region and checks that record.
+ */
+async function captionShown(page: Page, text: string): Promise<void> {
+  const seen = await page.evaluate((want) => {
+    const caps = (window as unknown as { tourCaptions: Caption[] }).tourCaptions;
+    const c = caps.find((x) => x.text === want);
+    return c ? { ...c, ageMs: Math.round(performance.now() - c.wall), visible: [...document.querySelectorAll('.kq-subtitles > div')].some((e) => e.textContent === want) } : null;
+  }, text);
+  console.log(`[tour] caption ${text}: ${JSON.stringify(seen)}`);
+  expect(seen, `caption ${text} shown`).not.toBeNull();
+}
 
 async function shot(page: Page, name: string): Promise<void> {
   await page.evaluate(() => window.kq!.screenshotReady());
@@ -79,7 +96,7 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   const errors = trackErrors(page);
   await page.goto('./?notitle&nosave&fresh&manual');
   try {
-    await waitForHooks(page, ['story', 'walk', 'npc', 'photo', 'animals', 'progression', 'cinematic'], 120_000);
+    await waitForHooks(page, ['story', 'walk', 'npc', 'photo', 'animals', 'progression', 'cinematic', 'barks'], 120_000);
     await page.waitForFunction(() => {
       window.kq!.step(1);
       return window.kq!.animals?.ready === true;
@@ -93,6 +110,11 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
     const w = window as unknown as { tourRec: { n: string; p: unknown; t: number }[] };
     w.tourRec = [];
     const k = window.kq!;
+    const caps: Caption[] = [];
+    (window as unknown as { tourCaptions: Caption[] }).tourCaptions = caps;
+    new MutationObserver((records) => {
+      for (const r of records) for (const n of r.addedNodes) caps.push({ text: n.textContent ?? '', t: k.ctx.loop.time, wall: performance.now() });
+    }).observe(document.querySelector('.kq-subtitles')!, { childList: true });
     k.ctx.events.onAny((n, p) => {
       if (n === 'story:beat' || n.startsWith('animal:') || n === 'photo:good' || n === 'npc:arrived' || n === 'cinematic:end' || n === 'walk:bark' || n.startsWith('group:') || n.startsWith('shift:') || n.startsWith('quelle:'))
         w.tourRec.push({ n, p: JSON.parse(JSON.stringify(p ?? null)), t: k.ctx.loop.time });
@@ -130,19 +152,52 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   expect(await beat(page)).toBe('t2');
   await shot(page, '02-gerold-station1');
   const greeting = await page.evaluate(() => {
-    const n = window.kq!.npc!;
+    const k = window.kq!;
+    const n = k.npc!;
     const ids = [];
     for (let i = 0; i < 6 && n.state().busy; i++) {
       ids.push(n.state().line?.id);
       n.finish();
       n.advance();
     }
+    // Hold this one presentation past the old 5.52 s action estimate. The authored say action
+    // stays unchanged, so the old scheduler would still send Gerold on his way before it ends.
+    const events = k.ctx.events;
+    const emit = events.emit;
+    events.emit = (name, payload) => {
+      const line = payload as { id?: string; ms?: number };
+      if (name === 'dialogue:say' && line.id === 'imhoff.t.los') {
+        events.emit = emit;
+        line.ms = 10_000;
+      }
+      emit.call(events, name, payload);
+    };
     n.close();
-    window.kq!.step(30);
+    k.step(30);
     return ids;
   });
   expect(greeting).toEqual(['imhoff.t.station1', 'imhoff.t.station1a', 'imhoff.t.station1b']);
   await follow(page, 't3', 70);
+  const departure = await page.evaluate(() => {
+    const k = window.kq!;
+    const before = k.walk!.walker('imhoff')!;
+    const start = k.ctx.loop.time;
+    k.step(7 * 60);
+    const during = k.walk!.walker('imhoff')!;
+    k.story!.finishTyping();
+    return { line: k.story!.state().dialogue?.id, before: before.s, during: during.s, to: during.to, elapsed: k.ctx.loop.time - start };
+  });
+  expect(departure).toMatchObject({ line: 'imhoff.t.los', to: 'parkplatz' });
+  expect(departure.elapsed).toBeGreaterThan(5.52);
+  expect(departure.during).toBe(departure.before);
+  await page.keyboard.press('Enter');
+  const walking = await page.evaluate(() => {
+    const k = window.kq!;
+    k.step(60);
+    return k.walk!.walker('imhoff')!;
+  });
+  expect(walking.to).toBe('abzweig');
+  expect(walking.s).toBeGreaterThan(departure.before);
   await follow(page, 't4', 120);
   // the fade: Gerold's line, black, the group warped to the Felsenpfad entry, the player behind it
   for (let i = 0; i < 20 && (await beat(page)) === 't4'; i++) await page.evaluate(() => window.kq!.step(30));
@@ -152,17 +207,61 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   expect(Math.hypot(p4.x - 623.4, p4.z + 485.9)).toBeLessThan(15);
   await follow(page, 't6', 200);
   await viewGroup(page);
+  const card = page.getByTestId('dialogue');
+  await expect(card).toHaveClass(/kqs-dlg-raised/);
+  const desktop = page.viewportSize()!;
+  await expect(page.locator('html')).toHaveAttribute('data-kq-touch', '');
+  const rotate = page.getByTestId('rotate');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(rotate).toBeVisible();
+  await expect(rotate).toHaveAttribute('aria-hidden', 'false');
+  const landscape = { width: 844, height: 390 };
+  await page.setViewportSize(landscape);
+  await expect(rotate).toBeHidden();
+  await expect(rotate).toHaveAttribute('aria-hidden', 'true');
+  await expect(card).toBeVisible();
+  await expect(card).toHaveCSS('opacity', '1');
+  await expect.poll(async () => {
+    const box = await card.boundingBox();
+    return !!box && box.x >= 0 && box.y >= 0 && box.x + box.width <= landscape.width && box.y + box.height < landscape.height / 2;
+  }).toBe(true);
+  const line = await page.evaluate(() => {
+    const story = window.kq!.story!;
+    story.finishTyping();
+    return story.state().dialogue!.id;
+  });
+  await card.locator('.kqs-dlg-body').tap();
+  await expect.poll(() => page.evaluate(() => window.kq!.story!.state().dialogue?.id)).not.toBe(line);
+  await page.setViewportSize(desktop);
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.ctx.settings.update((s) => (s.touchControls = 'off'), 'touchControls');
+    k.step(1);
+  });
+  await expect.poll(async () => {
+    const box = await card.boundingBox();
+    return !!box && box.y + box.height < desktop.height / 2;
+  }).toBe(true);
   await shot(page, '04-felsenpfad-station2');
   await follow(page, 't8', 200);
   expect(await shown(page, 'imhoff.t.station2')).toEqual(['imhoff.t.station2', 'imhoff.t.station2a', 'imhoff.t.station2b', 'imhoff.t.station2c']);
   await page.evaluate(() => window.kq!.step(150));
-  await expect(page.locator('.kq-subtitles').getByText('[Diane und Bijou bellen]')).toBeVisible();
+  await captionShown(page, '[Diane und Bijou bellen]');
+  const framed = await page.evaluate(() => {
+    const k = window.kq!;
+    const { camera, world } = k.ctx;
+    return k.animals!.list().filter((a) => a.id === 'diane' || a.id === 'bijou').map((dog) => {
+      const p = camera.position.clone().set(dog.x, world.heightAt(dog.x, dog.z) + 0.45, dog.z).project(camera);
+      return [dog.id, Math.max(Math.abs(p.x), Math.abs(p.y), Math.abs(p.z)) < 1];
+    }).sort();
+  });
+  expect(framed).toEqual([['bijou', true], ['diane', true]]);
   await shot(page, '05-wind-hunde');
   await follow(page, 't9', 60);
   await follow(page, 't10', 240);
   const tDeer0 = await time(page);
   expect(await page.evaluate(() => window.kq!.cinematic!.playing())).toBe('tour.reh');
-  await expect(page.locator('.kq-subtitles').getByText('[Leises Rascheln im Laub]')).toBeVisible();
+  await captionShown(page, '[Leises Rascheln im Laub]');
   await page.evaluate(() => window.kq!.step(180));
   await shot(page, '06-reh-sicht');
   await page.evaluate(() => window.kq!.step(181));
@@ -287,17 +386,36 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
     await page.evaluate(() => window.kq!.step(1));
   }
   expect(await beat(page)).toBe('t14');
-  // round 2 (owner: lost the group): on the way up to the Quelle the player falls 45 m behind and
-  // stays: Gerold waits (leash), shows on the compass, calls once; a minute on, „Zur Gruppe“ (hold Q)
+  // On the way to the Quelle, first cross the leash, then go far enough to trigger the find call.
+  // After a minute apart, the player can hold Q for „Zur Gruppe“.
   await follow(page, 't14', 120);
   await page.evaluate(() => window.kq!.step(240));
   const tStray0 = await time(page);
-  await page.evaluate(() => {
+  const wait = await page.evaluate(() => {
     const k = window.kq!;
     const g = k.walk!.list().find((n) => n.npc === 'imhoff')!;
-    const fx = -Math.sin(g.yaw);
-    const fz = -Math.cos(g.yaw);
-    k.teleport(g.x - fx * 45, g.z - fz * 45, (-g.yaw * 180) / Math.PI + 150, -4);
+    const wasWaiting = k.walk!.walker('imhoff')!.waiting;
+    // Clear the 45 s bark gap and the station dialogue's quiet window on the bark clock.
+    k.barks!.advance(46);
+    const quiet = k.barks!.state().quiet;
+    const delivered: { speaker: string; id?: string }[] = [];
+    const off = k.ctx.events.on('dialogue:say', ({ speaker, id }) => delivered.push({ speaker, id }));
+    // Past the 25 m leash, but short of the 40 m find-group call.
+    k.teleport(g.x + Math.sin(g.yaw) * 30, g.z + Math.cos(g.yaw) * 30, (-g.yaw * 180) / Math.PI + 150, -4);
+    k.step(60);
+    off();
+    return { wasWaiting, quiet, waiting: k.walk!.walker('imhoff')!.waiting, called: k.walk!.find().called, delivered };
+  });
+  expect(wait).toMatchObject({ wasWaiting: false, quiet: null, waiting: true, called: false });
+  expect(wait.delivered).toContainEqual({ speaker: 'imhoff', id: expect.stringMatching(/^imhoff\.bark\.wait\./) });
+  await page.evaluate(() => {
+    const k = window.kq!;
+    const g = k.walk!.walker('imhoff')!;
+    const p = k.ctx.player.position;
+    const dx = p.x - g.x;
+    const dz = p.z - g.z;
+    const scale = 45 / Math.hypot(dx, dz);
+    k.teleport(g.x + dx * scale, g.z + dz * scale, (-k.ctx.player.yaw * 180) / Math.PI, -4);
     k.step(60);
   });
   for (let i = 0; i < 20 && !(await page.evaluate(() => window.kq!.walk!.find().called)); i++) await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
@@ -342,11 +460,19 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   });
   for (let i = 0; i < 40 && (await beat(page)) !== 't17'; i++) await page.evaluate(() => window.kq!.step(60));
   expect(await beat(page)).toBe('t17');
-  await expect(page.locator('.kq-subtitles').getByText('[Messing klirrt auf Stein]')).toBeVisible();
-  await page.evaluate(() => window.kq!.step(240));
+  await captionShown(page, '[Messing klirrt auf Stein]');
+  const uphill = await page.evaluate(() => {
+    const k = window.kq!;
+    const start = k.walk!.walker('imhoff')!.s;
+    k.step(240);
+    return { start, ...k.walk!.walker('imhoff')! };
+  });
+  expect(uphill).toMatchObject({ route: 'p-aufstieg', to: 'plateau' });
+  expect(uphill.s).toBeGreaterThan(uphill.start);
   await shot(page, '11-bussole-laub');
   expect(await page.evaluate(() => window.kq!.state().flags['story.compass'])).toBe(true);
-  expect(await page.evaluate(() => window.kq!.walk!.stats().bodies)).toBe(0);
+  expect(await page.evaluate(() => window.kq!.walk!.stats().bodies)).toBe(15);
+  expect(await page.evaluate(() => window.kq!.animals!.stats().dogs)).toBe(2);
   // Laub's lines run, then the hand into the water (the Quelle's own E)
   for (let i = 0; i < 60 && !(await page.evaluate(() => window.kq!.quelle!.info().prompt)); i++) await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
   const tTouch = await time(page);
@@ -374,6 +500,8 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   }
   expect(era).toBe('1789');
   await page.evaluate(() => window.kq!.step(300));
+  expect(await page.evaluate(() => window.kq!.walk!.stats().visible)).toBe(0);
+  expect(await page.evaluate(() => window.kq!.animals!.stats().visible)).toBe(0);
   await shot(page, '12-1789');
   // a look round in 1789, then the hand-over into chapter 1 (no „Fortsetzung folgt“)
   for (let i = 0; i < 80 && (await page.evaluate(() => window.kq!.story!.state().chapter)) === 'tour'; i++) await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
@@ -381,6 +509,7 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   expect(s1.completed).toContain('tour');
   expect(s1.chapter).toBe('k1');
   expect(s1.beat).toBe('k1_0');
+  expect(await page.evaluate(() => window.kq!.walk!.stats().bodies)).toBe(0);
   await expectHandover(page);
   // the deer photo is a tour-only extra on top
   expect(await page.evaluate(() => window.kq!.photo!.has('reh.ricke'))).toBe(true);
