@@ -16,7 +16,13 @@ The guided tour uses story beats. Surveyor quest history and pending payouts for
 - `chapter` is a story chapter id (`k1` … `k4`, `enden`).
 - **Main quests** are offered by the chapter's story beats (`{"do":"quest","op":"offer","id":…}`) and
   waited for with `{"quest":{"id":…}}`. **Side quests** offer themselves while their chapter runs and
-  `available` holds.
+  `available` holds. A beat's entry or exit `quest:fail` action closes that side quest for the rest of the
+  chapter. Its scheduled action sets the live deadline, and loading past the cutoff repairs any
+  saved quest that was still open. Replaying the chapter can offer a missed quest again before that
+  beat. Combat steps may restart. Saved fixed pickups and quest enemy drops still count, and an
+  already-paid objective bonus cannot pay twice. The cassowary's saved homecoming also counts when
+  accepted later. Selecting K3 again starts fresh attempts for the main quests that gate Peter's departure.
+  The original completions and their payouts are retained.
 - Givers: `{"npc": "<speaker id>"}` (a placed ghost: `hanne`, `soll`, `jost`, `peter`, `gaertner`,
   `diener`, `mann` …) or `{"voice": "laub" | "marlene"}`. Historical people are never givers; their
   lines (in `history`) need `sources`.
@@ -36,6 +42,8 @@ The guided tour uses story beats. Surveyor quest history and pending payouts for
 - An `echo` objective or an `event` objective for `echo:end` counts a heard or skipped memory.
   Interrupted playback leaves the objective open.
 - Never an enemy: real people, victims, menagerie animals (use `calm`). No spawns at memorials.
+  A single-animal `calm` objective can name a spawn id, such as `k3.jaguar`. The saved calmed id
+  counts if the objective is open when the quest is accepted or loaded.
 - Rewards: `xp`, `items` (`src/rpg/items.ts` or this file's `items`), `codex` (fact ids), `skills`
   (`{id, tier}`), `flags`, `talentPoints`.
 

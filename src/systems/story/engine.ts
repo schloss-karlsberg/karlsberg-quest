@@ -142,7 +142,7 @@ export interface RunOptions {
 
 export interface StoryHost {
   run(actions: Action[], opts: RunOptions): void;
-  chapterEntered(file: StoryFile, opts: { resume: boolean }): void;
+  chapterEntered(file: StoryFile, opts: { resume: boolean; replay?: readonly string[] }): void;
   beatEntered(chapter: string, beat: Beat, opts: { resume: boolean }): void;
   chapterCompleted(file: StoryFile): void;
 }
@@ -372,7 +372,7 @@ export class StoryEngine {
   }
 
   /** Start a chapter at its start beat (or `beatId`). */
-  goto(chapterId: string, beatId?: string, opts: { resume?: boolean } = {}): void {
+  goto(chapterId: string, beatId?: string, opts: { resume?: boolean; replay?: readonly string[] } = {}): void {
     const f = this.chapters.get(chapterId);
     if (!f) throw new Error(`story: unknown chapter '${chapterId}'`);
     const beat = beatId ?? f.start;
@@ -390,7 +390,7 @@ export class StoryEngine {
     for (const k of Object.keys(s.latched)) delete s.latched[k];
     s.fired = [];
     if (!s.unlocked.includes(chapterId)) s.unlocked.push(chapterId);
-    this.host.chapterEntered(f, { resume });
+    this.host.chapterEntered(f, { resume, replay: opts.replay });
     this.enterBeat(beat, resume);
   }
 
@@ -482,9 +482,9 @@ export class StoryEngine {
     const f = this.chapter();
     const b = this.beat();
     if (!f || !b) return;
-    s.beatTime += dt;
     s.chapterTime += dt;
     env = { ...env, chapterTime: s.chapterTime, chapter: s.chapter };
+    if (!b.timerWhile || evaluate(b.timerWhile, env, {}, 'clock', s.beatTime)) s.beatTime += dt;
     this.react(f.on ?? [], 'c', env, s.chapterTime);
     if (this.s.beat !== b.id || this.s.chapter !== f.chapter) return; // a reaction switched beats
     this.react(b.on ?? [], 'b', env, s.beatTime);

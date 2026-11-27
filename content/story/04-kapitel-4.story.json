@@ -592,7 +592,7 @@
         },
         { "do": "shift", "to": "today", "reason": "oblivion", "delay": 1.2, "onResume": true },
         { "do": "look", "time": "night", "delay": 0.2 },
-        { "do": "quest", "op": "fail", "id": "q.k4.pacht", "onResume": true }
+        { "do": "quest", "op": "fail", "id": "q.k4.pacht", "afterShift": true, "onResume": true }
       ],
       "on": [
         {

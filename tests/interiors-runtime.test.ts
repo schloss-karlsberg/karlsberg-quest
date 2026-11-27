@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createInitialState } from '../src/core/state';
+import { createInitialState, deserializeState, serializeState } from '../src/core/state';
+import { createStorySlice } from '../src/systems/story/engine';
 import interiors from '../src/systems/interiors';
 import { PlanQuery } from '../src/systems/interiors/collide';
 import { cataloguePlan, interiorGame, savedRoom } from './interiors-runtime-fixture';
@@ -228,5 +229,23 @@ describe('Festsaal choice', () => {
     g.shift('1793-07');
     g.step();
     expect(g.hooks.festsaal().spots).toHaveLength(4);
+  });
+});
+
+describe('live load of a save made in the same room', () => {
+  it('announces the room again when the loaded slot no longer knows it (TASK-043)', () => {
+    const g = interiorGame(savedRoom(hall));
+    const slot = savedRoom(hall);
+    slot.systems.story = { ...createStorySlice(), active: true, chapter: 'k3', beat: 'k3_4', room: hall };
+    // deserializeState drops the saved room: the story only learns it from interiors' room:enter
+    const loaded = deserializeState(serializeState(slot));
+    expect(loaded.flags['interior.room']).toBeUndefined();
+    g.log.length = 0;
+    g.state.replace(loaded, 'load');
+    g.events.emit('save:loaded', { slot: 'manual' });
+    g.step();
+    expect(g.state.state.flags['interior.room']).toBe(hall);
+    expect(g.log.filter(e => e.startsWith('enter'))).toHaveLength(1);
+    expect(g.log.some(e => e.startsWith('leave'))).toBe(false);
   });
 });

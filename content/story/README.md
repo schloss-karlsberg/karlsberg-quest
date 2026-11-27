@@ -87,6 +87,14 @@ grants: put a `say` of the clue's triggered line right after the `grant` — it 
 clue already said it) but reserves its reading time, so the next grant does not cut it off (k4_14).
 | `epilogue?` | fallback epilogue data (the endings pack's `epilog:line` lines win, see below) |
 
+**Chapter 3 recovery.** The Festsaal restages its objects while the choice is still open in July
+1793. The fallback counts 50 seconds spent in the upper Festsaal in that era. A saved
+`choice.k3.objekt` restores `festsaal.took` on load. A checkpoint retry or chapter replay keeps the
+completed choice and its original charm payout. The choice beat releases Hanne for the gate
+turn-in when it exits. The garden, gate and kennel beats reassert the same jaguar spawn in July
+1793, even when continued from the present. Leaving Chapter 3 for replay elsewhere removes the
+jaguar with `keepProgress: true`.
+
 ## Conditions
 
 Exactly one key per condition object. Event-like conditions are latched while the beat runs.
@@ -99,7 +107,7 @@ does when the departure scene closes. Clue discovery and quest credit require a 
 | `enter {x,z,r,era?}` / `leave {x,z,r}` | inside / outside the circle |
 | `event` (+ `match`, `gte`, `lte`, `times`) | the game event happened (payload match) |
 | `flag` (+ `eq`) | a state flag is truthy / equals |
-| `timer` | seconds in the beat (in chapter `on`: in the chapter) |
+| `timer` | seconds in the beat (in chapter `on`: in the chapter). A beat's optional `timerWhile` counts only while its live condition holds, without event latches. |
 | `chapterTimer` | seconds since the chapter started (game time) |
 | `era`, `scan` (≥ mode), `map`, `stance`, `lantern` | world / player state |
 | `have {clue\|noun\|item}`, `confirmed {case?\|prefix?, n}`, `caseComplete` | inventory and Chronik |
@@ -135,14 +143,14 @@ except `say/shift/teleport/card/sound/toast/cue/chronik/ending/echo/grant`).
 | `toast`, `card`, `prompt`, `sound` | as before | presentation |
 | `teleport` | `x, z, yaw?, onceFlag?` | move the player and optionally set the heading. With `onceFlag`, skip the move if that flag is set and record it after moving. Use with `onResume` for arrivals that Continue should finish once. |
 | `look` | `time: day \| dawn \| dusk \| night, era?` | time of day (`dawn` = Morgengrauen: chapter 4's end, the endings): the present (home at the Karlsbergquelle) or, with `era`, that past era (e.g. 1789 dusk / night in the Karlslust; `day` restores the era's preset). Persisted, re-applied whenever that era is entered |
-| `cue`, `chronik`, `unlock`, `ending`, `autosave` | `cue {id, data?}` | `story:cue`, open the board, map table, endings. `cue menagerie:spawn` with `data {animal, x, z, id?, heading?, count?}` / `menagerie:clear {id?}` places the escaped animals |
+| `cue`, `chronik`, `unlock`, `ending`, `autosave` | `cue {id, data?}` | `story:cue`, open the board, map table, endings. `cue menagerie:spawn` with `data {animal, x, z, id?, heading?, count?, era?}` places escaped animals. `menagerie:clear {id?, keepProgress?}` removes them and clears their partial flares by default. |
 | `choice` | `id, prompt, note?, options[], seconds?, fallback?, modal?` | see below |
 | `npc` | `op: spawn \| despawn, npc, x?, z?, room?, era?, yaw?, chapter?, topics?, mood?` | place / remove a ghost (`npc:spawn` / `npc:despawn`; x/z default to the player (on the player's storey), era to the current one, chapter to the running one; `room` = a palace room id: its centre and its storey, upstairs too; `npc: "*"` removes all) |
 | `meter` | `id, active, seconds?, label?, full?, text?, lossless?, still?, intensity?, center?, radius?` | see below |
 | `echo` | `id` | play a Chronik echo (`echo:play`) |
 | `memorial` | `id, active?, x?, z?, r?, era?, room?` | a memorial place: no barks there (`memorial:set`; `room` = catalogue id, full id or building) |
 | `readings` | `fill: "offen", cases?` | every reading without an answer becomes `offen` ("Leer lassen") |
-| `quest` | `op: offer \| start \| progress \| complete \| fail \| reset, id, objective?, n?` | Action-RPG: `quest:command` to the quests system (`offer`: the giver shows `!`; `start`: active at once; `progress`: +n on an objective, for `manual` objectives). One-shot on resume unless `onResume` |
+| `quest` | `op: offer \| start \| progress \| complete \| fail \| reset, id, objective?, n?, afterShift?` | Action-RPG: `quest:command` to the quests system (`offer`: the giver shows `!`; `start`: active at once; `progress`: +n on an objective, for `manual` objectives). A deadline with `afterShift: true` waits for the preceding era shift to finish. One-shot on resume unless `onResume` |
 | `enemy` | `op: spawn \| despawn, group, kind, x?, z?, era?, count?, radius?, boss?, tier?, leash?, respawn?, time?, room?, escorts?, wave?, aggro?, veiled?, near?` | `enemy:spawn` / `enemy:despawn` to combat (kinds: `src/rpg/enemies.ts`; x/z default to the player, era to the current one; `group: "*"` despawns all). `escorts` / `wave`: the pack's company and second wave (`[]` = none); `aggro`: an ambush, it closes in at once; `veiled`: only the Bannlicht tears its veil; `near`: spawn that many m from the player on the line towards x/z. Idempotent by group |
 | `loot` | `id?, item?, x?, z?, era?, count?, room?, group?, clear?` | `id` and `item` place a glowing pickup (`loot:place`). `group` can tag it. With `clear: true`, supply exactly one of `id` or `group` to remove matching pickups (`loot:clear`) |
 | `xp`, `item` | `amount, reason?` / `item, count?, quiet?` | XP and items to the progression system (`xp:grant`, `item:grant`; ids: `src/rpg/items.ts` or a quest file's `items`). One-shots |
