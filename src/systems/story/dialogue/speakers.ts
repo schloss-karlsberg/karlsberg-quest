@@ -75,6 +75,14 @@ export function speakerKey(id: string): string {
   return BUILTIN[tail] ? tail : s;
 }
 
+/**
+ * The speaker's name after a dative preposition („Mit {name} sprechen“): the pack's `dative_de`
+ * („dem Hofgärtner“, „einem Gardisten“), else the display name („Hanne“). TASK-078.
+ */
+export function speakerDative(id: string, content?: ContentDB): string {
+  return content?.speakers.get(id)?.dative_de ?? speakerMeta(id, content).name;
+}
+
 export function speakerMeta(id: string, content?: ContentDB): SpeakerMeta {
   const key = speakerKey(id);
   const b = BUILTIN[key];
