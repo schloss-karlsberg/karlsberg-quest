@@ -335,6 +335,8 @@ export interface TeleportAction extends ActionBase {
   x: number;
   z: number;
   yaw?: number;
+  /** Skip if this save flag is set. Set it after the teleport runs. */
+  onceFlag?: string;
 }
 /** Full-screen title card (chapter openings, cliffhangers). */
 export interface CardAction extends ActionBase {

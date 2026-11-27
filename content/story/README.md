@@ -5,7 +5,9 @@ state machine of **beats**; `pnpm validate` and `tests/story.test.ts` check ever
 (schema: `src/systems/story/types.ts`, validator: `src/systems/story/validate.ts`).
 The [story bible](../bible/00-overview.md) holds the writing and design notes, including the
 [guided tour](../bible/01-prolog.md) and [party endings](../bible/06-enden.md). The story files
-and their generators define the shipped beats and dialogue. Placeholders carry `"placeholder": true`.
+and their generators define the shipped beats and dialogue. For Chapter 4, edit the beat and quest
+JSON directly; `scripts/content-build/kapitel4.mjs` generates the K4 clue and dialogue pack, not those
+files. Placeholders carry `"placeholder": true`.
 
 ```jsonc
 {
@@ -130,7 +132,8 @@ except `say/shift/teleport/card/sound/toast/cue/chronik/ending/echo/grant`).
 | `shift`, `anchor` | `to, reason?, instant?` / `to \| null, x, z, r` | era shift / Q anchor |
 | `skill`, `give` | `id, tier` / `clue \| noun \| item, kind?, toast?` | skills, inventory |
 | `grant` | `clue` | discover a clue the Chronik way (`clue:grant`: nouns, codex, flags; no card) |
-| `toast`, `teleport`, `card`, `prompt`, `sound` | as before | presentation |
+| `toast`, `card`, `prompt`, `sound` | as before | presentation |
+| `teleport` | `x, z, yaw?, onceFlag?` | move the player and optionally set the heading. With `onceFlag`, skip the move if that flag is set and record it after moving. Use with `onResume` for arrivals that Continue should finish once. |
 | `look` | `time: day \| dawn \| dusk \| night, era?` | time of day (`dawn` = Morgengrauen: chapter 4's end, the endings): the present (home at the Karlsbergquelle) or, with `era`, that past era (e.g. 1789 dusk / night in the Karlslust; `day` restores the era's preset). Persisted, re-applied whenever that era is entered |
 | `cue`, `chronik`, `unlock`, `ending`, `autosave` | `cue {id, data?}` | `story:cue`, open the board, map table, endings. `cue menagerie:spawn` with `data {animal, x, z, id?, heading?, count?}` / `menagerie:clear {id?}` places the escaped animals |
 | `choice` | `id, prompt, note?, options[], seconds?, fallback?, modal?` | see below |

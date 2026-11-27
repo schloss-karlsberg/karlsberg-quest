@@ -651,6 +651,12 @@
           "match": {
             "mode": "drive"
           },
+          "where": {
+            "x": 1216,
+            "z": -1571,
+            "r": 22,
+            "era": "today"
+          },
           "after": [
             "echo"
           ]
