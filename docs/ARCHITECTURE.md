@@ -1314,6 +1314,11 @@ Round-4 (polish: set dressing) integration rules:
   flag `npc.near`. Emits `npc:talk`,
   `npc:conversation`, `bark:npc-near`, `clue:grant` (first talk), flags `talked.*`, `npc.owns.<clue>`.
 - State `systems.npc {placed, said}`. Hooks `kq.npc.list/spawn/despawn/talk/ask/advance/finish/drain/close/state/mark/choose`.
+- The talk prompt „E Mit {name} sprechen“ names the person in the dative (TASK-078): the speaker's
+  `dative_de` in its pack („dem Hofgärtner“, „einem Gardisten“, „Herrn Soll“), else the display
+  name („Mit Hanne sprechen“); `speakerDative()` in `story/dialogue/speakers.ts`. Every speaker named
+  with an article needs one (`scripts/content-build/speakers.mjs`, checked by
+  `tests/npc-prompt-name.test.ts`); the dialogue box and court captions keep the name as it is.
 - Talking to people: a placement can be bound to a live person of the people system (next
   section, "Talking to people"); `kq.npc.list()` reports it as `bound` (the person id).
 

@@ -65,7 +65,7 @@ _Status: approved 2026-11-27_
 - [x] 1. `dative_de` in the type and schema; `speakerDative()` with unit tests.
 - [x] 2. The npc prompt uses it; HUD prompt test in `tests/npc-encounter.test.ts`.
 - [x] 3. Dative forms in `speakers.mjs` (and `party.pack.json`), rebuild, `pnpm validate`; content rule test.
-- [ ] 4. Docs.
+- [x] 4. Docs.
 - [ ] 5. Gates, e2e `npc.spec.ts`, after screenshots.
 
 **Test plan:**
@@ -89,3 +89,4 @@ _Status: approved 2026-11-27_
 - 2026-11-27: step 1 done - `Speaker.dative_de` (type, `content/schema/pack.schema.json`, `src/content/validate.ts`: a non-empty string if set); `speakerDative()` in `src/systems/story/dialogue/speakers.ts`; `tests/npc-prompt-name.test.ts`: an article name gives its dative form, a plain name, a built-in and an unknown id stay as they are.
 - 2026-11-27: step 2 done - `src/systems/npc/index.ts`: the talk prompt and its "is the name still shown" check use `speakerDative`. `tests/npc-encounter.test.ts`: „Mit dem Kanzlisten sprechen“ for a speaker with `dative_de`, „Mit Kanzlist Gottlob Soll sprechen“ without; fails on the old code. Set on the test context, not in the shared harness, so it does not overlap with PR #126.
 - 2026-11-27: step 3 done - `scripts/content-build/speakers.mjs`: `sp()` takes an optional dative; set for every name with an article (20, e.g. „dem Hofgärtner“, „einem Gardisten“, „einem Lakaien“, „dem zweiten Gärtner“, „dem Kommissär“, „der Menge“) and for „Diener“ („dem Diener“); `node scripts/content-build/build.mjs` regenerated `content/packs/speakers.pack.json` (no other pack changed). `content/packs/party.pack.json`: „Herr Soll“ → „Herrn Soll“. `tests/npc-prompt-name.test.ts`: every article name has a lower-case dative; every placed person (story `npc spawn`, built-ins included) reads right after „Mit“; red without the new forms. `pnpm validate` green (28 warnings, none new).
+- 2026-11-27: step 4 done - `docs/ARCHITECTURE.md` (npc: the prompt in the dative, `speakerDative`, the content rule), a row in `docs/ACTION-RPG.md` §14 and in the `docs/PRD.md` changelog (placed below the TASK-083 row and below the TASK-006 row, so they do not touch the lines PR #126 changes).
