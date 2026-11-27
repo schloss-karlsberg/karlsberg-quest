@@ -74,7 +74,7 @@ export class ObjectiveView {
     ensurePortraitDefs();
     this.textEl = h('span.kqs-obj-text');
     this.distEl = h('span.kqs-obj-dist');
-    this.el = h('div.kqs-objective', { 'data-testid': 'objective' }, [h('span.kqs-obj-mark', '◆'), this.textEl, this.distEl]);
+    this.el = h('div.kqs-objective', { 'data-testid': 'objective' }, [h('span.kqs-obj-mark', { 'aria-hidden': 'true' }, '◆'), h('span.kqs-obj-copy', [this.textEl, this.distEl])]);
     this.bussole = h('div.kqs-bussole', { 'data-testid': 'bussole' }, svg(BUSSOLE));
     this.needle = this.bussole.querySelector('.kqs-b-needle') as SVGGElement;
     // the objective line lives in the HUD's top-left column (under era, status and room name)
@@ -164,7 +164,7 @@ export class ObjectiveView {
     this.el.classList.toggle('kqs-dup', dup);
     this.hud.storyTarget = opts.visible && !dup ? o : null;
     let target: number | null = null;
-    if (opts.questTarget && (dup || !o)) {
+    if (opts.questLed && opts.questTarget && (dup || !o)) {
       // the story line stepped back for the quest tracker: the needle follows the tracked goal
       this.hud.setMarker('objective', null);
       this.distEl.textContent = '';
@@ -173,7 +173,9 @@ export class ObjectiveView {
       // the Bussole keeps pointing even when the line steps back; only the compass-strip mark goes
       const b = bearingDeg(px, pz, o.x, o.z);
       const d = Math.hypot(o.x - px, o.z - pz);
-      this.hud.setMarker('objective', dup ? null : b, '#e9c46a');
+      // In the full game quests can already show this target (rounded to decimetres).
+      const trackedHere = opts.questTarget && Math.hypot(opts.questTarget.x - o.x, opts.questTarget.z - o.z) < 0.08;
+      this.hud.setMarker('objective', dup || trackedHere ? null : b, '#e9c46a', { kind: 'obj' });
       this.distEl.textContent = d < 8 ? '' : ` · ${d < 1000 ? `${Math.round(d / 5) * 5} m` : `${(d / 1000).toFixed(1).replace('.', ',')} km`}`;
       target = angleDiff(b, heading);
     } else this.distEl.textContent = '';

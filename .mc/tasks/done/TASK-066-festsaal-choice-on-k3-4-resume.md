@@ -4,7 +4,7 @@ aliases:
 - TASK-066
 title: 'Show the Festsaal choice when a k3_4 save resumes'
 slug: festsaal-choice-on-k3-4-resume
-status: todo
+status: done
 priority: 2
 owner: ''
 projects: []
@@ -19,7 +19,7 @@ milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-26
-updated: 2026-11-26
+updated: 2026-11-27
 ---
 
 # Festsaal choice missing after resuming a k3_4 save
@@ -34,12 +34,12 @@ and left out of that task's scope.
 
 ## Acceptance criteria
 
-- [ ] Loading or booting into a `k3_4` save where `festsaal.took` is not set shows the four
+- [x] Loading or booting into a `k3_4` save where `festsaal.took` is not set shows the four
       Festsaal objects and the prompt in the Festsaal.
-- [ ] A save where the choice was already taken does not show them again.
-- [ ] A fire that has ended, or the `festsaal:clear` cue, still drops the choice as it does now.
-- [ ] A unit test reproduces the missing objects first and then pins the fix.
-- [ ] Gates pass: `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build`, plus the
+- [x] A save where the choice was already taken does not show them again.
+- [x] A fire that has ended, or the `festsaal:clear` cue, still drops the choice as it does now.
+- [x] A unit test reproduces the missing objects first and then pins the fix.
+- [x] Gates pass: `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build`, plus the
       interiors and smoke e2e specs.
 
 ## Plan
@@ -53,3 +53,11 @@ test, and the PRD changelog.
 
 **Risks:** The choice must not appear twice when the beat is entered fresh and the cue runs
 on entry as well.
+
+## Resolution
+
+Fixed by TASK-043 (#103): the Festsaal objects are placed by the `k3_4` reaction `requisiten`
+(era `1793-07` and `festsaal.took` not set, repeating), which the engine evaluates again on
+resume and load, so a save still deciding gets the four objects back and a taken choice does not.
+Covered by `e2e/chapter-k3.spec.ts` ("Continue on a fresh page restores the Festsaal floor and
+allows a pickup"); the fuse and `festsaal:clear` test still passes.

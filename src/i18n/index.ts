@@ -1,11 +1,11 @@
-import { de } from './de';
-import { deContent } from './de.content';
+import { de } from './de.ts';
+import { deContent } from './de.content.ts';
 
 /**
  * Tiny i18n layer. German only for now; English is planned for 1.0.
  *   t('pause.title')                  → 'Pause'
  *   t('title.loading', { pct: 40 })   → 'Gelände wird geladen … 40 %'
- * Unknown keys return the key itself (and warn once), so missing strings are visible in play.
+ * Unknown keys use the localized fallback and log the missing key once.
  */
 export type Locale = 'de';
 
@@ -37,7 +37,7 @@ export function t(key: string, params?: Record<string, string | number>): string
       warned.add(key);
       console.warn(`[i18n] missing string '${key}'`);
     }
-    s = key;
+    s = de['common.missingText']!;
   }
   if (params) s = s.replace(/\{(\w+)\}/g, (m, k: string) => (Object.hasOwn(params, k) ? String(params[k]) : m));
   return s;

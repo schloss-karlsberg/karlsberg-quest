@@ -136,5 +136,5 @@ it('counts distinct collection members, not copies, and reveals bestiary entries
   expect(set().textContent).toContain('Probe');
   expect(set().className).toContain('kqj-complete');
   expect(enemy().textContent).toContain('2× aufgelöst');
-  expect(enemy().textContent).toContain('Zeiten:');
+  expect(enemy().textContent).toContain('Epochen:');
 });

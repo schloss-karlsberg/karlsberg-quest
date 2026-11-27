@@ -38,12 +38,14 @@ export function personBody(api: PeopleApiLike, o: BodySpawn): Body {
   const p = api.spawn(o.spec, opts);
   let speed = -1;
   let yaw = Number.NaN;
+  let snapped = false;
   return {
     setPos: (x, y, z) => p.root.position.set(x, y, z),
-    face: (v) => {
-      if (Math.abs(v - yaw) < 1e-3) return;
+    face: (v, snap = false) => {
+      if (Math.abs(v - yaw) < 1e-3 && snap === snapped) return;
       yaw = v;
-      p.face(v);
+      snapped = snap;
+      p.face(v, snap);
     },
     setSpeed: (v) => {
       if (Math.abs(v - speed) < 0.02) return;

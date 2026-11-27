@@ -8,7 +8,7 @@
 import type { Era } from '../../core/era';
 import type { ThreatConfig } from '../contracts';
 import { valueKey } from '../../content/triggers';
-import { type Action, type Beat, type Condition, type EndingId, type EventCond, type FlagValue, type LookTime, type Reaction, type StoryFile } from './types';
+import { type Action, type Beat, type Condition, type EndingId, type EventCond, type FlagValue, type LookTime, type Reaction, type StoryFile, type TeleportAction } from './types';
 
 export interface ObjectiveState {
   text: string;
@@ -138,11 +138,13 @@ export interface RunOptions {
   beat?: string | null;
   /** The place a reaction is about (its first `enter` circle): lines about it go stale elsewhere. */
   where?: { x: number; z: number; r: number } | null;
+  /** From a `sameEra` reaction: its pending actions are dropped when the player leaves the era. */
+  sameEra?: boolean;
 }
 
 export interface StoryHost {
   run(actions: Action[], opts: RunOptions): void;
-  chapterEntered(file: StoryFile, opts: { resume: boolean }): void;
+  chapterEntered(file: StoryFile, opts: { resume: boolean; replay?: readonly string[] }): void;
   beatEntered(chapter: string, beat: Beat, opts: { resume: boolean }): void;
   chapterCompleted(file: StoryFile): void;
 }
@@ -153,6 +155,13 @@ const ONE_SHOT = new Set(['say', 'shift', 'teleport', 'card', 'sound', 'toast', 
 
 export function runsOnResume(a: Action): boolean {
   return a.onResume ?? !ONE_SHOT.has(a.do);
+}
+
+export function runTeleport(action: TeleportAction, flags: Record<string, FlagValue>, teleport: (x: number, z: number, yaw?: number) => void): void {
+  const { onceFlag, x, z, yaw } = action;
+  if (onceFlag && flags[onceFlag]) return;
+  teleport(x, z, yaw);
+  if (onceFlag) flags[onceFlag] = true;
 }
 
 /** Silent world setup: at time 0 of a chapter's opening beat it runs under the title card. */
@@ -365,7 +374,7 @@ export class StoryEngine {
   }
 
   /** Start a chapter at its start beat (or `beatId`). */
-  goto(chapterId: string, beatId?: string, opts: { resume?: boolean } = {}): void {
+  goto(chapterId: string, beatId?: string, opts: { resume?: boolean; replay?: readonly string[] } = {}): void {
     const f = this.chapters.get(chapterId);
     if (!f) throw new Error(`story: unknown chapter '${chapterId}'`);
     const beat = beatId ?? f.start;
@@ -383,7 +392,7 @@ export class StoryEngine {
     for (const k of Object.keys(s.latched)) delete s.latched[k];
     s.fired = [];
     if (!s.unlocked.includes(chapterId)) s.unlocked.push(chapterId);
-    this.host.chapterEntered(f, { resume });
+    this.host.chapterEntered(f, { resume, replay: opts.replay });
     this.enterBeat(beat, resume);
   }
 
@@ -475,9 +484,9 @@ export class StoryEngine {
     const f = this.chapter();
     const b = this.beat();
     if (!f || !b) return;
-    s.beatTime += dt;
     s.chapterTime += dt;
     env = { ...env, chapterTime: s.chapterTime, chapter: s.chapter };
+    if (!b.timerWhile || evaluate(b.timerWhile, env, {}, 'clock', s.beatTime)) s.beatTime += dt;
     this.react(f.on ?? [], 'c', env, s.chapterTime);
     if (this.s.beat !== b.id || this.s.chapter !== f.chapter) return; // a reaction switched beats
     this.react(b.on ?? [], 'b', env, s.beatTime);
@@ -507,7 +516,7 @@ export class StoryEngine {
         if (!now) continue;
         s.fired.push(tag);
       }
-      this.host.run(r.do, { resume: false, source: `${this.s.chapter}/${tag}`, beat: scope === 'b' ? s.beat : null, where: whereOf(r.when) });
+      this.host.run(r.do, { resume: false, source: `${this.s.chapter}/${tag}`, beat: scope === 'b' ? s.beat : null, where: whereOf(r.when), sameEra: r.sameEra });
     }
   }
 }

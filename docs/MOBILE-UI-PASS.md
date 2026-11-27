@@ -73,6 +73,8 @@ Each unit shoots these states in order. The file name is `<NN>-<state>[-<sub>].p
 | 23 | `k1-card` | | „Der Hof“ chapter card at the spring, `-hud` (K1 opening HUD + tracker) | `story.goto('k1')` |
 | 24 | `k1-court` | | 1789 court: NPC markers, lantern | `setEra('1789')`, teleport |
 | 25 | `npc-talk` | | Hanne: `-line`, `-topics` (the choices), `-answer` | `npc.talk('hanne')`, **tap** a `npc-topic-*` |
+| 26 | `skill-unlock` | | standalone Baumeister unlock with a long Aktion prompt, then `-dismissed` | `skills.grant('baumeister', 1)`, **tap** the play surface |
+| 27 | `credits` | ✱ | `-crawl`, `-static`, `-static-scrolled`, or the rotate overlay during each mode on portrait phones | `party.set('burn')`, `party.credits()`, **swipe** the static list and **tap** `party-credits-skip` |
 
 Long modals are covered by `news`, `title-settings`, `settings`, `pause` (controls, licences) and `journal`. Each is swiped with a finger to its end, then scrolled by script to be sure. The `-bottom` shot notes whether the swipe alone moved it; if not, that is a scroll trap.
 
@@ -538,3 +540,64 @@ up to 365 px hides the map, suspends its redraws and releases that space. The no
 the lit pill using its maximum reach and the HUD zoom. Above 500 px, notices sit below the 104 px
 map and to the left of the unlocked skills. `e2e/minimap.spec.ts` checks the live layout at
 568 × 320, 667 × 375 with the §8.3 safe-area insets, and 1024 × 550 with all three skills unlocked.
+
+### 8.5 Phone credits and standalone skill unlocks (2026-11-26)
+
+**Credits (MR 13).** Both credit modes hide the visible gameplay controls on phones and keep the
+strip and Skip button within the safe width. The crawl clears the lower letterbox. A drag on the
+play surface outside the strip and Skip button hands the camera back while the crawl continues.
+The cinematic marks whether it locks input, so the unlocked credits orbit leaves that surface
+available. The party spec checks the hit targets and that the track keeps moving after hand-back.
+The reduced-motion list sits above the home indicator and scrolls natively. Controls return when
+the credits end. The portrait phone keeps the rotate overlay in front, and tablets retain the side
+gutter for controls.
+
+**Standalone skill unlock.** The landscape phone card starts 6 px below the maximum dialogue
+body and ends at least 12 px above the home indicator. Its right edge reserves the full Aktion
+pill, skill buttons and survey menu. A grouped card keeps the primary description and one
+additional description, with the remaining skills listed by name and tier. A held movement stick
+defers the notice or hides it and pauses its reading time if it is already up. A play-surface tap
+uses the same card director path as the level card and starts the 0.6 s fade, skipping a stamp that
+has yet to play. Each eligible Laub remark still queues once.
+
+**MR 9 and Pause.** The tour opening already supplies the short touch hint „Wischen: Schauen“.
+The HUD pill now wraps longer text between the vitals and Balsam/Ausweichen, with its position
+adjusted for HUD zoom. Combat callouts wrap below the dialogue band, left of Aktion and right of
+the vitals column, so Lebenskraft stays readable in a fight. The level card already uses the
+compact layout from §8.4. No new overlay uses the top-right region
+reserved for TASK-015. For the `13-pause*` S2 pairs, the pause paper is opaque and its modal
+layer sits above the dialogue. The measurer tests the intersection itself against the paper,
+including intersections with its buttons. A line may remain visible beside the paper under the
+dim backdrop. On the 667×375 fixture the tour requires a visible dialogue body and an intersection
+whose hit belongs to the Pause paper, then checks the reported pairs.
+
+**Device review pending.** The worktree sandbox denied the local `tsx` socket and the Playwright
+preview listener on port 5407. Run the following from the worktree on a machine that can bind
+the preview port. Each spec or screenshot set takes its own lock.
+
+```sh
+pnpm build
+KQ_E2E_PORT=5407 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/party.spec.ts --workers=1 --reporter=line
+KQ_E2E_PORT=5407 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2e/smoke.spec.ts --workers=1 --reporter=line
+KQ_MOBILE_PORT=5407 scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device small-landscape
+for device in large-landscape tablet-landscape tablet-portrait; do
+  KQ_MOBILE_PORT=5407 scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device "$device" --states touch-buttons,dialogue,pause,combat,level-card,skill-unlock,credits
+done
+for device in small-portrait large-portrait; do
+  KQ_MOBILE_PORT=5407 scripts/dev/heavy.sh --max-hold 15 -- pnpm exec tsx scripts/dev/mobile-tour.ts --device "$device" --states rotate,credits
+done
+```
+
+- Start with 667×375. In `11-touch-buttons-long-hint.png` and `11-touch-buttons-callout.png`,
+  check the prompt can be read between the vitals and the arc and that the caption clears Aktion.
+- Inspect `26-skill-unlock.png` for the complete description and stamp, below the dialogue band
+  and clear of the top row and the long Aktion pill. The tour checks the text fragments and settled
+  stamp against the card's clipping rectangle. After capturing the shot, it advances the game by
+  6.5 seconds with the stick held and verifies that the card returns on release. It then uses a fresh
+  card and two simulation steps to verify that a tap starts the fade.
+- In the `13-pause*` shots, look for dialogue showing through the dim backdrop beside the paper
+  only. Pause buttons should take taps at the same point even if dialogue runs behind them.
+- In `27-credits*`, check the crawl is cropped to the safe strip, Skip sits above it and the
+  static list scrolls through to the end. Drag outside the crawl to take back the camera while the
+  credits continue. Check the controls return after Skip, and that portrait phones show the rotate
+  prompt. Read each unit's `findings.json` alongside the shots.

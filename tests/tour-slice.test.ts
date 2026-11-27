@@ -20,6 +20,7 @@ import { type Action, type StoryFile, isWalkAction } from '../src/systems/story/
 import { validateStories } from '../src/systems/story/validate';
 import { loadStoryFiles, loadWalkRefs } from '../src/systems/story/validate-cli';
 import type { Route } from '../src/systems/walk/types';
+import { canTouch, toWorld, TOUR_REACH, yawToWater } from '../src/systems/quelle/layout';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const tour = JSON.parse(readFileSync(`${ROOT}content/story/00-tour.story.json`, 'utf8')) as StoryFile;
@@ -27,22 +28,34 @@ const k1 = JSON.parse(readFileSync(`${ROOT}content/story/01-kapitel-1.story.json
 const route = JSON.parse(readFileSync(`${ROOT}content/routes/p-fuehrung.json`, 'utf8')) as Route;
 const pack = JSON.parse(readFileSync(`${ROOT}content/packs/tour.pack.json`, 'utf8')) as { dialogue: DialogueLine[] };
 
-function harness(onAction?: (a: Action) => void | false) {
-  let slice: StorySlice = createStorySlice();
-  const flags: Record<string, boolean | number | string> = {};
+function harness(onAction?: (a: Action) => void | false, saved = createInitialState(), holdDialogue = false) {
+  let slice: StorySlice = saved.systems.story ?? createStorySlice();
+  const flags = saved.flags;
   const pos = { x: 529, z: -777 };
   const sent: { kind: string; a: Action }[] = [];
   const said: string[] = [];
+  let afterLine: Action[] = [];
   let era = 'today';
   const apply = (actions: Action[]) => {
-    for (const a of actions) {
+    for (const [i, a] of actions.entries()) {
       if (onAction?.(a) === false) continue;
       if (a.do === 'flag') for (const [k, v] of Object.entries(a.set)) v === null ? delete flags[k] : (flags[k] = v);
-      else if (a.do === 'say') said.push(a.id ?? a.line ?? '?');
-      else if (a.do === 'teleport') Object.assign(pos, { x: a.x, z: a.z });
+      else if (a.do === 'say') {
+        const id = a.id ?? a.line;
+        if (holdDialogue && id && slice.said.includes(id) && !a.repeat) continue;
+        said.push(id ?? '?');
+        if (id && !slice.said.includes(id)) slice.said.push(id);
+        if (holdDialogue && a.wait) {
+          afterLine = actions.slice(i + 1);
+          return;
+        }
+      } else if (a.do === 'teleport') Object.assign(pos, { x: a.x, z: a.z });
       else if (a.do === 'shift') era = a.to;
       else if (a.do === 'npc') sent.push({ kind: isWalkAction(a) ? 'npc:walk' : 'npc:spawn', a });
-      else sent.push({ kind: a.do, a });
+      else {
+        if (a.do === 'objective') slice.objective = a.text ? { text: a.text, id: a.id, x: a.x, z: a.z } : null;
+        sent.push({ kind: a.do, a });
+      }
     }
   };
   const engine = new StoryEngine([tour, k1], () => slice, {
@@ -95,6 +108,13 @@ function harness(onAction?: (a: Action) => void | false) {
     completed: () => slice.completed,
     chapter: () => slice.chapter,
     era: () => era,
+    objective: () => slice.objective,
+    saved: () => deserializeState(serializeState({ ...saved, systems: { ...saved.systems, story: slice } })),
+    finishLine: () => {
+      const actions = afterLine;
+      afterLine = [];
+      apply(actions);
+    },
     reset: () => (slice = createStorySlice()),
   };
 }
@@ -217,22 +237,33 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     expect(staffGrants().map(({ a }) => a)).toEqual([{ do: 'item', item: 'item.stab.esche' }]);
     h.tick();
     expect(h.beat()).toBe('t14');
+    expect(h.objective()).toEqual({ id: 'tour', text: 'Der Gruppe folgen: hinauf zur Karlsbergquelle', x: 1059.3, z: -833.1 });
     h.ev('npc:arrived', { npc: 'imhoff', at: 'quelle', route: 'p-fuehrung', skipped: false });
     expect(h.beat()).toBe('t15');
     expect(h.said).toContain('imhoff.t.pause');
     h.tick();
     expect(h.beat()).toBe('t16');
-    // alone at the trough: the compass, Laub, the touch
-    Object.assign(h.pos, { x: 1059.3, z: -833.1 });
+    // The group continues uphill as the player finds the compass, alone at the trough.
+    const departing = h.sent.length;
+    const [x, z] = toWorld(0.1, 4.15);
+    Object.assign(h.pos, { x, z });
+    expect(canTouch(x, z, yawToWater(x, z, 'today'), 'today', TOUR_REACH)).toBe(true);
+    expect(h.flags['quelle.call']).toBeUndefined();
     for (let i = 0; i < 25; i++) h.tick();
     expect(h.beat()).toBe('t17');
     expect(h.sent.map(({ a }) => a)).toContainEqual({ do: 'sound', sound: 'compass', caption: '[Messing klirrt auf Stein]' });
+    const cleanups = () => h.sent.slice(departing).filter(({ a }) =>
+      (a.do === 'npc' && a.op === 'despawn' && 'group' in a && a.group === 'fuehrung') ||
+      (a.do === 'animal' && a.op === 'despawn' && ['diane', 'bijou'].includes(a.id)));
+    expect(cleanups()).toHaveLength(0);
+    expect(h.flags['walk.find']).toBe(false);
     expect(h.flags['story.compass']).toBe(true);
     expect(h.flags['quelle.call']).toBe(true);
     expect(h.said).toEqual(expect.arrayContaining(['player.q.fund', 'laub.t.intro', 'player.q.laub', 'laub.t.trog']));
     h.ev('quelle:touch', {});
     expect(h.era()).toBe('1789');
     expect(h.beat()).toBe('t18');
+    expect(cleanups()).toHaveLength(0);
     expect(h.flags['quelle.call']).toBeUndefined();
     // no „Fortsetzung folgt“: a look round in 1789, then the hand-over into chapter 1
     expect(h.sent.some((s) => s.kind === 'card')).toBe(false);
@@ -240,6 +271,8 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     expect(h.said).toEqual(expect.arrayContaining(['player.q.wo', 'laub.t.1789']));
     expect(h.flags['combat.disabled']).toBeUndefined();
     expect(h.flags['tour.slice']).toBeUndefined();
+    expect(h.flags['walk.find']).toBeUndefined();
+    expect(cleanups()).toHaveLength(3);
     expect(h.completed()).toContain('tour');
     expect(h.chapter()).toBe('k1');
     expect(h.beat()).toBe('k1_0');
@@ -353,6 +386,51 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     const [restored] = restoreAnimals(save).deer;
     expect(objectivePoint(action, save)).toEqual({ x: restored!.x, z: restored!.z });
     expect(objectivePoint(action)).toEqual({ x: 698, z: -773 });
+  });
+
+  it('updates the Bussole objective on pickup, then offers the water when Laub finishes', () => {
+    const beat = tour.beats.find((b) => b.id === 't17')!;
+    const actions = beat.enter!;
+    const pickup = actions.findIndex((a) => a.do === 'give' && a.item === 'item.bussole');
+    const listen = actions.findIndex((a) => a.do === 'objective' && a.text === 'Laub zuhören');
+    expect(pickup).toBeGreaterThanOrEqual(0);
+    expect(listen).toBeGreaterThan(pickup);
+    expect(actions.some((a) => a.do === 'say')).toBe(false);
+    expect(actions[listen]?.delay).toBeUndefined();
+    expect(runsOnResume(actions[listen]!)).toBe(false);
+  });
+
+  it.each([0, 2])('resumes t17 with %i dialogue lines already in the save', (heard) => {
+    const ids = ['laub.t.intro', 'player.q.laub', 'laub.t.intro.b', 'laub.t.quelle', 'laub.t.trog'];
+    const initial = harness(undefined, createInitialState(), true);
+    initial.engine.goto('tour', 't17');
+    if (heard > 0) {
+      initial.tick();
+      for (let i = 1; i < heard; i++) initial.finishLine();
+    }
+    const resumed = harness(undefined, initial.saved(), true);
+    resumed.engine.resume();
+    expect(resumed.flags['quelle.call']).toBeUndefined();
+    expect(resumed.objective()?.text).toBe('Laub zuhören');
+    resumed.tick();
+    for (const [i, id] of ids.slice(heard).entries()) {
+      expect(resumed.said).toEqual(ids.slice(heard, heard + i + 1));
+      expect(resumed.said.at(-1)).toBe(id);
+      expect(resumed.flags['quelle.call']).toBeUndefined();
+      expect(resumed.objective()?.text).toBe('Laub zuhören');
+      resumed.finishLine();
+    }
+    expect(resumed.flags['quelle.call']).toBe(true);
+    expect(resumed.objective()?.text).toBe('Am Trog das Wasser berühren');
+    expect(resumed.sent.at(-1)?.kind).toBe('autosave');
+    const unlocked = harness(undefined, resumed.saved(), true);
+    unlocked.engine.resume();
+    unlocked.tick();
+    expect(unlocked.said).toEqual([]);
+    expect(unlocked.flags['quelle.call']).toBe(true);
+    expect(unlocked.objective()?.text).toBe('Am Trog das Wasser berühren');
+    unlocked.ev('quelle:touch', {});
+    expect(unlocked.beat()).toBe('t18');
   });
 
   it('t10 opens on the deer: the reh shot from the group stop, then the sneak prompt (TASK-001)', () => {

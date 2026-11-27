@@ -53,6 +53,78 @@ describe('third-person camera rig', () => {
     expect(rig.distance).toBeGreaterThanOrEqual(BOOM_MIN);
   });
 
+  it('shortens the boom in a single frame and eases it back out when the obstruction clears', () => {
+    const rig = new CameraRig();
+    const cam = new PerspectiveCamera();
+    const wall: CameraWorld = { ...flat, blocked: (_x, z, r) => z + r > 1.5 };
+    rig.update(cam, input(), flat, noHints());
+    expect(rig.distance).toBeCloseTo(rig.zoom);
+    rig.update(cam, input(), wall, noHints());
+    expect(cam.position.z).toBeLessThan(1.5);
+    const compressed = rig.distance;
+    expect(compressed).toBeLessThan(1.5);
+    rig.update(cam, input(), flat, noHints());
+    expect(rig.distance).toBeGreaterThan(compressed);
+    expect(rig.distance).toBeLessThan(rig.zoom);
+    settle(rig, cam, flat);
+    expect(rig.distance).toBeCloseTo(rig.zoom);
+  });
+
+  it('clears a wall beside the shoulder on the first frame and eases outward when it opens', () => {
+    const rig = new CameraRig();
+    const cam = new PerspectiveCamera();
+    const wall: CameraWorld = { ...flat, blocked: (x, _z, radius) => x + radius > 0.4 };
+    rig.update(cam, input(), flat, noHints());
+    const openX = cam.position.x;
+    expect(openX).toBeGreaterThan(0.4);
+
+    rig.update(cam, input(), wall, noHints());
+    const squeezedX = cam.position.x;
+    expect(wall.blocked(squeezedX, cam.position.z, 0)).toBe(false);
+    expect(rig.distance).toBeCloseTo(rig.zoom);
+
+    rig.update(cam, input(), flat, noHints());
+    expect(cam.position.x).toBeGreaterThan(squeezedX);
+    expect(cam.position.x).toBeLessThan(openX);
+    settle(rig, cam, flat);
+    expect(cam.position.x).toBeCloseTo(openX);
+  });
+
+  it('keeps the shoulder on the pivot side of a thin wall when leaving combat', () => {
+    const rig = new CameraRig();
+    const cam = new PerspectiveCamera();
+    const wall: CameraWorld = { ...flat, blocked: (x, _z, radius) => x + radius >= 0.72 && x - radius <= 0.84 };
+    const fight = { ...noHints(), fight: [{ x: 0, z: -4, r: 0.5, top: 1.8 }] };
+    settle(rig, cam, flat, input(), fight);
+    expect(cam.position.x).toBeCloseTo(1.1);
+    expect(wall.blocked(cam.position.x, cam.position.z, 0.224)).toBe(false);
+
+    rig.update(cam, input(), wall, noHints());
+    const squeezedX = cam.position.x;
+    expect.soft(squeezedX).toBeLessThan(0.72);
+    expect.soft(wall.blocked(squeezedX, cam.position.z, 0.224)).toBe(false);
+    expect(rig.distance).toBeGreaterThanOrEqual(rig.zoom);
+
+    settle(rig, cam, wall, input(), fight);
+    expect(cam.position.x).toBeLessThan(0.72);
+    expect(wall.blocked(cam.position.x, cam.position.z, 0.224)).toBe(false);
+    expect(rig.distance).toBeGreaterThan(rig.zoom);
+  });
+
+  it('smooths a small height change and snaps the pivot when placed at another location', () => {
+    const rig = new CameraRig();
+    const cam = new PerspectiveCamera();
+    rig.update(cam, input(), flat, noHints());
+    const initialY = cam.position.y;
+    rig.update(cam, input({ y: 1 }), flat, noHints());
+    expect(cam.position.y).toBeGreaterThan(initialY);
+    expect(cam.position.y).toBeLessThan(initialY + 1);
+    rig.reset();
+    rig.update(cam, input({ x: 10, y: 1 }), flat, noHints());
+    expect(cam.position.x).toBeGreaterThan(10);
+    expect(cam.position.y).toBeCloseTo(initialY + 1);
+  });
+
   it('restores the boom in one frame after an obstruction clears with reduced motion', () => {
     const wall: CameraWorld = { heightAt: () => 0, blocked: (_x, z, r) => z + r > 1.5 };
     const rig = new CameraRig();
@@ -96,6 +168,27 @@ describe('third-person camera rig', () => {
     const slope: CameraWorld = { heightAt: (_x, z) => Math.max(0, z) * 0.6, blocked: () => false };
     settle(rig, cam, slope, input({ pitch: 0.3 }));
     expect(cam.position.y).toBeGreaterThan(slope.heightAt(cam.position.x, cam.position.z) + 0.3);
+  });
+
+  it('pulls the framed lens in immediately at a diagonal ridge and eases back out when it clears', () => {
+    const rig = new CameraRig();
+    const cam = new PerspectiveCamera();
+    const ridge: CameraWorld = {
+      heightAt: (x, z) => x < 0.208 && z > 1.18 && z < 1.21 ? 4 : 0,
+      blocked: () => false,
+    };
+    settle(rig, cam, flat);
+    expect(cam.position.z).toBeGreaterThan(3);
+    rig.update(cam, input(), ridge, noHints());
+    expect(cam.position.z).toBeLessThan(0.9);
+    expect(cam.position.y).toBeGreaterThan(1.65);
+
+    const pulledIn = cam.position.clone();
+    rig.update(cam, input({ yaw: 0.003 }), ridge, noHints());
+    expect(cam.position.z).toBeGreaterThan(pulledIn.z);
+    expect(cam.position.distanceTo(pulledIn)).toBeLessThan(0.3);
+    settle(rig, cam, ridge, input({ yaw: 0.003 }));
+    expect(cam.position.z).toBeCloseTo(rig.zoom, 1);
   });
 
   it('indoors the camera stays under the ceiling', () => {

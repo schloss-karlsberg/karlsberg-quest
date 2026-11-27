@@ -7,7 +7,7 @@
  */
 import { lodFor, type AnimRate } from './locomotion';
 import { type PersonSpec, SPEC_IDS, resolveSpec } from './specs';
-import type { PeopleApi, Person, PersonSpawnOpts } from './types';
+import { PEOPLE_LOD, type PeopleApi, type Person, type PersonSpawnOpts } from './types';
 
 /** What the people system drives besides the contract (every body implementation provides it). */
 export interface PersonRuntime extends Person {
@@ -109,7 +109,8 @@ export class PeopleRegistry<P extends PersonRuntime = PersonRuntime> implements 
     for (const p of [...this.people.values()]) {
       const r = p.root.position;
       const d = Math.hypot(r.x - cam.x, r.y - cam.y, r.z - cam.z);
-      const l = lodFor(d, env.drawLimit);
+      const limit = env.drawLimit ?? PEOPLE_LOD.drawLimit;
+      const l = lodFor(d, this.lods.get(p.id) === 'hidden' ? Math.max(0, limit - PEOPLE_LOD.drawReturnMargin) : limit);
       this.lods.set(p.id, l.hidden ? 'hidden' : l.rate);
       p.tick({ dt, rate: l.rate, hidden: l.hidden, reducedMotion: env.reducedMotion, reducedFlash: env.reducedFlash, dist: d });
     }

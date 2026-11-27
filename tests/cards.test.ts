@@ -250,20 +250,35 @@ describe('CardDirector soft holds (playtest round 5)', () => {
     expect(d.held).toBe(true);
   });
 
-  it('lets a tap send off a level card claimed with a dismiss (touch), but not while it is held', () => {
+  it.each(['level', 'skill'])('dismisses a %s card claimed with a touch callback only while it is visible', (token) => {
     const { d, hud } = rig();
     let dismissed = 0;
-    expect(d.claim('level', () => dismissed++)).toBe(true);
+    expect(d.claim(token, () => dismissed++)).toBe(true);
     hud.inAction = true;
     expect(d.dismissNotice()).toBe(false);
     hud.inAction = false;
     expect(d.dismissNotice()).toBe(true);
     expect(dismissed).toBe(1);
     // without a dismiss (desktop) the tap / Escape falls through
-    d.release('level');
+    d.release(token);
     d.tick(CARD_GAP);
-    expect(d.claim('level')).toBe(true);
+    expect(d.claim(token)).toBe(true);
     expect(d.dismissNotice()).toBe(false);
+  });
+
+  it.each(['level', 'skill'])('a %s card already up follows touch mode switching on and off', (token) => {
+    const { d } = rig();
+    let dismissed = 0;
+    // a touch laptop: the card came up before the first touch turned the touch UI on
+    expect(d.claim(token)).toBe(true);
+    expect(d.dismissNotice()).toBe(false);
+    expect(d.claim(token, () => dismissed++)).toBe(true);
+    expect(d.dismissNotice()).toBe(true);
+    expect(dismissed).toBe(1);
+    // touch switched off again: Escape opens the pause menu instead
+    expect(d.claim(token)).toBe(true);
+    expect(d.dismissNotice()).toBe(false);
+    expect(dismissed).toBe(1);
   });
 });
 

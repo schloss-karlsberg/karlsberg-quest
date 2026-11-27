@@ -187,6 +187,7 @@ export class Input {
   private readonly down = new Set<string>();
   private readonly pressedCodes = new Set<string>();
   private readonly shiftedCodes = new Set<string>();
+  private readonly cancelledActions = new Set<Action>();
   private mdx = 0;
   private mdy = 0;
   /** Accumulated wheel notches since the last `takeWheel()` (+ = towards you / zoom out). */
@@ -216,9 +217,15 @@ export class Input {
       if (['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'F5'].includes(ev.code) && this.enabled) ev.preventDefault();
     });
     on(window, 'keyup', (e) => this.down.delete((e as KeyboardEvent).code));
-    on(window, 'blur', () => {
-      this.down.clear();
-      this.clearPending();
+    on(window, 'blur', () => this.cancelInput());
+    let hadLock = this.locked;
+    on(document, 'pointerlockchange', () => {
+      const locked = this.locked;
+      if (hadLock && !locked) {
+        // A release can swallow mouseup. Keyboard and touch holds still belong to their inputs.
+        this.cancelInput(true);
+      }
+      hadLock = locked;
     });
     on(document, 'mousemove', (e) => {
       if (!this.locked || !this.enabled) return;
@@ -263,8 +270,23 @@ export class Input {
     this.clearPending();
   }
 
+  /** Drops queued edges and mouse deltas. Cancellations stay for the next step: a pause menu opened by a
+   *  pointer-lock loss must not hide a cancelled mouse attack from combat. */
   private clearPending(): void {
-    this.endStep();
+    this.pressedCodes.clear();
+    this.shiftedCodes.clear();
+    this.mdx = this.mdy = this.wheel = 0;
+  }
+
+  private cancelInput(mouseOnly = false): void {
+    const matches = (code: string) => !mouseOnly || code.startsWith('Mouse');
+    for (const action of Object.keys(this.bindings) as Action[]) {
+      const held = [virtualCode(action), ...this.bindings[action]].filter((code) => this.down.has(code));
+      if (held.length > 0 && held.every(matches)) this.cancelledActions.add(action);
+    }
+    for (const codes of [this.down, this.pressedCodes, this.shiftedCodes]) {
+      for (const code of codes) if (matches(code)) codes.delete(code);
+    }
     this.mdx = this.mdy = this.wheel = 0;
   }
 
@@ -320,14 +342,26 @@ export class Input {
   isDown(a: Action, raw = false): boolean {
     if (!this.enabled) return false;
     if (!raw && this.muted.has(a)) return false;
-    return this.down.has(virtualCode(a)) || this.bindings[a].some((c) => this.down.has(c));
+    return this.matches(a, this.down);
   }
 
   /** True if the action was pressed since the last `endStep()`. */
   wasPressed(a: Action, raw = false): boolean {
     if (!this.enabled && a !== 'pause') return false;
     if (!raw && this.muted.has(a)) return false;
-    return this.pressedCodes.has(virtualCode(a)) || this.bindings[a].some((c) => this.pressedCodes.has(c));
+    return this.matches(a, this.pressedCodes);
+  }
+
+  private matches(action: Action, codes: ReadonlySet<string>): boolean {
+    if (codes.size === 0) return false;
+    if (codes.has(virtualCode(action))) return true;
+    for (const code of this.bindings[action]) if (codes.has(code)) return true;
+    return false;
+  }
+
+  /** A focus change dropped the held action before this step could see a normal release. */
+  wasCancelled(a: Action): boolean {
+    return this.cancelledActions.has(a);
   }
 
   /** Read Shift from the keydown, even if the key was released before the simulation step. */
@@ -349,10 +383,11 @@ export class Input {
     return w;
   }
 
-  /** Called by the loop after every fixed update: forget edge presses. */
+  /** Called by the loop after every fixed update: forget edge presses and cancellations. */
   endStep(): void {
     this.pressedCodes.clear();
     this.shiftedCodes.clear();
+    this.cancelledActions.clear();
   }
 
   /** Simulate input (tests, debug hooks). `edge: false` holds a key down without a new press (pilot holds). */
@@ -379,6 +414,7 @@ export class Input {
     for (const codes of [this.down, this.pressedCodes, this.shiftedCodes]) {
       for (const code of codes) if (code.startsWith('@')) codes.delete(code);
     }
+    this.touchStickActive = false;
   }
 
   /**
@@ -386,6 +422,8 @@ export class Input {
    * `addLook`, and the pause menu from its button.
    */
   touchMode = false;
+  /** A finger owns the floating movement stick, including while it is in the dead zone. */
+  touchStickActive = false;
 
   /** Inject mouse-look movement (pixels) as if it came from `movementX/Y` under pointer lock (bullet-time pilot). */
   addLook(dx: number, dy: number): void {
@@ -398,9 +436,11 @@ export class Input {
   }
 }
 
-/** Binding-independent code of an action pressed by the touch layer (`Input.press`). */
+const virtualCodes = Object.fromEntries(Object.keys(DEFAULT_BINDINGS).map((action) => [action, `@${action}`])) as Record<Action, string>;
+
+/** Binding-independent code shared by the touch layer and fixed-step polls. */
 export function virtualCode(a: Action): string {
-  return `@${a}`;
+  return virtualCodes[a];
 }
 
 export function isTyping(t: EventTarget | null): boolean {

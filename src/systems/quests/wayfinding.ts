@@ -179,18 +179,19 @@ export function hintFor(o: QuestObjective & { hint_de?: string }, h: HintContext
       if (h.scan) return `Taste ${h.scan} (${SCAN_NAME[h.scan] ?? 'Relief'}) drücken und zur Markierung gehen${go}. Steht dort „E“, untersuchen.`;
       return `Zur Markierung gehen${go}; steht dort „E“, untersuchen (oder zuhören).`;
     case 'event':
-      if (o.event === 'era:change') return 'Q gedrückt halten: der Zeitwechsel.';
-      return where ? `Zur Markierung gehen${go}.` : 'Weiter, wie es im Tracker steht.';
+      if (o.event === 'era:change') return 'Q für den Zeitsprung gedrückt halten.';
+      return where ? `Zur Markierung gehen${go}.` : 'Folge der Aufgabenanzeige.';
     case 'calm':
+      if (o.animal === 'jaguar' || o.animal === 'k3.jaguar') return `Laterne anlassen, den Jaguar anvisieren und das Bannlicht dreimal auslösen${go}. Nicht zuschlagen.`;
       return `Ausweichen (Leertaste), bis es müde wird, nicht zuschlagen${go}.`;
     case 'escort':
       return `Vorausgehen, die Person folgt dir${go}.`;
     case 'room':
       return `Den Raum im Schloss finden${go}.`;
     case 'photo':
-      return `N: Handy-Kamera. Das Motiv mittig ins Bild, nah genug, ruhig halten, dann Klick${go}.`;
+      return `N: Fotomodus. Geh nah heran, halte das Motiv ruhig in der Bildmitte und löse aus${go}.`;
     default:
-      return where ? `Der Lichtstrahl zeigt das Ziel: ${where}.` : 'Weiter, wie es im Tracker steht.';
+      return where ? `Der Lichtstrahl zeigt das Ziel: ${where}.` : 'Folge der Aufgabenanzeige.';
   }
 }
 

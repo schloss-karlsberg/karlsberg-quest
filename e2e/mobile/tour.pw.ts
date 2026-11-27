@@ -4,6 +4,7 @@ import { QUEST_PLAY } from '../helpers/prolog';
 import { openPause } from '../helpers/pause';
 import { type MobileUnit, findUnit } from './devices';
 import { type UiMeasure, measureUi, sampleFrames, scrollModalToBottom } from './measure';
+import { clippedSkillCardContent, pauseDialogueHit } from './probes';
 
 /**
  * The mobile UI tour (docs/MOBILE-UI-PASS.md): one device/orientation unit per run, real GPU
@@ -327,6 +328,30 @@ const STATES: State[] = [
       await c.page.waitForTimeout(200);
       await c.shot('cue-shift');
       await c.page.evaluate(() => window.kq!.ctx.ui.hud.prompt(null, undefined, 'tour'));
+      if (unit.height <= 500) {
+        const longHint = 'Gehen · ins Bild klicken, dann Maus: Schauen · Shift: Rennen';
+        await c.page.evaluate((text) => window.kq!.ctx.ui.hud.prompt('W A S D', text, 'tour'), longHint);
+        await expect(c.page.locator('.kq-prompt.show')).toHaveText(new RegExp(longHint));
+        await expect(c.page.locator('.kq-prompt.show')).toBeVisible();
+        await c.shot('long-hint', 'long HUD hint wraps in the space between the vitals and the thumb arc');
+        await c.page.evaluate(() => window.kq!.ctx.ui.hud.prompt(null, undefined, 'tour'));
+        // Keep a telegraph on screen through the frame sample; normal combat captions time out.
+        const caption = await c.page.locator('.kqc-tell').evaluateHandle((tell) => {
+          const line = document.createElement('span');
+          line.textContent = 'Nebelling duckt sich – Ausfall!';
+          tell.append(line);
+          return line;
+        });
+        await expect(c.page.locator('.kqc-tell span', { hasText: 'Nebelling duckt' })).toBeVisible();
+        await c.shot('callout', 'telegraph clearance with the unlit Aktion pill');
+        await caption.evaluate((el) => el.remove());
+        const layout = c.f.shots.filter((s) => s.state === 'touch-buttons' && ['long-hint', 'callout'].includes(s.sub ?? ''));
+        expect(layout).toHaveLength(2);
+        for (const { ui } of layout) {
+          // Clear of the thumb controls and of the vitals column (Lebenskraft must stay readable in a fight).
+          expect(ui.issues.filter((i) => i.kind === 'overlap' && /kq-prompt|kqc-tell|Nebelling duckt/.test(i.what) && /\[(touch-|hud-vitals|hud-xp|hud-quick)/.test(i.what))).toEqual([]);
+        }
+      }
       await c.tap('touch-survey');
       await c.tap('touch-relief');
       await c.page.waitForTimeout(200);
@@ -389,6 +414,14 @@ const STATES: State[] = [
     id: 'pause',
     run: async (c) => {
       await c.tidy();
+      await c.page.evaluate(() => {
+        const k = window.kq!;
+        k.ctx.events.emit('dialogue:say', {
+          speaker: 'laub', text: 'Unter dem Hang rauscht Wasser. Geh hinunter zur Quelle.', priority: 'now', ms: 8000,
+        });
+        k.story!.finishTyping();
+      });
+      await expect(c.page.locator('.kqs-dlg.kqs-show')).toBeVisible();
       const probe = (tid: string) =>
         c.page.evaluate((tid) => {
           const el = document.querySelector(`[data-testid=${tid}]`);
@@ -424,7 +457,10 @@ const STATES: State[] = [
         await c.page.keyboard.press('Escape');
       }
       await expect(c.page.getByTestId('resume')).toBeVisible();
-      await c.shot();
+      const dialogueHit = await c.page.getByTestId('resume').evaluate(pauseDialogueHit);
+      if (unit.id === 'small-landscape') expect(dialogueHit).toBe('paper');
+      else expect(dialogueHit).not.toBe('obstructed');
+      await c.shot('', dialogueHit === 'paper' ? 'the pause paper owns the intersecting dialogue area' : undefined);
       await c.scrollShot('');
       if (await c.page.getByTestId('pause-controls').isVisible()) {
         await c.tap('pause-controls');
@@ -439,6 +475,9 @@ const STATES: State[] = [
         await c.page.waitForTimeout(300);
         await c.shot('licences');
         await c.scrollShot('licences');
+      }
+      for (const { ui } of c.f.shots.filter((s) => s.state === 'pause')) {
+        expect(ui.issues.filter((i) => i.kind === 'overlap' && i.sev === 'S2' && i.what.includes('[dialogue]'))).toEqual([]);
       }
       await c.tidy();
     },
@@ -797,6 +836,187 @@ const STATES: State[] = [
       }
       await c.page.evaluate(() => window.kq!.npc!.close());
       await c.tidy();
+    },
+  },
+  {
+    id: 'skill-unlock',
+    run: async (c) => {
+      await c.tidy();
+      await c.page.evaluate((at) => {
+        const k = window.kq!;
+        k.combat!.kill();
+        k.teleport(at.x, at.z, at.yaw, -6);
+        k.ctx.ui.cards.clearToasts();
+        k.ctx.state.mutable.flags['story.laub'] = false;
+        k.skills!.reset();
+        k.skills!.grant('baumeister', 1);
+        k.ctx.ui.hud.prompt('E', 'Den verwitterten Mauerrest genauer untersuchen', 'tour');
+      }, FIELD);
+      const card = c.page.getByTestId('skill-card');
+      await expect(card).toHaveClass(/kqk-in/);
+      await expect(card).not.toHaveClass(/kqk-held/);
+      await expect(c.page.getByTestId('level-card')).toHaveCount(0);
+      const stamp = card.locator('.kqk-stamp');
+      await stamp.evaluate(async (el) => {
+        // The CSS animation uses browser time. Keep the notice's game clock available for the shot.
+        const { loop } = window.kq!.ctx;
+        loop.stop();
+        try {
+          await Promise.all(el.getAnimations().map((animation) => animation.finished));
+        } finally {
+          loop.start();
+        }
+      });
+      await expect(stamp).toHaveCSS('opacity', '1');
+      expect(await card.evaluate(clippedSkillCardContent), 'settled skill text and stamp fit inside the card').toEqual([]);
+      await c.shot('', 'standalone unlock with a long Aktion prompt');
+      await expect(card).toHaveCSS('opacity', '1');
+      const { ui } = c.f.shots.at(-1)!;
+      expect(ui.issues.filter((i) => i.what.includes('[skill-card]') && (
+        i.kind === 'safe-area' || i.kind === 'overlap' && /\[touch-|\[dialogue\]/.test(i.what)
+      ))).toEqual([]);
+      // Sample gameplay above. Use manual time for the interaction checks so their clocks
+      // depend on the steps in the test.
+      const manual = await c.page.evaluate(() => {
+        const { loop } = window.kq!.ctx;
+        const wasManual = loop.manual;
+        loop.manual = true;
+        loop.stop();
+        return wasManual;
+      });
+      const freshCard = async () => {
+        await c.page.evaluate(() => {
+          const k = window.kq!;
+          const { loop, ui } = k.ctx;
+          k.skills!.reset();
+          k.skills!.grant('baumeister', 1);
+          for (let i = 0; i < 600 && !k.skills!.card(); i++) {
+            loop.advance();
+            ui.cards.tick(loop.dt);
+          }
+          k.step(2); // claim the notice slot
+        });
+        await expect(card).toHaveClass(/kqk-in/, { timeout: 4000 });
+        await expect(card).not.toHaveClass(/kqk-held|kqk-out/);
+      };
+      try {
+        if (unit.height <= 500) {
+          await freshCard();
+          const stick = new Finger(c.cdp, 25);
+          const x = unit.width * 0.22;
+          const y = unit.height * 0.55;
+          await stick.start(x, y);
+          try {
+            await stick.move(unit.width * 0.29, y, 3);
+            await c.page.evaluate(() => window.kq!.step(2));
+            await expect(card).toHaveClass(/kqk-held/);
+            await expect(card).toBeHidden();
+            await stick.move(x, y, 3); // keep the stick held without walking out of the fixture
+            await c.page.evaluate(() => {
+              const { loop, ui } = window.kq!.ctx;
+              const frames = Math.ceil(6.5 / loop.dt);
+              for (let i = 0; i < frames; i++) {
+                loop.advance();
+                ui.cards.tick(loop.dt);
+              }
+            });
+            await expect(card).toHaveCount(1);
+            await expect(card).not.toHaveClass(/kqk-out/);
+          } finally {
+            await stick.end();
+          }
+          await c.page.evaluate(() => {
+            const k = window.kq!;
+            const { loop, ui } = k.ctx;
+            // A story line can take over the hold when the stick is released.
+            for (let i = 0; i < 600 && ui.cards.held; i++) {
+              loop.advance();
+              ui.cards.tick(loop.dt);
+            }
+            k.step(2);
+          });
+          await expect(card).not.toHaveClass(/kqk-held|kqk-out/);
+          await expect(card).toHaveCSS('opacity', '1');
+        }
+        // Two fixed steps after a tap on a fresh card cannot reach the normal 5.6 s fade.
+        await freshCard();
+        await new Finger(c.cdp, 26).tap(unit.width * 0.53, unit.height * 0.55);
+        await c.page.evaluate(() => window.kq!.step(2));
+        await expect(card).toHaveClass(/kqk-out/, { timeout: 1000 });
+        await c.page.evaluate(() => window.kq!.step(40));
+        await expect(card).toHaveCount(0);
+      } finally {
+        await c.page.evaluate((manual) => {
+          const { loop, ui } = window.kq!.ctx;
+          loop.manual = manual;
+          loop.start();
+          ui.hud.prompt(null, undefined, 'tour');
+        }, manual);
+      }
+      await c.shot('dismissed', 'one tap on the play surface ends the notice');
+    },
+  },
+  {
+    id: 'credits',
+    portrait: true,
+    run: async (c) => {
+      await c.tidy();
+      const reduced = await c.page.evaluate(() => {
+        const k = window.kq!;
+        k.setEra('today');
+        k.party!.set('burn');
+        const at = k.party!.state().at!;
+        k.teleport(at.x, at.z + 12, 0, -5);
+        return k.ctx.settings.state.reducedMotion;
+      });
+      const band = c.page.getByTestId('party-credits');
+      try {
+        for (const staticList of [false, true]) {
+          await c.page.evaluate((staticList) => {
+            const k = window.kq!;
+            k.ctx.settings.update((s) => (s.reducedMotion = staticList), 'reducedMotion');
+            k.party!.credits();
+          }, staticList);
+          await expect(c.page.locator('html')).toHaveAttribute('data-kq-credits', staticList ? 'static' : 'crawl');
+          if (unit.phonePortrait) {
+            await expect(c.page.getByTestId('rotate')).toBeVisible();
+            await expect(band).toBeHidden();
+            await c.shot(staticList ? 'rotate-static' : 'rotate-crawl');
+            await c.page.evaluate(() => window.kq!.party!.skip());
+            continue;
+          }
+
+          const skip = c.page.getByTestId('party-credits-skip');
+          const touch = c.page.getByTestId('touch');
+          await expect(band).toBeVisible();
+          await expect(skip).toBeVisible();
+          await expect(touch).toBeVisible();
+          if (unit.height <= 500) await expect(touch.locator('button:visible')).toHaveCount(0);
+          await c.shot(staticList ? 'static' : 'crawl');
+          const { ui } = c.f.shots.at(-1)!;
+          expect(ui.issues.filter((i) => /party-(credits|bar)/.test(i.what) && (
+            i.kind === 'safe-area' || i.kind === 'overlap' && /\[touch-/.test(i.what)
+          ))).toEqual([]);
+          if (staticList) {
+            const { x, y, width, height } = (await band.boundingBox())!;
+            const f = new Finger(c.cdp, 27);
+            await f.start(x + width / 2, y + height * 0.85);
+            await f.move(x + width / 2, y + height * 0.25);
+            await f.end();
+            await expect.poll(() => band.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+            await c.shot('static-scrolled');
+          }
+          await c.tap('party-credits-skip');
+          await expect(band).toHaveCount(0);
+          await expect(c.page.getByTestId('touch-pause')).toBeVisible();
+        }
+      } finally {
+        await c.page.evaluate((reduced) => {
+          const k = window.kq!;
+          k.party!.clear();
+          k.ctx.settings.update((s) => (s.reducedMotion = reduced), 'reducedMotion');
+        }, reduced);
+      }
     },
   },
 ];

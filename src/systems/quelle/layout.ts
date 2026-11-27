@@ -188,9 +188,11 @@ export function touchLocal(era: Era): [number, number] {
 
 /** Interaction reach (m, horizontal) from the touch point. */
 export const REACH = 2.1;
+/** The tour uses the trail-side forecourt, including the approach outside the mossy edge. */
+export const TOUR_REACH = 3.25;
 
 /** Is a player at x/z facing yaw (radians, three.js: forward = (−sin, −cos)) able to touch the water? */
-export function canTouch(px: number, pz: number, yaw: number, era: Era): boolean {
+export function canTouch(px: number, pz: number, yaw: number, era: Era, reach = REACH): boolean {
   // only from the front: on the slope behind the wall the water is still within REACH, but the
   // wall (1.1 m high, 0.55 m thick) stands between
   if (toLocal(px, pz)[1] < PIECES.wall.w) return false;
@@ -199,7 +201,7 @@ export function canTouch(px: number, pz: number, yaw: number, era: Era): boolean
   const dx = tx - px;
   const dz = tz - pz;
   const d = Math.hypot(dx, dz);
-  if (d > REACH) return false;
+  if (d > reach) return false;
   if (d < 0.7) return true;
   const fx = -Math.sin(yaw);
   const fz = -Math.cos(yaw);

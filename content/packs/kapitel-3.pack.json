@@ -757,7 +757,7 @@
           "id": "entry.k3.4",
           "kind": "fact",
           "factId": "cx.22",
-          "text_de": "Der Kommissär setzte das Schloss ‚im Namen der {was}‘ in Brand.",
+          "text_de": "Der Kommissär setzte das Schloss „im Namen der {was}“ in Brand.",
           "blanks": [
             {
               "id": "was",
@@ -862,7 +862,7 @@
           "id": "entry.k3.9",
           "kind": "fact",
           "factId": "cx.25",
-          "text_de": "Mannlich schrieb, die Galerie sei ‚cent pas‘ lang gewesen: {wieviel}.",
+          "text_de": "Mannlich schrieb, die Galerie sei „cent pas“ lang gewesen: {wieviel}.",
           "blanks": [
             {
               "id": "wieviel",
@@ -900,7 +900,7 @@
     {
       "id": "marlene.k3.morgen",
       "speaker": "marlene",
-      "text_de": "Du siehst aus, als hättest du ein Feuer gelöscht. Hast du heut Nacht geträumt? Du hast im Schlaf ‚Obacht‘ gesagt.",
+      "text_de": "Du siehst aus, als hättest du ein Feuer gelöscht. Hast du heut Nacht geträumt? Du hast im Schlaf „Obacht“ gesagt.",
       "trigger": {
         "event": "story:beat",
         "chapter": "k3",
@@ -911,7 +911,7 @@
     {
       "id": "marlene.k3.ausstellung",
       "speaker": "marlene",
-      "text_de": "2018 war in Saarbrücken eine Ausstellung, ‚Steinerne Macht‘. Da lag vom Karlsberg fast nichts. Ein Türgriff, eine Uhr mit Alabaster, ein Dukat mit dem Schloss drauf, eine Pistole und ein Jagdmesser. Ein ganzes Schloss, und übrig bleibt ein Türgriff.",
+      "text_de": "2018 war in Saarbrücken eine Ausstellung, „Steinerne Macht“. Da lag vom Karlsberg fast nichts. Ein Türgriff, eine Uhr mit Alabaster, ein Dukat mit dem Schloss drauf, eine Pistole und ein Jagdmesser. Ein ganzes Schloss, und übrig bleibt ein Türgriff.",
       "trigger": {
         "event": "clue:found",
         "id": "clue.k3.marlene"

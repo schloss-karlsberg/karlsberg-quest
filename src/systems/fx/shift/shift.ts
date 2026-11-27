@@ -133,7 +133,7 @@ export class ShiftEffect {
   private savedVol: { ambience: number; music: number } | null = null;
   private wasFrozen = false;
   private onDone: (() => void)[] = [];
-  private warmSet: Object3D[] | null = null;
+  private warmSet: (Points | LineSegments)[] | null = null;
   private veilMode: ShiftCurves['veil'] = 'none';
   private veilR = 0;
   private veilAlpha = 1;
@@ -163,14 +163,14 @@ export class ShiftEffect {
   /**
    * Stand-ins for the effect's own shader programs (point-cloud kinds, rewind streaks) plus the
    * hidden veil / fade / sky cover, for the warm-up (fx/shift/warm.ts) to compile before the first
-   * shift. The stand-ins are never added to the scene nor disposed: while they live, three keeps
-   * the programs cached and each shift's fresh layer materials reuse them instead of compiling on
+   * shift. The stand-ins stay off the scene and live until effect teardown. Three keeps the
+   * programs cached and each shift's fresh layer materials reuse them instead of compiling on
    * the shift's first frame (M-17). Same shaders, defines and flags as the real layers.
    */
   warmObjects(): Object3D[] {
     if (!this.warmSet) {
       const kinds = [0, 1, 2] as const;
-      const set: Object3D[] = kinds.map((k) => new Points(stubCloudGeometry(k), cloudMaterial(k, 0.22)));
+      const set: (Points | LineSegments)[] = kinds.map((k) => new Points(stubCloudGeometry(k), cloudMaterial(k, 0.22)));
       const lg = new BufferGeometry();
       lg.setAttribute('position', new BufferAttribute(new Float32Array(6), 3));
       lg.setAttribute('aSeed', new BufferAttribute(new Float32Array(8), 4));
@@ -439,7 +439,10 @@ export class ShiftEffect {
   dispose(): void {
     this.finish();
     this.ctx.scene.remove(this.veil, this.fade, this.skyCover);
-    this.veil.geometry.dispose();
-    this.veilMat.dispose();
+    for (const object of [this.veil, this.fade, this.skyCover, ...(this.warmSet ?? [])]) {
+      object.geometry.dispose();
+      (object.material as ShaderMaterial).dispose();
+    }
+    this.warmSet = null;
   }
 }

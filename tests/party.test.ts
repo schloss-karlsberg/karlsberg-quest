@@ -322,8 +322,11 @@ describe('party runtime', () => {
       expect(c.bus.of('credits:done')).toHaveLength(0);
       // more movement: nothing more to hand back
       c.world.player.x += 3;
+      const rendered = c.strip.renders;
       c.step(1);
       expect(c.bus.of('cinematic:stop')).toHaveLength(1);
+      expect(c.strip.renders).toBeGreaterThan(rendered);
+      expect(c.strip.hidden).toBe(0);
       c.step(c.rt.credits!.plan.seconds);
       expect(c.bus.of('credits:done')).toEqual([{ skipped: false }]);
       expect(c.bus.of('party:spotlight')).toHaveLength(9);
@@ -365,6 +368,8 @@ describe('party runtime', () => {
     d.bus.emit('party:set', { variant: 'museum' });
     d.bus.emit('party:credits', {});
     d.rt.skip();
+    expect(d.slice.credits).toBe('done');
+    expect(d.strip.hidden).toBe(1);
     expect(d.cine.playing).toBeNull();
     expect(d.bus.of('credits:done')).toEqual([{ skipped: true }]);
     // Keyboard dismissal also works without a cinematic system.

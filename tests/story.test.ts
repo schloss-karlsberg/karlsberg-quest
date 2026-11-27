@@ -2,6 +2,9 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { DialogueLine } from '../src/content/types';
+import { MemoryStorage, SaveManager } from '../src/core/save';
+import { createInitialState, deserializeState, GameStateStore, serializeState, type GameState } from '../src/core/state';
+import type { QuestFile } from '../src/rpg/types';
 import { holdSeconds, substituteName } from '../src/systems/story/dialogue/presenter';
 import { speakerKey, speakerMeta } from '../src/systems/story/dialogue/speakers';
 import { matchTrigger, pickLine } from '../src/systems/story/dialogue/triggers';
@@ -17,6 +20,8 @@ import { storiesInPlay } from '../src/systems/story/stories';
 import type { Action, Beat, NpcAction, StoryFile } from '../src/systems/story/types';
 import { validateStories } from '../src/systems/story/validate';
 import { loadStoryFiles } from '../src/systems/story/validate-cli';
+import { questsInPlay } from '../src/systems/quests/data';
+import { createQuestSlice, QuestBook } from '../src/systems/quests/logic';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
@@ -44,11 +49,15 @@ interface Rec {
   completed: string[];
 }
 
-function harness(files: StoryFile[]) {
+function harness(files: StoryFile[], apply: (action: Action) => void = () => {}) {
   let slice: StorySlice = createStorySlice();
   const rec: Rec = { runs: [], chapters: [], beats: [], completed: [] };
   const host: StoryHost = {
-    run: (actions, o) => rec.runs.push({ source: o.source, resume: o.resume, kinds: actions.filter((a) => !o.resume || runsOnResume(a)).map((a) => a.do) }),
+    run: (actions, o) => {
+      const runnable = actions.filter((a) => !o.resume || runsOnResume(a));
+      rec.runs.push({ source: o.source, resume: o.resume, kinds: runnable.map((a) => a.do) });
+      runnable.forEach(apply);
+    },
     chapterEntered: (f) => rec.chapters.push(f.chapter),
     beatEntered: (ch, b) => rec.beats.push(`${ch}/${b.id}`),
     chapterCompleted: (f) => rec.completed.push(f.chapter),
@@ -65,6 +74,258 @@ function harness(files: StoryFile[]) {
     },
   };
 }
+
+describe('Chapter 2 progress and resume', () => {
+  const night = '1793-02';
+  const k2 = loadStoryFiles(ROOT).files.find(({ story }) => story.chapter === 'k2')!.story;
+  const questFile = JSON.parse(readFileSync(new URL('../content/quests/02-kapitel-2.quests.json', import.meta.url), 'utf8')) as QuestFile;
+  const { quests } = questsInPlay([{ data: questFile }], false);
+
+  /** The story engine and the quest book on one saved game state; `reload` round-trips it through a save. */
+  function setup() {
+    const store = new GameStateStore(createInitialState());
+    store.mutable.era = night;
+    const save = new SaveManager(store, new MemoryStorage(), undefined, () => 1_700_000_000_000, () => 0);
+    const questBook = () => new QuestBook(quests, store.slice('quests', createQuestSlice), {
+      flags: store.mutable.flags, codex: store.mutable.codex.facts, emit: () => {}, now: () => 0, rng: () => 0.5,
+    });
+    let book = questBook();
+    const runs: { source: string; kinds: string[] }[] = [];
+    const host: StoryHost = {
+      run: (actions, o) => {
+        const runnable = actions.filter((a) => !o.resume || runsOnResume(a));
+        runs.push({ source: o.source, kinds: runnable.map((a) => a.do) });
+        for (const action of runnable) {
+          if (action.do === 'flag' && !action.delay) {
+            for (const [id, value] of Object.entries(action.set)) {
+              if (value === null) delete store.mutable.flags[id];
+              else store.mutable.flags[id] = value;
+            }
+          } else if (action.do === 'quest') {
+            if (action.op === 'offer') book.offer(action.id);
+            if (action.op === 'start') book.accept(action.id);
+            if (action.op === 'progress' && action.objective) book.progress(action.id, action.objective, action.n, true);
+          }
+        }
+      },
+      chapterEntered: () => {},
+      beatEntered: () => {},
+      chapterCompleted: () => {},
+    };
+    const engine = new StoryEngine([k2], () => store.slice('story', createStorySlice), host);
+    const tick = (x: number, z: number, dt = 0.1) => {
+      const where = { era: store.state.era, x, z };
+      book.tick(dt, where);
+      engine.tick(dt, env({ ...where, flags: store.state.flags, inventory: store.state.inventory }));
+    };
+    const reload = () => {
+      expect(save.save()).toBe(true);
+      expect(save.load()).toBe(true);
+      book = questBook();
+      book.mirror();
+      engine.resume();
+    };
+    return { engine, store, runs, tick, reload, get beat() { return store.state.systems.story?.beat; }, get book() { return book; } };
+  }
+
+  it('keeps the trail quest at the Orangerie until the missed Allee waypoint is found', () => {
+    const game = setup();
+    const { engine, store, tick } = game;
+    const id = 'q.k2.spur';
+    game.book.offer(id);
+    game.book.progress(id, 'zaun');
+    game.book.handle('clue:found', { id: 'clue.k2.zaun' });
+    engine.goto('k2', 'k2_3');
+    store.mutable.inventory.clues.push('clue.k2.orangerie');
+    game.book.handle('echo:end', { id: 'clue.k2.orangerie' });
+    tick(1275, -960);
+    tick(1180, -1120, 25);
+    expect(game.beat).toBe('k2_3');
+    expect(game.book.state('q.k2.kisten')).toBe('hidden');
+    game.reload();
+    tick(1500, -542);
+    tick(1275, -960);
+    tick(1275, -960);
+    expect(game.beat).toBe('k2_4');
+    expect(game.book.state(id)).toBe('done');
+    expect(game.book.offerAvailable('k2', night)).toContain('q.k2.kisten');
+  });
+
+  it('does not leave the Wachhaus after reading the book before clearing the lights', () => {
+    const game = setup();
+    const { engine, store, tick } = game;
+    const id = 'q.k2.wachbuch';
+    engine.goto('k2', 'k2_4');
+    store.mutable.inventory.clues.push('clue.k2.wachbuch');
+    game.book.handle('clue:found', { id: 'clue.k2.wachbuch' });
+    tick(1182, -1122);
+    expect(game.beat).toBe('k2_4');
+    for (let count = 0; count < 4; count++) game.book.handle('enemy:killed', { kind: 'irrlicht', group: 'k2.wache' });
+    tick(1182, -1122);
+    expect(store.state.flags['k2.wache_frei']).toBe(true);
+    game.book.handle('echo:end', { id: 'clue.k2.wache' });
+    tick(1182, -1122);
+    expect(game.beat).toBe('k2_5');
+    expect(game.book.state(id)).toBe('done');
+    expect(game.book.offerAvailable('k2', night)).toEqual(expect.arrayContaining(['q.k2.bodenbrett', 'q.k2.lichter']));
+  });
+
+  it('unlocks the Wachfeuer in a reloaded save that already skipped the Wachhaus', () => {
+    const game = setup();
+    const { engine, store, tick } = game;
+    game.book.offer('q.k2.wachbuch');
+    game.book.progress('q.k2.wachbuch', 'wachhaus');
+    store.mutable.inventory.clues.push('clue.k2.wachbuch');
+    engine.goto('k2', 'k2_5');
+    game.reload();
+    for (let count = 0; count < 4; count++) game.book.handle('enemy:killed', { kind: 'irrlicht', group: 'k2.wache' });
+    tick(1182, -1122);
+    expect(store.state.flags['k2.wache_frei']).toBe(true);
+    game.book.handle('echo:end', { id: 'clue.k2.wache' });
+    expect(game.book.state('q.k2.wachbuch')).toBe('done');
+  });
+
+  it('rearms the chase when an autosave during Jost’s lines has no active pack', () => {
+    const game = setup();
+    const { engine, store, tick } = game;
+    engine.goto('k2', 'k2_10');
+    tick(1222, -1118);
+    expect(game.book.state('q.k2.parforce')).toBe('active');
+    expect(store.state.flags['k2.jagd_laeuft']).toBe(true);
+    game.book.progress('q.k2.parforce', 'kalk');
+    game.reload();
+    expect(store.state.flags['k2.jagd_laeuft']).toBeUndefined();
+    expect(game.book.count('q.k2.parforce', 'kalk')).toBe(1);
+    tick(1222, -1118);
+    expect(store.state.flags['k2.wieder_da']).toBe(true);
+  });
+
+  it('keeps an already active parforce pack on reload instead of replaying the horn', () => {
+    const game = setup();
+    const { engine, store, runs, tick } = game;
+    engine.goto('k2', 'k2_10');
+    tick(1222, -1118);
+    store.mutable.systems.hunt = { pack: { era: night, opts: { mode: 'parforce' } } } as unknown as NonNullable<GameState['systems']['hunt']>;
+    game.reload();
+    tick(1222, -1118);
+    expect(store.state.flags['k2.jagd_laeuft']).toBe(true);
+    expect(runs.filter((run) => run.kinds.includes('threat') && run.source.endsWith('-horn'))).toHaveLength(1);
+  });
+});
+
+describe('Chapter 3 recovery', () => {
+  const chapter = loadStoryFiles(ROOT).files.find(({ story }) => story.chapter === 'k3')!.story;
+
+  it('restages an undecided Festsaal choice after continuing', () => {
+    const cues: string[] = [];
+    const story = harness([chapter], (action) => {
+      if (action.do === 'cue') cues.push(action.id);
+    });
+    story.engine.goto('k3', 'k3_4');
+    story.reload();
+    cues.length = 0;
+    story.engine.resume();
+    story.engine.tick(1, env({ era: '1793-07', room: 'B01.2.og-festsaal' }));
+    expect(cues).toContain('festsaal:objects');
+  });
+
+  it('counts only time spent in the July Festsaal toward the fallback', () => {
+    const flags = createInitialState().flags;
+    const story = harness([chapter], (action) => {
+      if (action.do === 'flag') {
+        for (const [id, value] of Object.entries(action.set)) {
+          if (value === null) delete flags[id];
+          else flags[id] = value;
+        }
+      }
+    });
+    const hall = env({ era: '1793-07', room: 'B01.2.og-festsaal', flags });
+    story.engine.goto('k3', 'k3_4');
+    story.engine.onEvent('room:enter', { roomId: hall.room });
+    story.engine.tick(12, hall);
+    story.engine.tick(60, env({ era: 'today', flags }));
+    story.engine.tick(15, env({ era: '1793-07', room: 'B01.1.eg-prunktreppe', flags }));
+    story.engine.tick(37, hall);
+    expect(story.slice.beatTime).toBe(49);
+    expect(story.slice.beat).toBe('k3_4');
+    expect(flags['choice.k3.objekt']).toBeUndefined();
+
+    story.engine.tick(1, hall);
+    expect(flags['choice.k3.objekt']).toBe('nichts');
+    expect(story.slice.beat).toBe('k3_5');
+  });
+
+  it('keeps the Festsaal choice and does not pay for it again after a checkpoint retry or chapter replay', () => {
+    const state = createInitialState();
+    const rewards: string[] = [];
+    const story = harness([chapter], (action) => {
+      if (action.do === 'flag') {
+        for (const [id, value] of Object.entries(action.set)) {
+          if (value === null) delete state.flags[id];
+          else state.flags[id] = value;
+        }
+      }
+      if (action.do === 'item') rewards.push(action.item);
+    });
+    const context = env({ era: '1793-07', flags: state.flags });
+    story.engine.goto('k3', 'k3_4');
+    state.flags['festsaal.took'] = 'uhr';
+    story.engine.tick(0.1, context);
+    expect(story.slice.beat).toBe('k3_5');
+    expect(rewards).toEqual(['item.charm.uhr']);
+
+    state.flags['quest.q.k3.strohmann'] = 'done';
+    story.engine.resume(true);
+    expect(story.slice.beat).toBe('k3_2');
+    for (const step of [1, 2, 3]) story.engine.tick(step, context);
+    expect(story.slice.beat).toBe('k3_5');
+
+    state.flags['quest.q.k3.nachmittag'] = 'done';
+    state.flags['quest.q.k3.buch'] = 'done';
+    story.engine.goto('k3');
+    for (const step of [1, 2, 3, 4, 5]) story.engine.tick(step, context);
+    expect(story.slice.beat).toBe('k3_5');
+    expect(state.flags['choice.k3.objekt']).toBe('uhr');
+    expect(rewards).toEqual(['item.charm.uhr']);
+  });
+
+  it('repairs an old Festsaal save whose committed choice was cleared by a retry', () => {
+    const state = createInitialState();
+    state.systems.story = { ...createStorySlice(), active: true, chapter: 'k3', beat: 'k3_4' };
+    state.flags['choice.k3.objekt'] = 'dukat';
+    state.flags['e.owner'] = 'festsaal';
+
+    const loaded = deserializeState(serializeState(state));
+    expect(loaded.flags['festsaal.took']).toBe('dukat');
+    expect(loaded.flags['e.owner']).toBeUndefined();
+  });
+
+  it('clears stale interaction and room state from a save stuck at Hanne’s turn-in', () => {
+    const state = createInitialState();
+    state.systems.story = { ...createStorySlice(), active: true, chapter: 'k3', beat: 'k3_6', room: 'B01.2.og-festsaal' };
+    state.flags['npc.hush'] = 'hanne';
+    state.flags['interior.room'] = 'B01.2.og-festsaal';
+    const loaded = deserializeState(serializeState(state));
+    expect(loaded.flags['npc.hush']).toBeUndefined();
+    expect(loaded.systems.story?.room).toBeNull();
+    expect(loaded.flags['interior.room']).toBeUndefined();
+  });
+
+  it('reasserts the fire-night jaguar when continuing in the garden, at the gate, or at the kennel', () => {
+    for (const beatId of ['k3_6', 'k3_7', 'k3_8']) {
+      const cues: Action[] = [];
+      const story = harness([chapter], (action) => {
+        if (action.do === 'cue' && action.id === 'menagerie:spawn') cues.push(action);
+      });
+      story.engine.goto('k3', beatId);
+      if (beatId === 'k3_6') expect(chapter.beats.find(({ id }) => id === beatId)?.enter?.[1]).toMatchObject({ id: 'menagerie:spawn' });
+      story.reload();
+      cues.length = 0;
+      story.engine.resume();
+      expect(cues, beatId).toEqual([expect.objectContaining({ data: expect.objectContaining({ id: 'k3.jaguar', era: '1793-07' }) })]);
+    }
+  });
+});
 
 const say = (text: string): Action => ({ do: 'say', speaker: 'laub', text });
 const beat = (id: string, complete: Beat['complete'], extra: Partial<Beat> = {}): Beat => ({ id, complete, enter: [say(id)], ...extra });
@@ -205,6 +466,100 @@ describe('story engine', () => {
 
 describe('story files', () => {
   const { files, parseErrors } = loadStoryFiles(ROOT);
+
+  function chapterOne(state: GameState) {
+    const data = JSON.parse(readFileSync(`${ROOT}content/quests/01-kapitel-1.quests.json`, 'utf8')) as QuestFile;
+    const story = state.systems.story ??= createStorySlice();
+    const book = new QuestBook(questsInPlay([{ data }], false).quests, state.systems.quests ??= createQuestSlice(), {
+      flags: state.flags, codex: state.codex.facts, now: () => 0, rng: () => 0,
+      emit: () => {},
+    });
+    book.mirror();
+    const engine = new StoryEngine(files.map((file) => file.story), () => story, {
+      chapterEntered: () => {}, beatEntered: () => {}, chapterCompleted: () => {},
+      run(actions, options) {
+        for (const action of actions) {
+          if (options.resume && !runsOnResume(action)) continue;
+          if (action.do === 'grant') state.inventory.clues.push(action.clue);
+          if (action.do === 'flag') {
+            for (const [key, value] of Object.entries(action.set)) {
+              if (value === null) delete state.flags[key];
+              else state.flags[key] = value;
+            }
+          }
+          if (action.do === 'quest' && action.op === 'offer') book.offer(action.id);
+          if (action.do === 'quest' && action.op === 'progress' && action.objective) book.progress(action.id, action.objective, action.n, true);
+          if (action.do === 'enemy' && action.op === 'despawn' && action.group && state.systems.combat) delete state.systems.combat.groups[action.group];
+        }
+      },
+    });
+    return { engine, book, story, tick() {
+      engine.tick(0.1, env({ era: state.era, flags: state.flags, inventory: state.inventory }));
+      book.settleKnown((clue) => state.inventory.clues.includes(clue));
+    } };
+  }
+
+  it('resumes a pre-Quelle arrival save without requiring a second spring touch', () => {
+    const state = createInitialState();
+    state.era = '1789';
+    state.systems.story = { ...createStorySlice(), active: true, chapter: 'k1', beat: 'k1_1' };
+    state.systems.quests = createQuestSlice();
+    state.systems.quests.quests['q.k1.ankunft'] = { state: 'active', counts: { wechsel: 1, wache: 1 }, t: 0 };
+    state.inventory.clues.push('clue.k1.wache');
+
+    const { engine, book, story, tick } = chapterOne(deserializeState(serializeState(state)));
+    engine.resume();
+    tick();
+    tick();
+    expect(book.state('q.k1.ankunft')).toBe('done');
+    expect(story.beat).toBe('k1_2');
+    expect(book.state('q.k1.registratur')).toBe('offered');
+  });
+
+  it('clears both completed Die Enge packs on a chapter replay, not on resume', () => {
+    const state = createInitialState();
+    const groups = ['k1.enge', 'k1.enge.2', 'another.group'];
+    state.systems.story = { ...createStorySlice(), active: true, chapter: 'k1', beat: 'k1_14b' };
+    state.systems.combat = { hp: 100, stamina: 100, bann: 100, deaths: 0, groups: Object.fromEntries(groups.map((group) =>
+      [group, { group, kind: 'streuner', era: '1789', x: 1811, z: 270, count: 3, killed: 3 }],
+    )) };
+    const loaded = deserializeState(serializeState(state));
+    const { engine } = chapterOne(loaded);
+    engine.resume();
+    expect(Object.keys(loaded.systems.combat!.groups)).toEqual(groups);
+    engine.goto('k2');
+    engine.goto('k1');
+    expect(Object.keys(loaded.systems.combat!.groups)).toEqual(['another.group']);
+
+    state.systems.story.doneBeats.push('k1/k1_14b');
+    const oldReplay = deserializeState(serializeState(state));
+    expect(Object.keys(oldReplay.systems.combat!.groups)).toEqual(['another.group']);
+    state.systems.story.fired.push('b:k1_14b.welle');
+    const currentWave = deserializeState(serializeState(state));
+    expect(Object.keys(currentWave.systems.combat!.groups)).toEqual(groups);
+  });
+
+  it.each(['k1_0', 'k1_13', 'k1_14'])('discards a lone stale Die Enge clear before the encounter at %s', (beat) => {
+    const state = createInitialState();
+    state.systems.story = { ...createStorySlice(), active: true, chapter: 'k1', beat };
+    const first = { group: 'k1.enge', kind: 'streuner', era: '1789' as const, x: 1811, z: 270, count: 3, killed: 3 };
+    state.systems.combat = { hp: 100, stamina: 100, bann: 100, deaths: 0, groups: { [first.group]: first } };
+
+    const loaded = deserializeState(serializeState(state));
+    expect(loaded.systems.combat!.groups).toEqual({});
+  });
+
+  it.each(['k1_14c', 'k1_15', 'k1_17'])('preserves both Die Enge clears after the encounter at %s', (beat) => {
+    const state = createInitialState();
+    state.systems.story = { ...createStorySlice(), active: true, chapter: 'k1', beat, doneBeats: ['k1/k1_14b'] };
+    const first = { group: 'k1.enge', kind: 'streuner', era: '1789' as const, x: 1811, z: 270, count: 3, killed: 3 };
+    const second = { ...first, group: 'k1.enge.2', x: 1803, z: 266, count: 4, killed: 4 };
+    const groups = { [first.group]: first, [second.group]: second };
+    state.systems.combat = { hp: 100, stamina: 100, bann: 100, deaths: 0, groups };
+
+    const loaded = deserializeState(serializeState(state));
+    expect(loaded.systems.combat!.groups).toEqual(groups);
+  });
 
   it('parse and validate (prologue + four chapters + endings)', () => {
     expect(parseErrors).toEqual([]);

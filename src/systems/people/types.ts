@@ -19,8 +19,8 @@
  *   −x, west; −π/2 faces +x, east). Do not use `Object3D.lookAt` on it (that aims +z).
  * - Distance LOD (`PEOPLE_LOD`, distance from the camera):
  *   - animation at full rate within 25 m, about 10 Hz within 40 m, frozen beyond
- *   - hidden beyond the draw limit (stand-in: 60 m)
- *   - frustum culling stays on
+ *   - hidden beyond 60 m, drawn again within 58 m
+ *   - skinned parts use a shared frustum bound anchored to the person's root
  * - Budget tiers (`TIER_BUDGET`; for the authored meshes, the stand-ins just report them):
  *   - hero: ≤ 25k tris, ≤ 8 draw calls
  *   - featured: ≤ 12k tris, ≤ 4
@@ -103,7 +103,7 @@ export interface Person {
   /** idle/talk/sit/sitTalk/lookAround loop; point/wave/interact one-shot, then back to idle/locomotion; unsupported → nearest fallback. */
   play(clip: PersonClip, o?: { loop?: boolean; fade?: number; speed?: number }): void;
   /** Smooth body turn toward a yaw (radians, player convention). */
-  face(yaw: number): void;
+  face(yaw: number, snap?: boolean): void;
   /** Head turn toward a world point; null = forward. */
   lookAt(p: { x: number; y: number; z: number } | null): void;
   setLook(look: PersonLook): void;
@@ -131,8 +131,9 @@ export const PEOPLE_LOD = {
   /** About `slowHz` within this distance, frozen beyond. */
   slowRate: 40,
   slowHz: 10,
-  /** Hidden beyond this distance (stand-in value). */
+  /** Hidden beyond this distance. The return margin keeps the maximum range fixed. */
   drawLimit: 60,
+  drawReturnMargin: 2,
   /** Authored meshes switch to LOD1 (about `lod1Ratio` of the triangles) beyond this distance. */
   lod1: 15,
   lod1Ratio: 0.5,

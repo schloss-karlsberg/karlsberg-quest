@@ -20,6 +20,7 @@ import './strings';
 import './skills.css';
 import type { GameContext } from '../../core/context';
 import { defineSystem } from '../../core/systems';
+import { hasString } from '../../i18n';
 import { stampChime } from './audio';
 import { UnlockCards } from './card';
 import { type Gate, SKILL_IDS, SKILL_MAX, type SkillId, gateFrom, levelOf, parseSkill, roman, setFreeOverride, skillIncreases } from './logic';
@@ -52,15 +53,18 @@ declare module '../../debug/hooks' {
 }
 
 let cards: UnlockCards | null = null;
+const dismissCard = () => cards?.dismiss();
 
 function tickCards(dt: number, ctx: GameContext): void {
   if (!cards?.busy) {
     ctx.ui.cards.release('skill');
     return;
   }
-  let hold = ctx.pause.paused || ctx.ui.cards.held;
-  // one centre card at a time (src/ui/cards.ts)
-  if (cards.wants && !hold && !ctx.ui.cards.claim('skill')) hold = true;
+  // Match the short touch layout in touch.css, where the stick can cover the notice band.
+  const stickCoversCard = ctx.input.touchMode && ctx.input.touchStickActive && window.innerHeight <= 500;
+  let hold = stickCoversCard || ctx.pause.paused || ctx.ui.cards.held;
+  // One centre card at a time. A tap on the touch surface dismisses it like a level card.
+  if (cards.wants && !hold && !ctx.ui.cards.claim('skill', ctx.input.touchMode ? dismissCard : undefined)) hold = true;
   cards.frame(dt, ctx.settings.state.reducedMotion, hold);
   if (!cards.wants) ctx.ui.cards.release('skill');
 }
@@ -103,14 +107,15 @@ function onUnlocked(ctx: GameContext, skill: SkillId, level: number): void {
   ctx.events.emit('skill:unlocked', { skill, level });
 }
 
-function laubLine(ctx: GameContext, skill: SkillId, level: number): void {
+/** Laub's comment on an unlock; skipped when that skill level has no line (exported for tests). */
+export function laubLine(ctx: GameContext, skill: SkillId, level: number): void {
   const laubTalks = ctx.state.state.flags['story.laub'] === true || !storyRunning(ctx);
   if (!laubTalks) return;
   const key = `skills.laub.${skill}.${level}`;
-  const text = ctx.t(key);
-  if (text === key) return;
+  // t() returns a German placeholder for a missing key, never the key itself
+  if (!hasString(key)) return;
   said.push(key);
-  ctx.events.emit('dialogue:say', { speaker: 'laub', text, id: `laub.skill.${skill}.${level}`, fiction: true });
+  ctx.events.emit('dialogue:say', { speaker: 'laub', text: ctx.t(key), id: `laub.skill.${skill}.${level}`, fiction: true });
 }
 
 export default defineSystem({
@@ -121,10 +126,8 @@ export default defineSystem({
     layer.classList.remove('kq-hidden');
     layer.style.pointerEvents = 'none';
     cards = new UnlockCards(layer);
-    cards.onStamp = (req) => {
-      stampChime(ctx.audio, req.level);
-      laubLine(ctx, req.skill, req.level);
-    };
+    cards.onStamp = (req) => stampChime(ctx.audio, req.level);
+    cards.onRemark = (req) => laubLine(ctx, req.skill, req.level);
     // a level card coming up takes the waiting unlocks along (one card, not two: src/ui/cards.ts)
     ctx.ui.cards.source('skill', () =>
       (cards?.drain() ?? []).map((req) => {

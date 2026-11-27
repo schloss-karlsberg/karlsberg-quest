@@ -98,6 +98,7 @@
   font-family: var(--serif);
   font-weight: 400;
   font-size: 13px;
+  line-height: 16px;
   letter-spacing: 0.02em;
   white-space: nowrap;
   color: var(--hud-gold-2);
@@ -112,12 +113,12 @@
   padding: 0 6px 1px;
 }
 .kq-hud .kq-compass-marker[data-side='l']::after {
-  left: auto;
-  right: 100%;
+  left: 100%;
   content: '‹ ' attr(data-dist);
 }
 .kq-hud .kq-compass-marker[data-side='r']::after {
-  left: 100%;
+  left: auto;
+  right: 100%;
   content: attr(data-dist) ' ›';
 }
 .kq-hud .kq-compass-marker[data-side='l']:not([data-dist])::after {
@@ -125,6 +126,14 @@
 }
 .kq-hud .kq-compass-marker[data-side='r']:not([data-dist])::after {
   content: '›';
+}
+
+/* The guide's label has its own row both under the strip and at the edge. */
+.kq-hud .kq-compass-marker.kq-compass-label-second[data-dist]:not([data-side])::after {
+  top: 50px;
+}
+.kq-hud .kq-compass-marker.kq-compass-label-second[data-side] {
+  top: 20px;
 }
 
 /* ---- the world waymark (./waymark.ts) ---- */

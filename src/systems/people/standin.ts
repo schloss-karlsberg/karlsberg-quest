@@ -28,6 +28,8 @@ import {
   type BufferGeometry,
   CapsuleGeometry,
   type Color,
+  type Frustum,
+  type FrustumArray,
   Group,
   type Material,
   Matrix4,
@@ -144,7 +146,7 @@ const UPPER = /^(Torso|Chest|Neck|Head|Shoulder|UpperArm|LowerArm|Wrist|Index|Mi
 /** How one model part is drawn in the solid look. */
 export interface Dressed {
   solid: MeshStandardMaterial;
-  /** Cloned for this person (faded in, disposed with it); false = a shared material (never touched). */
+  /** Cloned for this person and disposed with it. Shared materials belong to the kit. */
   owned: boolean;
   /** Ghost look: the cloth colour (linear). */
   cloth: Color;
@@ -197,9 +199,8 @@ export const STANDIN_KIT: BodyKit = {
     solid.roughness = slot === 'Skin' ? 0.62 : slot === 'Gold' ? 0.4 : slot === 'Eye' ? 0.3 : 0.82;
     solid.metalness = slot === 'Gold' ? 0.5 : 0;
     kqStandard(solid, { ambient: 1.15 });
-    // screen-door fade in (no sorting)
-    solid.alphaHash = true;
-    solid.opacity = 0;
+    solid.alphaHash = false;
+    solid.opacity = 1;
     return { solid, owned: true, cloth: hex !== null ? linHex(hex) : solid.color.clone(), lod: 0 };
   },
 };
@@ -261,6 +262,7 @@ function clipsFor(src: LoadedModel, kit: BodyKit): ClipSet {
 const strideCache = new WeakMap<LoadedModel, { walk: number; run: number; measured: boolean }>();
 
 const _v = new Vector3();
+const worldBodyBound = new Sphere();
 const _w = new Vector3();
 const _m = new Matrix4();
 
@@ -382,10 +384,7 @@ export interface PersonState {
 interface Part {
   mesh: Mesh;
   solid: MeshStandardMaterial;
-  /** The solid material is this person's (faded in, disposed with it), not a shared one. */
-  owned: boolean;
   cloth: Color;
-  sphere: Sphere;
   ghost?: { body: ShaderMaterial; depth: ShaderMaterial };
   twin?: Mesh;
   tris: number;
@@ -422,6 +421,10 @@ let autoSeed = 0;
  */
 export class StandInPerson implements Person {
   readonly root = new Group();
+  private readonly bodyBound: Sphere;
+  /** All parts use the same pose-independent silhouette for camera and shadow culling. */
+  private readonly intersectsBody = (frustum: Frustum | FrustumArray): boolean =>
+    frustum.intersectsSphere(worldBodyBound.copy(this.bodyBound).applyMatrix4(this.root.matrixWorld));
   readonly info: PersonInfo;
   readonly kit: BodyKit;
   readonly ready: Promise<boolean>;
@@ -478,7 +481,7 @@ export class StandInPerson implements Person {
   private lodAcc: number;
   private sinceEval = 0;
   private needsPose = true;
-  private alpha = 0;
+  private ghostAlpha = 0;
 
   constructor(
     readonly id: string,
@@ -490,6 +493,7 @@ export class StandInPerson implements Person {
     kit?: BodyKit,
   ) {
     this.kit = kit ?? kitFor(spec);
+    this.bodyBound = new Sphere(new Vector3(0, spec.height * 0.5, 0), spec.height * 0.9);
     this.info = Object.freeze({ specId, tier: o.tier ?? spec.tier, height: spec.height, radius: spec.radius, clips: this.kit.supported });
     this.name = o.name ?? specId;
     this.speaker = o.speaker;
@@ -551,10 +555,9 @@ export class StandInPerson implements Person {
         rig.holder.scale.x *= build;
         rig.holder.scale.z *= build;
       }
-      // a conservative bound for every part in its own frame (one sphere round the whole body,
-      // arms up or striding included), so frustum culling stays on for skinned parts
+      // The model faces +z while the person's root faces −z.
+      rig.root.rotation.y = Math.PI;
       rig.root.updateMatrixWorld(true);
-      const R = spec.height * 0.78;
       for (const m of rig.meshes) {
         const mat = (Array.isArray(m.material) ? m.material[0] : m.material) as MeshStandardMaterial | undefined;
         const slot = mat?.name ?? '';
@@ -566,16 +569,15 @@ export class StandInPerson implements Person {
         const { solid, owned, cloth, lod } = d;
         if (owned) this.owned.push(solid);
         if (lod === 1) this.hasLod1 = true;
-        _m.copy(m.matrixWorld).invert();
-        const centre = _w.set(0, spec.height * 0.5, 0).applyMatrix4(_m).clone();
-        const scale = m.matrixWorld.getMaxScaleOnAxis();
-        const sphere = new Sphere(centre, R / Math.max(1e-6, scale));
         m.frustumCulled = true;
-        (m as Mesh & { boundingSphere: Sphere | null }).boundingSphere = sphere;
+        m.intersectsFrustum = this.intersectsBody;
+        // Render-list sorting still uses the mesh-local sphere. A ghost depth clone copies it.
+        const skinned = m as SkinnedMesh;
+        if (skinned.isSkinnedMesh) skinned.boundingSphere = this.bodyBound.clone().applyMatrix4(_m.copy(m.matrixWorld).invert());
         m.material = solid;
         const g = m.geometry;
         const tris = Math.round((g.index ? g.index.count : g.getAttribute('position').count) / 3);
-        this.parts.push({ mesh: m, solid, owned, cloth, sphere, tris, lod });
+        this.parts.push({ mesh: m, solid, cloth, tris, lod });
       }
       this.showLod();
       // clips: locomotion split into legs / upper body; one-shots as upper-only and full-body copies
@@ -597,8 +599,6 @@ export class StandInPerson implements Person {
       }
       this.neck = rig.bone(kit.neck) ?? null;
       this.head = rig.info.head ? (rig.bones.get(rig.info.head) ?? null) : null;
-      // the model faces +z, the contract's root faces −z: the body turns round inside the root
-      rig.root.rotation.y = Math.PI;
       this.rig = rig;
       this.applyLook();
       this.root.add(rig.root);
@@ -629,7 +629,6 @@ export class StandInPerson implements Person {
     m.castShadow = true;
     m.name = 'person-fallback';
     this.fallback = m;
-    this.alpha = 1;
     this.root.add(m);
     this.updateVisible();
   }
@@ -651,7 +650,7 @@ export class StandInPerson implements Person {
           d.material = p.ghost.depth;
           d.renderOrder = 6;
           d.frustumCulled = true;
-          (d as Mesh & { boundingSphere: Sphere | null }).boundingSphere = p.sphere;
+          d.intersectsFrustum = this.intersectsBody;
           p.mesh.parent?.add(d);
           p.twin = d;
         }
@@ -730,8 +729,12 @@ export class StandInPerson implements Person {
     return plan.gestures === true || (plan.talkLoop === true && this.loco.talk === null);
   }
 
-  face(yaw: number): void {
-    if (Number.isFinite(yaw)) this.faceTarget = wrapPi(yaw);
+  face(yaw: number, snap = false): void {
+    if (!Number.isFinite(yaw)) return;
+    if (snap) {
+      this.root.rotation.y = wrapPi(yaw);
+      this.faceTarget = null;
+    } else this.faceTarget = wrapPi(yaw);
   }
 
   lookAt(p: { x: number; y: number; z: number } | null): void {
@@ -924,16 +927,12 @@ export class StandInPerson implements Person {
     }
   }
 
-  /** The fade in after loading, the ghost's per-frame uniforms. */
+  /** The ghost's per-frame uniforms, including its entrance fade. */
   private lookFrame(dt: number, f: PersonTick): void {
-    if (this.alpha < 1) {
-      this.alpha = Math.min(1, this.alpha + dt / 0.35);
-      const o = this.alpha >= 1 ? 1 : this.alpha;
-      for (const p of this.parts) if (p.owned) p.solid.opacity = o;
-    }
+    this.ghostAlpha = Math.min(1, this.ghostAlpha + dt / 0.35);
     const u = this.shared;
     if (u && this.look === 'ghost' && this.root.visible && this.rig) {
-      u.uAlpha!.value = this.alpha;
+      u.uAlpha!.value = this.ghostAlpha;
       this.rig.root.getWorldPosition(_v);
       u.uBaseY!.value = _v.y;
       u.uTalk!.value = this.gesturing(this.base.plan) || this.talking(this.base.plan) ? 1 : 0;

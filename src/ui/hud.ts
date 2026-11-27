@@ -262,20 +262,23 @@ export class Hud {
    * A marker on the compass at a grid bearing (deg). Pass null to remove. `opts.dist` (metres)
    * prints the distance under it; `opts.edge` keeps it on the strip's edge (with an arrow) when it
    * is behind you, so the way to the tracked goal is always on screen. `opts.label` names it in
-   * front of the distance („Gruppe · 45 m“).
+   * front of the distance („Gruppe · 45 m“). `opts.labelRow` gives it a second distance row.
    */
-  setMarker(id: string, bearingDeg: number | null, color = '#e9c46a', opts: { dist?: number | null; edge?: boolean; label?: string } = {}): void {
+  setMarker(id: string, bearingDeg: number | null, color = '#e9c46a', opts: { dist?: number | null; edge?: boolean; label?: string; kind?: 'obj' | 'offer' | 'offer-main' | 'ready'; labelRow?: 2 } = {}): void {
     let m = this.markers.get(id);
     if (bearingDeg === null) {
       m?.remove();
       this.markers.delete(id);
       return;
     }
+    const kind = opts.kind ? ` kqq-cm kqq-cm-${opts.kind}` : '';
+    const row = opts.labelRow === 2 ? ' kq-compass-label-second' : '';
+    const classes = `kq-compass-marker${kind}${row}`;
     if (!m) {
-      m = h('div.kq-compass-marker');
+      m = h('div', { className: classes, dataset: { marker: id } });
       this.compass.append(m);
       this.markers.set(id, m);
-    }
+    } else if (m.className !== classes) m.className = classes;
     m.style.borderColor = color;
     m.dataset.bearing = String(bearingDeg);
     if (opts.edge) m.dataset.edge = '1';
@@ -316,32 +319,44 @@ export class Hud {
     this.renderPrompt();
   }
 
+  /** Scene owners can hide all prompts while their input takes precedence. */
+  blockPrompts(reason: string, blocked: boolean): void {
+    if (blocked) this.promptBlocks.add(reason);
+    else this.promptBlocks.delete(reason);
+    this.renderPrompt();
+  }
+
   private renderPrompt(): void {
     // A low-priority prompt such as opening the spring hub yields to a nearby interaction.
-    const all = [...this.prompts.entries()];
+    const all = this.promptBlocks.size ? [] : [...this.prompts.entries()];
     const topEntry = all.filter(([, p]) => !p.low).pop() ?? all.pop();
     this.promptTop = topEntry?.[0] ?? null;
     const top = topEntry?.[1];
     this.onPrompt?.(top?.key ?? null, top ? top.text || null : null);
     if (!top) {
+      if (this.promptBlocks.size) this.promptEl.replaceChildren();
       this.promptEl.classList.remove('show');
       return;
     }
     // touch mode: the key cap becomes the icon of the touch button that answers it (src/ui/touch.ts)
-    const cap = top.key ? (this.touchIcon ? h('kbd.kq-touch-key', { 'data-key': top.key }, svg(this.touchIcon(top.key))) : h('kbd', top.key)) : null;
+    const icon = top.key && this.touchIcon?.(top.key);
+    const cap = this.touchIcon
+      ? (icon ? h('kbd.kq-touch-key', { 'data-key': top.key }, svg(icon)) : null)
+      : (top.key ? h('kbd', top.key) : null);
     this.promptEl.replaceChildren(...(cap ? [cap] : []), top.text);
     this.promptEl.classList.add('show');
   }
 
   /** Touch mode: prompt keys as touch icons (null: key caps); also hides the pointer-lock chip. */
-  setTouchIcons(fn: ((key: string) => string) | null): void {
+  setTouchIcons(fn: ((key: string) => string | null) | null): void {
     this.touchIcon = fn;
     if (fn) this.clickEl.classList.add('kq-hidden');
     this.renderPrompt();
   }
-  private touchIcon: ((key: string) => string) | null = null;
+  private touchIcon: ((key: string) => string | null) | null = null;
   /** Called with the shown prompt's key and text (null: none) whenever it changes (touch buttons). */
   onPrompt: ((key: string | null, text: string | null) => void) | null = null;
+  private readonly promptBlocks = new Set<string>();
   private readonly prompts = new Map<string, { key: string | null; text: string; low: boolean }>();
   private promptTop: string | null = null;
 

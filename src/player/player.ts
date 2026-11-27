@@ -1,6 +1,7 @@
 import { type PerspectiveCamera, Vector3 } from 'three';
 import type { EventBus } from '../core/events';
 import type { PlayerState } from '../core/state';
+import { PLAYER_RADIUS } from '../world/crowd';
 import { CameraRig, type CameraMode, type CameraWorld, PITCH_MAX_3P, PITCH_MIN_3P, PITCH_REST_3P } from './camera';
 import type { Input } from './input';
 import { KEY_TURN_RATE, type KeyTurnRates, stepKeyTurn } from './keyTurn';
@@ -11,6 +12,8 @@ export interface PlayerWorld {
   heightAt(x: number, z: number): number;
   /** Footprint collision (returns the corrected position). */
   collide(x: number, z: number, radius: number): { x: number; z: number; hit: boolean };
+  /** Local moving-body collision before slope, water and static footprint checks. */
+  separate?(x: number, z: number, radius: number, from: Vector3): { x: number; z: number };
   /** Allowed x/z area (inclusive). */
   bounds(): { x0: number; z0: number; x1: number; z1: number };
   surfaceAt(x: number, z: number): string;
@@ -45,7 +48,8 @@ export interface PlayerStats {
 const SLOPE_LIMIT_DEG = 42;
 /** Wading stops this far into a lake (m from the shore line); deeper water blocks like a wall. */
 export const WADE_LIMIT_M = 0.8;
-const RADIUS = 0.35;
+/** The player's footprint radius (shared with the tour crowd). */
+export { PLAYER_RADIUS };
 const FLY_SPEED = 28;
 const FLY_FAST = 95;
 const FLY_MIN_AGL = 2.5;
@@ -71,6 +75,7 @@ export class Player {
   private strideAcc = 0;
   private bob = 0;
   private flyVel = new Vector3();
+  private readonly flyTarget = new Vector3();
   /** Seconds since the player last looked (mouse / keys): the third-person pitch levels after a while. */
   private lookIdle = 0;
   /** Seconds of the automatic climb after the spirit view starts. */
@@ -151,6 +156,8 @@ export class Player {
     if (yaw !== undefined) this.yaw = yaw;
     this.vy = 0;
     this.push.t = 0;
+    this.strideAcc = 0;
+    this.bob = 0;
     this.renderPos.copy(this.position);
     this.rig.reset();
     this.events.emit('player:teleport', { x, z });
@@ -286,6 +293,12 @@ export class Player {
       this.push.t = Math.max(0, this.push.t - dt);
       moving = true;
     }
+    if (!this.frozen && this.world.separate) {
+      const p = this.world.separate(nx, nz, PLAYER_RADIUS, this.position);
+      moving ||= p.x !== nx || p.z !== nz;
+      nx = p.x;
+      nz = p.z;
+    }
     this.stats.onSlopeLimit = false;
     if (moving) {
       // slope limit: refuse steps that climb too steeply (try sliding along each axis)
@@ -312,22 +325,38 @@ export class Player {
     // deep water: wade a step or two into the shallows, then the lake holds you back (no
     // walking across the Karlsbergweiher on its bed); slide along the shore like a wall
     this.stats.inWater = 0;
-    const wd = this.world.waterDepth;
-    if (wd) {
-      const deep = (x: number, z: number) => {
-        const d = wd.call(this.world, x, z);
-        return d > WADE_LIMIT_M && d > wd.call(this.world, this.position.x, this.position.z);
-      };
-      if (deep(nx, nz)) {
-        this.stats.deepWater = true;
-        if (!deep(nx, this.position.z)) nz = this.position.z;
-        else if (!deep(this.position.x, nz)) nx = this.position.x;
-        else {
-          nx = this.position.x;
-          nz = this.position.z;
+    const world = this.world;
+    if (world.waterDepth) {
+      const { x, z } = this.position;
+      let here = world.waterDepth(nx, nz);
+      // If already in deep water, allow a step towards the bank or along the same depth.
+      if (here > WADE_LIMIT_M && (nx !== x || nz !== z)) {
+        const currentDepth = world.waterDepth(x, z);
+        const limit = Math.max(WADE_LIMIT_M, currentDepth);
+        if (here > limit) {
+          this.stats.deepWater = true;
+          // An axis-aligned step can only retry the proposed and current positions.
+          if (nx === x || nz === z) {
+            nx = x;
+            nz = z;
+            here = currentDepth;
+          } else {
+            const xDepth = world.waterDepth(nx, z);
+            if (xDepth <= limit) {
+              nz = z;
+              here = xDepth;
+            } else {
+              const zDepth = world.waterDepth(x, nz);
+              nx = x;
+              if (zDepth <= limit) here = zDepth;
+              else {
+                nz = z;
+                here = currentDepth;
+              }
+            }
+          }
         }
       }
-      const here = wd.call(this.world, nx, nz);
       this.stats.inWater = Math.max(0, Math.min(1, here / WADE_LIMIT_M));
       if (here > 0 && moving) {
         // wading is slower: pull back part of the step
@@ -336,7 +365,7 @@ export class Player {
         nz = this.position.z + (nz - this.position.z) * k;
       }
     }
-    const col = this.world.collide(nx, nz, RADIUS);
+    const col = this.world.collide(nx, nz, PLAYER_RADIUS);
     nx = col.x;
     nz = col.z;
     const b = this.world.bounds();
@@ -368,11 +397,15 @@ export class Player {
   }
 
   private updateFly(dt: number, wx: number, wz: number, fz: number): void {
+    if (this.frozen) {
+      this.flyVel.set(0, 0, 0);
+      return;
+    }
     const fast = this.input.isDown('sprint');
     const sp = fast ? FLY_FAST : FLY_SPEED;
     // forward/back follow the view pitch, strafing stays level
     const cp = Math.cos(this.pitch);
-    const target = new Vector3(wx, 0, wz).multiplyScalar(sp);
+    const target = this.flyTarget.set(wx, 0, wz).multiplyScalar(sp);
     if (fz !== 0) {
       target.multiplyScalar(cp);
       target.y = Math.sin(this.pitch) * sp * -fz;
@@ -435,6 +468,7 @@ export class Player {
     this.teleport(s.x, s.z);
     this.eye = STANCES[this.stance].eye;
     this.lookIdle = 0;
+    this.events.emit('player:restored', {});
   }
 
   /** Unit forward vector on the ground plane. */

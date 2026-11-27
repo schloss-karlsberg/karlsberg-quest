@@ -57,11 +57,23 @@ Storage: thumbnails in the save make it heavy; cap at 60 × 30 KB (≈ 1.8 MB) o
 
 **Tests.** Unit: keyframe interpolation and the skip path (`tests/cinematic.test.ts`, like the existing stage tests); reduced motion gives ≤ 2 stills. e2e: covered by the photo / tour specs (the deer cinematic ends and returns control).
 
+**Wind shot (TASK-016).** Beat t8 starts the skippable shot with the dogs' run cues. The camera
+looks down from a fixed path beside the hillside and aims between the two live dog targets.
+Reduced motion holds the camera still on each side of the cut. The headless tour test simulates
+both dogs over the shipped terrain and checks landscape and portrait framing. If a player or
+visitor occupies a run waypoint, a dog can round it from the edge of the collision circle.
+
 ---
 
 ## 3. Tour group that follows the guide
 
-**What it does.** Gerold walks the route stop by stop; 14 group NPCs (7 doubles, 7 extras) follow him in a loose cluster; two dogs follow Jost. At each stop the group gathers in a half circle facing the guide; Gerold speaks when the player is within 12 m. If the player is > 25 m behind, the group **waits** (Gerold turns, bark „{Name}, kommst du?“); if the player runs ahead > 30 m, Gerold calls „Nicht so schnell, das Schloss läuft nicht weg.“ and the next stop still triggers only when the guide arrives. Ops: `walk`, `hold` (the deer), `gather`, `despawn` (out of sight at the Quelle).
+**What it does.** Gerold walks the route stop by stop. Fourteen visitors follow him in a loose cluster, and two dogs follow Jost. At each stop the group gathers around the guide. Gerold speaks when the player is within 12 m. If the player falls more than 25 m behind, the group waits and Gerold requests a wait bark. After the Quelle stop the group continues towards the plateau through the Bussole beat. The era shift hides today's group and the tour's chapter cleanup disposes of it.
+
+The guide's compass marker uses the gold objective diamond. Its distance label has its own row on
+the strip and at either edge. As soon as the Weiher dialogue ends, the next HUD frame points to
+the Quelle; only routine updates to markers use the 10 Hz refresh. The guide's „Hier drüben!“
+call-out bypasses the 45 s bark gap. Its two variants share a 15 s cooldown, and it still waits
+for open dialogue and modals to clear.
 
 **Reusable code (audit §8).** **No NPC path-walk exists**: only `spawn`/`despawn` (`story/types.ts:424`). Templates:
 - `npc:follow` escort (`src/systems/npc/index.ts:122–165`, `:512` `followStep`, 2.4 m behind) — follower logic for the group around the guide.
@@ -79,9 +91,35 @@ Storage: thumbnails in the save make it heavy; cap at 60 × 30 KB (≈ 1.8 MB) o
 { "do": "npc", "op": "hold", "group": "fuehrung" }
 // events: 'npc:arrived' {npc, at, route, skipped}, 'group:waiting' {group, leader, dist}, 'group:resumed' {group, leader}  (contract C2)
 ```
-`path` names a polyline registered from `paths.json` node ids (route `p-fuehrung`, segments between stops). Followers: a boids-lite offset (slot ring behind the guide, 1.2–4 m, jitter), terrain-snapped, trunk avoidance via `forest.trunksNear`. Walk speed 1.6 m/s for the group when the player is close, catching up at 2.4 m/s; the player's walk is 3.2 m/s (`STANCES.stand.speed`), so the player is never held back. Performance: 14 figures at low tier use the K3 crowd's cheap path; full rigs only within 25 m.
+`path` names a polyline registered from `paths.json` node ids (route `p-fuehrung`, segments between stops). Followers: a boids-lite offset (slot ring behind the guide, 1.2–4 m, jitter), terrain-snapped, trunk avoidance via `forest.trunksNear`. Walk speed 1.6 m/s for the group when the player is close, catching up at 2.4 m/s; the player's walk is 3.2 m/s (`STANCES.stand.speed`), so the player is never held back.
 
-**Tests.** Unit: `tests/npc-walk.test.ts` (polyline progress, leash wait/resume, gather slots don't overlap, no follower inside a trunk); validator: every `walk` path resolves to `paths.json` nodes and stays inside the extent. e2e: `e2e/tour.spec.ts` (a walk-only bot follows the marker from the car park to the Quelle; the group arrives at each stop; standing still 40 s → group waits and barks; total time within the pacing budget below).
+**Rendering (TASK-022).** The solid stand-ins previously used a 350 ms alpha-hash fade when
+their models loaded, visible as a screen-door pattern even at 10 m. They draw opaque from the
+first frame. Skinned parts use a shared root-space frustum bound across poses and mesh levels.
+Their mesh-local sort bounds are set when the body is built, including both mesh levels and
+ghost depth twins.
+Animation runs at full rate through 25 m from the camera, at about 10 Hz through 40 m, and holds
+its pose farther out. The crowd hides beyond 60 m and draws again within 58 m. The authored
+guide switches meshes outside the 14.5–15.5 m hysteresis band. Each stand-in uses its one mesh
+level throughout. See [the performance note](../../PERFORMANCE.md#38-tour-crowd-task-022).
+
+**Tests.** `tests/walk-system.test.ts` runs the leash and bark systems together with the tour pack
+and checks the delivered `dialogue:say` line. `e2e/tour-slice.spec.ts` checks delivery in a quiet
+interval between the leash and find-group call distances. It also checks that the group remains
+present at the Bussole until the shift.
+
+**Stop staging (TASK-016).** Stopped members turn toward Gerold. He faces the player during
+conversation and nearby story dialogue while he is stopped. Reduced motion sets the heading
+immediately. The first departure waits until the line ends, its subtitle has had time to read
+when muted, or the player advances it. If a save is loaded before Gerold sets out for the turnoff,
+he starts the line again. Once he has set out, the saved route progress carries over. Muted
+subtitles type silently. At Felsenpfad, fourteen authored slots follow the trail and reserve space
+from scattered boulders. The camera checks the final lens path for terrain and solid scenery after
+framing, pulls in immediately, and eases out again when the path clears. Felsenpfad dialogue and
+radio captions sit in the upper band on desktop and landscape phones. The tour browser spec
+emulates touch to check the portrait rotate prompt and that a landscape tap advances dialogue.
+The player and dogs share the visitors' collision circles. The
+circles' ground heights are refreshed when the visitors move.
 
 ---
 
@@ -89,7 +127,12 @@ Storage: thumbnails in the save make it heavy; cap at 60 × 30 KB (≈ 1.8 MB) o
 
 **What it does.**
 - **Roe doe and fawn** (`reh.ricke`, `reh.kitz`): grey winter coat, fawn without spots, nearly the doe's size, follows her within 2 m. Idle graze / ear flick / head-up „sichern“ (1.5 s tell). A perception meter like the pack's but inverted in purpose: crouch + slow lowers it, standing / running / sprinting raises it; at the threshold both bound 25 m and stop again (no fail state). Today only.
-- **Diane and Bijou** (present-day dogs): follow Jost (`npc:follow`), sniff, sit at stops; scripted bolt in t5 (run a path uphill, bark, return); at the party they lie down (keep ending: at the player's feet).
+- **Diane and Bijou** (present-day dogs) follow Jost, sniff and sit at stops. In the Wind scene they bolt uphill, bark and return. At the party they lie down, at the player's feet in the keep ending.
+
+The walk system's `group:relocated` event puts both dogs in their slots beside Jost during
+both fades and catch-up snaps. A dog plants its feet when reversing, then moves forward as it
+lines up. A save made in the turn resumes with the feet planted. Reduced motion turns the body
+immediately while planted.
 
 **Reusable code.** `src/systems/menagerie/*` (cassowary, dromedary, jaguar: story-spawned `menagerie:spawn`, era-bound, knockdown, never "caught", persisted) — the deer are a new species there with a **non-hostile, shy** mode. Perception: `src/systems/hunt/perception.ts` (`lineOfSight`), noise / visibility from `STANCES` (`src/player/stance.ts`). The hunt's `hunt:tableau` cues (lie / eyes / rest) for the dogs' poses. Models: CC0 base + Blender pipeline (memory rule: authored, critic score ≥ 8 before the owner sees them).
 
@@ -340,6 +383,15 @@ declare module '../../debug/hooks' {
 - `src/systems/quelle/` handles the reach and facing checks, the E or touch prompt and the time
   travel scene. The spring keeps its usual interaction claim through `e.owner` while the prompt is
   up.
+- The tour detects the Bussole from the forecourt in front of the trough. On pickup, the objective
+  immediately changes to „Laub zuhören“. Once Laub finishes his instruction, the tour offers
+  „Wasser berühren“ from up to 3.25 m away, facing the water. Continuing a save in this beat plays
+  the remaining lines from the saved dialogue progress. The water unlock and its objective are
+  saved together as soon as the instruction ends. Marlene's ambient radio is quiet from the
+  approach to the first shift.
+- The spring scene, time shifts and in-game cinematics hide interaction prompts. The chapter card's
+  usual 5.5 s hold also has an elapsed-time cap during slow rendering. Game pauses and hidden tabs
+  suspend both clocks.
 - `tests/story.test.ts` covers home-ring membership, the wake pose and return shifts.
   `e2e/quelle.spec.ts` covers the desktop interaction and Q return. `e2e/touch.spec.ts` covers
   the water action and Pause chapter page on a landscape phone.

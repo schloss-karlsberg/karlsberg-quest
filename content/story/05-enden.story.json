@@ -283,8 +283,7 @@
         {
           "do": "objective",
           "id": "end.frei",
-          "text": "Frei unterwegs: Sammlungen und Codex unter Pause · Esc → „Ende noch einmal wählen“",
-          "delay": 2
+          "text": "Frei unterwegs: Pause → Sammlungen und Codex · „Ende noch einmal wählen“"
         }
       ]
     }
@@ -496,7 +495,7 @@
           "keep": "Die Uhr tickt in der Schublade, neben der Bussole. Laub sagt, sie geht vor."
         },
         "nichts": {
-          "museum": "Daneben: nichts. Das Fach ist leer, und auf dem Schild steht: ‚Was nicht gerettet wurde.‘",
+          "museum": "Daneben: nichts. Das Fach ist leer, und auf dem Schild steht: „Was nicht gerettet wurde.“",
           "burn": "Gerettet habe ich nichts. Das ist auch eine Antwort.",
           "keep": "In der Schublade ist Platz für etwas, das ich nicht genommen habe."
         }

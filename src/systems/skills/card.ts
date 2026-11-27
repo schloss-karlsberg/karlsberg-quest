@@ -66,8 +66,10 @@ export class UnlockCards {
   private current: { el: HTMLElement; t: number; req: CardRequest; extra: CardRequest[]; dur: number } | null = null;
   /** Seconds a card stays (enter + read + exit). */
   static readonly DURATION = 6.2;
+  static readonly FADE = 0.6;
   onStamp: ((req: CardRequest) => void) | null = null;
-  private stamped = false;
+  onRemark: ((req: CardRequest) => void) | null = null;
+  private announced = false;
 
   constructor(parent: HTMLElement) {
     this.root = h('div.kqk-cards', { 'aria-live': 'polite' });
@@ -117,26 +119,40 @@ export class UnlockCards {
       // unlocks that came together share one card (playtest round 4: two cards in a row for one reward)
       const extra = this.queue.splice(0);
       this.current = { el: this.build(req, reduced, extra), t: 0, req, extra, dur: UnlockCards.DURATION + extra.length * 1.6 };
-      this.stamped = false;
+      this.announced = false;
       this.root.append(this.current.el);
       // next frame: start the CSS transitions
       requestAnimationFrame(() => this.current?.el.classList.add('kqk-in'));
       return;
     }
     const c = this.current;
-    // a story title card came up while this card showed: step aside and wait (they would overlap)
+    // A title card, modal or phone stick can cover this notice. Step aside and wait.
     c.el.classList.toggle('kqk-held', hold);
     if (hold) return;
     c.t += dt;
-    if (!this.stamped && c.t >= 1.15) {
-      this.stamped = true;
-      this.onStamp?.(c.req);
-      for (const x of c.extra) this.onStamp?.(x);
-    }
-    if (c.t >= c.dur - 0.6 && !c.el.classList.contains('kqk-out')) c.el.classList.add('kqk-out');
+    if (c.t >= 1.15) this.announce(true);
+    if (c.t >= c.dur - UnlockCards.FADE && !c.el.classList.contains('kqk-out')) c.el.classList.add('kqk-out');
     if (c.t >= c.dur) {
       c.el.remove();
       this.current = null;
+    }
+  }
+
+  /** A touch tap skips any pending stamp and starts the fade-out. */
+  dismiss(): void {
+    const c = this.current;
+    if (!c) return;
+    c.t = Math.max(c.t, c.dur - UnlockCards.FADE);
+    this.announce(false);
+  }
+
+  private announce(stamp: boolean): void {
+    const c = this.current;
+    if (!c || this.announced) return;
+    this.announced = true;
+    for (const req of [c.req, ...c.extra]) {
+      if (stamp) this.onStamp?.(req);
+      this.onRemark?.(req);
     }
   }
 

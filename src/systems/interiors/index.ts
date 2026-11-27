@@ -285,6 +285,8 @@ function switchMode(ctx: GameContext): void {
   if (!rt) return;
   for (const b of rt.brt.values()) drop(ctx, b);
   rt.brt.clear();
+  frameOrder.length = 0;
+  dist.clear();
   rt.pendingBlock.clear();
   const previousRoom = rt.room >= 0 ? current()?.plan.rooms[rt.room] : undefined;
   rt.mode = modeOf(ctx.era.current);
@@ -1065,9 +1067,14 @@ export default defineSystem({
     });
     ctx.events.on('save:loaded', () => {
       if (!rt) return;
-      // a choice the outgoing game left open (or queued) does not come back in the loaded one
-      festsaalPending = null;
+      // a choice the outgoing game left open (shown or queued) does not come back in the loaded one;
+      // a loaded save still deciding restages it through its beat's `requisiten` reaction
+      clearFestsaal(ctx);
       restoreStorey(ctx);
+      // story/migrate drops the saved room (it may be stale); a live load in the room the player
+      // already stands in must announce it again, or the story's `room` conditions stay false
+      const known = rt.ready ? current()?.plan.rooms[rt.room] : undefined;
+      if (known && ctx.state.state.flags['interior.room'] !== known.roomId) rt.room = -1;
       if (rt.ready) updateRoom(ctx);
     });
     ctx.events.on('era:change', ({ from, to }) => {
@@ -1118,6 +1125,8 @@ export default defineSystem({
     if (!rt) return;
     const ctx = rt.ctx;
     for (const b of rt.brt.values()) drop(ctx, b);
+    frameOrder.length = 0;
+    dist.clear();
     rt.cut?.dispose();
     ctx.world.collider.overlay = null;
     ctx.world.groundOverride = null;

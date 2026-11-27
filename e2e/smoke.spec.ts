@@ -2,6 +2,9 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 import { openPause } from './helpers/pause';
 import { SCREENS } from './helpers/common';
+import { SAVE_KEY } from '../src/core/save';
+import { createInitialState, serializeState } from '../src/core/state';
+import { createStorySlice } from '../src/systems/story/engine';
 
 /**
  * Smoke + visual tests. Screenshots land in test-results/screens/*.png — look at them after a
@@ -85,7 +88,7 @@ test('the tour starts with audio and Continue restores the read-only autosave', 
   await page.screenshot({ path: `${SCREENS}/title.png` });
 
   // version + build, and „Neuigkeiten“ with its unseen badge (cleared once opened)
-  await expect(page.getByTestId('title-version')).toContainText(/Version \d+\.\d+\.\d+ · Build \S+/);
+  await expect(page.getByTestId('title-version')).toContainText(/Version \d+\.\d+\.\d+ · Stand \S+/);
   const badge = page.locator('.kq-news-badge');
   await expect(badge).toBeVisible();
   await page.getByTestId('title-news').click();
@@ -249,6 +252,50 @@ for (const view of [
         terrain.release();
       }
     });
+  });
+}
+
+for (const hasEnding of [false, true]) {
+  test(`saved-game actions keep their positions when ready (${hasEnding ? 'ending slot' : 'ordinary save'})`, async ({ page }) => {
+    const terrain = holdRequest();
+    const saved = createInitialState();
+    if (hasEnding) saved.systems.story = { ...createStorySlice(), ending: 'museum', finished: true };
+    const slots: [string, string][] = [[SAVE_KEY('auto'), serializeState(saved)]];
+    if (hasEnding) slots.push([SAVE_KEY('ending'), serializeState(createInitialState())]);
+    await page.addInitScript((entries) => {
+      for (const [key, data] of entries) localStorage.setItem(key, data);
+    }, slots);
+    await page.route('**/data/terrain/meta.json', async (route) => {
+      await terrain.pending;
+      await route.fallback();
+    });
+    try {
+      await page.goto('./?manual&q=low', { waitUntil: 'commit' });
+      const resume = page.getByTestId('title-continue');
+      const start = page.getByTestId('title-new');
+      const ending = page.getByTestId('title-ending-again');
+      await expect(resume).toBeVisible();
+      await expect(resume).toBeDisabled();
+      await expect(start).toBeDisabled();
+      if (hasEnding) {
+        await expect(ending).toBeVisible();
+        await expect(ending).toBeDisabled();
+      } else await expect(ending).toHaveCount(0);
+      await page.evaluate(() => document.fonts.ready.then(() => true));
+      const actions = hasEnding ? [resume, start, ending] : [resume, start];
+      const before = await Promise.all(actions.map((action) => action.boundingBox()));
+      terrain.release();
+      await expect(resume).toBeFocused({ timeout: 90_000 });
+      await expect(resume).toHaveText('Weiter');
+      await expect(start).toHaveText('Neues Spiel');
+      if (hasEnding) {
+        await expect(ending).toBeEnabled();
+        await expect(ending).toHaveText('Ende noch einmal wählen');
+      }
+      expect(await Promise.all(actions.map((action) => action.boundingBox()))).toEqual(before);
+    } finally {
+      terrain.release();
+    }
   });
 }
 

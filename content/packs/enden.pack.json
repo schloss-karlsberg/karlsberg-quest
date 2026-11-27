@@ -677,7 +677,7 @@
     {
       "id": "epilog.objekt.nichts.museum",
       "speaker": "epilog",
-      "text_de": "Daneben: nichts. Das Fach ist leer, und auf dem Schild steht: ‚Was nicht gerettet wurde.‘",
+      "text_de": "Daneben: nichts. Das Fach ist leer, und auf dem Schild steht: „Was nicht gerettet wurde.“",
       "trigger": {
         "event": "epilog:line",
         "block": "objekt",

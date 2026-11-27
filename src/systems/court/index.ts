@@ -276,7 +276,7 @@ class CourtRuntime {
   /** A watcher's name for a spoken line: the speakers pack, else "Wache" (never a raw id). */
   private speaker(id: string): string {
     const m = speakerMeta(id, this.ctx.content);
-    return m.name && m.name !== id ? m.name : t('court.speaker');
+    return m.name && m.name !== id && m.name !== t('common.unknownPerson') ? m.name : t('court.speaker');
   }
 
   private flag(k: string): boolean {

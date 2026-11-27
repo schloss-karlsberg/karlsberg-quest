@@ -5,11 +5,24 @@
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import type { GameEvents } from '../src/core/events';
-import type { FlagValue, QuestDef, QuestFile } from '../src/rpg/types';
+import { EventBus, type GameEvents } from '../src/core/events';
+import { SaveManager } from '../src/core/save';
+import { GameStateStore, createInitialState, deserializeState, serializeState } from '../src/core/state';
+import { enemyDef } from '../src/rpg/enemies';
+import { itemDef } from '../src/rpg/items';
+import type { EnemyGroupState, FlagValue, QuestDef, QuestFile } from '../src/rpg/types';
+import { remaining, upsertGroup } from '../src/systems/combat/rules';
 import type { MenagerieSlice } from '../src/systems/menagerie';
-import { questsInPlay } from '../src/systems/quests/data';
+import { giverPlacedIn, questsInPlay, sideQuestClosed } from '../src/systems/quests/data';
 import { QuestBook, type QuestDefIn, type QuestEnv, availableHolds, createQuestSlice, normaliseSlice, seededRng, spawnGroup, turninOf } from '../src/systems/quests/logic';
+import type { StoryFile } from '../src/systems/story/types';
+import k1Quests from '../content/quests/01-kapitel-1.quests.json';
+import k2Quests from '../content/quests/02-kapitel-2.quests.json';
+import k3Quests from '../content/quests/03-kapitel-3.quests.json';
+import k4Quests from '../content/quests/04-kapitel-4.quests.json';
+import k3Story from '../content/story/03-kapitel-3.story.json';
+import k4Story from '../content/story/04-kapitel-4.story.json';
+import { ProgressionCore, createProgressionSlice } from '../src/systems/progression/logic';
 
 const testFile = JSON.parse(readFileSync(new URL('../content/quests/99-test.quests.json', import.meta.url), 'utf8')) as QuestFile;
 
@@ -47,6 +60,413 @@ function book(extra: QuestDef[] = [], chapter = 'test', seed = 7) {
 }
 
 const kill = (b: QuestBook, p: Record<string, unknown>) => b.handle('enemy:killed', { id: `e${Math.random()}`, group: 'g', kind: 'mahnbrief', x: 1271, z: -1214, era: '1789', boss: false, by: 'light', ...p });
+
+describe('Chapter 2 Pikeur credit', () => {
+  const id = 'q.k2.parforce';
+  const clue = 'clue.k2.landremont';
+  const encounter = { group: 'k2.pikeur', kind: 'pikeur', era: '1793-02', x: 826, z: -868, boss: true } as const;
+
+  function hunt() {
+    const file = JSON.parse(readFileSync(new URL('../content/quests/02-kapitel-2.quests.json', import.meta.url), 'utf8')) as QuestFile;
+    const { quests } = questsInPlay([{ data: file }], false);
+    const e = env();
+    const b = new QuestBook(quests, createQuestSlice(), e);
+    b.offer(id);
+    b.accept(id);
+    const groups: Record<string, EnemyGroupState> = {};
+    upsertGroup(groups, encounter);
+    return { b, e, groups };
+  }
+
+  it('credits the fight normally when the echo is heard first', () => {
+    const { b } = hunt();
+    b.handle('echo:end', { id: clue });
+    expect(b.count(id, 'kalk')).toBe(1);
+    expect(kill(b, encounter)).toBe(true);
+    expect(b.count(id, 'pikeur')).toBe(1);
+    expect(b.openObjectives(b.defs.get(id)!).map((o) => o.id)).toEqual(['heim']);
+  });
+
+  it('credits an early fight once the echo opens the Pikeur objective', () => {
+    const { b, e, groups } = hunt();
+    groups[encounter.group]!.killed = 1;
+    expect(kill(b, encounter)).toBe(false);
+    upsertGroup(groups, encounter); // the story declares the spawned fight again
+    const group = groups[encounter.group]!;
+    expect(remaining(group)).toBe(0);
+
+    b.settleKnown(() => false, undefined, { group, era: encounter.era });
+    expect(b.count(id, 'pikeur')).toBe(0);
+    b.handle('echo:end', { id: clue });
+    b.settleKnown(() => false, undefined, { group, era: encounter.era });
+    b.settleKnown(() => false, undefined, { group, era: encounter.era });
+    expect(b.count(id, 'kalk')).toBe(1);
+    expect(b.openObjectives(b.defs.get(id)!).map((o) => o.id)).toEqual(['heim']);
+    expect(e.flags[`quest.${id}.pikeur`]).toBe(1);
+    expect(e.log.filter(({ n }) => ['enemy:killed', 'enemy:spawn', 'xp:grant', 'item:grant', 'loot:place'].includes(n))).toEqual([]);
+  });
+
+  it.each(['1793-02', 'today'] as const)('recovers a stalled save in %s', (era) => {
+    const { b, groups } = hunt();
+    b.handle('echo:end', { id: clue });
+    groups[encounter.group]!.killed = 1;
+    const saved = JSON.parse(JSON.stringify({ quest: b.slice, combat: groups }));
+    const e = env();
+    const resumed = new QuestBook(b.defs, normaliseSlice(saved.quest), e);
+    resumed.mirror();
+    resumed.reassert();
+    resumed.settleKnown(() => false, undefined, { group: saved.combat[encounter.group], era });
+
+    expect(e.flags[`quest.${id}.pikeur`]).toBe(1);
+    if (era === '1793-02') {
+      expect(resumed.count(id, 'heim')).toBe(0);
+      resumed.handle('era:change', { from: era, to: 'today' });
+    }
+    expect(resumed.state(id)).toBe('done');
+    expect(e.log.filter(({ n }) => n === 'enemy:killed' || n === 'enemy:spawn')).toEqual([]);
+    expect(e.log.filter(({ n, p }) => n === 'xp:grant' && p.reason === `quest:${id}`)).toHaveLength(1);
+  });
+
+  it('ignores a living Pikeur and clears of other groups or enemy kinds', () => {
+    const { b, groups } = hunt();
+    b.handle('echo:end', { id: clue });
+    const group = groups[encounter.group]!;
+    expect(kill(b, { ...encounter, group: 'other.pikeur' })).toBe(false);
+    for (const candidate of [group, { ...group, group: 'other.pikeur', killed: 1 }, { ...group, kind: 'streuner', killed: 1 }]) {
+      b.settleKnown(() => false, undefined, { group: candidate, era: encounter.era });
+      expect(b.count(id, 'pikeur')).toBe(0);
+    }
+  });
+});
+
+const k1File = JSON.parse(readFileSync(new URL('../content/quests/01-kapitel-1.quests.json', import.meta.url), 'utf8')) as QuestFile;
+describe('Chapter 1 save recovery', () => {
+  it('reconciles an autosave with the Registratur pack cleared one kill ahead of the quest', () => {
+    const { b, of } = book(k1File.quests, 'k1');
+    const quest = 'q.k1.registratur';
+    b.accept(quest);
+    for (const objective of ['rechenbrett', 'kaufbrief', 'heft']) b.progress(quest, objective);
+    b.progress(quest, 'briefe', 5);
+    const state = createInitialState();
+    state.systems.quests = b.slice;
+    const group = `${quest}.briefe`;
+    state.systems.combat = { hp: 100, stamina: 100, bann: 100, deaths: 0, groups: {
+      [group]: { group, kind: 'mahnbrief', era: '1789', x: 1212, z: -1180, count: 6, killed: 6, quest, objective: 'briefe' },
+    } };
+    const saved = deserializeState(serializeState(state));
+    b.slice = saved.systems.quests!;
+    b.reassert(saved.systems.combat, saved.systems.progression);
+    b.reassert(saved.systems.combat, saved.systems.progression);
+    expect(b.count(quest, 'briefe')).toBe(6);
+    expect(b.state(quest)).toBe('ready');
+    expect(of('quest:ready')).toEqual([{ id: quest }]);
+  });
+
+  it('restores the wage slip after reloading a save taken during the Schuldbuch kill', () => {
+    const { b, of } = book(k1File.quests, 'k1');
+    const quest = 'q.k1.lohn';
+    b.accept(quest);
+    b.progress(quest, 'soll');
+    b.progress(quest, 'zeichen');
+    const state = createInitialState();
+    state.systems.quests = b.slice;
+    const group = `${quest}.buch`;
+    state.systems.combat = { hp: 100, stamina: 100, bann: 100, deaths: 0, groups: {
+      [group]: { group, kind: 'schuldbuch', era: '1789', x: 1300, z: -1254, count: 1, killed: 1, quest, objective: 'buch' },
+    } };
+    const saved = deserializeState(serializeState(state));
+    b.slice = saved.systems.quests!;
+    b.reassert(saved.systems.combat, saved.systems.progression);
+    expect(b.count(quest, 'buch')).toBe(1);
+    expect(of('loot:place')).toEqual([expect.objectContaining({ quest, item: 'item.k1.lohnzettel', era: '1789', x: 1300, z: -1254 })]);
+    b.handle('item:pickup', { item: 'item.k1.lohnzettel', count: 1 });
+    b.reassert(saved.systems.combat, saved.systems.progression);
+    expect(of('loot:place')).toHaveLength(1);
+    expect(b.state(quest)).toBe('ready');
+  });
+
+  it('finishes the Schuldbuch rewards from the first-drop autosave exactly once', () => {
+    const events = new EventBus();
+    const { quests } = questsInPlay([{ data: k1File }], false);
+    const state = new GameStateStore(createInitialState());
+    const storage = new Map<string, string>();
+    const save = new SaveManager(state, {
+      getItem: (key) => storage.get(key) ?? null,
+      setItem: (key, value) => void storage.set(key, value),
+      removeItem: (key) => void storage.delete(key),
+    }, events, () => 10_000, () => 10_000);
+    const progression = new ProgressionCore(() => state.slice('progression', createProgressionSlice), {
+      emit: (name, payload) => events.emit(name, payload), item: itemDef, setMembers: () => [],
+      statOptions: () => ({}), setLevelFlag: (level) => { state.mutable.flags['rpg.level'] = level; },
+    });
+    const b = new QuestBook(quests, createQuestSlice(), {
+      get flags() { return state.mutable.flags; }, codex: [], now: () => 0, rng: () => 0,
+      emit: (name, payload) => events.emit(name, payload),
+    });
+    events.on('loot:place', (pickup) => {
+      progression.place(pickup);
+      save.autosave('progression-loot');
+    });
+    events.on('save:loaded', () => {
+      b.slice = state.mutable.systems.quests!;
+      b.reassert(state.state.systems.combat, progression.slice());
+    });
+    const quest = 'q.k1.lohn';
+    const group = `${quest}.buch`;
+    b.accept(quest);
+    b.progress(quest, 'soll');
+    b.progress(quest, 'zeichen');
+    state.mutable.systems.quests = b.slice;
+    state.mutable.systems.combat = { hp: 100, stamina: 100, bann: 2, deaths: 0, groups: {
+      [group]: { group, kind: 'schuldbuch', era: '1789', x: 1300, z: -1254, count: 1, killed: 1, quest, objective: 'buch' },
+    } };
+    state.mutable.era = '1789';
+    Object.assign(progression.slice(), { xp: 110, drops: 7 });
+
+    // The legacy progression listener saved inside the loot roll, before bestiary, quest and XP credit.
+    const rolled = progression.enemyKilled({ id: `${group}.1`, group, quest, objective: 'buch', kind: 'schuldbuch', x: 1305, z: -1257, era: '1789', boss: true, by: 'light' }, enemyDef('schuldbuch'));
+    const raw = JSON.parse(storage.get('kq.save.v1.auto')!);
+    expect(raw.systems.progression.placed).toEqual({ 'drop.7.0': rolled[0] });
+    expect(raw.systems.progression.xp).toBe(110);
+    expect(raw.systems.quests.bestiary?.schuldbuch).toBeUndefined();
+
+    // A Balsam from elsewhere is insufficient evidence even with a recorded boss defeat.
+    const unrelated = structuredClone(raw);
+    unrelated.systems.progression.placed['drop.7.0'].x = 2000;
+    storage.set('kq.save.v1.unrelated', JSON.stringify(unrelated));
+    expect(save.load('unrelated')).toBe(true);
+    expect(progression.slice().xp).toBe(110);
+    expect(b.slice.bestiary?.schuldbuch).toBeUndefined();
+    expect(progression.pickups().filter((p) => p.drop)).toHaveLength(1);
+
+    expect(save.load()).toBe(true);
+    expect(progression.slice()).toMatchObject({ xp: 310, level: 2, points: 1, drops: 8 });
+    expect(b.slice.bestiary?.schuldbuch).toBe(1);
+    expect(b.count(quest, 'buch')).toBe(1);
+    const slip = progression.pickups().find((p) => p.item === 'item.k1.lohnzettel');
+    expect(slip).toBeDefined();
+    expect(rolled.map((p) => p.item)).toEqual(['item.balsam', 'item.riechsalz', 'item.lampenoel', 'item.kalkstaub']);
+    expect(progression.pickups()).toEqual([...rolled, slip]);
+
+    expect(progression.take(rolled[1]!.id)).toBe(1);
+    const remaining = progression.pickups();
+    expect(save.save()).toBe(true);
+    expect(save.load()).toBe(true);
+    expect(progression.slice()).toMatchObject({ xp: 310, level: 2, points: 1, drops: 8, inventory: { 'item.riechsalz': 1 } });
+    expect(b.slice.bestiary?.schuldbuch).toBe(1);
+    expect(progression.pickups()).toEqual(remaining);
+  });
+
+  it('loads a first-drop Schuldbuch save with a corrupt bestiary or taken list without throwing', () => {
+    const quest = 'q.k1.lohn';
+    const group = `${quest}.buch`;
+    const state = createInitialState();
+    state.systems.quests = { ...createQuestSlice(), quests: { [quest]: { state: 'active', counts: { soll: 1, zeichen: 1 }, t: 0 } } };
+    state.systems.combat = { hp: 100, stamina: 100, bann: 2, deaths: 0, groups: {
+      [group]: { group, kind: 'schuldbuch', era: '1789', x: 1300, z: -1254, count: 1, killed: 1, quest, objective: 'buch' },
+    } };
+    state.systems.progression = { ...createProgressionSlice(), drops: 8, placed: {
+      'drop.7.0': { id: 'drop.7.0', item: 'item.balsam', count: 1, x: 1301, z: -1255, era: '1789', drop: true },
+    } };
+    for (const corrupt of [{ bestiary: 5 }, { taken: 'drop.7.1' }]) {
+      const raw = JSON.parse(serializeState(state));
+      if ('bestiary' in corrupt) raw.systems.quests.bestiary = corrupt.bestiary;
+      else raw.systems.progression.taken = corrupt.taken;
+      expect(() => deserializeState(JSON.stringify(raw))).not.toThrow();
+    }
+  });
+
+  it('lets the gardener pay once for the Kasuar led home before quest acceptance, after the story cleared it', () => {
+    const quest = 'q.k1.kasuar';
+    const { quests } = questsInPlay([{ data: k1File }], false);
+    // K1's end clears the spawn record; only the calm ID is left in the save
+    const e = env(7, { animals: [], calmed: ['kasuar'] });
+    const b = new QuestBook(quests as Map<string, QuestDefIn>, createQuestSlice(), e);
+    b.settleKnown(() => false);
+    expect(b.state(quest)).toBe('hidden');
+    b.accept(quest);
+    expect(b.state(quest)).toBe('ready');
+    b.handle('menagerie:calmed', { animal: 'cassowary', id: 'unrelated' });
+    b.settleKnown(() => false);
+    expect(b.count(quest, 'beruhigen')).toBe(1);
+    expect(b.complete(quest)?.items).toEqual([{ item: 'item.charm.feder', count: 1 }]);
+    expect(b.complete(quest)).toBeNull();
+    expect(e.log.filter((x) => x.n === 'item:grant')).toHaveLength(1);
+  });
+});
+
+describe('optional progress across chapter windows and saves', () => {
+  it('normalises a saved replay attempt and drops a corrupt one', () => {
+    const ok = normaliseSlice({ quests: {}, replay: { chapter: 'k3', quests: { a: { state: 'hidden' }, b: { state: 'bogus' } } } } as never);
+    expect(ok.replay?.quests).toEqual({ a: { state: 'hidden', counts: {}, t: 0 } });
+    expect(normaliseSlice({ quests: {}, replay: { chapter: 3, quests: [] } } as never).replay).toBeUndefined();
+  });
+
+  it('accepts a giver placed with a sub-chapter of the running chapter (Hanne in the garden, k3g)', () => {
+    expect(giverPlacedIn({ chapter: 'k3g' }, 'k3')).toBe(true);
+    expect(giverPlacedIn({ chapter: 'k3' }, 'k3')).toBe(true);
+    expect(giverPlacedIn({}, 'k3')).toBe(true);
+    expect(giverPlacedIn({ chapter: 'k2' }, 'k3')).toBe(false);
+    expect(giverPlacedIn(undefined, 'k3')).toBe(false);
+  });
+
+  it('credits the already-homed Karlslust cassowary after accepting the gardener’s quest', () => {
+    const state = createInitialState();
+    state.systems.menagerie = { animals: [], calmed: ['kasuar'] };
+    const saved = deserializeState(serializeState(state));
+    const { b, e, of } = book((k1Quests as QuestFile).quests, 'k1');
+    const id = 'q.k1.kasuar';
+    Object.assign(e, { hasCalmed: (animal: string) => animal === 'cassowary' && saved.systems.menagerie?.calmed?.includes('kasuar') });
+    b.complete('q.k1.lohn', true);
+    b.offerAvailable('k1', '1789');
+    expect(b.accept(id)).toBe(true);
+    b.settleKnown(() => false);
+    expect(b.state(id)).toBe('ready');
+    expect(b.complete(id)).not.toBeNull();
+    b.settleKnown(() => false);
+    expect(of('quest:completed').filter((event) => event.id === id)).toHaveLength(1);
+  });
+
+  it('does not restart the Graben quest or keep its stale hint after the K4 deadline', () => {
+    const { b, e } = book((k4Quests as QuestFile).quests, 'k4');
+    let beat = 'k4_14';
+    e.sideClosed = (id) => sideQuestClosed(k4Story as StoryFile, beat, id);
+    b.complete('q.k4.steinplatz', true);
+    expect(b.offerAvailable('k4', 'today')).not.toContain('q.k4.graeben');
+    expect(b.state('q.k4.graeben')).toBe('hidden');
+    beat = 'k4_7';
+    expect(b.offerAvailable('k4', '1796')).toContain('q.k4.graeben');
+    expect(b.tracked()).toContain('q.k4.graeben');
+    beat = 'k4_15';
+    b.reconcileDeadlines('k4');
+    expect(b.state('q.k4.graeben')).toBe('failed');
+    expect(b.tracked()).not.toContain('q.k4.graeben');
+  });
+
+  it('uses Peter’s earlier departure and preserves bonus XP across repeated attempts', () => {
+    const chair = 'q.k3.lehnstuhl';
+    expect(sideQuestClosed(k3Story as StoryFile, 'k3_2', chair)).toBe(false);
+    expect(sideQuestClosed(k3Story as StoryFile, 'k3_3', chair)).toBe(true);
+    expect(sideQuestClosed(k3Story as StoryFile, 'k3_3', 'q.k3.kabinett')).toBe(false);
+    expect(sideQuestClosed(k4Story as StoryFile, 'k4_9', 'q.k4.pacht')).toBe(true);
+    const checkpoint = book((k3Quests as QuestFile).quests, 'k3');
+    checkpoint.b.accept(chair);
+    checkpoint.b.close(chair);
+    checkpoint.e.canOfferAtNpc = () => false;
+    expect(checkpoint.b.offerAvailable('k3', '1793-07')).not.toContain(chair);
+    checkpoint.e.canOfferAtNpc = (npc) => npc === 'peter';
+    expect(checkpoint.b.offerAvailable('k3', '1793-07')).toContain(chair);
+    const { b, of } = book((k4Quests as QuestFile).quests, 'k4');
+    const id = 'q.k4.zeichen';
+    b.accept(id);
+    b.progress(id, 'eins');
+    b.close(id);
+    b.offer(id);
+    b.close(id);
+    b.offer(id);
+    b.accept(id);
+    expect(b.progress(id, 'eins')).toBe(false);
+    expect(of('xp:grant')).toHaveLength(1);
+  });
+
+  it('offers a missed Bilderkisten quest again when replaying its original chapter', () => {
+    const { b } = book((k2Quests as QuestFile).quests, 'k2');
+    const id = 'q.k2.kisten';
+    b.complete('q.k2.spur', true);
+    b.offerAvailable('k2', '1793-02');
+    expect(b.accept(id)).toBe(true);
+    b.fail(id, 'chapter');
+    expect(b.offerAvailable('k3', '1793-07')).not.toContain(id);
+    expect(b.offerAvailable('k2', '1793-02')).toContain(id);
+    expect(b.state(id)).toBe('offered');
+  });
+
+  it('recovers the already-taken Bilderkiste in a replay save with reset objective counts', () => {
+    const id = 'q.k2.kisten';
+    const item = 'item.k2.kiste';
+    const { b, e } = book((k2Quests as QuestFile).quests, 'k2');
+    const state = createInitialState();
+    b.accept(id);
+    state.systems.quests = b.slice;
+    state.systems.progression = { ...createProgressionSlice(), taken: [`${id}.kisten.0`, 'another.quest.pickup'], inventory: { [item]: 1 } };
+    const afterLoad = deserializeState(serializeState(state));
+    b.slice = afterLoad.systems.quests!;
+    e.takenPickups = () => afterLoad.systems.progression!.taken;
+    b.settleKnown(() => false);
+    b.settleKnown(() => false);
+    expect(b.count(id, 'kisten')).toBe(1);
+    for (let index = 0; index < 3; index++) b.handle('item:pickup', { item, count: 1 });
+    for (let index = 0; index < 4; index++) kill(b, { quest: id, objective: 'hunde', kind: 'streuner' });
+    expect(b.state(id)).toBe('ready');
+  });
+
+  it('recovers a taken Pacht slip when a retry reuses the enemy drop ID after reload', () => {
+    const id = 'q.k4.pacht';
+    const { b, e, of } = book((k4Quests as QuestFile).quests, 'k4');
+    let saved = createInitialState();
+    saved.systems.progression = createProgressionSlice();
+    const pickup = new ProgressionCore(() => saved.systems.progression!, {
+      emit: (name, payload) => { b.handle(name, payload); },
+      item: (item) => (k4Quests as QuestFile).items?.find((entry) => entry.id === item),
+      setMembers: () => [],
+      statOptions: () => ({}),
+      setLevelFlag: () => {},
+    });
+    const emit = e.emit;
+    e.emit = (name, payload) => {
+      if (name === 'loot:place') pickup.place(payload as GameEvents['loot:place']);
+      if (name === 'loot:clear') pickup.clear(payload as GameEvents['loot:clear']);
+      emit(name, payload);
+    };
+    e.takenPickups = () => saved.systems.progression!.taken;
+    const defeat = (index: number) => {
+      const enemyId = `${id}.fresser.${index}#0`;
+      kill(b, { id: enemyId, quest: id, objective: 'fresser', kind: 'steinfresser', era: '1796' });
+      return of('loot:place').at(-1)!.id as string;
+    };
+    b.complete('q.k4.baumagazin', true);
+    b.offerAvailable('k4', '1796');
+    expect(b.accept(id)).toBe(true);
+    const first = defeat(0);
+    expect(pickup.take(first)).toBe(1);
+    b.close(id);
+    const taken = saved.systems.progression.taken;
+    taken.push(first, 'q.k3.kabinett.zettel.drop.other', `${id}.zettel-extra.drop.other`);
+    saved.systems.quests = b.slice;
+    saved = deserializeState(serializeState(saved));
+    b.slice = saved.systems.quests!;
+    expect(b.offerAvailable('k4', '1796')).toContain(id);
+    expect(b.accept(id)).toBe(true);
+    b.settleKnown(() => false);
+    b.settleKnown(() => false);
+    expect(b.count(id, 'zettel')).toBe(1);
+    expect(pickup.take(defeat(0))).toBe(0);
+    expect(pickup.take(defeat(1))).toBe(1);
+    expect(pickup.take(defeat(2))).toBe(1);
+    expect(b.count(id, 'fresser')).toBe(3);
+    expect(b.count(id, 'zettel')).toBe(3);
+    expect(b.state(id)).toBe('ready');
+  });
+
+  it('keeps earned main-quest bonuses once across repeated K3 attempts', () => {
+    const id = 'q.k3.buch';
+    const { b, e, of } = book((k3Quests as QuestFile).quests, 'k3');
+    b.accept(id);
+    b.progress(id, 'koenig');
+    b.complete(id, true);
+    b.startChapter('k3', [id]);
+    expect(e.flags[`quest.${id}`]).toBe('hidden');
+    expect(b.accept(id)).toBe(true);
+    expect(b.progress(id, 'koenig')).toBe(false);
+    expect(b.progress(id, 'messen')).toBe(true);
+    b.startChapter('k4');
+    expect(e.flags[`quest.${id}`]).toBe('done');
+    b.startChapter('k3', [id]);
+    expect(b.accept(id)).toBe(true);
+    expect(b.progress(id, 'messen')).toBe(false);
+    expect(of('xp:grant').map(({ reason }) => reason)).toEqual([`quest:${id}:koenig`, `quest:${id}`, `quest:${id}:messen`]);
+  });
+});
 
 describe('quest lifecycle (q.test.lohnzettel)', () => {
   it('offer → accept → kill 3 → collect → ready → turn-in', () => {

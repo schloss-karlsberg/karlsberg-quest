@@ -4,7 +4,7 @@
  * - Spawned ONLY by the story: event 'menagerie:spawn' {animal, x, z, id?, heading?, count?}
  *   or story action {"do":"cue","id":"menagerie:spawn","data":{…same fields…}}; removed by
  *   'menagerie:clear' {id?} / cue "menagerie:clear". kq.menagerie.spawn() for debugging.
- * - An animal belongs to the era it was spawned in: it is only present while that era is shown
+ * - An animal belongs to the specified era (the current era by default); it is only present while that era is shown
  *   (switching back brings it back). Spawns persist in the 'menagerie' state slice.
  * - Behaviour: logic.ts (pure). Visuals: models.ts (procedural low-poly rigs). Sound: audio.ts.
  * - No combat, never "caught": the cassowary's charge or the jaguar's shove KNOCK YOU DOWN for a
@@ -19,6 +19,8 @@ import './strings';
 import { Color } from 'three';
 import type { GameContext } from '../../core/context';
 import { screenFlashScale } from '../../core/motion';
+import { isEra } from '../../core/era';
+import type { GameEvents } from '../../core/events';
 import { defineSystem } from '../../core/systems';
 import { atmosphere } from '../../world/atmosphere';
 import type { MenagerieAnimal } from '../contracts';
@@ -144,7 +146,7 @@ class MenagerieSystem {
       }
     });
     ev.on('menagerie:spawn', (s) => this.spawn(s));
-    ev.on('menagerie:clear', ({ id }) => this.clear(id));
+    ev.on('menagerie:clear', ({ id, keepProgress }) => this.clear(id, keepProgress));
     ev.on('story:cue', ({ id, data }) => {
       if (id === 'menagerie:spawn' && data) {
         const animal = data['animal'];
@@ -155,9 +157,17 @@ class MenagerieSystem {
           return;
         }
         const num = (k: string) => (typeof data[k] === 'number' ? (data[k] as number) : undefined);
-        this.spawn({ animal: animal as MenagerieAnimal, x, z, id: typeof data['id'] === 'string' ? (data['id'] as string) : undefined, heading: num('heading'), count: num('count') });
-      } else if (id === 'menagerie:clear') this.clear(typeof data?.['id'] === 'string' ? (data['id'] as string) : undefined);
+        const era = isEra(data['era']) ? data['era'] : undefined;
+        this.spawn({ animal: animal as MenagerieAnimal, x, z, era, id: typeof data['id'] === 'string' ? data['id'] : undefined, heading: num('heading'), count: num('count') });
+      } else if (id === 'menagerie:clear') {
+        this.clear(typeof data?.['id'] === 'string' ? data['id'] : undefined, data?.['keepProgress'] === true);
+      }
     });
+    const forgetClosedJaguar = ({ id }: { id: string }) => {
+      if (id === 'q.k3.jaguar') this.forgetProgress('k3.jaguar');
+    };
+    ev.on('quest:completed', forgetClosedJaguar);
+    ev.on('quest:failed', forgetClosedJaguar);
     // calming (docs/ACTION-RPG.md §4.6): a cassowary that charged past you three times can be led
     // home; a jaguar driven back by three Bannlicht flares slinks off for good
     ev.on('combat:bann', ({ x, z, yaw, range, angle }) => {
@@ -196,11 +206,15 @@ class MenagerieSystem {
     return s;
   }
 
-  spawn(s: { animal: MenagerieAnimal; x: number; z: number; id?: string; heading?: number; count?: number }): string {
+  spawn(s: GameEvents['menagerie:spawn']): string {
     const id = s.id ?? `${s.animal}-${Math.round(s.x)}-${Math.round(s.z)}`;
     const sl = this.slice();
+    const era = s.era ?? this.ctx.era.current;
+    const prior = sl.animals.find((a) => a.id === id);
+    if (prior?.era === era && prior.animal === s.animal && prior.x === s.x && prior.z === s.z
+      && prior.heading === s.heading && prior.count === s.count) return id;
     sl.animals = sl.animals.filter((a) => a.id !== id);
-    const saved: SavedAnimal = { animal: s.animal, x: s.x, z: s.z, id, era: this.ctx.era.current };
+    const saved: SavedAnimal = { animal: s.animal, x: s.x, z: s.z, id, era };
     if (s.heading !== undefined) saved.heading = s.heading;
     if (s.count !== undefined) saved.count = s.count;
     sl.animals.push(saved);
@@ -208,9 +222,23 @@ class MenagerieSystem {
     return id;
   }
 
-  clear(id?: string): void {
+  /** Drop the partial calming counts (flares, misses) of a spawn id, or of all spawns. */
+  private forgetProgress(id?: string): void {
     const sl = this.slice();
-    sl.animals = id === undefined ? [] : sl.animals.filter((a) => a.id !== id);
+    for (const counts of [sl.flares, sl.misses]) {
+      if (typeof counts !== 'object' || counts === null) continue;
+      for (const animalId of Object.keys(counts)) {
+        if (id === undefined || id === groupId(animalId)) delete counts[animalId];
+      }
+    }
+  }
+
+  clear(id?: string, keepProgress = false): void {
+    const sl = this.slice();
+    if (!keepProgress) this.forgetProgress(id);
+    const remaining = id === undefined ? [] : sl.animals.filter((a) => a.id !== id);
+    if (remaining.length === sl.animals.length) return;
+    sl.animals = remaining;
     this.rebuild();
   }
 

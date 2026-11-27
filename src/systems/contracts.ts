@@ -99,8 +99,13 @@ declare module '../core/events' {
        */
       lore?: boolean;
     };
-    /** `resume`: the chapter / beat is entered again after a load or a capture, not reached anew. */
-    'story:chapter': { id: string; resume?: true };
+    /** The speaker currently presented by the story card, or null between lines. */
+    'dialogue:active': { speaker: string | null };
+    /**
+     * `resume`: the chapter / beat is entered again after a load or a capture, not reached anew.
+     * `replay`: completed main quests that get a fresh attempt (chapter select).
+     */
+    'story:chapter': { id: string; resume?: true; replay?: readonly string[] };
     'story:beat': { chapter: string; beat: string; resume?: true };
     'story:ending': { id: 'museum' | 'burn' | 'keep' };
     'hub:enter': Record<string, never>;
@@ -147,9 +152,9 @@ declare module '../core/events' {
      * (player-yaw convention), count for a group (dromedaries), id to address / clear it later.
      * Also accepted as story action `{"do":"cue","id":"menagerie:spawn","data":{animal,x,z,…}}`.
      */
-    'menagerie:spawn': { animal: MenagerieAnimal; x: number; z: number; id?: string; heading?: number; count?: number };
-    /** Remove one animal (id) or all of them. */
-    'menagerie:clear': { id?: string };
+    'menagerie:spawn': { animal: MenagerieAnimal; x: number; z: number; era?: Era; id?: string; heading?: number; count?: number };
+    /** Remove one animal (id) or all of them. keepProgress makes the removal temporary. */
+    'menagerie:clear': { id?: string; keepProgress?: boolean };
 
     // ---- chronik (owner: chronik) ---------------------------------------------------------
     'clue:found': { id: string; kind: string };

@@ -407,7 +407,7 @@ Owner of the tour systems (`src/systems/walk/` etc.) and of the mobile/UI follow
 - Canvas 2D redraws at about 10 Hz with zero additional 3D draw calls. See
   [the minimap draw-cost notes](PERFORMANCE.md#38-minimap-task-015).
 
-### 7.2 Tour playtest findings still open
+### 7.2 Tour playtest findings
 
 Source: the playtest report of 2026-11-21 (tour-playtest @ 69c1fc0). It lives in a temp folder
 (`playtest-tour/report.md` in the playtester's scratchpad), so the essence is copied here.
@@ -415,21 +415,22 @@ Source: the playtest report of 2026-11-21 (tour-playtest @ 69c1fc0). It lives in
 - Findings 1–4 are FIXED (MR 14 `feat/tour-find-group` c2843ce + slice `tour/slice-find` 3997f28).
 - Findings 5–6 (dogs not moved by fades/warps; dogs slide backwards on 180° turns) are with kq-characters.
 - TASK-017 addresses findings 12–13. See the [implementation and tuning notes](design/tour/slice-v0.md#deer-photo-and-sneak-tuning-task-017).
+- TASK-022 addresses findings 5–6 and the slice findings on walker dithering, the group disappearing
+  in view and wait-bark coverage. See the [tour systems notes](design/tour/systems.md).
+- TASK-016 addresses findings 7, 9, 10, 11 and 18. See the [tour systems notes](design/tour/systems.md).
+- TASK-018 addresses findings 8, 14 and 16. TASK-007 had already removed the lantern gate in
+  finding 15. TASK-018 also addresses the three MR 14 items and the chapter card, Quelle prompt
+  and radio, and Bussole objective items from the slice polish list below.
 
 | # | Severity | Essence |
 |---|---|---|
-| 7 | major | The dog cinematic at Wind never shows the dogs (camera 2.6 m behind the player inside the crowd). Camera beside/above, or fade out occluders |
 | 8 | minor | Quelle trough is fiddly: stuck at the wall 3 m away, trigger 1.6 m, wrong prompt „E Pause an der Quelle“ |
-| 9 | minor | At stops the group does not face the guide; the guide does not turn to the player in dialogue |
-| 10 | minor | No player–group collision; a dog clips through legs |
-| 11 | minor | Camera inside the rock face at Felsenpfad; the radio box covers the player |
 | 12 | minor | Photo mode keeps HUD and waymarks (tracker over the phone clock, bars/pill, prompt over 1×/2×, objective ring on the deer) |
 | 13 | minor | Deer photo needs ~13 m for "good"; deer half behind a boulder; sneak meter very forgiving |
 | 14 | minor | Title button flips from „Neues Feldbuch beginnen“ to „Fortsetzen“ under the cursor when loading ends |
 | 15 | minor | Lantern-gate line „Früh am Morgen, vor dem Bauwagen“ is wrong for the tour (afternoon, car park) |
 | 16 | minor | Stale „Pause an der Quelle“ prompt during the time shift; clipped tracker „◆ Gerold I“ |
 | 17 | cosmetic | Today's tripod + beam stands next to the 1789 fountain |
-| 18 | cosmetic | The guide walks before „Dann mal los“; a member stands on a boulder during „Bitte nicht auf die Felsen“ |
 
 Tooling note from the report: „Neues Spiel“ deletes the stored save even with `?nosave`.
 
@@ -443,15 +444,13 @@ Slice polish list:
 
 - The „Die Führung“ chapter card lingers ~100 s.
 - The spring prompt and Marlene's radio lines bleed in at the Quelle.
-- Walkers look dithered at 10 m.
 - The Bussole objective lags.
-- The wait barks are untested in e2e.
-- The group vanishes in view.
 - The slice runs too short: 4:41 / 8:16 against the targets of 8 / 12 min.
 - Laub's 1789 arrival line from main does not fit the tour.
 
-Mobile/UI leftovers: the credits strip vs the touch buttons on phones (MR 13, unchecked), and MR 9's
-open visual check in [`docs/MOBILE-UI-PASS.md`](MOBILE-UI-PASS.md) §8.2.
+Mobile/UI leftovers (TASK-020): the phone credits, standalone skill card and MR 9 layout fixes are
+implemented. Run the device checks for those states and verify the pause-modal overlap in
+[`docs/MOBILE-UI-PASS.md` §8.5](MOBILE-UI-PASS.md#85-phone-credits-and-standalone-skill-unlocks-2026-11-26).
 
 ### 7.3 Voices
 

@@ -104,7 +104,15 @@ export function isTouchSetting(v: unknown): v is TouchSetting {
  * is answered with it). 'Maus' (look / aim) has no button: it gets the neutral swipe hint ('look'),
  * never the interact hand.
  */
-export type TouchIcon = 'interact' | 'attack' | 'dodge' | 'bannlicht' | 'shift' | 'fly' | 'map' | 'balm' | 'lock' | 'crouch' | 'relief' | 'pause' | 'photo' | 'look';
+export type TouchIcon = 'interact' | 'attack' | 'dodge' | 'bannlicht' | 'shift' | 'fly' | 'map' | 'balm' | 'lock' | 'crouch' | 'prone' | 'lantern' | 'relief' | 'pause' | 'photo' | 'look';
+
+/** Virtual actions for the stance and lantern controls. */
+export const TOUCH_BUTTON_ACTIONS = {
+  crouch: ['crouch', 'down'],
+  prone: ['prone'],
+  lantern: ['lantern'],
+} satisfies Partial<Record<TouchIcon, Action[]>>;
+
 const KEY_ICON: Record<string, TouchIcon> = {
   E: 'interact',
   Q: 'shift',
@@ -121,7 +129,8 @@ const KEY_ICON: Record<string, TouchIcon> = {
   H: 'balm',
   TAB: 'lock',
   C: 'crouch',
-  X: 'crouch',
+  X: 'prone',
+  L: 'lantern',
   N: 'photo',
   MAUS: 'look',
   MOUSE: 'look',
@@ -146,6 +155,8 @@ const KEY_ICON: Record<string, TouchIcon> = {
   GEISTERBLICK: 'fly',
   SINKEN: 'crouch',
   DUCKEN: 'crouch',
+  HINLEGEN: 'prone',
+  LATERNE: 'lantern',
   PAUSE: 'pause',
 };
 
@@ -155,14 +166,14 @@ export function touchIconFor(key: string): TouchIcon {
 }
 
 /**
- * Which touch button answers a HUD prompt (key + text): null when none does. A movement prompt
- * („W A S D: Gehen …“) belongs to the stick, not to the Aktion button: the button keeps „Aktion“
- * instead of carrying „Gehen · ins Bild klick…“ (M-05).
+ * Which touch button answers a HUD prompt (key + text): null when none does. Movement and sprint
+ * prompts belong to the stick (M-05). A photo prompt points to the shutter once the phone is up.
  */
-export function touchPromptIcon(key: string | null, text: string | null | undefined): TouchIcon | null {
+export function touchPromptIcon(key: string | null, text: string | null | undefined, photoOpen = false): TouchIcon | null {
   if (!key) return text?.trim() ? 'interact' : null;
-  if (/^\s*W\s*[,·/]?\s*A\s*[,·/]?\s*S\s*[,·/]?\s*D\b/i.test(key)) return null;
-  return touchIconFor(key);
+  if (/^\s*(?:W\s*[,·/]?\s*A\s*[,·/]?\s*S\s*[,·/]?\s*D|Umschalt|Shift)\b/i.test(key)) return null;
+  const icon = touchIconFor(key);
+  return icon === 'photo' && photoOpen ? 'attack' : icon;
 }
 
 /**
@@ -188,6 +199,8 @@ const TOUCH_NAMES: Partial<Record<Action, string>> = {
   up: 'Steigen',
   down: 'Sinken',
   crouch: 'Ducken',
+  prone: 'Hinlegen',
+  lantern: 'Laterne',
   pause: 'Pause',
   skill1: '1',
   skill2: '2',

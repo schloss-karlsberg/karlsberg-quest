@@ -92,7 +92,7 @@ function setup(configure: (state: ReturnType<typeof createInitialState>) => void
       look: { disc: 'sun', sky: { stars: 0 }, sun: { elevation: 45 } },
     },
     player: { position: new Vector3(), yaw: 0, stance: 'stand', flying: true, stats: { lanternLit: false, speed: 0 }, impulse() {} },
-    input: { enabled: true, touchMode: false, isDown: () => false, wasPressed: (action: string) => (action === 'quickUse' && quickPressed) || (action === 'attack' && attackPressed) },
+    input: { enabled: true, touchMode: false, isDown: () => false, wasCancelled: () => false, wasPressed: (action: string) => (action === 'quickUse' && quickPressed) || (action === 'attack' && attackPressed) },
     audio: { ctx: null, unlocked: false, bus: () => null, noise: () => null },
     ui: { modals, layer: () => new ElementStub(), hud: { el: new ElementStub(), dock() {}, busy() {} }, cards: { source() {}, release() {} }, toast() {} },
     quality: { level: 'low', listeners: [] }, renderer: { domElement: new ElementStub() },

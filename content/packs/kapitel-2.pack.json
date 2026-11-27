@@ -746,7 +746,7 @@
           "id": "entry.k2.6",
           "kind": "fact",
           "factId": "cx.19",
-          "text_de": "Als der General nach den Feuern im Wald fragte, antwortete ein Handwerker: ‚Das sind {was}.‘",
+          "text_de": "Als der General nach den Feuern im Wald fragte, antwortete ein Handwerker: „Das sind {was}.“",
           "blanks": [
             {
               "id": "was",
