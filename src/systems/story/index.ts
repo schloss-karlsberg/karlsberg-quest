@@ -199,6 +199,13 @@ const CAUGHT_KEY: Record<ThreatKind, string> = { pack: 'story.caught.pack', fire
 /** Wrapped meter → the threat it starts (oil drives hunt's lantern via lantern:request). */
 const METER_THREAT: Record<string, ThreatKind> = { smoke: 'fire', vergessen: 'oblivion' };
 /** Dialogue triggered by these events belongs to the Chronik's echo scenes (it shows the subtitles). */
+/**
+ * Set when the ending's closing card is dismissed (TASK-068). A resumed e2 save without it reopens
+ * the card (a save from the staged scene, the card itself, or a save older than the marker, which
+ * cannot be told apart); with it the epilogue opens directly. Cleared by a new choice and on e1.
+ */
+const END_CARD_FLAG = 'story.endcard';
+
 const ECHO_EVENTS = new Set(['echo:start', 'echo:play', 'echo:end']);
 const QUIET_EVENTS = new Set(['player:step', 'dialogue:say', 'hunt:alert', 'lantern:oil', 'fire:progress', 'oblivion:progress']);
 /** Pack lines of these events are never spoken by the trigger runner (assembled elsewhere). */
@@ -325,6 +332,7 @@ class StoryRuntime {
             delete flags['story.party'];
             delete flags['story.party.arrived'];
             delete flags['story.credits'];
+            delete flags[END_CARD_FLAG];
           }, 'story');
         }
         // the last beat's delayed lines are stale now; its delayed state changes happen at once
@@ -406,9 +414,17 @@ class StoryRuntime {
       epilogue: (id) => this.epilogue(id) ?? { ending: id, intro: '', lines: [], object: '', outro: '', coda: '', variants: {} },
       chosen: (id) => {
         this.slice.ending = id;
-        ctx.state.update((s) => (s.flags['flag.end'] = endingScenes()[id].flag), 'story');
+        ctx.state.update((s) => {
+          s.flags['flag.end'] = endingScenes()[id].flag;
+          // a new choice owes its closing card again (TASK-068)
+          delete s.flags[END_CARD_FLAG];
+        }, 'story');
         ctx.events.emit('story:ending', { id });
         ctx.save.autosave('ending', true);
+      },
+      cardDone: () => {
+        ctx.state.update((s) => (s.flags[END_CARD_FLAG] = true), 'story');
+        ctx.save.autosave('ending-card', true);
       },
       finished: () => this.finish(),
       party: (id) => this.toParty(id),
@@ -560,7 +576,8 @@ class StoryRuntime {
   /**
    * The one resume path (boot, an in-play load, the wake after being caught): re-enter the beat,
    * then restore what a beat re-entry cannot. e2 already saved the ending and waits for the
-   * epilogue's button, but the modal is transient; e3's credits may have ended before the
+   * epilogue's button, but the modal is transient: it reopens at the closing card until the card
+   * was dismissed (`END_CARD_FLAG`), then at the epilogue; e3's credits may have ended before the
    * autosave caught `story.finished`.
    */
   private resume(useCheckpoint = false): void {
@@ -570,7 +587,9 @@ class StoryRuntime {
     const s = this.slice;
     const flags = this.ctx.state.state.flags;
     if (s.chapter === 'enden' && s.beat === 'e2' && s.ending && !s.finished && !flags['story.party']) {
-      this.endings.showEpilogue(s.ending);
+      // a save from the staged scene or the card (or an older save without the marker) owes the card
+      if (flags[END_CARD_FLAG] === true) this.endings.showEpilogue(s.ending);
+      else this.endings.show(s.ending);
     }
     if (this.inPartyBeat() && flags['story.credits'] === true) this.finish();
   }
