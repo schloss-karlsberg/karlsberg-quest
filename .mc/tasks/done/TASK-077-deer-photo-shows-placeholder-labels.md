@@ -4,7 +4,7 @@ aliases:
 - TASK-077
 title: 'The deer photo card shows „Ricke (Platzhalter) · Kitz (Platzhalter)“'
 slug: deer-photo-shows-placeholder-labels
-status: todo
+status: done
 priority: 2
 owner: ''
 projects: []
@@ -47,8 +47,15 @@ animals), so the placeholder marks are stale. `photo.parkplatz` is also still ma
 
 ## Acceptance criteria
 
-- [ ] The card, the album and the gallery show „Ricke“ and „Kitz“ (or the final wording) with no
+- [x] The card, the album and the gallery show „Ricke“ and „Kitz“ (or the final wording) with no
       „Platzhalter“.
-- [ ] `placeholder` / `note` in `content/photo/targets.json` match reality for the two deer;
+- [x] `placeholder` / `note` in `content/photo/targets.json` match reality for the two deer;
       check `photo.parkplatz` too.
-- [ ] A content check fails if a player-facing photo label contains „Platzhalter“.
+- [x] A content check fails if a player-facing photo label contains „Platzhalter“.
+
+## Progress
+
+- 2026-11-27 — `reh.ricke` / `reh.kitz` now read „Ricke“ / „Kitz“; their stale `placeholder` flags
+  and notes are gone (the animals system drives both). `photo.parkplatz` stays a placeholder: it is
+  still the photo system's demo board, and its label has no marker. `validatePhotoTargets` now errors
+  on a `label_de` containing „Platzhalter“/„placeholder“ (covered in `tests/photo.test.ts`).
