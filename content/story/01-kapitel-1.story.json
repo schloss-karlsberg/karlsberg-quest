@@ -889,6 +889,18 @@
       "title_de": "Morgengrauen an der Quelle",
       "enter": [
         {
+          "do": "enemy",
+          "op": "despawn",
+          "group": "k1.enge",
+          "onResume": false
+        },
+        {
+          "do": "enemy",
+          "op": "despawn",
+          "group": "k1.enge.2",
+          "onResume": false
+        },
+        {
           "do": "look",
           "time": "dawn"
         },
@@ -1632,6 +1644,13 @@
           "data": {
             "open": true
           }
+        },
+        {
+          "do": "quest",
+          "op": "progress",
+          "id": "q.k1.ankunft",
+          "objective": "quelle",
+          "onResume": true
         },
         {
           "do": "say",
