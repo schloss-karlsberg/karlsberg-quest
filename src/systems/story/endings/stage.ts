@@ -326,6 +326,9 @@ export class EndingStage {
     this.eye = { x: pl.position.x, y: pl.position.y, z: pl.position.z, yaw: pl.yaw, pitch: pl.pitch };
     pl.frozen = true;
     pl.lookLocked = true;
+    // the mouse belongs to „Überspringen“ and the picture (a click skips): free it from pointer lock,
+    // including a lock still in flight from the chooser that just closed
+    ctx.input.releaseLock();
     this.look0 = structuredClone(ctx.world.look);
     ctx.ui.hud.show(false);
     // letterbox, the skip button and the fade (DOM); the picture itself is the world

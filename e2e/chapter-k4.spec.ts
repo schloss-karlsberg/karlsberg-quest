@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SAVE_KEY } from '../src/core/save';
 import { createInitialState } from '../src/core/state';
 import { createQuestSlice } from '../src/systems/quests/logic';
@@ -14,7 +15,7 @@ import { waitForHooks } from './helpers/pause';
  * Screenshots: test-results/screens/cnb-k4-*.png
  */
 // software WebGL on a busy machine: the full chapter takes 13–20 min headless
-test.describe.configure({ timeout: 1_800_000 });
+test.describe.configure({ timeout: ciScale(1_800_000) });
 
 test('Continue recovers a kennel save with a remembered echo and no well credit', async ({ page }) => {
   const errors = trackErrors(page);

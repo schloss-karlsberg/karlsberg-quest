@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { trackErrors } from './helpers/common';
 
 /**
@@ -11,7 +12,7 @@ import { trackErrors } from './helpers/common';
  */
 const OUT = 'test-results/party';
 mkdirSync(OUT, { recursive: true });
-test.describe.configure({ timeout: 300_000 });
+test.describe.configure({ timeout: ciScale(300_000) });
 
 type Rec = { n: string; p: any }[];
 const REC = /^(party:|credits:|cinematic:)/;

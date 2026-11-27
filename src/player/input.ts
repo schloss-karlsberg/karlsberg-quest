@@ -296,9 +296,13 @@ export class Input {
 
   /** A lock request is in flight (a second one in the same moment makes the first one fail). */
   private lockPending = false;
+  /** The game wants the mouse for play: set by `requestLock()`, cleared by `releaseLock()`. */
+  private lockWanted = false;
 
   requestLock(): void {
-    if (this.locked || this.lockPending || this.touchMode) return;
+    if (this.touchMode) return;
+    this.lockWanted = true;
+    if (this.locked || this.lockPending) return;
     try {
       const p = this.canvas.requestPointerLock() as unknown as Promise<void> | undefined;
       if (p && typeof p.then === 'function') {
@@ -322,9 +326,23 @@ export class Input {
   private selfRelease = false;
 
   releaseLock(): void {
+    // a request still in flight lands later: `dropUnwantedLock()` lets go of it then
+    this.lockWanted = false;
     if (!this.locked) return;
     this.selfRelease = true;
     document.exitPointerLock();
+  }
+
+  /**
+   * The browser grants pointer lock asynchronously. A lock that lands after the game let go of the
+   * mouse (the title, a modal or the staged ending opened while the request was in flight) is
+   * released at once, so the cursor can reach their buttons. Call on `pointerlockchange`, after
+   * `takeSelfRelease()`; true when it released the lock.
+   */
+  dropUnwantedLock(): boolean {
+    if (!this.locked || this.lockWanted) return false;
+    this.releaseLock();
+    return true;
   }
 
   /** Read (and clear) whether the last unlock came from `releaseLock()`. */

@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { stepPastSkillCards, stepToCard } from './helpers/cards';
 import { openPause, waitForHooks } from './helpers/pause';
 import { installQuestPlay, touchSpring } from './helpers/prolog';
@@ -43,14 +44,14 @@ const payloads = async (page: Page, name: string) => (await events(page, name)).
 async function shot(page: Page, name: string): Promise<void> {
   await page.evaluate(() => window.kq!.screenshotReady());
   await page.waitForTimeout(150);
-  await page.screenshot({ path: `${SCREENS}/int-${name}.png`, timeout: 150_000 });
+  await page.screenshot({ path: `${SCREENS}/int-${name}.png`, timeout: ciScale(150_000) });
 }
 
 const story = (page: Page) => page.evaluate(() => window.kq!.story!.state());
 const pos = (page: Page) => page.evaluate(() => ({ x: window.kq!.ctx.player.position.x, z: window.kq!.ctx.player.position.z }));
 
 test('integration: the tour and K1 across story, fx, hunt and chronik', async ({ page }) => {
-  test.setTimeout(900_000);
+  test.setTimeout(ciScale(900_000));
   const errors = trackErrors(page);
 
   // ---- 1. new game: title → content warning → name → tour map ------------------------
@@ -273,7 +274,7 @@ test('integration: the tour and K1 across story, fx, hunt and chronik', async ({
  * 1793-02 leaving snow tracks. Screenshots: test-results/screens/int-r2-*.png.
  */
 test('integration: round 2 tour (interiors, npc, skills/tools, snow tracks)', async ({ page }) => {
-  test.setTimeout(600_000);
+  test.setTimeout(ciScale(600_000));
   const errors = trackErrors(page);
   await page.goto('./?notitle&nosave&fresh&manual&storytest');
   await waitForHooks(page, ['story', 'interiors', 'npc', 'tools', 'skills', 'hunt', 'chronik']);

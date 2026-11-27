@@ -6,6 +6,7 @@
  */
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SCREENS } from './helpers/common';
 
 mkdirSync(SCREENS, { recursive: true });
@@ -37,7 +38,7 @@ async function shot(page: Page, name: string, hideDialogue = false): Promise<voi
     st.textContent = d ? '.kqs-dlg { display: none !important; }' : '';
   }, hideDialogue);
   await page.evaluate(() => window.kq!.screenshotReady());
-  await page.screenshot({ path: `${SCREENS}/s5-k2k4stage-${name}.png`, timeout: 150_000 });
+  await page.screenshot({ path: `${SCREENS}/s5-k2k4stage-${name}.png`, timeout: ciScale(150_000) });
 }
 
 async function place(page: Page, era: string, x: number, z: number, yaw: number, pitch = 0): Promise<void> {
@@ -63,7 +64,7 @@ async function advance(page: Page, seconds: number): Promise<void> {
 }
 
 test.describe('staged set pieces (K2 / K4 / endings)', () => {
-  test.describe.configure({ timeout: 600_000 });
+  test.describe.configure({ timeout: ciScale(600_000) });
   test.beforeEach(async ({ page }) => {
     await page.goto('./?notitle&nosave&fresh&manual');
     await page.waitForFunction(() => !!window.kq?.hunt && !!(window.kq as Any)?.stage && !!window.kq?.story && !!window.kq?.chronik, null, { timeout: 180_000 });

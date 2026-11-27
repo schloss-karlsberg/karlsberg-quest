@@ -1,0 +1,110 @@
+name: End-to-end tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      specs:
+        description: Space-separated spec names (for example chapter-k2 smoke). Leave blank for the full suite.
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and plan shards
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      matrix: ${{ steps.shards.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Plan file-level shards
+        id: shards
+        env:
+          KQ_E2E_SPECS: ${{ inputs.specs }}
+        run: |
+          export PLAYWRIGHT_JSON_OUTPUT_FILE="$RUNNER_TEMP/e2e-discovery.json"
+          pnpm exec playwright test --list --reporter=json
+          node scripts/dev/plan-e2e-shards.ts < "$PLAYWRIGHT_JSON_OUTPUT_FILE" >> "$GITHUB_OUTPUT"
+      - run: pnpm build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: e2e-dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 2
+          overwrite: true
+
+  e2e:
+    name: Playwright shard ${{ matrix.shard }}
+    needs: build
+    runs-on: ubuntu-latest
+    # Playwright has 180 minutes, or 240 for the campaign. Reserve time for setup and upload.
+    timeout-minutes: ${{ matrix.campaign && 270 || 205 }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.build.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: e2e-dist
+          path: dist/
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Read Playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright.outputs.version }}
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Install the voice spec's encoder
+        if: contains(matrix.specs, 'voice.spec.ts')
+        run: |
+          if [[ ! -x /usr/bin/ffmpeg ]]; then
+            sudo apt-get install -y ffmpeg
+          fi
+      - name: Run Playwright
+        env:
+          SPEC_FILES: ${{ matrix.specs }}
+          KQ_E2E_CAMPAIGN: ${{ matrix.campaign && '1' || '0' }}
+        run: |
+          printf '%s\n' "$SPEC_FILES" > "$RUNNER_TEMP/e2e-specs.txt"
+          # Resource trace: hosted runners have been lost mid-run ("shutdown signal"); log memory and
+          # the biggest processes every 20 s so the cause shows up in the job log.
+          ( while true; do
+              echo "::group::resources $(date -u +%H:%M:%S)"
+              free -m | sed -n '1,3p'; uptime
+              ps -eo rss=,nlwp=,comm= --sort=-rss | head -5 | awk '{printf "%7.0f MB %5d thr %s\n", $1/1024, $2, $3}'
+              echo "::endgroup::"
+              sleep 20
+            done ) &
+          pnpm exec playwright test --test-list "$RUNNER_TEMP/e2e-specs.txt" --workers=1
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-results-${{ matrix.shard }}-attempt-${{ github.run_attempt }}
+          path: test-results/
+          retention-days: 7

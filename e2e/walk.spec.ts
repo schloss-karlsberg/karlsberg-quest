@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale, isCI } from './helpers/ci';
 import { warnIfShared } from '../scripts/dev/heavy-env.mjs';
 import { trackErrors } from './helpers/common';
 import { waitForHooks } from './helpers/pause';
@@ -17,7 +18,7 @@ import { sampleRenderWork } from './helpers/render-work';
 const OUT = 'test-results/walk';
 const EXTRA_QUERY = process.env.KQ_WALK_QUERY ?? '';
 mkdirSync(OUT, { recursive: true });
-test.describe.configure({ timeout: 300_000 });
+test.describe.configure({ timeout: ciScale(300_000) });
 
 type Rec = { n: string; p: any }[];
 const START = { x: 524, z: -770 };
@@ -145,8 +146,12 @@ const SAMPLE = { frames: 8, ticksPerFrame: 15 };
 // the stand-in guide option). Medium/high can also draw the group in the shadow pass.
 const GROUP_BUDGET = { calls: 190, triangles: 130_000 };
 
-test('walk (d): perf — 16 bodies vs. none at the high, medium and low tiers; screenshots', async ({ page }) => {
-  test.setTimeout(840_000);
+const perfCheck = isCI ? {
+  annotation: { type: 'skip', description: 'The minimum frame count in the timed sample needs a quiet local machine.' },
+} : {};
+
+test('walk (d): perf — 16 bodies vs. none at the high, medium and low tiers; screenshots', perfCheck, async ({ page }) => {
+  test.setTimeout(ciScale(840_000));
   warnIfShared('walk (d) perf'); // its frame times need heavy.sh --exclusive
   const rows = [];
   for (const tier of TIERS) {

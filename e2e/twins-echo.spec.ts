@@ -7,6 +7,7 @@
  */
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SCREENS } from './helpers/common';
 
 mkdirSync(SCREENS, { recursive: true });
@@ -31,7 +32,7 @@ async function shot(page: Page, name: string): Promise<void> {
     window.kq!.step(2);
   });
   await page.evaluate(() => window.kq!.screenshotReady());
-  await page.screenshot({ path: `${SCREENS}/twins-echo-${name}.png`, timeout: 150_000 });
+  await page.screenshot({ path: `${SCREENS}/twins-echo-${name}.png`, timeout: ciScale(150_000) });
 }
 
 /** The figures on the echo stage: smoke silhouettes are Points groups, a twin would be an npc-* figure. */
@@ -45,7 +46,7 @@ async function stageFigures(page: Page): Promise<{ name: string; smoke: boolean;
 }
 
 test.describe('Chronik echoes: the twin hook keeps the smoke silhouette', () => {
-  test.describe.configure({ timeout: 600_000 });
+  test.describe.configure({ timeout: ciScale(600_000) });
   test.beforeEach(async ({ page }) => {
     await page.goto('./?notitle&nosave&fresh&manual');
     await page.waitForFunction(() => !!window.kq?.story && !!window.kq?.chronik && !!(window.kq as Any)?.stage, null, { timeout: 180_000 });

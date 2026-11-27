@@ -1,12 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SAVE_KEY } from '../src/core/save';
 import { trackErrors } from './helpers/common';
 import { newGame, story } from './helpers/prolog';
 import { waitForHooks } from './helpers/pause';
 import { expectHandover } from './helpers/tour';
 
-test.describe.configure({ timeout: 600_000 });
+test.describe.configure({ timeout: ciScale(600_000) });
 
 test('an old classic bookmark starts the tour and the legacy chapter is unavailable', async ({ page }) => {
   const errors = trackErrors(page);

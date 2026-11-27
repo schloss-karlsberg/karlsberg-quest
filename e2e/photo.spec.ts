@@ -1,4 +1,5 @@
 import { type CDPSession, type Page, devices, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SCREENS, trackErrors } from './helpers/common';
 import { openPause } from './helpers/pause';
 
@@ -38,7 +39,7 @@ async function expectGameplayHud(page: Page, visible: boolean): Promise<void> {
 }
 
 test.describe('photo mode', () => {
-  test.describe.configure({ timeout: 240_000 });
+  test.describe.configure({ timeout: ciScale(240_000) });
 
   test('N at the car park, shoot the board: stars, then the album has one entry', async ({ page }) => {
     const errors = trackErrors(page);
@@ -331,7 +332,7 @@ async function center(page: Page, testid: string): Promise<{ x: number; y: numbe
 
 test.describe('photo mode on a phone (iPhone 13 landscape)', () => {
   test.use({ ...strip(devices['iPhone 13 landscape']) });
-  test.describe.configure({ timeout: 240_000 });
+  test.describe.configure({ timeout: ciScale(240_000) });
 
   test('the top-row camera button opens it, the attack button is the shutter', async ({ page }) => {
     const errors = trackErrors(page);

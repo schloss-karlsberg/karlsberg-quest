@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { trackErrors } from './helpers/common';
 import { fight, qn, qs, untilQuest } from './helpers/prolog';
 import { DISGUISE_SPOTS, boot, flags, playDisguise, shot, story, talk, upd } from './helpers/k1';
@@ -10,7 +11,7 @@ import { DISGUISE_SPOTS, boot, flags, playDisguise, shot, story, talk, upd } fro
  * other way to the coat: Liese asked, three Mahnbriefe chased out of her linen.
  * Screenshots: test-results/screens/ch-k1-0b-*.png, ch-k1-0c-*.png.
  */
-test.describe.configure({ timeout: 600_000 });
+test.describe.configure({ timeout: ciScale(600_000) });
 
 async function startInSummer(page: import('@playwright/test').Page): Promise<void> {
   await boot(page, 'k1_0b');

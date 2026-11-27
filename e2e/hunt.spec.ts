@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SCREENS } from './helpers/common';
 
 /**
@@ -28,7 +29,7 @@ const ALLEE = { x: 1452, z: -640, yaw: 330 };
 async function shot(page: Page, name: string): Promise<void> {
   await page.evaluate(() => window.kq!.screenshotReady());
   // the caught rush is heavy for SwiftShader on a loaded machine: give the capture time
-  await page.screenshot({ path: `${SCREENS}/${name}.png`, timeout: 150_000 });
+  await page.screenshot({ path: `${SCREENS}/${name}.png`, timeout: ciScale(150_000) });
 }
 
 test.describe('hunt', () => {
@@ -108,7 +109,7 @@ test.describe('hunt', () => {
   });
 
   test('chase and caught sequence', async ({ page }) => {
-    test.setTimeout(360_000);
+    test.setTimeout(ciScale(360_000));
     const errors = trackErrors(page);
     const chase = await page.evaluate((a) => {
       const k = window.kq!;

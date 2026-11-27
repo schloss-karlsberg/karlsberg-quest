@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SCREENS } from './helpers/common';
 
 /**
@@ -10,7 +11,7 @@ import { SCREENS } from './helpers/common';
  * the fast-travel arrival outside the gitter. Screenshots: test-results/screens/court-*.png.
  */
 mkdirSync(SCREENS, { recursive: true });
-test.describe.configure({ timeout: 300_000 });
+test.describe.configure({ timeout: ciScale(300_000) });
 
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];
 

@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SCREENS } from './helpers/common';
 
 /**
@@ -27,7 +28,7 @@ const FIELD = { x: 1452, z: -640, yaw: 330 };
 
 async function shot(page: Page, name: string): Promise<void> {
   await page.evaluate(() => window.kq!.screenshotReady());
-  await page.screenshot({ path: `${SCREENS}/rpg-combat-${name}.png`, timeout: 150_000 });
+  await page.screenshot({ path: `${SCREENS}/rpg-combat-${name}.png`, timeout: ciScale(150_000) });
 }
 
 async function setup(page: Page, era = '1789', at = FIELD): Promise<void> {
@@ -59,7 +60,7 @@ test.describe('combat', () => {
   });
 
   test('the staff, a Nebelling undone, the dodge, vitals', async ({ page }) => {
-    test.setTimeout(300_000);
+    test.setTimeout(ciScale(300_000));
     const errors = trackErrors(page);
     await setup(page);
     const idle = await page.evaluate(async () => {
@@ -162,7 +163,7 @@ test.describe('combat', () => {
   });
 
   test('Irrlicht: untouchable until the Bannlicht; a telegraph with its ground ring', async ({ page }) => {
-    test.setTimeout(300_000);
+    test.setTimeout(ciScale(300_000));
     const errors = trackErrors(page);
     await setup(page);
     const r = await page.evaluate(() => {
@@ -207,7 +208,7 @@ test.describe('combat', () => {
   });
 
   test('undone at 0 Lebenskraft: caught by combat, wake, nothing lost', async ({ page }) => {
-    test.setTimeout(300_000);
+    test.setTimeout(ciScale(300_000));
     const errors = trackErrors(page);
     await setup(page);
     const r = await page.evaluate(() => {
@@ -251,7 +252,7 @@ test.describe('combat', () => {
   });
 
   test('reduced motion keeps the camera still; reduced flash keeps hits local', async ({ page }) => {
-    test.setTimeout(300_000);
+    test.setTimeout(ciScale(300_000));
     const errors = trackErrors(page);
     await setup(page);
     const r = await page.evaluate(() => {
@@ -294,7 +295,7 @@ test.describe('combat', () => {
   });
 
   test('the four bosses and the boss bar', async ({ page }) => {
-    test.setTimeout(420_000);
+    test.setTimeout(ciScale(420_000));
     const errors = trackErrors(page);
     await setup(page);
     for (const [kind, era] of [
@@ -333,7 +334,7 @@ test.describe('combat', () => {
   });
 
   test('the Bannlicht scatters the hounds; they take no damage', async ({ page }) => {
-    test.setTimeout(300_000);
+    test.setTimeout(ciScale(300_000));
     const errors = trackErrors(page);
     await setup(page, '1793-02');
     const r = await page.evaluate((a) => {

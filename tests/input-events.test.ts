@@ -103,3 +103,31 @@ it('retries a denied pointer lock and consumes a game-initiated unlock only once
   expect(input.takeSelfRelease()).toBe(true);
   expect(input.takeSelfRelease()).toBe(false);
 });
+
+it('lets go of a pointer lock that lands after the game released the mouse', async () => {
+  let grant = () => {};
+  const granted = new Promise<void>((resolve) => (grant = resolve));
+  const request = vi.fn(() => granted);
+  const exit = vi.fn();
+  Object.assign(canvas, { requestPointerLock: request });
+  Object.assign(document, { pointerLockElement: null, exitPointerLock: exit });
+  // closing the chooser asks for the lock, the staged ending in the same click lets go of the mouse
+  input.requestLock();
+  input.releaseLock();
+  expect(exit).not.toHaveBeenCalled();
+  Object.assign(document, { pointerLockElement: canvas });
+  grant();
+  await granted;
+  expect(input.dropUnwantedLock()).toBe(true);
+  expect(exit).toHaveBeenCalledTimes(1);
+  // the unlock that follows is the game's own: no pause menu
+  expect(input.takeSelfRelease()).toBe(true);
+
+  // a lock the game still wants stays
+  Object.assign(document, { pointerLockElement: null });
+  input.requestLock();
+  expect(request).toHaveBeenCalledTimes(2);
+  Object.assign(document, { pointerLockElement: canvas });
+  expect(input.dropUnwantedLock()).toBe(false);
+  expect(exit).toHaveBeenCalledTimes(1);
+});
