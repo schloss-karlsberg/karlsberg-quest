@@ -1,10 +1,13 @@
 /** Tour C5: the animal system's runtime (src/systems/animals/runtime.ts) with a fake fauna, bus and world. */
 import { describe, expect, it } from 'vitest';
+import tour from '../content/story/00-tour.story.json';
 import type { Stance } from '../src/player/stance';
 import type { Animal, AnimalSpawnOpts } from '../src/systems/fauna/types';
 import { createCinematicBridge, createPhotoBridge, type PhotoTargetHooks } from '../src/systems/animals/photoBridge';
 import { AnimalsRuntime, type AnimalsBus, type PersonLike } from '../src/systems/animals/runtime';
 import type { AnimalAction, AnimalSave } from '../src/systems/animals/types';
+import type { StoryFile } from '../src/systems/story/types';
+import { DOG_RADIUS, PLAYER_RADIUS, VISITOR_RADIUS, type CrowdCircle } from '../src/world/crowd';
 
 const DT = 1 / 60;
 
@@ -75,7 +78,7 @@ function fakeFauna() {
   return { fauna, spawned };
 }
 
-function setup(opts: { save?: AnimalSave; photoMods?: Record<string, unknown>; people?: PersonLike[]; npcs?: { npc: string; x: number; z: number }[] } = {}) {
+function setup(opts: { save?: AnimalSave; photoMods?: Record<string, unknown>; people?: PersonLike[]; npcs?: { npc: string; x: number; z: number }[]; visitors?: CrowdCircle[] } = {}) {
   const bus = new FakeBus();
   const { fauna, spawned } = fakeFauna();
   const player = { x: 0, z: 40, speed: 0, stance: 'stand' as Stance };
@@ -99,6 +102,7 @@ function setup(opts: { save?: AnimalSave; photoMods?: Record<string, unknown>; p
       los: () => world.los,
       people: () => opts.people ?? [],
       npcs: () => opts.npcs ?? [],
+      tourVisitors: () => opts.visitors ?? [],
     },
   });
   const step = (seconds: number, each?: () => void) => {
@@ -116,6 +120,51 @@ const RICKE: AnimalAction = { do: 'animal', op: 'spawn', kind: 'reh', look: 'ric
 const KITZ: AnimalAction = { do: 'animal', op: 'spawn', kind: 'reh', look: 'kitz', id: 'kitz', follow: 'animal:ricke', spacing: 1.5, era: 'today' };
 
 describe('animals runtime (C5)', () => {
+  it('pushes a tour dog clear of a visitor before syncing the body', () => {
+    const visitors: CrowdCircle[] = [];
+    const { rt, step, spawned, player } = setup({ npcs: [{ npc: 'double.jost', x: 0, z: 0 }], visitors });
+    rt.request({ do: 'animal', op: 'spawn', kind: 'hund', look: 'diane', id: 'diane', follow: 'npc:double.jost' });
+    const dog = rt.dogs[0]!;
+    const visitor = { x: dog.x, y: 300, z: dog.z, radius: 0.32 };
+    visitors.push(visitor);
+    step(DT);
+    const p = spawned[0]!.root.position;
+    expect(Math.hypot(p.x - visitor.x, p.z - visitor.z)).toBeGreaterThanOrEqual(0.58);
+    Object.assign(player, { x: p.x, z: p.z });
+    step(DT);
+    expect(Math.hypot(p.x - player.x, p.z - player.z)).toBeGreaterThanOrEqual(0.61);
+    const circles = rt.tourDogs();
+    expect(circles[0]).toMatchObject({ x: p.x, z: p.z });
+    // Called every fixed step by the player: the same array and circles, refreshed in place.
+    const first = circles[0];
+    step(DT);
+    expect(rt.tourDogs()).toBe(circles);
+    expect(circles[0]).toBe(first);
+    expect(circles[0]).toMatchObject({ x: p.x, z: p.z });
+  });
+
+  it('returns both Wind dogs before the timeout when the player and a visitor occupy waypoints', () => {
+    const visitors = Array.from({ length: 15 }, (_, i) => ({ x: 674 - (i % 5), y: 300, z: -632 + Math.floor(i / 5), radius: VISITOR_RADIUS }));
+    const visitor = { x: 701.15, y: 300, z: -642, radius: VISITOR_RADIUS };
+    visitors[14] = visitor;
+    const { bus, rt, step, player } = setup({ npcs: [{ npc: 'double.jost', x: 674, z: -635 }], visitors });
+    Object.assign(player, { x: 700, z: -640 });
+    const wind = (tour as StoryFile).beats.find((beat) => beat.id === 't8')!;
+    for (const id of ['diane', 'bijou'] as const) {
+      rt.request({ do: 'animal', op: 'spawn', kind: 'hund', look: id, id, follow: 'npc:double.jost' });
+      const run = wind.enter!.find((action) => action.do === 'animal' && action.op === 'run' && action.id === id);
+      rt.request(run as AnimalAction);
+      if (id === 'diane') step(0.4);
+    }
+    step(28, () => {
+      for (const dog of rt.dogs) {
+        expect(Math.hypot(dog.x - player.x, dog.z - player.z)).toBeGreaterThanOrEqual(DOG_RADIUS + PLAYER_RADIUS);
+        expect(Math.hypot(dog.x - visitor.x, dog.z - visitor.z)).toBeGreaterThanOrEqual(DOG_RADIUS + visitor.radius);
+      }
+    });
+    expect(bus.of('animal:returned').map(({ id }) => id).sort()).toEqual(['bijou', 'diane']);
+  });
+
   it('an animal:request spawns bodies through the fauna API (spec ids, ground y, the fawn at the doe)', () => {
     const { bus, rt, spawned } = setup();
     bus.emit('animal:request', RICKE);

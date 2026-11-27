@@ -1,6 +1,6 @@
 /* Cinematic (src/systems/cinematic): letterbox, fade, skip hint; the HUD steps back except the subtitles. */
 html[data-kq-cinematic] .kq-hud > :not(.kq-subtitles),
-html[data-kq-cinematic] .kq-touch {
+html[data-kq-cinematic="locked"] .kq-touch {
   visibility: hidden !important;
 }
 .kq-cine {

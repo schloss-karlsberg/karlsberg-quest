@@ -337,6 +337,7 @@ test('story: ending, epilogue and credits', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {
     const k = window.kq!;
+    k.ctx.save.enabled = true;
     k.story!.start('Alex');
     k.story!.goto('enden');
     k.state();
@@ -361,6 +362,17 @@ test('story: ending, epilogue and credits', async ({ page }) => {
   await expect(page.getByTestId('epilogue')).toBeVisible();
   await shot(page, 'epilogue');
   await page.getByTestId('ending-credits').click();
+  const arrival = await page.evaluate(() => {
+    const k = window.kq!;
+    // The choice and the party handoff can both be set before the first manual tick.
+    for (let i = 0; i < 60 && k.story!.state().beat !== 'e3'; i++) k.step(1);
+    const before = k.ctx.save.peek();
+    const loaded = k.ctx.save.load();
+    k.step(40);
+    const after = k.ctx.save.peek();
+    return { beat: before?.systems.story?.beat, arrived: before?.flags['story.party.arrived'], loaded, x: after?.player.x, z: after?.player.z };
+  });
+  expect(arrival).toEqual({ beat: 'e3', arrived: undefined, loaded: true, x: 1200, z: -1095 });
   // the party (bible 06-enden §8): Gerold's speech, then the credits strip over the party
   await page.evaluate(() => {
     const k = window.kq!;
@@ -372,6 +384,9 @@ test('story: ending, epilogue and credits', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.kq!.ctx.input.locked)).toBe(false);
   await page.getByTestId('party-credits-skip').click();
   await expect(page.getByTestId('party-credits')).toHaveCount(0);
+  const saved = await page.evaluate(() => window.kq!.ctx.save.peek());
+  expect(saved?.systems.story).toMatchObject({ active: false, beat: null, finished: true, objective: { id: 'end.frei' } });
+  expect(saved?.flags['combat.disabled']).toBe(false);
   await page.evaluate(() => window.kq!.step(4));
   const st = await page.evaluate(() => ({ story: window.kq!.story!.state(), flags: window.kq!.state().flags }));
   expect(st.story.ending).toBe('museum');

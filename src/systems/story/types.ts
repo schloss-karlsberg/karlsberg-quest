@@ -335,6 +335,8 @@ export interface TeleportAction extends ActionBase {
   x: number;
   z: number;
   yaw?: number;
+  /** Skip if this save flag is set. Set it after the teleport runs. */
+  onceFlag?: string;
 }
 /** Full-screen title card (chapter openings, cliffhangers). */
 export interface CardAction extends ActionBase {
@@ -548,6 +550,8 @@ export interface QuestAction extends ActionBase {
   id: string;
   objective?: string;
   n?: number;
+  /** Apply the deadline after the preceding era shift has finished. */
+  afterShift?: boolean;
 }
 /**
  * Spawn / remove an enemy group (`enemy:spawn` / `enemy:despawn`). kind = src/rpg/enemies.ts id.
@@ -694,6 +698,8 @@ export interface Reaction {
   repeat?: boolean;
   /** With `repeat`: not again within this many seconds (game time) of the last firing. */
   cooldown?: number;
+  /** Drop this reaction's pending (delayed) actions when a shift starts or the era changes. */
+  sameEra?: boolean;
 }
 
 export interface Beat {
@@ -702,6 +708,8 @@ export interface Beat {
   /** Placeholder beat (skeleton chapters): shown with a "Platzhalter" label. */
   placeholder?: boolean;
   enter?: Action[];
+  /** Accumulate beat timer seconds only while this live condition holds (without event latches). */
+  timerWhile?: Condition;
   complete: Condition;
   exit?: Action[];
   /** Next beat id (default: the following beat in the list; none = chapter complete). */

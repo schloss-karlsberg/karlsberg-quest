@@ -403,6 +403,8 @@ ResizeObserver writes the column's bottom edge to `--kq-tl-bottom`; the skill ca
 The fx gauges sit above the Bussole; the dialogue card leaves 190 px on each side; subtitles move
 up above the dialogue card while it shows. Title cards and skill cards count game time (they wait while paused); an unlock card already on
 screen steps aside (`kqk-held`, its clock stops) while a story title card or the curtain shows.
+On short touch screens, the floating movement stick also defers new standalone skill cards and
+pauses any card already up until the finger releases the stick.
 `e2e/pol-flow.spec.ts` checks the boxes for overlap at 1280×720, 1920×1080 and 1024×768.
 
 **Card discipline** (`src/ui/cards.ts`, `ctx.ui.cards`). The clue card (a modal field-book page,
@@ -1133,8 +1135,9 @@ Round-4 (polish: set dressing) integration rules:
   Every increase (except load/new game and quiet grants) shows the unlock card (brass medal,
   tier pips, "Freigeschaltet" stamp, `data-testid=skill-card`), plays the stamp chime, emits
   `skill:unlocked {skill, level}` and lets Laub comment (`dialogue:say`, `skills.laub.<id>.<n>`)
-  once `flags['story.laub']` is set (or without a running story). Cards wait while a modal or a
-  story card is open. A settled standalone unlock appears once the card director grants the slot.
+  once `flags['story.laub']` is set (or without a running story). An early touch dismissal skips the
+  chime and still queues each eligible remark. Cards wait while a modal or a story card is open.
+  A settled standalone unlock appears once the card director grants the slot.
 - **Free survey**: without a running story (sandbox, `?notitle` tests) every tool is open;
   `?skills=strict` forces gating, `?skills=all` opens everything. Locked keys leave a toast.
 - Survey checks the active scan and map against the incoming game's skills on its first tick.
@@ -1363,7 +1366,7 @@ the guide, opt-in with `?people=authored`), and callers do not change.
     and stays invisible until then.
 - **Distance LOD** (`PEOPLE_LOD`, measured from the camera):
   - animation at full rate within 25 m, about 10 Hz within 40 m, frozen beyond
-  - hidden beyond the draw limit (stand-in: 60 m)
+  - hidden beyond 60 m, drawn again within 58 m
   - frustum culling stays on
 - **Budget tiers** (`TIER_BUDGET`, for the authored meshes; the stand-ins only report them):
   - hero: ≤ 25k tris, ≤ 8 draw calls
@@ -1396,10 +1399,12 @@ the guide, opt-in with `?people=authored`), and callers do not change.
     per loop per metre of height.
   - `face` is an eased turn, capped at 5 rad/s. `lookAt` turns neck and head
     (`Rig.turnBone`, ±60°, no owl neck).
-  - 'solid' = per-person clones of the model's slots lit by `kqStandard`. 'ghost' = the NPC ghost
-    shader with its depth pre-pass.
-  - Each skinned part gets one conservative bound round the whole body, so frustum culling works
-    on skinned meshes.
+  - The solid look uses opaque per-person clones of the model's material slots lit by
+    `kqStandard`. The ghost look uses its own shader and depth pre-pass.
+  - Skinned parts and their ghost depth twins use a shared body sphere anchored to the person's
+    root for frustum culling, independently of pose and mesh level. The body sphere is also
+    transformed to each skinned mesh's local space at construction for render-list sorting.
+    Ghost depth twins inherit the local sphere when cloned.
   - `dispose()` frees the materials, the clone's skeletons, the mixer's actions and the fallback
     capsule. Geometry belongs to the asset cache.
   - A failed load shows a capsule.
@@ -1411,8 +1416,7 @@ the guide, opt-in with `?people=authored`), and callers do not change.
     draws with the one shared toon twin `peopleMaterial(eye, 'toon')`).
   - **Switch:** `PEOPLE_AUTHORED_DEFAULT` (`specs.ts`, one line) turns authored bodies on or off;
     `?people=authored` / `?people=standin` force either for the session (read once at people init).
-    It is `false` for now: the authored guide is opt-in (`?people=authored`) until his look passes
-    review; by default every person, the guide too, draws its stand-in.
+    The authored guide is enabled by default. The visitors draw their stand-ins.
   - **One shared material.** The pipeline bakes every surface colour of a body into its vertex
     colours and gives the mesh ONE material `People` (`kqchar/palette.py`). The people system draws
     every such mesh, in every authored person and every GLB, with the same `MeshStandardMaterial`
@@ -1600,8 +1604,12 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   `setSpeed` on change, `play(clip)` only when the clip hint changes.
 - Dog leaders: `npc:double.*` / `npc:extra.*` / `npc:guide` → the live person with that `specId`
   (`ctx.people.list()`, `root.position`, `root.rotation.y`), other `npc:<id>` → `kq.npc.list()`,
-  `player`, `animal:<id>`. Speed and heading from the motion between ticks (a jump > 15 m/s counts as
-  0). Unresolvable → the dog idles where it is.
+  `player`, `animal:<id>`. Speed and heading come from movement between ticks. A jump over
+  15 m/s counts as zero speed. An unresolved leader leaves the dog idling in place. Walk
+  relocations land the dogs in their new slots immediately using the leader poses supplied in
+  `group:relocated`. Dogs plant on sharp reversals and turn at up to 5 rad/s, with an
+  immediate facing change in reduced motion. The animal save stores an optional `turning` flag
+  so a planted dog stays still after loading until it lines up. Older saves default to `false`.
 - Events: the core's `animal:alert {id}`, `animal:fled {id, by, dist}`, `animal:settled {id}`,
   `animal:returned {id}` go onto the bus 1:1; `bark` / `shake` cues play as one-shots on the body (no
   dog bark SFX yet).
@@ -1928,6 +1936,8 @@ pause the logic.
   past it the walk ends there (`to` becomes the warp stop, arrived); members land in their slots at
   once (mode unchanged), one `npc:arrived {skipped: true}`. Works while bodies are hidden; it never
   moves the player.
+- Both paths update the body roots and emit `group:relocated {group, poses}` after landing the
+  members and before reporting arrival. The animals system places the dogs using these poses.
 - **Bodies** (`bodies.ts`): `ctx.people` (people contract v0.1) first — spec per npc (`imhoff` →
   `guide`, spec ids pass through), tier hero / featured / extra, `root.position` moved, turns via
   `face`, locomotion via `setSpeed` (no `play` for walking, no `root.rotation`, no `lookAt`). A
@@ -2008,8 +2018,10 @@ the ground), look at `npc:<id>` (`kq.npc.list()`, else the npc slice), `animal:<
 pitch / yaw; fov and the look keys fade / fog / sun / dark; smooth or linear easing; missing fields
 carry over. The timeline runs on fixed steps (Esc / modals stop it); `cinematic:stop {id}` ends that cinematic at once (no grace, also
 when not skippable; for features that route the input themselves, e.g. the party); skip after 0.5 s by any key
-(not Esc / P / F-keys), click or touch; the HUD steps back except subtitles (`html[data-kq-cinematic]`),
-centre cards wait, and autosaves are held (`save.hold`) until playback ends. If the system is
+(not Esc / P / F-keys), click or touch; the HUD steps back except subtitles (`html[data-kq-cinematic]`).
+The attribute is `locked` when the cinematic locks player input and `free` during the party orbit.
+Only locked cinematics hide the touch surface. Centre cards wait, and autosaves are held
+(`save.hold`) until playback ends. If the system is
 disposed during a shot, the deferred autosave retains the shot ID. On load or startup the runtime
 consumes the saved ID and emits one skipped end event. When a new shot starts during hand-back,
 the final hand-back restores the gameplay field of view from before the first shot.
@@ -2066,7 +2078,9 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
 - **Credits** (`party:credits`): lines = `data.lines`, else `content/party/credits.json`
   (`{lines}`, the story team's, bundled through an eager `import.meta.glob`, may be missing), else
   the 3-line placeholder. The strip crawls along the bottom edge (over the letterbox, game clock,
-  `data-testid="party-credits"`); reduced motion steps the lines through, centred. The camera way is
+  `data-testid="party-credits"`). Reduced motion uses a manually scrollable list. On phones, the
+  credits hide the visible touch controls and use the safe width until the credits end. The touch
+  surface still takes movement and look drags outside the strip and Skip button. The camera way is
   a `cinematic:play` **keys** spec (`party-credits`, `lockInput: false`, `skippable: false`, reduced
   'stills'): the cinematic's `orbit` circles at a constant rate and cannot stop on a person, so the
   keys run on the same circle (r 14 m, nominally a turn per 40 s, a key every ≤ 0.45 rad) and hold
@@ -2076,7 +2090,7 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
   from 2.6 s, never below 2.0 s (9 spotlights: about 2.2 s). The credits last max(20 s, the camera
   way + 0.6 s, 4 s per line). **Input** (bible 06 §8.2 step 4: walk about, E talks): movement or look
   during the orbit (anything that moves the player > 5 cm or turns the view > 0.02 rad: keys,
-  mouse, touch stick) hands the camera back (`cinematic:stop {id}`, the takeover's 0.4 s ease), no
+  mouse, touch stick or look drag) hands the camera back (`cinematic:stop {id}`, the takeover's 0.4 s ease), no
   `credits:done`; the strip runs on to its end → `credits:done {skipped: false}`. Explicit skip =
   Enter (after 1 s) or the strip's button „Abspann überspringen" (touch, mouse) → `credits:done
   {skipped: true}`. Esc stays pause, E talks. Hint over the strip: „Enter: Abspann überspringen ·
@@ -2164,9 +2178,30 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
   label. Grants fire once per target: `codex` → `state.codex.facts` + `codex:unlocked { noXp: true }`
   (progression gives no XP for it), `card` → `cards` (must be in `cards[]`), `flag` → `state.flags`.
   Unknown ids are skipped with a dev warning. Photos give no XP.
-- Hooks: `kq.photo.{open, close, shoot, album, has, targets, judge(id), state, zoom, cards}`, and
+- **Gallery** (TASK-006; `gallery.ts`, `gallery-logic.ts`, `store.ts`): every shot with signal is
+  kept **on the device, not in the save**.
+  - Storage: `notes/capture.ts` `captureViewBlobs` copies the frame once, then encodes a JPEG of at
+    most 1920 px (q 0.88) and a 320 px thumbnail (q 0.75). IndexedDB `kq-photos` holds store
+    `photos` (metadata: ISO time, play seconds, era, x / z, targets, good, stars, size; plus the
+    thumbnail) and store `full` (the picture, same key). Where IndexedDB is missing or blocked a
+    memory store keeps the session only (`PhotoStore` interface; no wrapper library).
+  - Writes run after the shot, one after another, and never hold up the card. At most 100 photos
+    (`GALLERY_CAP`): a shot beyond that is not stored and a toast says so. The first stored photo
+    calls `navigator.storage.persist()`.
+  - Opening it: **G** while the phone is up (on desktop the phone holds the pointer lock, so the
+    bar's buttons are out of reach; G is the Bannlicht key, muted then), the phone bar's
+    „Galerie“ button (touch), or „Galerie öffnen“ on Pause → Album.
+  - The modal: a newest-first grid with the count and a device-only hint (Safari may clear site
+    data after about seven days without a visit; the memory store says „bis zum Neuladen“).
+  - A photo opens full-size, with ‹ › / arrow keys / a swipe, Teilen, Herunterladen and Löschen
+    (the first press asks „Wirklich?“, the second deletes). Herunterladen uses an object URL and `<a download>`
+    (`karlsberg-quest-YYYY-MM-DD-HH-MM-SS.jpg`). Teilen calls `navigator.share({ files })` from
+    the click when `navigator.canShare({ files })` says yes; otherwise, or when sharing fails, it
+    downloads. Object URLs are revoked when the grid is rebuilt and when the gallery closes.
+- Hooks: `kq.photo.{open, close, shoot, album, has, targets, judge(id), state, zoom, cards}`,
+  `kq.photo.gallery.{open, close, state, list, count, remove, kind, settled}`, and
   with `?debug` `kq.photo.deer.{spawn, calm, at, state}`. Tests: `tests/photo.test.ts`,
-  `tests/camera-photo.test.ts`, `e2e/photo.spec.ts`.
+  `tests/photo-gallery.test.ts`, `tests/camera-photo.test.ts`, `e2e/photo.spec.ts`.
 
 ### How to wire a chapter (story files, round 3)
 
@@ -2387,6 +2422,10 @@ Each RPG track adds its own subsection here when it fills its system in.
   charged past three times can be led home with E → `menagerie:calmed`; three Bannlicht flares
   drive a jaguar off for good → `menagerie:calmed`. The save records the counted misses and flares
   as well as completed calming.
+  An explicit era on a spawn cue overrides the current era; re-sending an identical spawn is a no-op.
+  The garden-to-kennel beats reassert the same fire-night jaguar by id, including on resume. A
+  temporary removal with `keepProgress` (chapter 3's `leave`) keeps the partial counts across
+  chapter selection; calming, a permanent removal, or closing the jaguar quest clears them.
 - **Debug** `window.kq.combat`: `state() spawn(kind, opts) kill(groupOrId?) hit(n) bann() dodge()
   god(on) groups() enemies() place() windup() freeze() skill(id) hurt() heal() events() shake() sim()`.
 - **e2e** `e2e/combat.spec.ts` (screenshots `test-results/screens/rpg-combat-*.png`),

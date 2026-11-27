@@ -46,7 +46,7 @@ declare module '../../core/events' {
     'party:spotlight': { who: string; i: number };
     /** Nominal duration of the animated credits in game time. */
     'credits:start': { seconds: number };
-    /** Exactly once per credits run (a skip, the natural end, a load while they played). */
+    /** A completed or skipped run, including credits recorded as playing in a loaded slot. */
     'credits:done': { skipped: boolean };
   }
 }

@@ -144,6 +144,7 @@ export function validateStories(files: { file: string; story: StoryFile }[], ref
       else chapterReactions.add(r.id);
       checkCond(r.when, file, `${ch}:on/${r.id}`, err);
       if (r.cooldown !== undefined && (!isNum(r.cooldown) || r.cooldown < 0 || !r.repeat)) err(file, ch, `reaction '${r.id}': cooldown needs repeat and a number ≥ 0`);
+      if (r.sameEra !== undefined && typeof r.sameEra !== 'boolean') err(file, ch, `reaction '${r.id}': sameEra must be a boolean`);
       lines += checkActions(r.do, file, `${ch}:on/${r.id}`, err, warn, refs, chapters);
     }
     for (const b of s.beats) {
@@ -159,6 +160,7 @@ export function validateStories(files: { file: string; story: StoryFile }[], ref
       }
       if (b.complete === undefined) err(file, where, 'missing "complete" condition');
       else checkCond(b.complete, file, where, err);
+      if (b.timerWhile !== undefined) checkCond(b.timerWhile, file, `${where}:timerWhile`, err);
       lines += checkActions(b.enter, file, `${where}:enter`, err, warn, refs, chapters);
       lines += checkActions(b.exit, file, `${where}:exit`, err, warn, refs, chapters);
       const rids = new Set<string>();
@@ -168,6 +170,7 @@ export function validateStories(files: { file: string; story: StoryFile }[], ref
         else rids.add(r.id);
         checkCond(r.when, file, `${where}:on/${r.id}`, err);
         if (r.cooldown !== undefined && (!isNum(r.cooldown) || r.cooldown < 0 || !r.repeat)) err(file, where, `reaction '${r.id}': cooldown needs repeat and a number ≥ 0`);
+        if (r.sameEra !== undefined && typeof r.sameEra !== 'boolean') err(file, where, `reaction '${r.id}': sameEra must be a boolean`);
         lines += checkActions(r.do, file, `${where}:on/${r.id}`, err, warn, refs, chapters);
       }
     }
@@ -390,6 +393,7 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
         break;
       case 'teleport':
         if (!isNum(a.x) || !isNum(a.z)) err(file, where, 'teleport needs x/z');
+        if (a.onceFlag !== undefined && !isStr(a.onceFlag)) err(file, where, 'teleport onceFlag must be a flag name');
         break;
       case 'card':
         if (!isStr(a.title)) err(file, where, 'card needs a title');
@@ -477,6 +481,7 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
         else if (refs.quests && !refs.quests.has(a.id)) err(file, where, `quest: unknown quest '${a.id}'`);
         if (a.op === 'progress' && !isStr(a.objective)) err(file, where, 'quest progress needs an objective');
         if (a.n !== undefined && !isNum(a.n)) err(file, where, 'quest: n must be a number');
+        if (a.afterShift !== undefined && (a.op !== 'fail' || typeof a.afterShift !== 'boolean')) err(file, where, 'quest: afterShift is a boolean for fail actions');
         break;
       case 'enemy':
         if (a.op !== 'spawn' && a.op !== 'despawn') err(file, where, "enemy needs op 'spawn' or 'despawn'");

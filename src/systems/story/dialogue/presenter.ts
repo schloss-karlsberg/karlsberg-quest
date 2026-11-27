@@ -29,6 +29,8 @@ export interface DialogueItem extends QueuedLine {
   source?: string;
   /** The viewfinder stays down until the line finishes. */
   phoneDown?: boolean;
+  /** Dock this scene's dialogue above the player. Radio speakers use the same layout. */
+  raised?: boolean;
   /** The place the line is about: skipped if the player is far from it when its turn comes. */
   where?: { x: number; z: number; r: number } | null;
 }
@@ -286,6 +288,7 @@ export class DialoguePresenter {
     }
     this.el.dataset.speaker = meta.id;
     this.el.dataset.portrait = meta.portrait;
+    this.el.classList.toggle('kqs-dlg-raised', item.raised === true || meta.portrait === 'radio');
     this.whoEl.textContent = meta.name;
     const fiction = item.fiction ?? !meta.historical;
     this.tagEl.textContent = meta.historical ? t('story.tag.historical') : meta.echo ? t('story.tag.echo') : fiction ? t('story.tag.fiction') : '';

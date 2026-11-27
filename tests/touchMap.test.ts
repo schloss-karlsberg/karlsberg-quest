@@ -231,10 +231,12 @@ describe('Input.press (virtual touch actions)', () => {
   });
   it('releaseVirtual lets go of every touch hold, not of real keys', () => {
     const inp = make();
+    inp.touchStickActive = true;
     inp.press('forward', true);
     inp.simulate('KeyD', true);
     inp.releaseVirtual();
     expect(inp.isDown('forward')).toBe(false);
+    expect(inp.touchStickActive).toBe(false);
     expect(inp.isDown('right')).toBe(true);
     expect(virtualCode('map')).toBe('@map');
   });
@@ -300,6 +302,13 @@ describe('rotateWanted (M-02)', () => {
     expect(rotateWanted({ ...q, touch: false })).toBe(false);
     expect(rotateWanted({ ...q, width: 820, height: 1180 })).toBe(false);
     expect(rotateWanted({ ...q, width: 600, height: 960 })).toBe(false);
+  });
+  it('asks the tour phone to rotate in Auto before the first touch, and unblocks it in landscape', () => {
+    const portrait = { ...q, width: 390, height: 844 };
+    const touch = touchActive('auto', true, false);
+    expect(rotateWanted({ ...portrait, touch })).toBe(true);
+    expect(rotateWanted({ ...portrait, touch, width: 844, height: 390 })).toBe(false);
+    expect(rotateWanted({ ...portrait, touch: touchActive('auto', false, false) })).toBe(false);
   });
 });
 

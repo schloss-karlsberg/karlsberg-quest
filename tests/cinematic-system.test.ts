@@ -128,6 +128,41 @@ describe('cinematic system', () => {
     expect(s.rt.userSkip()).toBe(false);
   });
 
+  it('exposes whether a cinematic locks input to the touch layout and clears it on end', () => {
+    const s = setup();
+    const attributes = new Map<string, string>();
+    class ElementStub {
+      classList = { add: vi.fn(), remove: vi.fn() };
+      dataset = {};
+      style = {};
+      offsetWidth = 0;
+      setAttribute() {}
+      appendChild() {}
+      remove() {}
+    }
+    vi.stubGlobal('Node', ElementStub);
+    vi.stubGlobal('window', new EventTarget());
+    vi.stubGlobal('document', {
+      documentElement: {
+        setAttribute: (key: string, value: string) => attributes.set(key, value),
+        removeAttribute: (key: string) => attributes.delete(key),
+      },
+      createElement: () => new ElementStub(),
+      createTextNode: (text: string) => text,
+      body: new ElementStub(),
+    });
+    try {
+      s.rt.play(ORBIT);
+      expect(attributes.get('data-kq-cinematic')).toBe('locked');
+      s.rt.play({ ...ORBIT, lockInput: false });
+      expect(attributes.get('data-kq-cinematic')).toBe('free');
+      s.rt.end(false);
+      expect(attributes.has('data-kq-cinematic')).toBe(false);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("cinematic:stop ends that id at once (no grace, even unskippable), a wrong id does nothing; default plays unchanged", () => {
     const s = setup();
     s.rt.play({ ...ORBIT, skippable: false, lockInput: false });
@@ -156,6 +191,26 @@ describe('cinematic system', () => {
     expect(s.camera.position.x).toBeCloseTo(50);
     s.steps(31);
     expect(s.named('cinematic:end')).toEqual([{ id: 'long', skipped: false }]);
+  });
+
+  it('keeps each reduced-motion view fixed even as its subject moves', () => {
+    const s = setup({ reduced: true });
+    const target = { x: 0, y: 10, z: -5 };
+    const unregister = registerTarget('animal:stills-test', () => target);
+    try {
+      s.rt.play({ id: 'stills-test', keys: [{ t: 0, eye: { x: 0, z: 0 }, look: { target: 'animal:stills-test' } }, { t: 6 }] });
+      s.render();
+      const first = s.camera.quaternion.clone();
+      target.x = 7;
+      s.steps(60);
+      s.render();
+      expect(s.camera.quaternion.angleTo(first)).toBeCloseTo(0, 7);
+      s.steps(60);
+      s.render();
+      expect(s.camera.quaternion.angleTo(first)).toBeGreaterThan(0.5);
+    } finally {
+      unregister();
+    }
   });
 
   it("reduced motion 'skip' ends at once, skipped", () => {

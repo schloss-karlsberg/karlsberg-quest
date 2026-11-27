@@ -13,6 +13,8 @@ export interface TitleCallbacks {
   /** „Neuigkeiten“ (release notes); call `title.refreshNews()` once they were seen. */
   onNews?(): void;
   confirm(text: string): Promise<boolean>;
+  /** Extra entries for the current saves. A successful action continues into the game. */
+  extraActions?(): TitleAction[];
 }
 
 /**
@@ -24,12 +26,6 @@ export interface TitleHooks {
   /** Render into `host`. Resolve false to cancel, or return a callback to apply choices at start. */
   beforeNewGame?(host: HTMLElement): Promise<boolean | (() => void)>;
   openSettings?(): void;
-  /**
-   * Extra main-menu entries, asked for each time the title becomes ready (e.g. the story's "Ende
-   * noch einmal wählen" once an ending was reached). After checking the autosave, `run` prepares
-   * the state synchronously and returns true to start play or false to stay on the title.
-   */
-  extraActions?(): TitleAction[];
 }
 export interface TitleAction {
   label: string;
@@ -55,8 +51,10 @@ export class TitleScreen {
     this.startBtn = h('button.kq-btn.primary.kq-hidden', { disabled: true, 'data-testid': 'title-continue', onclick: () => this.start('continue') }, t('title.continue'));
     this.newBtn = h('button.kq-btn', { disabled: true, 'data-testid': 'title-new', onclick: () => this.newGame() }, t('title.newGame'));
     this.saveStatus = h('p.kq-hidden', { role: 'status', 'data-testid': 'title-save-status' });
+    this.updateStartActions(cb.save.availability() === 'readable');
     this.settingsBtn = h('button.kq-btn', { 'data-testid': 'title-settings', onclick: () => titleHooks.openSettings?.() }, t('pause.settings'));
-    this.extrasEl = h('div.kq-title-extras');
+    this.extrasEl = h('div.kq-title-extras.kq-hidden');
+    this.renderExtras(cb.save.readRaw());
     this.newsBadge = h('span.kq-news-badge', { 'aria-label': t('news.unseen'), title: t('news.unseen') });
     const newsBtn = h('button.kq-link.kq-news-link', { 'data-testid': 'title-news', onclick: () => cb.onNews?.() }, [h('span', t('title.news')), this.newsBadge]);
     this.refreshNews();
@@ -93,8 +91,7 @@ export class TitleScreen {
     this.loader?.hide();
     this.startBtn.textContent = t('title.continue');
     this.newBtn.textContent = t('title.newGame');
-    this.startBtn.classList.toggle('kq-hidden', !canContinue);
-    this.newBtn.classList.toggle('primary', !canContinue);
+    this.updateStartActions(canContinue);
     this.saveStatus.textContent = unreadable ? t('title.unreadableSave') : '';
     this.saveStatus.classList.toggle('kq-hidden', !unreadable);
     this.settingsBtn.classList.toggle('kq-hidden', !titleHooks.openSettings);
@@ -104,11 +101,18 @@ export class TitleScreen {
     }
   }
 
+  /** Lay out Continue before first paint too, so the buttons do not move under the pointer. */
+  private updateStartActions(canContinue: boolean): void {
+    this.startBtn.classList.toggle('kq-hidden', !canContinue);
+    this.newBtn.classList.toggle('primary', !canContinue);
+  }
+
   private renderExtras(autosave: string | null): void {
-    const list = titleHooks.extraActions?.() ?? [];
+    const list = this.cb.extraActions?.() ?? [];
     this.extrasEl.replaceChildren(
       ...list.map((a) =>
         h('button.kq-btn', {
+          disabled: this.newBtn.disabled,
           'data-testid': a.testid,
           onclick: async () => {
             if (this.busy || this.newBtn.disabled) return;

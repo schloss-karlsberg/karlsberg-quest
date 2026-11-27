@@ -6,7 +6,7 @@ html[data-kq-credits] {
 html[data-kq-credits="static"] {
   --kq-credits-height: min(42dvh, 260px);
 }
-/* The HUD steps aside while subtitles, dialogue and touch movement remain available. */
+/* The HUD steps aside while subtitles and dialogue remain available. */
 html[data-kq-credits] .kq-hud > :not(.kq-subtitles),
 html[data-kq-credits] .kqs-bussole,
 html[data-kq-credits] .kqs-objective {
@@ -124,6 +124,9 @@ html[data-kq-touch] .kq-party-strip {
 html[data-kq-touch][data-kq-credits="crawl"] {
   --kq-credits-bottom: calc(7vh + 4px + var(--kq-safe-b));
 }
+html[data-kq-touch][data-kq-credits="static"] {
+  --kq-credits-bottom: var(--kq-safe-b);
+}
 html[data-kq-touch][data-kq-credits="crawl"] .kq-party-strip {
   overflow: clip;
 }
@@ -132,6 +135,19 @@ html[data-kq-touch] :is(.kq-party-strip, .kq-party-bar) {
 }
 html[data-kq-touch] .kq-party-hint {
   display: none;
+}
+/* Phones hide the controls while keeping the play surface available for drags. The strip
+   and Skip sit above that surface so a gesture starting there belongs to the credits. */
+@media (max-height: 500px), (orientation: portrait) and (max-width: 600px) {
+  html[data-kq-touch][data-kq-credits] .kq-touch > * {
+    display: none;
+  }
+  html[data-kq-touch][data-kq-credits] .kq-party-strip {
+    pointer-events: auto;
+  }
+  html[data-kq-touch][data-kq-credits] :is(.kq-party-strip, .kq-party-bar) {
+    right: calc(12px + var(--kq-safe-r));
+  }
 }
 html[data-kq-rotate] :is(.kq-party-strip, .kq-party-bar),
 html:has(.kq-modal-layer) :is(.kq-party-strip, .kq-party-bar) {

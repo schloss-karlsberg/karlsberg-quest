@@ -621,7 +621,7 @@ class NpcRuntime {
     if (cue.start) cue.start.play('talk');
     this.talker = talker;
     if (talker) {
-      talker.face(faceYaw(talker.root.position.x, talker.root.position.z, p.x, p.z));
+      talker.face(faceYaw(talker.root.position.x, talker.root.position.z, p.x, p.z), reduced);
       talker.lookAt(face);
     }
     for (const [id, f] of this.figs) {

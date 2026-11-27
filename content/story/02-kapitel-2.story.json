@@ -48,6 +48,11 @@
       "do": [{ "do": "anchor", "to": "1793-02", "x": 1222, "z": -1118, "r": 35 }, { "do": "flag", "set": { "k2.anker_b": true } }]
     },
     {
+      "id": "k2-wachfeuer-frei",
+      "when": { "quest": { "id": "q.k2.wachbuch", "objective": "lichter", "gte": 4 } },
+      "do": [{ "do": "flag", "set": { "k2.wache_frei": true } }]
+    },
+    {
       "id": "k2-jagd-aus",
       "when": { "era": "today" },
       "repeat": true,
@@ -357,7 +362,10 @@
       "id": "k2_3",
       "title_de": "Die Orangerie",
       "wake": { "x": 1676, "z": -392, "yaw": 200, "era": "today", "text": "Du kommst am Parkzaun zu dir, im Heute. Nichts ist verloren." },
-      "enter": [{ "do": "objective", "id": "k2.orangerie", "text": "In Mannlichs Fenstern brennt Licht (E halten: lauschen)", "x": 1275, "z": -960 }],
+      "enter": [
+        { "do": "quest", "op": "offer", "id": "q.k2.spur", "onResume": true },
+        { "do": "objective", "id": "k2.orangerie", "text": "In Mannlichs Fenstern brennt Licht (E halten: lauschen)", "x": 1275, "z": -960 }
+      ],
       "on": [
         {
           "id": "k2_3-heim-a",
@@ -395,15 +403,7 @@
           "do": [{ "do": "echo", "id": "clue.k2.orangerie", "delay": 1 }]
         }
       ],
-      "complete": {
-        "any": [
-          { "quest": { "id": "q.k2.spur" } },
-          { "have": { "clue": "clue.k2.orangerie" } },
-          {
-            "all": [{ "timer": 20 }, { "leave": { "x": 1275, "z": -960, "r": 45 } }]
-          }
-        ]
-      },
+      "complete": { "quest": { "id": "q.k2.spur" } },
       "exit": [
         {
           "do": "objective",
@@ -453,11 +453,6 @@
           "do": [{ "do": "objective", "id": "k2.wachhaus", "text": "Die Spur biegt nach Norden ab: zum Wachhaus am Ehrenhof", "x": 1180, "z": -1120 }]
         },
         {
-          "id": "k2_4-frei",
-          "when": { "quest": { "id": "q.k2.wachbuch", "objective": "lichter", "gte": 4 } },
-          "do": [{ "do": "flag", "set": { "k2.wache_frei": true } }]
-        },
-        {
           "id": "k2_4-wache",
           "when": {
             "all": [
@@ -500,9 +495,7 @@
           ]
         }
       ],
-      "complete": {
-        "any": [{ "quest": { "id": "q.k2.wachbuch" } }, { "have": { "clue": "clue.k2.wachbuch" } }]
-      },
+      "complete": { "quest": { "id": "q.k2.wachbuch" } },
       "exit": [{ "do": "grant", "clue": "clue.k2.horstmann", "delay": 1.5 }]
     },
     {
@@ -813,6 +806,7 @@
             "all": [{ "era": "1793-02" }, { "flag": "k2.jagd_versuch" }, { "not": { "flag": "k2.jagd_laeuft" } }, { "not": { "flag": "k2.wieder_da" } }]
           },
           "repeat": true,
+          "sameEra": true,
           "do": [
             { "do": "flag", "set": { "k2.wieder_da": true } },
             { "do": "npc", "op": "spawn", "npc": "hanne", "x": 1201, "z": -1112, "era": "1793-02", "yaw": 270 },
@@ -856,6 +850,7 @@
             ]
           },
           "repeat": true,
+          "sameEra": true,
           "do": [
             { "do": "flag", "set": { "k2.jagd_laeuft": true, "k2.jagd_versuch": true, "k2.jagd_los": null, "k2.wieder_da": null } },
             { "do": "quest", "op": "start", "id": "q.k2.parforce", "onResume": true },

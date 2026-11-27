@@ -1,8 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { ciScale } from './helpers/ci';
+import { SAVE_KEY } from '../src/core/save';
+import { createInitialState } from '../src/core/state';
+import { createQuestSlice } from '../src/systems/quests/logic';
+import { createStorySlice } from '../src/systems/story/engine';
 import { trackErrors } from './helpers/common';
 import { install, killGroup } from './helpers/k3';
 import { beat, boot, events, examineHere, playK4, run, settleShift, shot, story, walk } from './helpers/k4';
+import { waitForHooks } from './helpers/pause';
 
 /**
  * Chapter 4 „Der Steinbruch" + the endings as a quest chain, played headless through window.kq
@@ -11,6 +16,30 @@ import { beat, boot, events, examineHere, playK4, run, settleShift, shot, story,
  */
 // software WebGL on a busy machine: the full chapter takes 13–20 min headless
 test.describe.configure({ timeout: ciScale(1_800_000) });
+
+test('Continue recovers a kennel save with a remembered echo and no well credit', async ({ page }) => {
+  const errors = trackErrors(page);
+  const state = createInitialState();
+  Object.assign(state.player, { x: 1216, z: -1571 });
+  state.meta.savedAt = new Date().toISOString();
+  state.inventory.clues.push('clue.k4.laub_1840');
+  state.systems.story = { ...createStorySlice(), active: true, chapter: 'k4', beat: 'k4_10' };
+  state.systems.quests = createQuestSlice();
+  state.systems.quests.quests['q.k4.standpunkt'] = { state: 'active', counts: { echo: 1, treiben: 1 }, t: 0 };
+  await page.addInitScript(({ key, save }) => localStorage.setItem(key, save), { key: SAVE_KEY('auto'), save: JSON.stringify(state) });
+
+  await page.goto('./?manual&q=low');
+  await waitForHooks(page, ['story', 'quests']);
+  await page.getByTestId('title-continue').click();
+  await expect(page.getByTestId('title')).toBeHidden();
+  await run(page, 2);
+
+  expect(await page.evaluate(() => window.kq!.quests!.state().quests['q.k4.standpunkt'])).toMatchObject({
+    state: 'done', counts: { brunnen: 1, echo: 1, treiben: 1 },
+  });
+  expect(await beat(page)).toMatch(/^k4_1[12]$/);
+  expect(errors).toEqual([]);
+});
 
 test('chapter 4: Der Steinbruch, from the station to the kennel, and the endings', async ({ page }) => {
   const errors = trackErrors(page);

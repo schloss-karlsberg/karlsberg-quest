@@ -95,11 +95,13 @@ class AnimalsSystem {
       world: {
         heightAt: (x, z) => w.heightAt(x, z),
         era: () => ctx.era.current,
+        reducedMotion: () => ctx.settings.state.reducedMotion,
         player: () => {
           const pl = ctx.player;
-          return { x: pl.position.x, z: pl.position.z, speed: pl.stats.speed, stance: pl.stance, flying: pl.flying };
+          return { x: pl.position.x, y: pl.position.y, z: pl.position.z, speed: pl.stats.speed, stance: pl.stance, flying: pl.flying };
         },
         walkable: walkableFor(ctx),
+        tourVisitors: () => ctx.tourCrowd.visitors?.() ?? [],
         los: (ax, az, bx, bz, stance) =>
           lineOfSight(sense, ax, w.heightAt(ax, az) + DEER_EYE, az, bx, w.heightAt(bx, bz) + TARGET_HEIGHT[stance], bz) > 0.15,
         people: () => ctx.people?.list() ?? [],
@@ -112,6 +114,7 @@ class AnimalsSystem {
         },
       },
     });
+    ctx.tourCrowd.dogs = () => this.rt.tourDogs();
     this.rt.restore();
   }
 
@@ -190,6 +193,7 @@ class AnimalsSystem {
   }
 
   dispose(): void {
+    delete this.ctx.tourCrowd.dogs;
     this.rt.dispose();
   }
 }

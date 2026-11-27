@@ -13,9 +13,8 @@
  *
  * Targets are resolved by the caller (`resolve(ref)`), so the core knows no npc / player system.
  * Yaw: heading, `atan2(-dx, -dz)` (0 faces −z).
- * Motion: the core turns the dog (TURN rad/s) and moves it only forward along its yaw, at a speed
- * eased by ACCEL / DECEL, so `motion.yaw` is the body's facing and `motion.speed` its ground speed:
- * the body shows both as they are (no second smoothing that would lag behind the motion).
+ * Motion: the core turns the dog at TURN rad/s (instant with reduced motion), plants it on sharp
+ * reversals, and moves it forward along its yaw once aligned. The rig takes that yaw directly.
  */
 import { allOf, finiteOr, isRecord } from '../../core/saved';
 import type { AnimalClipHint, AnimalEvent, AnimalLook, AnimalMotion, AnimalRequest, AnimalSpawnOp, DogSave } from './types';
@@ -58,6 +57,9 @@ export const DOGS = {
    * so it never slides sideways or backwards, and a slot behind it is a turn, not a reverse.
    */
   TURN: 5,
+  /** A goal over 150° away starts a planted turn, which continues until within 60°. */
+  REVERSE: (5 * Math.PI) / 6,
+  TURN_RESUME: Math.PI / 3,
   /** Speed change limits (m/s²): no idle / walk flicker from one tick to the next. */
   ACCEL: 6,
   DECEL: 10,
@@ -91,6 +93,8 @@ export interface DogTarget {
 }
 /** Resolve 'npc:double.jost' / 'player' / 'animal:<id>' to a live pose, or null when absent. */
 export type DogResolve = (ref: string) => DogTarget | null;
+/** Whether a dog is close enough to pass a waypoint occupied by another body. */
+export type BlockedWaypoint = (dog: Dog, x: number, z: number) => boolean;
 
 export interface Dog {
   readonly id: string;
@@ -118,6 +122,7 @@ export interface Dog {
   readonly phase: number;
   /** Current ground speed along the facing (m/s). */
   v: number;
+  turning: boolean;
   motion: AnimalMotion;
 }
 
@@ -161,6 +166,7 @@ export function createDog(op: AnimalSpawnOp, slot?: number, at?: { x: number; z:
     run: sp.run,
     phase: (hashStr(op.id) % 1000) / 1000 * DOGS.SNIFF_EVERY,
     v: 0,
+    turning: false,
     motion: { tx: x, tz: z, speed: 0, yaw, clip: 'idle' },
   };
 }
@@ -212,11 +218,17 @@ export function applyDogRequest(dog: Dog, req: AnimalRequest): AnimalEvent[] {
   return out;
 }
 
-/** Turn toward heading `hd` by at most TURN·dt. Returns the heading error left (rad). */
-function turnToward(dog: Dog, hd: number, dt: number): number {
-  const cap = DOGS.TURN * dt;
+/** Turn toward heading `hd` by at most `cap` radians. */
+function turnToward(dog: Dog, hd: number, cap: number): void {
   dog.yaw = wrapPi(dog.yaw + clamp(wrapPi(hd - dog.yaw), -cap, cap));
-  return wrapPi(hd - dog.yaw);
+}
+
+/** Plant the feet while turning a goal from behind the dog into its forward half-plane. */
+function turnForTravel(dog: Dog, hd: number, cap: number): boolean {
+  dog.turning = Math.abs(wrapPi(hd - dog.yaw)) > (dog.turning ? DOGS.TURN_RESUME : DOGS.REVERSE);
+  turnToward(dog, hd, cap);
+  if (dog.turning) dog.v = 0;
+  return !dog.turning;
 }
 
 /**
@@ -251,13 +263,15 @@ function pointCap(d: number, err: number, stop: boolean): number {
 }
 
 /** Head for a fixed point at up to `want` m/s: turn first, slow through the turn. Returns the distance left. */
-function goTo(dog: Dog, tx: number, tz: number, want: number, dt: number, stop: boolean): number {
+function goTo(dog: Dog, tx: number, tz: number, want: number, dt: number, stop: boolean, turn: number): number {
   const d = Math.hypot(tx - dog.x, tz - dog.z);
   if (d < 1e-6) {
     advance(dog, 0, 0, dt);
     return 0;
   }
-  const err = turnToward(dog, headingOf(tx - dog.x, tz - dog.z), dt);
+  const hd = headingOf(tx - dog.x, tz - dog.z);
+  if (!turnForTravel(dog, hd, turn)) return d;
+  const err = wrapPi(hd - dog.yaw);
   advance(dog, want * Math.max(0, Math.cos(err)), pointCap(d, err, stop), dt, { x: tx, z: tz });
   return Math.hypot(tx - dog.x, tz - dog.z);
 }
@@ -297,8 +311,38 @@ function landAfterJump(dog: Dog, jumped: boolean | undefined, x: number, z: numb
   return true;
 }
 
-export function stepDog(dog: Dog, dt: number, resolve: DogResolve, out: AnimalEvent[] = []): AnimalEvent[] {
+/** Place a dog at its leader's new pose and finish any interrupted return. */
+export function relocateDog(dog: Dog, target: DogTarget): boolean {
+  const lie = dog.state === 'lie';
+  const p = lie ? liePoint(dog, () => target) : null;
+  const { x, z } = p ?? dogSlot(target, dog.slot, dog.spacing);
+  const returned = dog.state === 'return' || (dog.state === 'bolt' && dog.back);
+  if (!lie) {
+    dog.state = 'follow';
+    dog.t = 0;
+    dog.still = 0;
+    dog.path = null;
+    dog.i = 0;
+  }
+  dog.x = x;
+  dog.z = z;
+  dog.yaw = p?.face ?? target.yaw;
+  dog.v = 0;
+  dog.turning = false;
+  Object.assign(dog.motion, { tx: x, tz: z, yaw: dog.yaw, speed: 0, clip: lie ? (dog.t >= DOGS.LIE_SLEEP ? 'sleep' : 'lie') : 'idle' });
+  return returned;
+}
+
+export function stepDog(
+  dog: Dog,
+  dt: number,
+  resolve: DogResolve,
+  out: AnimalEvent[] = [],
+  reducedMotion = false,
+  blockedWaypoint?: BlockedWaypoint,
+): AnimalEvent[] {
   dog.t += dt;
+  const turn = reducedMotion ? Infinity : DOGS.TURN * dt;
   const target = dog.follow ? resolve(dog.follow) : null;
   const m = dog.motion;
   const was = m.clip;
@@ -338,7 +382,7 @@ export function stepDog(dog: Dog, dt: number, resolve: DogResolve, out: AnimalEv
         let hd = bearing;
         if (d <= DOGS.AT_SLOT && along(dog.yaw) <= 0) hd = moving ? target.yaw : dog.yaw; // just past it: never turn round for that
         else if (moving) hd = target.yaw + wrapPi(bearing - target.yaw) * clamp((d - DOGS.ARRIVE) / (DOGS.NEAR - DOGS.ARRIVE), 0, 1);
-        turnToward(dog, hd, dt);
+        if (!turnForTravel(dog, hd, turn)) break;
         const ts = moving ? target.speed : 0;
         const ceil = d > DOGS.RUN_DIST ? dog.run : Math.min(dog.run, Math.max(ts, dog.walk * 1.5));
         const a = along(dog.yaw);
@@ -348,7 +392,7 @@ export function stepDog(dog: Dog, dt: number, resolve: DogResolve, out: AnimalEv
       } else {
         // at the slot of a standing target: stand, turn to where the target faces
         dog.v = 0;
-        turnToward(dog, target.yaw, dt);
+        turnToward(dog, target.yaw, turn);
       }
       const gap = Math.hypot(s.x - dog.x, s.z - dog.z);
       if (dog.still >= DOGS.SIT_AFTER && gap <= DOGS.AT_SLOT && dog.v === 0) {
@@ -361,9 +405,11 @@ export function stepDog(dog: Dog, dt: number, resolve: DogResolve, out: AnimalEv
     }
     case 'bolt': {
       const path = dog.path;
-      // a path point counts as passed within PATH_EPS: the dog curves on to the next, no snapping
+      // The dog curves past reached points. A crowd can make the authored point unreachable.
       const pass = (): void => {
-        while (path && dog.i < path.length && Math.hypot(path[dog.i]![0] - dog.x, path[dog.i]![1] - dog.z) <= DOGS.PATH_EPS) {
+        while (path && dog.i < path.length) {
+          const [x, z] = path[dog.i]!;
+          if (Math.hypot(x - dog.x, z - dog.z) > DOGS.PATH_EPS && !blockedWaypoint?.(dog, x, z)) break;
           const inner = dog.i > 0 && dog.i < path.length - 1;
           if (inner && dog.bark) out.push({ type: 'bark', id: dog.id, x: dog.x, z: dog.z });
           dog.i++;
@@ -376,12 +422,12 @@ export function stepDog(dog: Dog, dt: number, resolve: DogResolve, out: AnimalEv
         break;
       }
       const [px, pz] = path[dog.i]!;
-      goTo(dog, px, pz, dog.run, dt, false);
+      goTo(dog, px, pz, dog.run, dt, false, turn);
       pass();
       const next = path[Math.min(dog.i, path.length - 1)]!;
       m.tx = next[0];
       m.tz = next[1];
-      m.clip = 'run';
+      m.clip = dog.v > 0.05 ? 'run' : 'idle';
       if (dog.i >= path.length) finishBolt(dog, target, out);
       break;
     }
@@ -398,8 +444,8 @@ export function stepDog(dog: Dog, dt: number, resolve: DogResolve, out: AnimalEv
       let d = Math.hypot(s.x - dog.x, s.z - dog.z);
       if (d > DOGS.RETURN_RADIUS) {
         const want = d > DOGS.RUN_DIST ? dog.run : Math.max(dog.walk * 1.5, target.speed);
-        d = goTo(dog, s.x, s.z, want, dt, false);
-        m.clip = gaitClip(dog, was) === 'run' ? 'run' : 'walk';
+        d = goTo(dog, s.x, s.z, want, dt, false, turn);
+        m.clip = gaitClip(dog, was);
       }
       if (d <= DOGS.RETURN_RADIUS) {
         dog.state = 'follow';
@@ -422,13 +468,12 @@ export function stepDog(dog: Dog, dt: number, resolve: DogResolve, out: AnimalEv
       const d = Math.hypot(p.x - dog.x, p.z - dog.z);
       const down = dog.v === 0 && (was === 'lie' || was === 'sleep');
       if (d > (down ? DOGS.AT_SLOT : DOGS.ARRIVE)) {
-        goTo(dog, p.x, p.z, d > DOGS.RUN_DIST ? dog.run : dog.walk, dt, true);
+        goTo(dog, p.x, p.z, d > DOGS.RUN_DIST ? dog.run : dog.walk, dt, true, turn);
         dog.t = 0;
         m.clip = gaitClip(dog, was);
-        if (m.clip === 'idle') m.clip = 'walk';
       } else {
         dog.v = 0;
-        turnToward(dog, p.face, dt);
+        turnToward(dog, p.face, turn);
         m.clip = dog.t >= DOGS.LIE_SLEEP ? 'sleep' : 'lie';
       }
       break;
@@ -460,9 +505,9 @@ function finishBolt(dog: Dog, target: DogTarget | null, out: AnimalEvent[]): voi
 }
 
 /** Step all dogs in order. */
-export function stepDogs(dogs: readonly Dog[], dt: number, resolve: DogResolve): AnimalEvent[] {
+export function stepDogs(dogs: readonly Dog[], dt: number, resolve: DogResolve, reducedMotion = false): AnimalEvent[] {
   const out: AnimalEvent[] = [];
-  for (const d of dogs) stepDog(d, dt, resolve, out);
+  for (const d of dogs) stepDog(d, dt, resolve, out, reducedMotion);
   return out;
 }
 
@@ -489,6 +534,7 @@ export function serializeDog(dog: Dog): DogSave {
   }
   if (dog.lie) s.lie = { x: Number.isNaN(dog.lie.x) ? dog.x : dog.lie.x, z: Number.isNaN(dog.lie.z) ? dog.z : dog.lie.z, follow: dog.lie.follow };
   if (dog.v > 0) s.v = dog.v;
+  if (dog.turning) s.turning = true;
   return s;
 }
 
@@ -511,6 +557,7 @@ export function restoreDog(s: DogSave): Dog {
   const lie = s.lie;
   dog.lie = isRecord(lie) && Number.isFinite(lie.x) && Number.isFinite(lie.z) ? { x: lie.x, z: lie.z, follow: typeof lie.follow === 'string' ? lie.follow : '' } : null;
   dog.v = typeof s.v === 'number' && Number.isFinite(s.v) ? Math.max(0, Math.min(dog.run, s.v)) : 0;
+  dog.turning = s.turning === true;
   if (dog.state === 'bolt' && !dog.path) dog.state = dog.back ? 'return' : 'idle';
   if (dog.state === 'lie' && !dog.lie) dog.lie = { x: dog.x, z: dog.z, follow: '' };
   dog.motion.yaw = dog.yaw;

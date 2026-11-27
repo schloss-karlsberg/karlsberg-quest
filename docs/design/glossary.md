@@ -13,7 +13,7 @@ Use these terms in menus, settings, prompts, subtitles, accessible names and aut
 | Navigation | Karte, Reisepunkt, Schnellreise | A Reisepunkt is a destination on the map. Discovery reads „Reisepunkt entdeckt“. |
 | Time travel | Epoche, Zeitsprung, Ankerpunkt | An Epoche is the time period. An Ankerpunkt is where a Zeitsprung can start. Use „Q gedrückt halten“ for the return to the Quelle. The touch button announces „Halten: zur Gruppe“ while the tour offers regrouping. |
 | Survey tools | Erkunden, Relief-Blick, Messstab | „Erkunden“ is the touch menu for those tools. The three relief views are „Schummerung“, „Lokales Relief“ and „VAT“. |
-| Photo and touch | Fotomodus, Auslöser, Album, Bewegungsregler | „Fotomodus“ opens the camera. „Auslöser“ takes the photo. „Handy“ refers to the device and „Album“ is the page for photos. Use „Touch-Steuerung“ for the input setting. The sprint prompt reads „Zum Rennen ganz vor“. |
+| Photo and touch | Fotomodus, Auslöser, Album, Galerie, Bewegungsregler | „Fotomodus“ opens the camera. „Auslöser“ takes the photo. „Handy“ refers to the device and „Album“ is the page for photos. „Galerie“ holds every photo kept on this device; its actions are „Teilen“, „Herunterladen“ and „Löschen“. Use „Touch-Steuerung“ for the input setting. The sprint prompt reads „Zum Rennen ganz vor“. |
 | Keyboard | Umschalt, Strg, Leertaste, Esc, Enter, Tab | Match the German key labels in the controls and prompts. „Umschalttaste“ is the long form in prose. |
 | Version details | Version, Stand | Use „Stand“ for the revision shown on the title screen, in news and on the public news page. |
 

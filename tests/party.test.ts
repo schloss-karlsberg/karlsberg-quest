@@ -1,5 +1,7 @@
 /** The end-of-game party (src/systems/party): the runtime with fake people, bus, set, strip and cinematic. */
 import { describe, expect, it } from 'vitest';
+import { MemoryStorage, SaveManager } from '../src/core/save';
+import { createInitialState, GameStateStore } from '../src/core/state';
 import { creditLines, creditSections } from '../src/systems/party/creditContent';
 import { CAM_MAX, ORBIT, creditsPlan } from '../src/systems/party/credits';
 import { DOUBLES, PROPS, SPOT_LAST, SPOT_ROUND, TF01, partyLayout, propsFor } from '../src/systems/party/placements';
@@ -40,7 +42,7 @@ interface FakeSet extends PartySetHandle {
   visible: boolean;
 }
 
-function setup(o: { lines?: readonly string[]; cinematic?: 'auto' | 'none' | 'reject'; reduced?: boolean; slice?: PartySlice; specs?: string[] } = {}) {
+function setup(o: { lines?: readonly string[]; cinematic?: 'auto' | 'none' | 'reject'; reduced?: boolean; slice?: PartySlice; sliceOf?: () => PartySlice; specs?: string[] } = {}) {
   const bus = new FakeBus();
   const people: FakePerson[] = [];
   const sets: FakeSet[] = [];
@@ -113,7 +115,7 @@ function setup(o: { lines?: readonly string[]; cinematic?: 'auto' | 'none' | 're
       return s;
     },
     world: { heightAt: () => 300, player: () => world.player, era: () => world.era },
-    slice: () => slice,
+    slice: o.sliceOf ?? (() => slice),
     defaultLines: o.lines ?? ['Karlsberg Quest', 'Danke fürs Spielen'],
     reduced: () => o.reduced === true,
     strip: {
@@ -322,8 +324,11 @@ describe('party runtime', () => {
       expect(c.bus.of('credits:done')).toHaveLength(0);
       // more movement: nothing more to hand back
       c.world.player.x += 3;
+      const rendered = c.strip.renders;
       c.step(1);
       expect(c.bus.of('cinematic:stop')).toHaveLength(1);
+      expect(c.strip.renders).toBeGreaterThan(rendered);
+      expect(c.strip.hidden).toBe(0);
       c.step(c.rt.credits!.plan.seconds);
       expect(c.bus.of('credits:done')).toEqual([{ skipped: false }]);
       expect(c.bus.of('party:spotlight')).toHaveLength(9);
@@ -479,6 +484,7 @@ describe('party runtime', () => {
     const a = setup({ slice: { variant: 'keep', credits: 'playing' } });
     a.bus.emit('game:start', { resumed: true });
     expect(a.bus.of('credits:done')).toEqual([{ skipped: true }]);
+    expect(a.rt.party?.variant).toBe('keep');
     a.bus.emit('game:start', { resumed: true });
     expect(a.bus.of('credits:done')).toHaveLength(1);
     expect(a.slice.credits).toBe('done');
@@ -499,6 +505,25 @@ describe('party runtime', () => {
     const c = setup({ slice: { variant: null, credits: 'done' } });
     c.bus.emit('game:start', { resumed: true });
     expect(c.bus.of('credits:done')).toHaveLength(0);
+  });
+
+  it.each([false, true])('does not finish the loaded slot from abandoned credits (reduced motion: %s)', (reduced) => {
+    const store = new GameStateStore(createInitialState());
+    const sliceOf = () => store.slice('party', (): PartySlice => ({ variant: null, credits: 'none' }));
+    const save = new SaveManager(store, new MemoryStorage());
+    const game = setup({ sliceOf, reduced });
+    expect(save.save('before-party')).toBe(true);
+    game.rt.set({ variant: 'keep' });
+    game.rt.startCredits({});
+    expect(save.load('before-party')).toBe(true);
+    game.endCine(true);
+    game.bus.emit('save:loaded', { slot: 'before-party' });
+    expect(game.bus.of('credits:done')).toEqual([]);
+    expect(sliceOf()).toEqual({ variant: null, credits: 'none' });
+    expect(game.rt.party).toBeNull();
+    expect(game.rt.credits).toBeNull();
+    expect(game.rt.quiet).toBe(false);
+    expect(game.strip.hidden).toBe(1);
   });
 });
 

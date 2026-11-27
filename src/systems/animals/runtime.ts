@@ -6,7 +6,9 @@
  * tests/animals-system.test.ts drives it with fakes.
  */
 import type { Stance } from '../../player/stance';
+import { CROWD_LEVEL_TOLERANCE, DOG_RADIUS, PLAYER_RADIUS, separateFromCrowd, type CrowdCircle } from '../../world/crowd';
 import type { Animal, AnimalClip, AnimalSpawnOpts, FaunaApi } from '../fauna/types';
+import type { GroupRelocation } from '../walk/types';
 import {
   DEER,
   calmDeer,
@@ -20,7 +22,7 @@ import {
   type Deer,
   type DeerInput,
 } from './deer';
-import { applyDogRequest, createDog, dogSlot, stepDogs, type Dog, type DogTarget } from './dogs';
+import { applyDogRequest, createDog, DOGS, dogSlot, relocateDog, stepDog, type Dog, type DogTarget } from './dogs';
 import { createCinematicBridge, createPhotoBridge, type CinematicBridge, type P3, type PhotoBridge } from './photoBridge';
 import { restoreAnimals, serializeAnimals } from './save';
 import { specIdFor, toRequest, type AnimalAction, type AnimalEvent, type AnimalKind, type AnimalRequest, type AnimalSave } from './types';
@@ -50,6 +52,7 @@ export type FaunaLike = Pick<FaunaApi, 'spawn'>;
 
 export interface AnimalsPlayer {
   x: number;
+  y?: number;
   z: number;
   /** Ground speed m/s. */
   speed: number;
@@ -67,7 +70,9 @@ export interface AnimalsWorld {
   heightAt(x: number, z: number): number;
   era(): string;
   player(): AnimalsPlayer;
+  reducedMotion?(): boolean;
   walkable?(x: number, z: number): boolean;
+  tourVisitors?(): readonly CrowdCircle[];
   /** Can the deer at (ax, az) see the player at (bx, bz) in this stance? Default: yes. */
   los?(ax: number, az: number, bx: number, bz: number, stance: Stance): boolean;
   /** Live people (ctx.people.list()). */
@@ -138,6 +143,12 @@ export class AnimalsRuntime {
   private tickRefs = new Map<string, RefSample | null>();
   private dt = 1 / 60;
   private readonly log: (m: string) => void;
+  /** Per-tick crowd scratch: the tour runs every fixed step, so these are reused, not allocated. */
+  private readonly blockers: CrowdCircle[] = [];
+  private readonly playerCircle: CrowdCircle = { x: 0, y: 0, z: 0, radius: PLAYER_RADIUS };
+  private readonly dogBody: CrowdCircle = { x: 0, y: 0, z: 0, radius: DOG_RADIUS };
+  private readonly dogFrom = { x: 0, z: 0 };
+  private readonly dogCircles: CrowdCircle[] = [];
 
   constructor(private readonly deps: AnimalsDeps) {
     this.photo = deps.photo ?? createPhotoBridge();
@@ -148,7 +159,26 @@ export class AnimalsRuntime {
       if (c && c.id === 'animal' && c.data) this.request(c.data as unknown as AnimalAction);
     });
     deps.bus.on('save:loaded', () => this.restore());
+    deps.bus.on('group:relocated', (relocation: GroupRelocation) => this.relocateFollowers(relocation));
     this.active = deps.world.era() === ANIMAL_ERA;
+  }
+
+  private relocateFollowers({ poses }: GroupRelocation): void {
+    if (this.paused || !this.dogs.length) return;
+    const returned: AnimalEvent[] = [];
+    let moved = false;
+    for (const dog of this.dogs) {
+      const ref = dog.state === 'lie' ? dog.lie?.follow : dog.follow;
+      const pose = poses.find((p) => ref === `npc:${p.npc}`);
+      if (!pose || !ref) continue;
+      this.refs.delete(ref);
+      this.tickRefs.delete(ref);
+      if (relocateDog(dog, { ...pose, speed: 0 })) returned.push({ type: 'animal:returned', id: dog.id });
+      moved = true;
+    }
+    if (!moved) return;
+    this.writeSave();
+    this.cues(returned);
   }
 
   // ---- requests -------------------------------------------------------------------------------
@@ -311,6 +341,14 @@ export class AnimalsRuntime {
     if (s.body) {
       const o = { x: 0, y: 0, z: 0 };
       s.body.headWorld(o);
+      // The camera updates before body sync. Keep its target on the current simulation pose.
+      const d = this.deer.find((a) => a.id === id) ?? this.dogs.find((a) => a.id === id);
+      if (d) {
+        const root = s.body.root.position;
+        o.x += d.x - root.x;
+        o.y += this.deps.world.heightAt(d.x, d.z) - root.y;
+        o.z += d.z - root.z;
+      }
       return o;
     }
     const c = this.centreOf(id);
@@ -416,7 +454,32 @@ export class AnimalsRuntime {
     const input: DeerInput = { player, los: this.los };
     if (w.walkable) input.walkable = (x, z) => w.walkable!(x, z);
     const evs = this.deer.length ? stepDeerHerd(this.deer, dt, input) : [];
-    if (this.dogs.length) evs.push(...stepDogs(this.dogs, dt, this.resolve));
+    const visitors = this.dogs.length ? w.tourVisitors?.() : undefined;
+    const blockers = visitors?.length && !p.flying ? this.withPlayer(visitors, p.x, p.y ?? w.heightAt(p.x, p.z), p.z) : visitors;
+    const reachedBlocker = blockers?.length ? (dog: Dog, x: number, z: number): boolean => blockers.some((other) => {
+      const clearance = DOG_RADIUS + other.radius;
+      return Math.hypot(x - other.x, z - other.z) < clearance &&
+        Math.hypot(dog.x - other.x, dog.z - other.z) <= clearance + DOGS.PATH_EPS &&
+        Math.abs(w.heightAt(x, z) - other.y) <= CROWD_LEVEL_TOLERANCE;
+    }) : undefined;
+    const reducedMotion = this.dogs.length > 0 && w.reducedMotion?.();
+    for (const dog of this.dogs) {
+      const crowded = dog.follow === 'npc:double.jost' && blockers?.length;
+      stepDog(dog, dt, this.resolve, evs, reducedMotion, crowded ? reachedBlocker : undefined);
+      if (!crowded) continue;
+      const body = this.dogBody;
+      body.x = dog.x;
+      body.y = w.heightAt(dog.x, dog.z);
+      body.z = dog.z;
+      const from = this.dogFrom;
+      from.x = dog.x + Math.sin(dog.yaw);
+      from.z = dog.z + Math.cos(dog.yaw);
+      separateFromCrowd(body, blockers, from);
+      if ((body.x !== dog.x || body.z !== dog.z) && Math.abs(w.heightAt(body.x, body.z) - body.y) < 0.45) {
+        dog.x = body.x;
+        dog.z = body.z;
+      }
+    }
     // keep the follow refs' samples fresh (the player and leaders) even when no dog asked this tick
     for (const d of this.dogs) if (d.follow) this.resolve(d.follow);
     this.sampleRefs();
@@ -426,6 +489,38 @@ export class AnimalsRuntime {
       this.saveT = 1 / SAVE_HZ;
       this.writeSave();
     }
+  }
+
+  /** The visitors plus the player's circle, in a reused array. */
+  private withPlayer(visitors: readonly CrowdCircle[], x: number, y: number, z: number): readonly CrowdCircle[] {
+    const pc = this.playerCircle;
+    pc.x = x;
+    pc.y = y;
+    pc.z = z;
+    const all = this.blockers;
+    all.length = 0;
+    for (const v of visitors) all.push(v);
+    all.push(pc);
+    return all;
+  }
+
+  /** The tour dogs' collision circles. The array and its circles are reused on every call. */
+  tourDogs(): readonly CrowdCircle[] {
+    const w = this.deps.world;
+    const out = this.dogCircles;
+    let n = 0;
+    if (w.era() === ANIMAL_ERA) {
+      for (const dog of this.dogs) {
+        if (dog.follow !== 'npc:double.jost' || !this.slots.get(dog.id)?.body) continue;
+        const c = (out[n] ??= { x: 0, y: 0, z: 0, radius: DOG_RADIUS });
+        c.x = dog.x;
+        c.y = w.heightAt(dog.x, dog.z);
+        c.z = dog.z;
+        n++;
+      }
+    }
+    out.length = n;
+    return out;
   }
 
   /** Any self-led deer sees the player (the doe leads; followers mirror her). */

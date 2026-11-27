@@ -41,6 +41,10 @@ export interface QuestEnv {
   now(): number;
   /** 0..1, deterministic in tests (drop rolls). */
   rng(): number;
+  hasCalmed?(animal: string): boolean;
+  takenPickups?(): readonly string[];
+  sideClosed?(id: string): boolean;
+  canOfferAtNpc?(npc: string, chapter: string): boolean;
 }
 
 /** Where the player is (reach / escort / survive objectives). */
@@ -75,6 +79,8 @@ const BOSS_KINDS = new Set(['schuldbuch', 'pikeur', 'strohmann', 'steinbrecher']
 export const QUEST_FLAG = (id: string) => `quest.${id}`;
 export const OBJ_FLAG = (id: string, obj: string) => `quest.${id}.${obj}`;
 const MAX_TRACKED = 3;
+const pickupId = (quest: string, objective: string, index: number) => `${quest}.${objective}.${index}`;
+const dropPrefix = (quest: string, objective: string) => `${quest}.${objective}.drop.`;
 
 const QUEST_STATES = allOf<QuestState>()(['hidden', 'offered', 'active', 'ready', 'done', 'failed']);
 
@@ -89,15 +95,21 @@ export function normaliseSlice(s: Partial<QuestSlice> | undefined | null): Quest
   if (!Array.isArray(out.tracked)) out.tracked = [];
   if (!Array.isArray(out.unseen)) out.unseen = [];
   if (out.bestiary !== undefined) out.bestiary = numberRecord(out.bestiary);
-  for (const [id, p] of Object.entries(out.quests)) {
-    // A corrupt entry restores as never seen (the story re-offers what it needs).
-    if (!p || typeof p !== 'object' || Array.isArray(p) || !isOneOf(QUEST_STATES, p.state)) {
-      delete out.quests[id];
-      continue;
+  // A corrupt replay attempt is dropped: the earned results in `quests` stay.
+  const replay = out.replay as Partial<NonNullable<QuestSlice['replay']>> | undefined;
+  const replayOk = !!replay && typeof replay === 'object' && typeof replay.chapter === 'string'
+    && !!replay.quests && typeof replay.quests === 'object' && !Array.isArray(replay.quests);
+  if (replay !== undefined && !replayOk) delete out.replay;
+  for (const quests of [out.quests, out.replay?.quests ?? {}])
+    for (const [id, p] of Object.entries(quests)) {
+      // A corrupt entry restores as never seen (the story re-offers what it needs).
+      if (!p || typeof p !== 'object' || Array.isArray(p) || !isOneOf(QUEST_STATES, p.state)) {
+        delete quests[id];
+        continue;
+      }
+      p.counts = numberRecord(p.counts);
+      if (typeof p.t !== 'number') p.t = 0;
     }
-    p.counts = numberRecord(p.counts);
-    if (typeof p.t !== 'number') p.t = 0;
-  }
   return out;
 }
 
@@ -265,15 +277,15 @@ export class QuestBook {
   }
 
   state(id: string): QuestState {
-    return this.slice.quests[id]?.state ?? 'hidden';
+    return this.progressOf(id)?.state ?? 'hidden';
   }
 
   progressOf(id: string): QuestProgress | undefined {
-    return this.slice.quests[id];
+    return this.slice.replay?.quests[id] ?? this.slice.quests[id];
   }
 
   count(id: string, obj: string): number {
-    return this.slice.quests[id]?.counts[obj] ?? 0;
+    return this.progressOf(id)?.counts[obj] ?? 0;
   }
 
   objectiveDone(q: QuestDef, o: QuestObjective): boolean {
@@ -336,9 +348,7 @@ export class QuestBook {
   // ---- lifecycle ------------------------------------------------------------------------------
 
   private prog(id: string): QuestProgress {
-    const p = (this.slice.quests[id] ??= { state: 'hidden', counts: {}, t: this.env.now() });
-    p.counts ??= {};
-    return p;
+    return this.progressOf(id) ?? (this.slice.quests[id] = { state: 'hidden', counts: {}, t: this.env.now() });
   }
 
   private setState(id: string, st: QuestState): void {
@@ -368,8 +378,11 @@ export class QuestBook {
     const st = this.state(id);
     if (st !== 'hidden' && st !== 'offered' && st !== 'failed') return false;
     const p = this.prog(id);
-    p.counts = {};
-    for (const o of q.objectives) this.env.flags[OBJ_FLAG(id, o.id)] = 0;
+    p.counts = q.kind === 'side' || this.slice.replay?.quests[id] ? Object.fromEntries(q.objectives
+      .filter((o) => o.optional && o.bonus_xp && this.objectiveDone(q, o))
+      .map((o) => [o.id, need(o)])) : {};
+    delete p.reason;
+    for (const o of q.objectives) this.env.flags[OBJ_FLAG(id, o.id)] = this.count(id, o.id);
     this.setState(id, 'active');
     this.track(id);
     this.env.emit('quest:accepted', { id });
@@ -435,7 +448,10 @@ export class QuestBook {
     this.env.emit('quest:progress', { id, objective: obj, count: now, need: goal });
     if (now >= goal) {
       this.env.emit('quest:objective', { id, objective: obj, optional: !!o.optional });
-      if (o.optional && o.bonus_xp) this.env.emit('xp:grant', { amount: o.bonus_xp, reason: `quest:${id}:${obj}` });
+      if (o.optional && o.bonus_xp) {
+        if (this.slice.replay?.quests[id]) this.slice.quests[id]!.counts[obj] = goal;
+        this.env.emit('xp:grant', { amount: o.bonus_xp, reason: `quest:${id}:${obj}` });
+      }
       this.activate(q, activeBefore);
     }
     this.checkReady(q);
@@ -481,7 +497,7 @@ export class QuestBook {
     });
     if (o.type === 'collect' && o.item)
       (o.place ?? []).forEach((p, i) => {
-        this.env.emit('loot:place', { id: `${q.id}.${o.id}.${i}`, item: o.item!, x: p.x, z: p.z, era: placeEra(q, o, p), room: p.room, quest: q.id });
+        this.env.emit('loot:place', { id: pickupId(q.id, o.id, i), item: o.item!, x: p.x, z: p.z, era: placeEra(q, o, p), room: p.room, quest: q.id });
       });
   }
 
@@ -519,11 +535,50 @@ export class QuestBook {
 
   /** Re-write the whole flag mirror from the slice (load, old saves). */
   mirror(): void {
-    for (const [id, p] of Object.entries(this.slice.quests)) {
-      if (!this.defs.has(id)) continue;
-      this.env.flags[QUEST_FLAG(id)] = p.state;
-      for (const [o, n] of Object.entries(p.counts)) this.env.flags[OBJ_FLAG(id, o)] = n;
+    for (const q of this.defs.values()) {
+      const p = this.progressOf(q.id);
+      if (p) this.mirrorProgress(q, p);
     }
+  }
+
+  private mirrorProgress(q: QuestDefIn, p: QuestProgress): void {
+    this.env.flags[QUEST_FLAG(q.id)] = p.state;
+    for (const o of q.objectives) this.env.flags[OBJ_FLAG(q.id, o.id)] = p.counts[o.id] ?? 0;
+  }
+
+  /** Replay already-paid main quests in a separate attempt. The original progress stays in history. */
+  startChapter(chapter: string, replay: readonly string[] = []): void {
+    this.chapter = chapter;
+    const previous = this.slice.replay;
+    const leavingReplay = previous !== undefined && (replay.length > 0 || previous.chapter !== chapter);
+    if (leavingReplay) {
+      for (const id of Object.keys(previous.quests)) {
+        const q = this.defs.get(id);
+        if (q) this.cleanup(q);
+      }
+      this.slice.tracked = this.slice.tracked.filter((id) => !previous.quests[id]);
+      delete this.slice.replay;
+    }
+    const quests: Record<string, QuestProgress> = {};
+    for (const id of replay) {
+      const q = this.defs.get(id);
+      const earned = this.slice.quests[id];
+      if (q?.chapter === chapter && q.kind === 'main' && earned?.state === 'done') {
+        quests[id] = this.replayAttempt(q, earned);
+      }
+    }
+    const startingReplay = Object.keys(quests).length > 0;
+    if (startingReplay) this.slice.replay = { chapter, quests };
+    if (!startingReplay && !leavingReplay) return;
+    this.mirror();
+    this.onChange('restore');
+  }
+
+  private replayAttempt(q: QuestDefIn, earned: QuestProgress): QuestProgress {
+    const counts = Object.fromEntries(q.objectives
+      .filter((o) => o.optional && o.bonus_xp && (earned.counts[o.id] ?? 0) >= need(o))
+      .map((o) => [o.id, need(o)]));
+    return { ...earned, state: 'hidden', counts };
   }
 
   private checkReady(q: QuestDefIn): void {
@@ -549,7 +604,8 @@ export class QuestBook {
     if (!q) return null;
     const st = this.state(id);
     if (st === 'done' || (!force && st !== 'ready')) return null;
-    const r: QuestRewards = q.rewards ?? {};
+    const replay = !!this.slice.replay?.quests[id];
+    const r: QuestRewards = replay ? {} : q.rewards ?? {};
     const xp = r.xp ?? 0;
     const reason = `quest:${id}`;
     const xpReceipt = { amount: 0 };
@@ -560,7 +616,7 @@ export class QuestBook {
       this.env.emit('item:grant', { item: i.item, count: i.count ?? 1, reason, receipt });
       if (receipt.amount > 0) items.push({ item: i.item, count: receipt.amount });
     }
-    const facts = [...(q.history ?? []).map((l) => l.fact).filter((f): f is string => !!f), ...(r.codex ?? [])];
+    const facts = replay ? [] : [...(q.history ?? []).map((l) => l.fact).filter((f): f is string => !!f), ...(r.codex ?? [])];
     const fresh: string[] = [];
     for (const f of facts) {
       if (this.env.codex.includes(f) || fresh.includes(f)) continue;
@@ -575,9 +631,9 @@ export class QuestBook {
     this.env.emit('quest:completed', { id, xp, main: q.kind === 'main' });
     this.cleanup(q);
     this.track(id, false);
-    if (!this.slice.unseen.includes(`q:${id}`)) this.slice.unseen.push(`q:${id}`);
+    if (!replay && !this.slice.unseen.includes(`q:${id}`)) this.slice.unseen.push(`q:${id}`);
     const pay: QuestPayout = { id, title: q.title_de, xp: xpReceipt.amount, items, codex: fresh, skills: [...(r.skills ?? [])], quiet: !!q.quiet, main: q.kind === 'main' };
-    this.onPayout(pay);
+    if (!replay) this.onPayout(pay);
     if (q.next) this.offer(q.next);
     this.onChange('complete');
     return pay;
@@ -590,7 +646,8 @@ export class QuestBook {
 
   fail(id: string, reason = 'story'): boolean {
     const q = this.defs.get(id);
-    if (!q || this.state(id) === 'done') return false;
+    const state = this.state(id);
+    if (!q || state === 'done' || state === 'failed') return false;
     this.setState(id, 'failed');
     this.prog(id).reason = reason;
     this.cleanup(q);
@@ -614,13 +671,25 @@ export class QuestBook {
       if (i < 0 || i >= at) continue;
       const st = this.state(q.id);
       // main quests of a skipped chapter, and offers whose (chapter-bound) giver is gone
-      if (st === 'offered' || (q.kind === 'main' && (st === 'active' || st === 'ready'))) this.reset(q.id);
+      if (q.kind === 'main' && (st === 'offered' || st === 'active' || st === 'ready')) this.reset(q.id);
       // Past-era side quests expire at the next chapter, present-day ones two chapters on.
-      // A ready quest still pays out, an active one fails.
-      else if (q.kind === 'side' && ((q.era && q.era !== 'today') || at - i >= 2)) {
-        if (st === 'ready') this.complete(q.id, true);
-        else if (st === 'active') this.fail(q.id, 'chapter');
-      }
+      // A ready quest still pays out, an active one fails, an untaken offer is withdrawn.
+      else if (q.kind === 'side' && (st === 'offered' || (q.era && q.era !== 'today') || at - i >= 2)) this.close(q.id, 'chapter');
+    }
+  }
+
+  /**
+   * Close a quest at a story or chapter cutoff: a finished one pays out, an active one fails, an
+   * untaken offer is withdrawn (or stays failed after an earlier attempt). Repeats are no-ops.
+   */
+  close(id: string, reason = 'story'): void {
+    const state = this.state(id);
+    if (state === 'ready') this.complete(id, true);
+    else if (state === 'active') this.fail(id, reason);
+    else if (state === 'offered') {
+      const previous = this.progressOf(id)?.reason;
+      if (previous) this.fail(id, previous);
+      else this.reset(id);
     }
   }
 
@@ -629,9 +698,16 @@ export class QuestBook {
     const q = this.defs.get(id);
     if (!q) return false;
     this.cleanup(q);
-    delete this.slice.quests[id];
-    delete this.env.flags[QUEST_FLAG(id)];
-    for (const o of q.objectives) delete this.env.flags[OBJ_FLAG(id, o.id)];
+    const attempt = this.slice.replay?.quests[id];
+    if (attempt) {
+      const fresh = this.replayAttempt(q, this.slice.quests[id]!);
+      this.slice.replay!.quests[id] = fresh;
+      this.mirrorProgress(q, fresh);
+    } else {
+      delete this.slice.quests[id];
+      delete this.env.flags[QUEST_FLAG(id)];
+      for (const o of q.objectives) delete this.env.flags[OBJ_FLAG(id, o.id)];
+    }
     this.track(id, false);
     this.onChange('reset');
     return true;
@@ -639,9 +715,10 @@ export class QuestBook {
 
   /** "Erzähl mehr" heard: the rest of a quest's history is told (the topic goes away). */
   told(id: string): boolean {
-    const p = this.slice.quests[id];
+    const p = this.progressOf(id);
     if (!p || p.state !== 'done' || p.told) return false;
     p.told = true;
+    if (this.slice.replay?.quests[id]) this.slice.quests[id]!.told = true;
     this.onChange('told');
     return true;
   }
@@ -670,7 +747,7 @@ export class QuestBook {
           const i = (this.drops.get(k) ?? 0) + 1;
           this.drops.set(k, i);
           this.env.emit('loot:place', {
-            id: `${k}.drop.${String(p.id ?? i)}`,
+            id: `${dropPrefix(q.id, o.id)}${String(p.id ?? i)}`,
             item: o.item,
             x: Number(p.x ?? 0),
             z: Number(p.z ?? 0),
@@ -715,17 +792,28 @@ export class QuestBook {
 
   /**
    * Credit clues, good photos and calmed animals from the save when an objective opens or on load.
+   * Recover permanent world actions whose events cannot happen again in a retry or older save.
    */
   settleKnown(
     found: (clue: string) => boolean,
     hasPhoto: (target: string) => boolean = () => false,
     pikeur?: { group: EnemyGroupState; era: Era },
   ): void {
+    const pickups = new Set(this.env.takenPickups?.());
     for (const q of this.running())
       for (const o of this.openObjectives(q)) {
         if ((o.type === 'examine' || o.type === 'echo') && o.clue && found(o.clue)) this.progress(q.id, o.id, need(o));
         else if (o.type === 'photo' && o.target && hasPhoto(o.target)) this.progress(q.id, o.id, need(o));
-        else this.settleCalm(q, o);
+        else if (o.type === 'calm') {
+          this.settleCalm(q, o);
+          // the cassowary's homecoming also counts once its spawn record is gone
+          if (q.kind === 'side' && o.animal && this.env.hasCalmed?.(o.animal)) this.progress(q.id, o.id, need(o));
+        } else if ((q.kind === 'side' || this.slice.replay?.quests[q.id]) && o.type === 'collect' && pickups.size) {
+          const placed = (o.place ?? []).filter((_, index) => pickups.has(pickupId(q.id, o.id, index))).length;
+          const prefix = dropPrefix(q.id, o.id);
+          const dropped = o.drop ? [...pickups].filter((id) => id.startsWith(prefix) && id.length > prefix.length).length : 0;
+          this.progress(q.id, o.id, placed + dropped - this.count(q.id, o.id));
+        }
       }
 
     // The story can spawn the Pikeur before the Landremont echo opens his objective.
@@ -772,12 +860,23 @@ export class QuestBook {
   }
   private readonly survive = new Map<string, number>();
 
+  /** Repair saved quests when a one-shot story deadline will not run again on resume. */
+  reconcileDeadlines(chapter: string | null): void {
+    for (const q of this.defs.values())
+      if (q.kind === 'side' && q.chapter === chapter && this.env.sideClosed?.(q.id)) this.close(q.id);
+  }
+
   /** Offer the side quests of `chapter` whose `available` holds now. Returns the ids offered. */
   offerAvailable(chapter: string | null, era: Era | null): string[] {
     if (!chapter) return [];
     const out: string[] = [];
     for (const q of this.defs.values()) {
-      if (q.kind !== 'side' || q.chapter !== chapter || this.state(q.id) !== 'hidden') continue;
+      if (q.kind !== 'side' || q.chapter !== chapter) continue;
+      const state = this.state(q.id);
+      if (state !== 'hidden' && state !== 'failed') continue;
+      if (this.env.sideClosed?.(q.id)) continue;
+      if (state === 'failed' && q.era && q.era !== era) continue;
+      if ('npc' in q.giver && this.env.canOfferAtNpc?.(q.giver.npc, chapter) === false) continue;
       if (!availableHolds(q, (id) => this.state(id), this.env.flags, era)) continue;
       if (this.offer(q.id)) out.push(q.id);
     }
@@ -804,7 +903,7 @@ export class QuestBook {
         out.push({ rank: 0, t: { quest: q.id, kind: 'turnin', label, main, lines: q.turnin_lines ?? [], history: (q.history ?? []).slice(0, historyAtTurnin(q)) } });
       else if (st === 'active' && atTurnin && q.progress?.length) out.push({ rank: 3, t: { quest: q.id, kind: 'progress', label, main, lines: q.progress } });
       // after a turn-in at this npc: the rest of the history, when the player wants it (§8.5.7)
-      else if (st === 'done' && atTurnin && (q.history?.length ?? 0) > historyAtTurnin(q) && !this.slice.quests[q.id]?.told && (!this.chapter || q.chapter === this.chapter))
+      else if (st === 'done' && atTurnin && (q.history?.length ?? 0) > historyAtTurnin(q) && !this.progressOf(q.id)?.told && (!this.chapter || q.chapter === this.chapter))
         out.push({ rank: 4, t: { quest: q.id, kind: 'more', label: `Erzähl mehr: ${label}`, main, lines: (q.history ?? []).slice(historyAtTurnin(q)) } });
     }
     return out.sort((a, b) => a.rank - b.rank).map((x) => x.t);

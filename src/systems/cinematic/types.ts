@@ -27,7 +27,7 @@ export interface CinematicKey {
    * What the camera looks at: a target id, a point (y = metres above ground, default 1.2), or a
    * fixed pitch / yaw (degrees; pitch + = up; yaw compass: 0 north, 90 east; no yaw = the player's).
    */
-  look?: { target: CineTarget } | { x: number; z: number; y?: number } | { pitch: number; yaw?: number };
+  look?: { target: CineTarget } | { targets: [CineTarget, CineTarget] } | { x: number; z: number; y?: number } | { pitch: number; yaw?: number };
   /** 15–90 degrees. */
   fov?: number;
   /**

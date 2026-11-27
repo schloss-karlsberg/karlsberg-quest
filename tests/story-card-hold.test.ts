@@ -200,6 +200,32 @@ describe('the title card clock under kq.step (many fixed updates, one render)', 
     expect(h.holding()).toBe(false);
   });
 
+  it('caps a chapter card on a slow frame and suspends its deadline while paused', () => {
+    const h = new CardLineHold();
+    h.show(true, 5.5, 100);
+    h.tick(DT);
+    h.setPaused(true, false, 1100);
+    expect(h.tick(0, 20100)).toBe(false);
+    h.setPaused(false, false, 21100);
+    expect(h.tick(0, 25599)).toBe(false);
+    expect(h.tick(0, 25600)).toBe(true);
+    expect(h.holding()).toBe(true);
+    h.tick(0, 26400);
+    expect(h.holding()).toBe(false);
+  });
+
+  it.each([true, false])('holds the card when the tab or game is still paused (tab returns first: %s)', (tabFirst) => {
+    const h = new CardLineHold();
+    h.show(true, 5.5, 100);
+    h.setPaused(false, true, 1100);
+    h.setPaused(true, true, 1500);
+    h.setPaused(tabFirst, !tabFirst, 21000);
+    expect(h.tick(10, 22000)).toBe(false);
+    h.setPaused(false, false, 23100);
+    expect(h.tick(0, 27599)).toBe(false);
+    expect(h.tick(0, 27600)).toBe(true);
+  });
+
   it('a place card (the card action) goes on the same clock, holding nothing', () => {
     const h = new CardLineHold();
     h.show(false, 3.5);

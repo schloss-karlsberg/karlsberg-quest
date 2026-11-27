@@ -525,6 +525,8 @@ export interface EnemyGroupState {
 /** `state.systems.quests` (owner: quests). */
 export interface QuestSlice {
   quests: Record<string, QuestProgress>;
+  /** Current attempts for previously completed main quests. Earned results stay in quests. */
+  replay?: { chapter: string; quests: Record<string, QuestProgress> };
   /** Quest ids shown in the HUD tracker (main first; at most 3). */
   tracked: string[];
   /** Codex / journal entries the player has not opened yet ("neu" stamp). */

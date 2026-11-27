@@ -30,6 +30,10 @@ export function stubSetPieceDom() {
       this.attributes.set(name, value);
     }
 
+    removeAttribute(name: string) {
+      this.attributes.delete(name);
+    }
+
     appendChild(child: ElementStub) {
       child.remove();
       this.children.add(child);

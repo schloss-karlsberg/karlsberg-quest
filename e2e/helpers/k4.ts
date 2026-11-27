@@ -192,10 +192,37 @@ async function untilQuest(page: Page, id: string, state: string, seconds = 30): 
   expect(await quest(page, id), id).toBe(state);
 }
 
+/**
+ * Read away the field-book pages a player would see before pressing a key. A clue page from E
+ * waits in the card queue while a fight (or its 3 s calm, counted in rendered frames) holds it,
+ * and can open many steps later. An open page disables gameplay input, so a key press then is lost.
+ * Pages still held by the fight stay queued.
+ */
+async function readPages(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const k = window.kq!;
+    const { cards, modals } = k.ctx.ui;
+    // what keeps the queue shut (soft reasons and the story's extra hold only delay slide-in cards)
+    const blocked = () => cards.holdReasons().some((r) => !r.startsWith('soft:') && r !== 'story');
+    // one render per step: the card gap (CARD_GAP) runs in rendered frames
+    for (let i = 0; i < 240 && (modals.count > 0 || (cards.pending > 0 && !blocked())) && !k.story?.choice(); i++) {
+      modals.closeAll();
+      k.step(1);
+    }
+  });
+}
+
 /** Q here (either direction), finish the shift. */
 async function shiftQ(page: Page): Promise<void> {
+  await readPages(page);
+  const before = await page.evaluate(() => window.kq!.ctx.era.current);
   // today: a press at the anchor; in the past: hold Q (1.2 s) to come home
   await page.evaluate(() => window.kq!.press('KeyQ', window.kq!.ctx.era.current === 'today' ? 2 : 90));
+  const took = await page.evaluate(() => {
+    const k = window.kq!;
+    return { era: k.ctx.era.current, shift: k.fx!.state().shift.active, input: k.ctx.input.enabled, modals: k.ctx.ui.modals.count, pending: k.ctx.ui.cards.pending, holds: k.ctx.ui.cards.holdReasons() };
+  });
+  expect(took.shift || took.era !== before, `Q did not start a shift: ${JSON.stringify(took)}`).toBe(true);
   await run(page, 0.5);
   await settleShift(page);
   await run(page, 1);

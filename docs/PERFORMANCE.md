@@ -595,6 +595,21 @@ exercise both reuse and invalidation in tests. Compare DOM values at their writt
 that a change invisible to the player does not trigger formatting or a style assignment.
 Operation counts above come from unit tests and code inspection. Frame-time and garbage-collection
 effects still need a browser profile.
+### 3.8 Tour crowd (TASK-022)
+
+The same character geometry and LOD bands apply on all presets. With all 15 visitors in view,
+the loaded tour bodies cost 161 draws and 118,392 triangles per color pass at 10 m, and 161 draws
+and 112,431 triangles at 20 m. These are body mesh counts from `tests/people.test.ts`. Relative to
+`dev/task-016` the in-view mesh cost is +0 draws and +0 triangles at each distance. The guide
+uses the smaller mesh at 20 m and the solid stand-ins skip the alpha-hash shader path.
+
+Frustum culling stays active in the camera and shadow passes. The wider shared bounds can keep a
+body drawn slightly longer at a frustum edge. Each skinned part and ghost depth twin also starts
+with a mesh-local sphere for render-list sorting, avoiding CPU skinning on its first visible frame.
+The maximum camera range stays at 60 m. The 58 m re-entry threshold prevents toggling near that
+limit. The story also keeps the departing group
+drawn during the Bussole beat while it is still within range. Phone frame times need a rendered
+run.
 
 ## 4. Loading
 

@@ -7,7 +7,7 @@
   "start": "t1",
   "next": "k1",
   "leave": [
-    { "do": "flag", "set": { "combat.disabled": null, "laub.silent": null, "tour.slice": null, "tour.ende": null, "tour.welcome": null, "tour.station1.ready": null, "quelle.call": null, "quelle.guide": null } },
+    { "do": "flag", "set": { "combat.disabled": null, "laub.silent": null, "tour.slice": null, "tour.ende": null, "tour.welcome": null, "tour.station1.ready": null, "quelle.call": null, "quelle.guide": null, "walk.find": null } },
     { "do": "npc", "op": "despawn", "group": "fuehrung" },
     { "do": "npc", "op": "despawn", "npc": "imhoff" },
     { "do": "npc", "op": "despawn", "npc": "marlene" },
@@ -108,7 +108,7 @@
       "id": "t3",
       "title_de": "Los geht's",
       "enter": [
-        { "do": "say", "id": "imhoff.t.los", "speaker": "imhoff", "text": "So. Dann mal los. Bleibt zusammen, der Weg ist schmal." },
+        { "do": "say", "id": "imhoff.t.los", "speaker": "imhoff", "text": "So. Dann mal los. Bleibt zusammen, der Weg ist schmal.", "wait": true, "onResume": true },
         { "do": "npc", "op": "follow", "group": "fuehrung", "leader": "imhoff" },
         { "do": "npc", "op": "walk", "npc": "imhoff", "route": "p-fuehrung", "to": "abzweig", "speed": 1.9, "wait": { "for": "player", "r": 25, "bark": "imhoff.bark.wait" } },
         { "do": "objective", "id": "tour", "text": "Der Gruppe folgen", "x": 515.2, "z": -729.9 },
@@ -188,9 +188,8 @@
           "id": "tour.hunde",
           "skippable": true,
           "keys": [
-            { "t": 0, "eye": { "rel": "player", "back": 2.6, "up": 2.0 }, "look": { "target": "animal:diane" }, "fov": 55 },
-            { "t": 3, "look": { "target": "animal:diane" }, "fov": 42 },
-            { "t": 6, "look": { "target": "animal:bijou" }, "fov": 42 }
+            { "t": 0, "eye": { "x": 697, "z": -651, "y": 10 }, "look": { "targets": ["animal:diane", "animal:bijou"] }, "fov": 55 },
+            { "t": 6, "eye": { "x": 701, "z": -654, "y": 10 }, "fov": 65 }
           ]
         },
         { "do": "animal", "op": "run", "id": "bijou", "path": [[677, -637], [701, -642], [718, -652]], "bark": true, "back": true, "delay": 0.4 },
@@ -365,7 +364,7 @@
         { "do": "npc", "op": "despawn", "npc": "imhoff" },
         { "do": "npc", "op": "follow", "group": "fuehrung", "leader": "imhoff" },
         { "do": "npc", "op": "walk", "npc": "imhoff", "route": "p-aufstieg", "to": "plateau", "speed": 1.9 },
-        { "do": "objective", "id": "tour", "text": "Am Trog verschnaufen", "x": 1059.3, "z": -833.1 }
+        { "do": "objective", "id": "tour", "text": "Am Trog verschnaufen", "x": 1058.63, "z": -832.66 }
       ]
     },
     {
@@ -376,28 +375,35 @@
         {
           "id": "glanz",
           "when": { "timer": 9 },
-          "do": [{ "do": "objective", "id": "tour", "text": "Im Trog glänzt etwas: ganz an den Trog treten", "x": 1059.3, "z": -833.1 }]
+          "do": [{ "do": "objective", "id": "tour", "text": "Nachsehen, was im Trog glänzt", "x": 1058.63, "z": -832.66 }]
         }
       ],
-      "complete": { "all": [{ "enter": { "x": 1059.3, "z": -833.1, "r": 1.6, "era": "today" } }, { "timer": 10 }] }
+      "complete": { "all": [{ "enter": { "x": 1058.63, "z": -832.66, "r": 1.45, "era": "today" } }, { "timer": 10 }] }
     },
     {
       "id": "t17",
       "title_de": "Die Bussole",
       "enter": [
-        { "do": "npc", "op": "despawn", "group": "fuehrung" },
-        { "do": "animal", "op": "despawn", "id": "diane" },
-        { "do": "animal", "op": "despawn", "id": "bijou" },
         { "do": "sound", "sound": "compass", "caption": "[Messing klirrt auf Stein]" },
         { "do": "give", "item": "item.bussole", "toast": "Eine Messing-Bussole, grün angelaufen. Der Deckel klemmt." },
-        { "do": "flag", "set": { "story.compass": true, "laub.silent": null, "story.laub": true } },
-        { "do": "say", "id": "laub.t.intro", "speaker": "laub", "text": "Nicht fallen lassen. Ich bin schon einmal gefallen, das genügt.", "delay": 1.5 },
-        { "do": "say", "id": "player.q.laub", "speaker": "player", "text": "…Hat der Kompass gerade geredet?" },
-        { "do": "say", "id": "laub.t.intro.b", "speaker": "laub", "text": "Laub, Quirin, königlich bayerischer Geometer, abgeordnet zur Landesaufnahme im Rheinkreis. Seit November 1840 verwaltungstechnisch verschollen. Sie haben mich aus dem Wasser gezogen. Danke. Es war kalt, und es war lang." },
-        { "do": "say", "id": "laub.t.quelle", "speaker": "laub", "text": "Hören Sie das? Nein, natürlich nicht. Das Wasser. Es erinnert sich an etwas." },
-        { "do": "say", "id": "laub.t.trog", "speaker": "laub", "text": "Halten Sie die Hand hinein. Nein, das ist nicht hygienisch. Tun Sie es trotzdem." },
-        { "do": "flag", "set": { "quelle.guide": true, "quelle.call": true } },
-        { "do": "objective", "id": "tour", "text": "Hand ins Wasser: vor dem Trog E – das Wasser berühren", "x": 1059.3, "z": -833.1 }
+        { "do": "flag", "set": { "story.compass": true, "laub.silent": null, "story.laub": true, "walk.find": false } },
+        { "do": "objective", "id": "tour", "text": "Laub zuhören", "onResume": false }
+      ],
+      "on": [
+        {
+          "id": "laub-anleitung",
+          "when": { "not": { "flag": "quelle.call" } },
+          "do": [
+            { "do": "say", "id": "laub.t.intro", "speaker": "laub", "text": "Nicht fallen lassen. Ich bin schon einmal gefallen, das genügt.", "delay": 1.5, "wait": true },
+            { "do": "say", "id": "player.q.laub", "speaker": "player", "text": "…Hat der Kompass gerade geredet?", "wait": true },
+            { "do": "say", "id": "laub.t.intro.b", "speaker": "laub", "text": "Laub, Quirin, königlich bayerischer Geometer, abgeordnet zur Landesaufnahme im Rheinkreis. Seit November 1840 verwaltungstechnisch verschollen. Sie haben mich aus dem Wasser gezogen. Danke. Es war kalt, und es war lang.", "wait": true },
+            { "do": "say", "id": "laub.t.quelle", "speaker": "laub", "text": "Hören Sie das? Nein, natürlich nicht. Das Wasser. Es erinnert sich an etwas.", "wait": true },
+            { "do": "say", "id": "laub.t.trog", "speaker": "laub", "text": "Halten Sie die Hand hinein. Nein, das ist nicht hygienisch. Tun Sie es trotzdem.", "wait": true },
+            { "do": "flag", "set": { "quelle.guide": true, "quelle.call": true } },
+            { "do": "objective", "id": "tour", "text": "Am Trog das Wasser berühren", "x": 1058.63, "z": -832.66 },
+            { "do": "autosave" }
+          ]
+        }
       ],
       "complete": { "event": "quelle:touch" },
       "exit": [
