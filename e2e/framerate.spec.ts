@@ -107,6 +107,33 @@ test.describe('render pacing', () => {
     expect(errors).toEqual([]);
   });
 
+  test('a stepping loop draws once; animation frames paint the rest (TASK-075)', async ({ page }) => {
+    // Unpaced synchronous draws let software WebGL fall minutes behind, and the browser grows
+    // until a hosted runner runs out of memory (src/debug/stepGate.ts).
+    const errors = trackErrors(page);
+    await boot(page, 'notitle&manual&idle');
+    await page.evaluate(() => window.kq!.screenshotReady());
+    const r = await page.evaluate(async () => {
+      const k = window.kq!;
+      const perf = k.ctx.perf;
+      const t0 = k.ctx.loop.tick;
+      const f0 = perf.frames;
+      for (let i = 0; i < 45; i++) k.step(1);
+      const loopDraws = perf.frames - f0;
+      const ticks = k.ctx.loop.tick - t0;
+      await new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(() => res(null))));
+      const painted = perf.frames - f0 - loopDraws;
+      const f1 = perf.frames;
+      k.step(1, { draw: true });
+      return { ticks, loopDraws, painted, forced: perf.frames - f1 };
+    });
+    expect(r.ticks).toBe(45);
+    expect(r.loopDraws).toBeLessThanOrEqual(1);
+    expect(r.painted).toBeGreaterThanOrEqual(1);
+    expect(r.forced).toBe(1);
+    expect(errors).toEqual([]);
+  });
+
   test('without ?idle (e2e default) bullet time keeps paced rendering', async ({ page }) => {
     await boot(page, 'notitle&manual');
     const policy = await page.evaluate(() => {
