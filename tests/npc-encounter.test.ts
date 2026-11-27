@@ -107,4 +107,22 @@ describe('campaign NPC encounters', () => {
     npc.update(1 / 60);
     expect(grants).toHaveBeenCalledTimes(1);
   });
+
+  it('the talk prompt puts a name with an article in the dative; other names stay as they are (TASK-078)', () => {
+    const named = encounter();
+    const prompt = vi.fn();
+    named.ctx.ui.hud.prompt = prompt;
+    named.ctx.content.speakers.set('soll', { id: 'soll', name_de: 'Der Kanzlist', dative_de: 'dem Kanzlisten', historical: false });
+    named.events.emit('npc:spawn', { npc: 'soll', chapter: 'k1', x: 1, z: 0 });
+    npc.update(1 / 60);
+    expect(prompt).toHaveBeenCalledWith('E', 'Mit dem Kanzlisten sprechen', 'npc');
+    npc.dispose();
+
+    const plain = encounter();
+    plain.ctx.ui.hud.prompt = prompt;
+    prompt.mockClear();
+    plain.events.emit('npc:spawn', { npc: 'soll', chapter: 'k1', x: 1, z: 0 });
+    npc.update(1 / 60);
+    expect(prompt).toHaveBeenCalledWith('E', 'Mit Kanzlist Gottlob Soll sprechen', 'npc');
+  });
 });

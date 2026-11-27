@@ -8,7 +8,7 @@
     { "id": "hanned", "name_de": "Hanne Matz", "historical": false },
     { "id": "peterd", "name_de": "Peter Matz", "historical": false },
     { "id": "jostd", "name_de": "Jost Fendel", "historical": false },
-    { "id": "solld", "name_de": "Herr Soll", "historical": false },
+    { "id": "solld", "name_de": "Herr Soll", "dative_de": "Herrn Soll", "historical": false },
     { "id": "liesed", "name_de": "Liese Wendling", "historical": false },
     { "id": "mats", "name_de": "Mats", "historical": false }
   ],

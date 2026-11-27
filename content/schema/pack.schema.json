@@ -144,7 +144,7 @@
     "speaker": {
       "type": "object",
       "required": ["id", "name_de", "historical"],
-      "properties": { "id": { "$ref": "#/$defs/id" }, "name_de": { "type": "string" }, "historical": { "type": "boolean" } }
+      "properties": { "id": { "$ref": "#/$defs/id" }, "name_de": { "type": "string" }, "dative_de": { "type": "string", "minLength": 1 }, "historical": { "type": "boolean" } }
     },
     "dialogue": {
       "type": "object",

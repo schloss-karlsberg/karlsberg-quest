@@ -35,11 +35,13 @@
     {
       "id": "kollege",
       "name_de": "Ein Kollege (Funk)",
+      "dative_de": "einem Kollegen (Funk)",
       "historical": false
     },
     {
       "id": "stimme",
       "name_de": "Eine Stimme aus dem Nebel",
+      "dative_de": "einer Stimme aus dem Nebel",
       "historical": false
     },
     {
@@ -50,36 +52,43 @@
     {
       "id": "hofgaertner",
       "name_de": "Der Hofgärtner",
+      "dative_de": "dem Hofgärtner",
       "historical": false
     },
     {
       "id": "gardist",
       "name_de": "Ein Gardist",
+      "dative_de": "einem Gardisten",
       "historical": false
     },
     {
       "id": "gardist-tor",
       "name_de": "Ein Gardist",
+      "dative_de": "einem Gardisten",
       "historical": false
     },
     {
       "id": "lakai",
       "name_de": "Ein Lakai",
+      "dative_de": "einem Lakaien",
       "historical": false
     },
     {
       "id": "diener",
       "name_de": "Diener",
+      "dative_de": "dem Diener",
       "historical": false
     },
     {
       "id": "diener2",
       "name_de": "Zweiter Diener",
+      "dative_de": "dem zweiten Diener",
       "historical": false
     },
     {
       "id": "gaertner",
       "name_de": "Zweiter Gärtner",
+      "dative_de": "dem zweiten Gärtner",
       "historical": false
     },
     {
@@ -90,6 +99,7 @@
     {
       "id": "wache2",
       "name_de": "Zweite Wache",
+      "dative_de": "der zweiten Wache",
       "historical": false
     },
     {
@@ -100,21 +110,25 @@
     {
       "id": "soldat2",
       "name_de": "Zweiter Soldat",
+      "dative_de": "dem zweiten Soldaten",
       "historical": false
     },
     {
       "id": "frau",
       "name_de": "Eine Frau",
+      "dative_de": "einer Frau",
       "historical": false
     },
     {
       "id": "mann",
       "name_de": "Ein Mann",
+      "dative_de": "einem Mann",
       "historical": false
     },
     {
       "id": "junge",
       "name_de": "Ein Junge",
+      "dative_de": "einem Jungen",
       "historical": false
     },
     {
@@ -125,11 +139,13 @@
     {
       "id": "fuhrmann2",
       "name_de": "Zweiter Fuhrmann",
+      "dative_de": "dem zweiten Fuhrmann",
       "historical": false
     },
     {
       "id": "menge",
       "name_de": "Die Menge",
+      "dative_de": "der Menge",
       "historical": false
     },
     {
@@ -180,6 +196,7 @@
     {
       "id": "feuerwerker",
       "name_de": "Ein Feuerwerker aus Straßburg",
+      "dative_de": "einem Feuerwerker aus Straßburg",
       "historical": true
     },
     {
@@ -190,16 +207,19 @@
     {
       "id": "handwerker",
       "name_de": "Ein Handwerker",
+      "dative_de": "einem Handwerker",
       "historical": true
     },
     {
       "id": "kommissaer",
       "name_de": "Der Kommissär",
+      "dative_de": "dem Kommissär",
       "historical": true
     },
     {
       "id": "hoefling",
       "name_de": "Ein Höfling",
+      "dative_de": "einem Höfling",
       "historical": true
     }
   ]
