@@ -82,6 +82,8 @@ pushes to `main`. It builds once and runs up to 16 file-level shards, each with 
 worker and SwiftShader. Hosted tests default to 640×360 and SwiftShader selects Niedrig, which
 uses pixel ratio 1, shorter terrain and tree LOD distances, and no shadows. Touch layouts,
 reference screenshots and render checks can specify their own viewport or graphics tier.
+A check that raises the tier in `?manual` also boots with `&idle`: a Hoch frame takes tens of
+seconds on a hosted runner, and each wait or screenshot otherwise queues behind several of them.
 A newer run cancels the previous run for the same PR. Failed shards upload their HTML report,
 traces with DOM snapshots, and still screenshots as an `e2e-results-*` artifact.
 
