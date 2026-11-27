@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { trackErrors } from './helpers/common';
 import { boot, inv, playK1, shiftToPast, shot, story, upd } from './helpers/k1';
+import { openPause } from './helpers/pause';
 import { qn, qs } from './helpers/prolog';
 
 /**
@@ -16,6 +17,16 @@ test('chapter 1 "Der Hof": the whole chapter as quests, both parts', async ({ pa
   const errors = trackErrors(page);
   await boot(page);
   await playK1(page);
+  await openPause(page);
+  await page.getByTestId('pause-chapters').click();
+  await page.getByTestId('chapter-k1').click();
+  const confirm = page.getByRole('dialog').filter({ hasText: '„Der Hof“ (neu) beginnen?' });
+  await confirm.getByRole('button', { name: 'Ja', exact: true }).click();
+  await upd(page, 420);
+  expect(await story(page)).toMatchObject({ chapter: 'k1', beat: 'k1_0', era: 'today' });
+  expect(await page.evaluate(() => Object.keys(window.kq!.combat!.groups()))).not.toContain('k1.enge');
+  expect(await page.evaluate(() => Object.keys(window.kq!.combat!.groups()))).not.toContain('k1.enge.2');
+  expect(await qs(page, 'q.k1.karlslust')).toBe('done');
   expect(errors).toEqual([]);
 });
 

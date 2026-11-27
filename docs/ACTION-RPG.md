@@ -950,6 +950,16 @@ Laub's reinforcement warning and the spawn wait for the return to 1789. If the s
 exists, combat restores its survivors. A saved second-wave clear advances to „Zum Wasser“. Combat
 holds autosaves until it has dispatched the tick's kill events and applied their XP and loot rewards.
 
+**Continue and replay (TASK-041).** Saves already at Ankunft count the spring prerequisite even
+if they predate the touch objective. A combat autosave takes the full kill batch, including quest
+credit, drops and the current HP, stamina and Bannlicht. Older K1 saves recover missing quest
+counts from their own defeated groups. A missing Lohnzettel appears at the Schuldbuch's spawn. If an
+old autosave captured only the boss's first loot drop, Continue also restores the rest of the loot,
+kill XP and bestiary credit once. The gardener accepts the Kasuar already led home, even after K1 cleared
+its spawn record, and pays on turn-in. Starting K1 again through Kapitel clears the old Die Enge packs and keeps quest rewards.
+An older replay saved before Die Enge also clears leftover packs, including a lone first pack.
+Saves after the encounter keep their recorded clears.
+
 | Id | Kind | Giver → turn-in | Objectives (place) | Enemies | Rewards | History taught |
 | --- | --- | --- | --- | --- | --- | --- |
 | `q.k1.ankunft` "Zu Fuß, außer einem" | main | Laub → auto | E at the Karlsbergquelle (`quelle`, event `quelle:touch`); on foot up to the Ehrenhof gate in 1789 (`wechsel`, id kept for saves, 1200/−1116 r 14); the guard's echo (`clue.k1.wache`); the wings (`clue.k1.fluegel`) | — | 60 XP | cx.11 Zu Fuß, außer einem |
@@ -1143,6 +1153,8 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | An objective can open after its only pickup or event (TASK-052, 2026-11-26) | Content validation checks offers, objective order, item sources and one-shot events against the story. The quest authoring guide describes backfilled objectives. |
 | Separate collection and progression entries crowd Pause (TASK-007, 2026-11-26) | Sammlungen includes the Funde section. I and Pause open Ausrüstung & Talente, with both sections on one scrollable page. The Pause entry counts unspent talent points. |
 | The spring’s general E menu competes with the water interaction (TASK-007, 2026-11-26) | The water uses E or the touch action when the story calls for it. Pause handles saving, chapter replay and collections. Entering the present-day spring ring still heals, refills oil, resets the hunt and enables respec. Q-hold return and the wake spot stay at the spring. |
+| K1 progression on Continue and chapter replay (TASK-041, 2026-11-26) | Restore the arrival prerequisite and recorded combat progress, including a missing Lohnzettel; make kill autosaves coherent, credit the already calmed Kasuar, and separate new Die Enge replays from previous clears. |
+| K1 save recovery review (TASK-041, 2026-11-26) | Remove stale Die Enge groups before the encounter and retain clears after it. Recover the missing Schuldbuch rewards from the old first-drop autosave and capture updated vitals in new kill autosaves. |
 | Following the tour group is dull (TASK-002, 2026-11-25) | 24 chestnuts (`item.kastanie`, kind `collectible`) lie in small clusters along the sections the group walks. Most are 1.5–4 m off the path, a few up to 10 m. None lie near a stop or before the deer. E, walking over one or the touch interact button picks one up, and the feed counts. Gerold, Herr Soll and Gerold again remark on the 1st, 12th and 24th. There is no XP, so collecting never delays the group: Gerold's 25 m wait and the find-the-group help are unchanged. `tests/tour-kastanien.test.ts`, `e2e/kastanien.spec.ts`. |
 | The tour deer are too far to see (TASK-001, 2026-11-25) | Ricke and Kitz graze 36 m below the `reh` stop in haze and cover a few dozen pixels in the normal view. Beat t10 opens with the skippable `reh` shot (fov 40 → 18, Kitz then Ricke). The camera stands 2.5 m ahead of the stop, clear of Gerold and the group, so the shot does not depend on where the player waits. The [C] prompt follows the shot. `e2e/animals.spec.ts` (d) measures the deer's share of the frame. |
 | Hoch first-input payload (TASK-008, slice 4) | The present-day title loads the opening scenery surfaces. The historic palace mesh and six surface pairs stream after play starts. Browser transfer and GPU checks are pending (docs/PERFORMANCE.md §2 and §4). |
