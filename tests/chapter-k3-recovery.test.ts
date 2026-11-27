@@ -61,7 +61,7 @@ async function game(beat: string, withStory = false) {
     save: { autosave() {} },
     settings: { state: { reducedMotion: true } },
     loop: { manual: true },
-    pause: { paused: false },
+    pause: { paused: false, reasons: new Set<string>() },
     input: { wasPressed: () => false, isDown: () => false },
     player: {
       position, stats: { lanternLit: false, speed: 0 }, stance: 'stand',

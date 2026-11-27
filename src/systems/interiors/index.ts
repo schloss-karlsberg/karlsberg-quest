@@ -1071,6 +1071,10 @@ export default defineSystem({
       // a loaded save still deciding restages it through its beat's `requisiten` reaction
       clearFestsaal(ctx);
       restoreStorey(ctx);
+      // story/migrate drops the saved room (it may be stale); a live load in the room the player
+      // already stands in must announce it again, or the story's `room` conditions stay false
+      const known = rt.ready ? current()?.plan.rooms[rt.room] : undefined;
+      if (known && ctx.state.state.flags['interior.room'] !== known.roomId) rt.room = -1;
       if (rt.ready) updateRoom(ctx);
     });
     ctx.events.on('era:change', ({ from, to }) => {
