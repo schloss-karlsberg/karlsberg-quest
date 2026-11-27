@@ -11,6 +11,7 @@ import { DebugPanel } from './panel';
 import { PerfHud } from './perfHud';
 import { type NanWatchApi, installNanWatch, nanWatchDefaultOn } from './nanWatch';
 import { type PilotApi, installPilot } from './pilot';
+import { StepDrawGate } from './stepGate';
 
 /** Test/debug API on `window.kq` (always installed; the stats panel only with ?debug). */
 export interface KqHooks {
@@ -20,13 +21,17 @@ export interface KqHooks {
   setEra(e: Era): void;
   setScanMode(n: number): void;
   setMapMix(v: number): void;
-  /** Advance n fixed steps and one presentation frame (GPU draw deferred with ?manual&faststep). */
-  step(n?: number): void;
+  /**
+   * Advance n fixed steps and one presentation frame. The GPU draw is deferred to the next animation
+   * frame while the GPU is still busy with the previous stepped draw (always within one task; see
+   * src/debug/stepGate.ts) and always with ?manual&faststep. `{ draw: true }` draws now in any case.
+   */
+  step(n?: number, opts?: { draw?: boolean }): void;
   /** Deep copy of the game state. */
   state(): GameState;
   /** Resolves when everything is loaded and at least two frames with the current view were drawn. */
   screenshotReady(): Promise<void>;
-  /** Simulate a key press (code like 'KeyW') for n steps. */
+  /** Simulate a key press (code like 'KeyW') for n steps (draws like `step`). */
   press(code: string, steps?: number): void;
   /** Frame statistics of the last ≈ 240 frames (fps, frame / CPU ms, draw calls, triangles, memory). */
   perf(): PerfSummary;
@@ -90,6 +95,13 @@ function nanWatchFor(ctx: GameContext, info: DebugInfo): NanWatchApi {
 export function installDebug(ctx: GameContext, info: DebugInfo): KqHooks {
   const hud = new PerfHud(ctx, info.perf, info.quality);
   const drawStep = !fastManualSteps(ctx.params);
+  const gl = ctx.renderer.getContext();
+  const gate = new StepDrawGate('fenceSync' in gl ? gl : null);
+  const stepAndDraw = (n: number, force = false) => {
+    const draw = force || (drawStep && gate.ready());
+    ctx.loop.step(n, draw);
+    if (draw) gate.drew();
+  };
   let benchRunning = false;
   const hooks: KqHooks = {
     ctx,
@@ -114,8 +126,8 @@ export function installDebug(ctx: GameContext, info: DebugInfo): KqHooks {
       ctx.world.setMapMix(v, true);
       ctx.loop.requestRender();
     },
-    step(n = 1) {
-      ctx.loop.step(n, drawStep);
+    step(n = 1, opts) {
+      stepAndDraw(n, opts?.draw === true);
     },
     state() {
       return structuredClone(ctx.state.state) as GameState;
@@ -132,7 +144,7 @@ export function installDebug(ctx: GameContext, info: DebugInfo): KqHooks {
     },
     press(code, steps = 1) {
       ctx.input.simulate(code, true);
-      ctx.loop.step(steps, drawStep);
+      stepAndDraw(steps);
       ctx.input.simulate(code, false);
     },
     perf() {
