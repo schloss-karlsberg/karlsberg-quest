@@ -106,10 +106,10 @@ test('HUD: the top-left column, skill cards, dialogue and subtitles do not overl
       k.skills!.grant('spurenleser', 1);
       k.story!.say('laub', 'Hier hat er gesessen. Zähl die Fächer, bevor du den Kasten aufmachst; der Kanzlist hat das auch getan.');
       k.step(20);
-      // a fresh unlock settles for 0.45 s of rendered frames before it asks for the centre slot
+      // a fresh unlock settles for 0.45 s of fixed updates before it asks for the centre slot
       // (src/ui/cards.ts: one card at a time, unlocks that come together share one card); Laub's
-      // line holds it back as a soft reason for at most SOFT_MAX (8 s of rendered frames): the
-      // card clock is pushed on a little per frame, so the card comes up beside the line without
+      // line holds it back as a soft reason for at most SOFT_MAX (8 s on the slot's frame clock):
+      // that clock is pushed on a little per step, so the card comes up beside the line without
       // 480 slow SwiftShader frames
       for (let i = 0; i < 80 && !document.querySelector('.kqk-card'); i++) {
         k.ctx.ui.cards.tick(0.2);

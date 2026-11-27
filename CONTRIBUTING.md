@@ -38,7 +38,7 @@ These are intentionally **on in production** too, so you can reproduce a bug on 
 | `?era=1789` | Start in that era: `today`, `1789`, `1793-02`, `1793-07`, `1796` |
 | `?x=…&z=…` | Start at a local position |
 | `?party=museum\|burn\|keep` | Start at the end-of-game party on the plateau at dusk, credits rolling |
-| `?manual` | Bullet time: the game advances only when stepped |
+| `?manual` | Bullet time: the game advances only when stepped. `kq.step(n)` advances skill and level cards by fixed ticks (60 per second). In e2e, use `e2e/helpers/cards.ts` to advance shared UI holds too. |
 | `?manual&faststep` | Campaign test mode. Dialogue uses subtitle timing on fixed steps. `kq.step(n)` and `kq.press(code, n)` update frame-driven prompts and cameras. A browser frame requested just to show that view draws it without advancing presentation again. Use `await kq.screenshotReady()` before a capture. |
 | `?nosave` | Makes save slots read-only. „Neues Spiel“ opens the content warning directly, and „Weiter“ reloads the autosave from the title. Add `&fresh` to skip loading the autosave on boot. |
 | `window.kq` | Debug API in the browser console: teleport, set the era, step, press keys, combat hooks |

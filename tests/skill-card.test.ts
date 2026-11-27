@@ -109,7 +109,7 @@ describe('skill notices on short touch layouts', () => {
       t: (key: string) => `translated ${key}`,
     } as unknown as GameContext;
     const advance = (frames: number) => {
-      for (let i = 0; i < frames; i++) skills.frame(0.1, ctx);
+      for (let i = 0; i < frames; i++) skills.update(0.1, ctx);
     };
 
     skills.init(ctx);
