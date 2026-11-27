@@ -2163,9 +2163,30 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
   label. Grants fire once per target: `codex` → `state.codex.facts` + `codex:unlocked { noXp: true }`
   (progression gives no XP for it), `card` → `cards` (must be in `cards[]`), `flag` → `state.flags`.
   Unknown ids are skipped with a dev warning. Photos give no XP.
-- Hooks: `kq.photo.{open, close, shoot, album, has, targets, judge(id), state, zoom, cards}`, and
+- **Gallery** (TASK-006; `gallery.ts`, `gallery-logic.ts`, `store.ts`): every shot with signal is
+  kept **on the device, not in the save**.
+  - Storage: `notes/capture.ts` `captureViewBlobs` copies the frame once, then encodes a JPEG of at
+    most 1920 px (q 0.88) and a 320 px thumbnail (q 0.75). IndexedDB `kq-photos` holds store
+    `photos` (metadata: ISO time, play seconds, era, x / z, targets, good, stars, size; plus the
+    thumbnail) and store `full` (the picture, same key). Where IndexedDB is missing or blocked a
+    memory store keeps the session only (`PhotoStore` interface; no wrapper library).
+  - Writes run after the shot, one after another, and never hold up the card. At most 100 photos
+    (`GALLERY_CAP`): a shot beyond that is not stored and a toast says so. The first stored photo
+    calls `navigator.storage.persist()`.
+  - Opening it: **G** while the phone is up (on desktop the phone holds the pointer lock, so the
+    bar's buttons are out of reach; G is the Bannlicht key, muted then), the phone bar's
+    „Galerie“ button (touch), or „Galerie öffnen“ on Pause → Album.
+  - The modal: a newest-first grid with the count and a device-only hint (Safari may clear site
+    data after about seven days without a visit; the memory store says „bis zum Neuladen“).
+  - A photo opens full-size, with ‹ › / arrow keys / a swipe, Teilen, Herunterladen and Löschen
+    (the first press asks „Wirklich?“, the second deletes). Herunterladen uses an object URL and `<a download>`
+    (`karlsberg-quest-YYYY-MM-DD-HH-MM-SS.jpg`). Teilen calls `navigator.share({ files })` from
+    the click when `navigator.canShare({ files })` says yes; otherwise, or when sharing fails, it
+    downloads. Object URLs are revoked when the grid is rebuilt and when the gallery closes.
+- Hooks: `kq.photo.{open, close, shoot, album, has, targets, judge(id), state, zoom, cards}`,
+  `kq.photo.gallery.{open, close, state, list, count, remove, kind, settled}`, and
   with `?debug` `kq.photo.deer.{spawn, calm, at, state}`. Tests: `tests/photo.test.ts`,
-  `tests/camera-photo.test.ts`, `e2e/photo.spec.ts`.
+  `tests/photo-gallery.test.ts`, `tests/camera-photo.test.ts`, `e2e/photo.spec.ts`.
 
 ### How to wire a chapter (story files, round 3)
 

@@ -100,6 +100,15 @@ function migrateChapter3Quests(story: StorySlice, state: GameState): void {
 /** Repair quest progress implied by the saved story position (needs the whole state). */
 export function migrateStoryQuests(story: StorySlice, state: GameState): void {
   migrateChapter3Quests(story, state);
+  migrateChapter4Dawn(story, state);
+}
+
+/** Older dawn saves have no arrival flag: the spring dialogue or the photo means the teleport already ran. */
+function migrateChapter4Dawn(story: StorySlice, state: GameState): void {
+  if (story.chapter !== 'k4' || story.beat !== 'k4_14' || state.flags['k4.dawn.arrived'] !== undefined) return;
+  if (story.said?.includes('marlene.end.morgen') || state.inventory.clues.includes('clue.k4.foto')) {
+    state.flags['k4.dawn.arrived'] = true;
+  }
 }
 
 /** Restore an unfinished first tour departure (needs the saved walk slice). */

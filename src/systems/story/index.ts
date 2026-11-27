@@ -25,7 +25,7 @@ import { VoiceClips, type VoiceClipStats } from './dialogue/voiceClips';
 import { sayLineIds } from './dialogue/voiceManifest';
 import { DialoguePresenter, holdSeconds, substituteName } from './dialogue/presenter';
 import { speakerMeta } from './dialogue/speakers';
-import { DEFAULT_VISITOR_NAME, type MeterState, StoryEngine, type StoryEnv, type StorySlice, createStorySlice, evaluate, runsOnResume, waitsForChapterCard } from './engine';
+import { DEFAULT_VISITOR_NAME, type MeterState, StoryEngine, type StoryEnv, type StorySlice, createStorySlice, evaluate, runTeleport, runsOnResume, waitsForChapterCard } from './engine';
 import { composeEpilogue, type Epilogue } from './endings/epilogue';
 import { endingScenes } from './endings/scenes';
 import { EndingStage } from './endings/stage';
@@ -33,6 +33,7 @@ import { EndingScreen } from './endings/ui';
 import { HOME, atHome, bringHome } from './hub/home';
 import { ObjectiveView, objectivePoint } from './objectives';
 import { StoryOverlays, cardClockDt } from './overlays';
+import { keepsOnBeatExit, retireScheduled, takeDueActions, type Scheduled } from './schedule';
 import { playStorySound, playStorySoundAction } from './sfx';
 import { acceptTourDeerPhoto, loadBundledStories, missingTourChestnuts, restoreTourDeerPhoto, storiesInPlay } from './stories';
 import { installTitleFlow } from './title/flow';
@@ -200,25 +201,12 @@ const QUIET_EVENTS = new Set(['player:step', 'dialogue:say', 'hunt:alert', 'lant
 /** Pack lines of these events are never spoken by the trigger runner (assembled elsewhere). */
 const ASSEMBLED_EVENTS = new Set(['epilog:line', 'story:ending']);
 
-interface Scheduled {
-  at: number;
-  gen: number;
-  fn: () => void;
-  ready?: () => boolean;
-  /** Beat the action belongs to (null = chapter-wide); retired when another beat begins. */
-  beat: string | null;
-  /** Changes state (objective, threat, flags …): run at once when its beat ends instead of dropped. */
-  keep: boolean;
-}
-
 /** Where a run of actions belongs (RunOptions.beat / where). */
 interface RunScope {
   beat: string | null;
   where: { x: number; z: number; r: number } | null;
 }
 
-/** Presentation actions: dropped with their beat; everything else changes state and runs early instead. */
-const PRESENTATION = new Set(['say', 'toast', 'sound', 'card', 'prompt', 'echo', 'choice']);
 /** Barks and skill remarks: low priority in the dialogue queue (hints are not: the player is stuck). */
 const isLowLine = (id: string | undefined) => !!id && (isBarkLine(id) || id.startsWith('laub.skill.'));
 /** Story lines about the past's dangers: dropped when the era they were said in is left. */
@@ -695,9 +683,9 @@ class StoryRuntime {
         if (ready()) continueRun();
         else this.schedule(0, continueRun, scope, false, ready);
       };
-      if (gate && waitsForChapterCard(a, at)) this.gated.push({ at, gen: this.gen, fn: () => this.withScope(scope, exec), beat: scope.beat, keep: !PRESENTATION.has(a.do) });
+      if (gate && waitsForChapterCard(a, at)) this.gated.push({ at, gen: this.gen, fn: () => this.withScope(scope, exec), beat: scope.beat, keep: keepsOnBeatExit(a) });
       else if (at <= 0) this.withScope(scope, exec);
-      else this.schedule(at, exec, scope, !PRESENTATION.has(a.do));
+      else this.schedule(at, exec, scope, keepsOnBeatExit(a));
       if (rest) return;
       if (text && a.do === 'say') at += text.length / 42 + holdSeconds(text, a.ms) + 0.4;
     }
@@ -743,10 +731,7 @@ class StoryRuntime {
       this.gated = [];
     }
     if (this.gatedAt && this.gatedAt.beat !== beat) this.gatedAt = null;
-    const stale =this.queue.filter((q) => q.gen === this.gen && q.beat !== null && q.beat !== beat);
-    if (!stale.length) return;
-    this.queue = this.queue.filter((q) => !stale.includes(q));
-    for (const q of stale.sort((a, b) => a.at - b.at)) if (q.keep) q.fn();
+    retireScheduled(this.queue, beat, this.gen);
   }
 
   private cancelScheduled(): void {
@@ -873,7 +858,7 @@ class StoryRuntime {
         else ctx.ui.toast(a.text, a.ms);
         return;
       case 'teleport':
-        this.teleport(a.x, a.z, a.yaw);
+        runTeleport(a, ctx.state.mutable.flags, (x, z, yaw) => this.teleport(x, z, yaw));
         return;
       case 'card':
         this.overlays.card(a.title, a.sub, a.note, a.seconds);
@@ -1628,13 +1613,7 @@ class StoryRuntime {
       if (this.caughtBusy) return;
     }
     if ((this.gated.length || this.gatedAt) && !this.overlays.holdsLines) this.releaseGate();
-    if (this.queue.length) {
-      const due = new Set(this.queue.filter((q) => q.at <= this.time && (q.ready?.() ?? true)));
-      if (due.size) {
-        this.queue = this.queue.filter((q) => !due.has(q));
-        for (const d of [...due].sort((a, b) => a.at - b.at)) if (d.gen === this.gen) d.fn();
-      }
-    }
+    if (this.queue.length) for (const d of takeDueActions(this.queue, this.time)) if (d.gen === this.gen) d.fn();
     // fx did not answer the shift request → switch directly
     if (this.shiftPending) {
       this.shiftPending.age += dt;
