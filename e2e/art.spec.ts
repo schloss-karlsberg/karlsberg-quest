@@ -32,7 +32,8 @@ test.describe('art foundation', () => {
     // animation frame, so the readiness wait and the screenshot do not queue behind extra frames.
     // The hosted run also uses its default viewport; the local run keeps the desktop one.
     if (isCI) await page.setViewportSize(ciViewport);
-    await page.goto('./?notitle&nosave&fresh&manual&idle&q=high&x=790&z=-905&yaw=60');
+    // The URL yaw turns the other way from kq.teleport: -60 faces east-north-east, towards the stump.
+    await page.goto('./?notitle&nosave&fresh&manual&idle&q=high&x=790&z=-905&yaw=-60');
     await page.waitForFunction(() => window.kq?.ctx);
     const s = await page.evaluate(async () => {
       const k = window.kq!;
