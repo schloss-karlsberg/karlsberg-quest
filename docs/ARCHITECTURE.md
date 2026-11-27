@@ -2524,6 +2524,11 @@ Rules that came out of it:
   mouse buttons. Browser blur clears all held and queued input. `input.wasCancelled(action)`
   reports a held action dropped by either event. Combat uses it to discard the pending attack
   before it can interpret the cleared hold as a release.
+- **Pointer lock.** `requestLock()` asks for the lock for play and `releaseLock()` frees the mouse
+  for a menu, the title or the staged ending. The browser grants a lock asynchronously, so one
+  request can land after the game has already let go (closing the pause menu asks for it and
+  „Zum Titelbild“ follows in the same click). Boot calls `dropUnwantedLock()` on every
+  `pointerlockchange` and releases such a late lock at once, as the game's own release (no pause menu).
 - **Virtual presses.** `input.press(action, down, edge?)` holds a binding-independent code `@<action>`.
   Remaps and the shared-key pairs (LMB = attack + interact, Space = dodge + up) stay untouched, and
   the touch layer says per button which actions it means. `releaseVirtual()` clears virtual holds
