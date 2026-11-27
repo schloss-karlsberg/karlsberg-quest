@@ -26,8 +26,11 @@ export default defineConfig({
     baseURL: `http://127.0.0.1:${PORT}/`,
     // The game already selects Niedrig for SwiftShader, with DPR 1, shorter LOD distances and no shadows.
     viewport: isCI ? { width: 640, height: 360 } : desktopViewport,
-    // No traces on CI: recording DOM snapshots around every evaluate/wait call over 30-minute chapter
-    // runs grew the browser processes past the runner's 16 GB (TASK-075). Failure screenshots stay.
+    // CI runs the full Chromium build (new headless), not chrome-headless-shell: when SwiftShader falls
+    // behind on synchronous kq.step draws, the shell's renderer and browser processes grow by about
+    // 30-40 MB/s each until the 16 GB runner is OOM-killed; full Chromium stays flat (TASK-075).
+    ...(isCI ? { channel: 'chromium' } : {}),
+    // No traces: a 30-minute chapter trace is huge and rarely needed. Failure screenshots stay.
     trace: 'off',
     screenshot: isCI ? 'only-on-failure' : 'off',
     launchOptions: {
