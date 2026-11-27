@@ -22,6 +22,7 @@ import type { GameContext } from '../../core/context';
 import { defineSystem } from '../../core/systems';
 import { hasString } from '../../i18n';
 import { stampChime } from './audio';
+import { captionCoversCard, SHORT_LAYOUT_MAX_H } from '../../ui/cards';
 import { UnlockCards } from './card';
 import { type Gate, SKILL_IDS, SKILL_MAX, type SkillId, gateFrom, levelOf, parseSkill, roman, setFreeOverride, skillIncreases } from './logic';
 import { installSettings } from './settings';
@@ -61,8 +62,10 @@ function tickCards(dt: number, ctx: GameContext): void {
     return;
   }
   // Match the short touch layout in touch.css, where the stick can cover the notice band.
-  const stickCoversCard = ctx.input.touchMode && ctx.input.touchStickActive && window.innerHeight <= 500;
-  let hold = stickCoversCard || ctx.pause.paused || ctx.ui.cards.held;
+  const stickCoversCard = ctx.input.touchMode && ctx.input.touchStickActive && window.innerHeight <= SHORT_LAYOUT_MAX_H;
+  // There, a caption in the same band would be covered: the card steps aside until it has gone.
+  const captionCovered = ctx.input.touchMode && captionCoversCard(true, window.innerHeight, ctx.ui.hud?.captionLines ?? 0);
+  let hold = stickCoversCard || captionCovered || ctx.pause.paused || ctx.ui.cards.held;
   // One centre card at a time. A tap on the touch surface dismisses it like a level card.
   if (cards.wants && !hold && !ctx.ui.cards.claim('skill', ctx.input.touchMode ? dismissCard : undefined)) hold = true;
   cards.frame(dt, ctx.settings.state.reducedMotion, hold);

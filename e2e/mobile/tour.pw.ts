@@ -139,6 +139,53 @@ interface State {
   run(c: Ctx): Promise<void>;
 }
 
+/**
+ * TASK-074: a sound caption while a level or skill card is up. On a short landscape layout the card
+ * shares the band under the dialogue with the subtitle box, so it steps aside while the caption is
+ * up and comes back after it; the shot's measurement must find no subtitle line under a visible card
+ * (`caption-covered`). Taller units keep both on screen and only note an intersection.
+ */
+/**
+ * Wait (wall-clock) until no sound caption is up, then step at once in the same task. The running
+ * tour barks now and then; a caption holds the card on short touch layouts (TASK-074), ends on a
+ * real timer that manual steps do not move, and could start again between two page calls.
+ */
+async function stepWithoutCaption(c: Ctx, frames = 2): Promise<void> {
+  await c.page.evaluate(async (frames) => {
+    const k = window.kq!;
+    const { loop, ui } = k.ctx;
+    for (const end = performance.now() + 15_000; performance.now() < end;) {
+      if (ui.hud.captionLines === 0) {
+        // a story line can hold the notice slot too
+        for (let i = 0; i < 600 && ui.cards.held; i++) {
+          loop.advance();
+          ui.cards.tick(loop.dt);
+        }
+        if (ui.hud.captionLines === 0) break;
+      }
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    k.step(frames);
+  }, frames);
+}
+
+async function captionClearOfCard(c: Ctx, card: ReturnType<Page['getByTestId']>, sub: string): Promise<void> {
+  await c.page.evaluate(() => {
+    const w = window as unknown as { kqCaptionOff?: () => void };
+    w.kqCaptionOff = window.kq!.ctx.ui.hud.subtitle(null, '[Diane und Bijou bellen]', 20_000);
+  });
+  try {
+    if (unit.height <= 500) await expect(card).toHaveCSS('opacity', '0');
+    await c.shot(sub, 'a sound caption with the card up: the caption stays fully visible');
+    const covered = c.f.shots.at(-1)!.ui.issues.filter((i) => i.kind === 'caption-covered');
+    if (unit.height <= 500) expect(covered, 'caption under the card').toEqual([]);
+    else for (const i of covered) c.f.notes.push(`${sub}: ${i.what}`);
+  } finally {
+    await c.page.evaluate(() => (window as unknown as { kqCaptionOff?: () => void }).kqCaptionOff?.());
+  }
+  if (unit.height <= 500) await expect(card).toHaveCSS('opacity', '1');
+}
+
 const STATES: State[] = [
   // ---- title and new game (real taps) ---------------------------------------------------------
   {
@@ -619,6 +666,8 @@ const STATES: State[] = [
         shotUp = await up();
       }
       if (!shotUp) c.f.notes.push('level-card: the card was not up for a whole shot (lines kept it aside)');
+      else if (await up()) await captionClearOfCard(c, c.page.getByTestId('level-card'), 'caption');
+      else c.f.notes.push('level-card: the card ran out before the caption check');
       // on touch a tap on the play surface sends it off (§8.4): mid-screen, right of the stick zone
       const vp = c.page.viewportSize()!;
       let gone = false;
@@ -875,13 +924,18 @@ const STATES: State[] = [
       expect(ui.issues.filter((i) => i.what.includes('[skill-card]') && (
         i.kind === 'safe-area' || i.kind === 'overlap' && /\[touch-|\[dialogue\]/.test(i.what)
       ))).toEqual([]);
+      await captionClearOfCard(c, card, 'caption');
       // Sample gameplay above. Use manual time for the interaction checks so their clocks
       // depend on the steps in the test.
       const manual = await c.page.evaluate(() => {
-        const { loop } = window.kq!.ctx;
+        const { loop, settings } = window.kq!.ctx;
         const wasManual = loop.manual;
         loop.manual = true;
         loop.stop();
+        // The tour keeps barking; its sound captions would hold the card (TASK-074) on wall-clock
+        // timers that manual steps do not move. Captions are off for these clock checks.
+        (window as unknown as { kqSubs?: unknown }).kqSubs = settings.state.subtitles;
+        (settings.state as { subtitles: unknown }).subtitles = false;
         return wasManual;
       });
       const freshCard = async () => {
@@ -894,8 +948,8 @@ const STATES: State[] = [
             loop.advance();
             ui.cards.tick(loop.dt);
           }
-          k.step(2); // claim the notice slot
         });
+        await stepWithoutCaption(c); // claim the notice slot
         await expect(card).toHaveClass(/kqk-in/, { timeout: 4000 });
         await expect(card).not.toHaveClass(/kqk-held|kqk-out/);
       };
@@ -925,16 +979,9 @@ const STATES: State[] = [
           } finally {
             await stick.end();
           }
-          await c.page.evaluate(() => {
-            const k = window.kq!;
-            const { loop, ui } = k.ctx;
-            // A story line can take over the hold when the stick is released.
-            for (let i = 0; i < 600 && ui.cards.held; i++) {
-              loop.advance();
-              ui.cards.tick(loop.dt);
-            }
-            k.step(2);
-          });
+          // a story line or a bark caption can take over the hold when the stick is released
+          await stepWithoutCaption(c);
+
           await expect(card).not.toHaveClass(/kqk-held|kqk-out/);
           await expect(card).toHaveCSS('opacity', '1');
         }
@@ -947,7 +994,8 @@ const STATES: State[] = [
         await expect(card).toHaveCount(0);
       } finally {
         await c.page.evaluate((manual) => {
-          const { loop, ui } = window.kq!.ctx;
+          const { loop, ui, settings } = window.kq!.ctx;
+          (settings.state as { subtitles: unknown }).subtitles = (window as unknown as { kqSubs?: unknown }).kqSubs;
           loop.manual = manual;
           loop.start();
           ui.hud.prompt(null, undefined, 'tour');

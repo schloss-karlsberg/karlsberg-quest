@@ -34,6 +34,7 @@ import { LEVEL_XP, MAX_LEVEL } from '../../rpg/stats';
 import type { DerivedStats, ItemDef, ItemKind, PlacedPickup, ProgressionSlice } from '../../rpg/types';
 import { openPausePage, pausePageHandle } from '../../ui/pause-pages';
 import { actionLabel } from '../../ui/actionLabel';
+import { captionCoversCard } from '../../ui/cards';
 import { registerEraMaterials } from '../fx/shift/prewarm';
 import { loadBundledQuests, questsInPlay } from '../quests/data';
 import { collectionSound, levelSound, pickupSound, useSound, xpTick } from './audio';
@@ -453,7 +454,9 @@ class Progression {
       return;
     }
     const skillCard = !!document.querySelector('.kqk-card.kqk-in:not(.kqk-out):not(.kqk-held)');
-    let hold = ctx.pause.paused || skillCard || ctx.ui.cards.held;
+    // on a landscape phone a caption shares the card's band: the card steps aside until it has gone (TASK-074)
+    const captionCovered = ctx.input.touchMode && captionCoversCard(true, window.innerHeight, ctx.ui.hud?.captionLines ?? 0);
+    let hold = ctx.pause.paused || skillCard || captionCovered || ctx.ui.cards.held;
     // on touch a tap on the play surface sends the card off (CardDirector.dismissNotice); on a
     // desktop Escape keeps opening the pause menu
     const dismiss = ctx.input.touchMode ? () => this.cards.dismiss() : undefined;

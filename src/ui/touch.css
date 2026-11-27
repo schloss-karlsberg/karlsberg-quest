@@ -848,7 +848,9 @@ html[data-kq-touch] .kqp-q-key {
 }
 
 /* The standalone skill slip shares the vertical band of the level card. Its right edge also
-   clears a fully expanded Aktion pill and the survey menu while the slip fades in or out. */
+   clears a fully expanded Aktion pill and the survey menu while the slip fades in or out. The
+   subtitle box lands in this band too and has no room beside a card: while a line is up, both
+   cards step aside (captionCoversCard in src/ui/cards.ts, TASK-074). */
 @media (max-height: 500px) {
   html[data-kq-touch] body .kqk-cards,
   html[data-kq-touch] body:has(.kq-dock-boss > :not(.kq-court-off):not([style*='display: none'])) .kqk-cards {

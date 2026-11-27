@@ -32,6 +32,20 @@ export const SOFT_LINGER = 1.2;
 /** Longest a soft reason keeps a waiting card back in one go (s): a chain of lines must not bury it. */
 export const SOFT_MAX = 8;
 
+/** Tallest viewport (CSS px) that uses the short touch layout of touch.css (`max-height: 500px`). */
+export const SHORT_LAYOUT_MAX_H = 500;
+
+/**
+ * On a short touch layout (a landscape phone) the level and skill cards share the band under the
+ * dialogue with the subtitle box, and there is no free spot for either one beside the other
+ * (TASK-074). While a caption or subtitle line is up there, the card steps aside (its clock stops)
+ * and comes back when the line has gone, like it does for the floating stick. Desktop and taller
+ * touch layouts keep both on screen.
+ */
+export function captionCoversCard(touch: boolean, viewportH: number, captionLines: number): boolean {
+  return touch && viewportH <= SHORT_LAYOUT_MAX_H && captionLines > 0;
+}
+
 interface Toast {
   text: string;
   left: number;
