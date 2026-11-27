@@ -36,6 +36,8 @@ The guided tour uses story beats. Surveyor quest history and pending payouts for
 - An `echo` objective or an `event` objective for `echo:end` counts a heard or skipped memory.
   Interrupted playback leaves the objective open.
 - Never an enemy: real people, victims, menagerie animals (use `calm`). No spawns at memorials.
+  A single-animal `calm` objective can name a spawn id, such as `k3.jaguar`. The saved calmed id
+  counts if the objective is open when the quest is accepted or loaded.
 - Rewards: `xp`, `items` (`src/rpg/items.ts` or this file's `items`), `codex` (fact ids), `skills`
   (`{id, tier}`), `flags`, `talentPoints`.
 

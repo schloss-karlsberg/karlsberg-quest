@@ -252,7 +252,7 @@ export class FestsaalObjects {
     this.setPrompt(null);
   }
 
-  /** The player took `key` (E, or the story's 40 s fallback sets the flag itself). */
+  /** The player took `key` with E. The story's 50 s fallback sets the flag directly. */
   take(key: FestsaalKey): boolean {
     if (this.taken || !this.items.some((i) => i.spot.key === key)) return false;
     this.taken = key;

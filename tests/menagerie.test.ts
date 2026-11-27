@@ -1,5 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { Scene } from 'three';
+import { describe, expect, it, vi } from 'vitest';
+import type { GameContext } from '../src/core/context';
+import type { Era } from '../src/core/era';
+import { EventBus } from '../src/core/events';
+import { createInitialState, deserializeState, GameStateStore, serializeState } from '../src/core/state';
+import menagerie from '../src/systems/menagerie';
 import { CASSOWARY, DROMEDARY, JAGUAR, Menagerie, type MenagerieEvent, type MenageriePlayer, createAnimals, groupId } from '../src/systems/menagerie/logic';
+import { createStorySlice, StoryEngine } from '../src/systems/story/engine';
+import { loadBundledStories, storiesInPlay } from '../src/systems/story/stories';
 
 const DT = 1 / 60;
 
@@ -224,6 +232,125 @@ describe('animal bodies', () => {
     expect(sim.animals.map((animal) => animal.id)).toEqual(['bird']);
     sim.remove();
     expect(sim.collide(10, 20, 0.35)).toEqual({ x: 10, z: 20, hit: null });
+  });
+});
+
+function runtime(era: Era, save = createInitialState()) {
+  const state = new GameStateStore(save);
+  const events = new EventBus();
+  const worldEra = { current: era };
+  const ctx = {
+    scene: new Scene(), state, era: worldEra, events, audio: { unlocked: false },
+    world: { heightAt: () => 0 }, loop: { time: 0, tick: 0 }, settings: { state: { subtitles: false } },
+    ui: { layer: () => ({ append() {} }) }, t: (text: string) => text,
+  } as unknown as GameContext;
+  return { state, events, worldEra, ctx };
+}
+
+describe('jaguar save round-trip', () => {
+  const cue = { id: 'menagerie:spawn', data: { id: 'k3.jaguar', animal: 'jaguar', x: 1276, z: -1418, era: '1793-07' } };
+  const flare = { x: 1276, z: -1418, yaw: 0, range: 8, angle: 50 };
+
+  function start(game: ReturnType<typeof runtime>) {
+    menagerie.dispose();
+    menagerie.init(game.ctx);
+  }
+
+  it('reasserts a jaguar saved in the wrong era without bringing back a calmed one', () => {
+    vi.stubGlobal('document', { createElement: () => ({ style: {}, remove() {} }) });
+    try {
+      const game = runtime('today');
+      game.state.mutable.systems.menagerie = { animals: [{ animal: 'jaguar', id: 'k3.jaguar', x: 1276, z: -1418, era: 'today' }] };
+      start(game);
+      game.events.emit('story:cue', cue);
+      game.events.emit('story:cue', cue);
+      expect(game.state.state.systems.menagerie?.animals).toEqual([expect.objectContaining({ id: 'k3.jaguar', era: '1793-07' })]);
+      expect(game.ctx.scene.children).toHaveLength(0);
+
+      const calmed = vi.fn();
+      game.events.on('menagerie:calmed', calmed);
+      game.worldEra.current = '1793-07';
+      game.events.emit('era:change', { from: 'today', to: '1793-07' });
+      expect(game.ctx.scene.children).toHaveLength(1);
+      for (let hit = 0; hit < 3; hit++) game.events.emit('combat:bann', flare);
+      expect(calmed).toHaveBeenCalledTimes(1);
+      game.events.emit('story:cue', cue);
+      expect(game.ctx.scene.children).toHaveLength(0);
+      expect(calmed).toHaveBeenCalledTimes(1);
+    } finally {
+      menagerie.dispose();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('calms the jaguar on the third flare across a reload, using the saved count', () => {
+    vi.stubGlobal('document', { createElement: () => ({ style: {}, remove() {} }) });
+    try {
+      const first = runtime('1793-07');
+      start(first);
+      first.events.emit('story:cue', cue);
+      first.events.emit('combat:bann', flare);
+      first.events.emit('combat:bann', flare);
+      const resumed = runtime('1793-07', deserializeState(serializeState(first.state.mutable)));
+      start(resumed);
+      resumed.events.emit('story:cue', cue);
+      const calmed = vi.fn();
+      resumed.events.on('menagerie:calmed', calmed);
+      expect(calmed).not.toHaveBeenCalled();
+      resumed.events.emit('combat:bann', flare);
+      expect(calmed).toHaveBeenCalledExactlyOnceWith({ id: 'k3.jaguar', animal: 'jaguar' });
+      expect(resumed.state.state.systems.menagerie?.flares?.['k3.jaguar']).toBeUndefined();
+    } finally {
+      menagerie.dispose();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('keeps two flares across chapter selection and calms the jaguar with the next one', () => {
+    vi.stubGlobal('document', { createElement: () => ({ style: {}, remove() {} }) });
+    try {
+      const game = runtime('1793-07');
+      start(game);
+      const slice = createStorySlice();
+      const engine = new StoryEngine(storiesInPlay(loadBundledStories(), new URLSearchParams()), () => slice, {
+        run: (actions) => {
+          for (const action of actions) {
+            if (action.do === 'cue') game.events.emit('story:cue', { id: action.id, data: action.data });
+          }
+        },
+        beatEntered() {}, chapterEntered() {}, chapterCompleted() {},
+      });
+      engine.goto('k3', 'k3_6');
+      game.events.emit('combat:bann', flare);
+      game.events.emit('combat:bann', flare);
+      engine.goto('k2');
+      expect(game.ctx.scene.children).toHaveLength(0);
+      expect(game.state.state.systems.menagerie?.flares?.['k3.jaguar']).toBe(2);
+      engine.goto('k3', 'k3_6');
+      game.events.emit('combat:bann', flare);
+      expect(game.state.state.systems.menagerie?.calmed).toContain('k3.jaguar');
+      expect(game.state.state.systems.menagerie?.flares?.['k3.jaguar']).toBeUndefined();
+    } finally {
+      menagerie.dispose();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it.each(['encounter', 'quest'] as const)('forgets partial flares when the %s ends', (end) => {
+    vi.stubGlobal('document', { createElement: () => ({ style: {}, remove() {} }) });
+    try {
+      const game = runtime('1793-07');
+      start(game);
+      game.events.emit('story:cue', cue);
+      game.events.emit('combat:bann', flare);
+      expect(game.state.state.systems.menagerie?.flares?.['k3.jaguar']).toBe(1);
+      if (end === 'encounter') game.events.emit('story:cue', { id: 'menagerie:clear', data: { id: 'k3.jaguar' } });
+      else game.events.emit('quest:failed', { id: 'q.k3.jaguar', reason: 'chapter' });
+      expect(game.state.state.systems.menagerie?.flares?.['k3.jaguar']).toBeUndefined();
+    } finally {
+      menagerie.dispose();
+      vi.unstubAllGlobals();
+    }
   });
 });
 

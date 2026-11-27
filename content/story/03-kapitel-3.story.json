@@ -246,6 +246,10 @@
       ]
     }
   ],
+  "leave": [
+    { "do": "cue", "id": "festsaal:clear" },
+    { "do": "cue", "id": "menagerie:clear", "data": { "id": "k3.jaguar", "keepProgress": true } }
+  ],
   "beats": [
     {
       "id": "k3_0",
@@ -381,12 +385,18 @@
         { "do": "flag", "set": { "fire.hold": true } },
         { "do": "memorial", "id": "k3.festsaal", "room": "B01.2.og-festsaal" },
         { "do": "npc", "op": "spawn", "npc": "hanne", "room": "B01.2.og-festsaal", "era": "1793-07", "chapter": "k3h", "yaw": 250, "mood": "warm" },
-        { "do": "grant", "clue": "clue.k3.festsaal", "delay": 0.5 },
-        { "do": "objective", "id": "k3.wahl", "text": "Der Festsaal. Hanne steht in der Mitte" },
-        { "do": "flag", "set": { "festsaal.took": null, "npc.hush": "hanne" } },
-        { "do": "cue", "id": "festsaal:objects", "data": { "room": "B01.2.og-festsaal" } }
+        { "do": "flag", "set": { "npc.hush": "hanne" } },
+        { "do": "grant", "clue": "clue.k3.festsaal", "onResume": true, "delay": 0.5 },
+        { "do": "objective", "id": "k3.wahl", "text": "Der Festsaal. Hanne steht in der Mitte" }
       ],
+      "timerWhile": { "all": [{ "era": "1793-07" }, { "room": "B01.2.og-festsaal" }] },
       "on": [
+        {
+          "id": "requisiten",
+          "when": { "all": [{ "era": "1793-07" }, { "not": { "flag": "festsaal.took" } }] },
+          "repeat": true,
+          "do": [{ "do": "cue", "id": "festsaal:objects", "data": { "room": "B01.2.og-festsaal" } }]
+        },
         {
           "id": "wahl",
           "when": { "all": [{ "not": { "flag": "festsaal.took" } }, { "timer": 1 }] },
@@ -409,7 +419,7 @@
         },
         {
           "id": "took_tuergriff",
-          "when": { "flag": "festsaal.took", "eq": "tuergriff" },
+          "when": { "all": [{ "flag": "festsaal.took", "eq": "tuergriff" }, { "not": { "chosen": "k3.objekt" } }] },
           "do": [
             { "do": "flag", "set": { "flag.k3_objekt": "tuergriff", "choice.k3.objekt": "tuergriff" } },
             { "do": "toast", "text": "Du nimmst ihr den Türgriff ab. Messing, noch warm von ihrer Hand.", "ms": 4200 },
@@ -418,7 +428,7 @@
         },
         {
           "id": "took_dukat",
-          "when": { "flag": "festsaal.took", "eq": "dukat" },
+          "when": { "all": [{ "flag": "festsaal.took", "eq": "dukat" }, { "not": { "chosen": "k3.objekt" } }] },
           "do": [
             { "do": "flag", "set": { "flag.k3_objekt": "dukat", "choice.k3.objekt": "dukat" } },
             { "do": "toast", "text": "Der Dukat. Auf einer Seite das Schloss, das gerade brennt.", "ms": 4200 },
@@ -427,7 +437,7 @@
         },
         {
           "id": "took_uhr",
-          "when": { "flag": "festsaal.took", "eq": "uhr" },
+          "when": { "all": [{ "flag": "festsaal.took", "eq": "uhr" }, { "not": { "chosen": "k3.objekt" } }] },
           "do": [
             { "do": "flag", "set": { "flag.k3_objekt": "uhr", "choice.k3.objekt": "uhr" } },
             { "do": "toast", "text": "Die Uhr ist schwerer, als sie aussieht. Sie tickt weiter.", "ms": 4200 },
@@ -436,7 +446,7 @@
         },
         {
           "id": "took_nichts",
-          "when": { "flag": "festsaal.took", "eq": "nichts" },
+          "when": { "all": [{ "flag": "festsaal.took", "eq": "nichts" }, { "not": { "chosen": "k3.objekt" } }] },
           "do": [
             { "do": "flag", "set": { "flag.k3_objekt": "nichts", "choice.k3.objekt": "nichts" } },
             { "do": "toast", "text": "Du nimmst nichts. Hanne nimmt dich am Arm.", "ms": 4200 }
@@ -508,8 +518,8 @@
       "checkpoint": "k3_6",
       "enter": [
         { "do": "anchor", "to": "1793-07", "x": 1292, "z": -1175, "r": 25 },
+        { "do": "cue", "id": "menagerie:spawn", "onResume": true, "data": { "animal": "jaguar", "x": 1276, "z": -1418, "id": "k3.jaguar", "era": "1793-07" } },
         { "do": "say", "line": "laub.k3.draussen", "delay": 1.5 },
-        { "do": "cue", "id": "menagerie:spawn", "data": { "animal": "jaguar", "x": 1276, "z": -1418, "id": "k3.jaguar" } },
         { "do": "npc", "op": "spawn", "npc": "hanne", "x": 1270.5, "z": -1293, "era": "1793-07", "chapter": "k3g", "yaw": 150, "mood": "warm" },
         { "do": "npc", "op": "spawn", "npc": "soll", "x": 1275, "z": -1298, "era": "1793-07", "chapter": "k3g", "yaw": 300 }
       ],
@@ -572,7 +582,8 @@
       "checkpoint": "k3_7",
       "enter": [
         { "do": "anchor", "to": "1793-07", "x": 1272, "z": -1300, "r": 25 },
-        { "do": "quest", "op": "start", "id": "q.k3.hunde", "onResume": true }
+        { "do": "quest", "op": "start", "id": "q.k3.hunde", "onResume": true },
+        { "do": "cue", "id": "menagerie:spawn", "onResume": true, "data": { "animal": "jaguar", "x": 1276, "z": -1418, "id": "k3.jaguar", "era": "1793-07" } }
       ],
       "on": [
         {
@@ -609,6 +620,7 @@
       "title_de": "Der Zwinger",
       "checkpoint": "k3_7",
       "enter": [
+        { "do": "cue", "id": "menagerie:spawn", "onResume": true, "data": { "animal": "jaguar", "x": 1276, "z": -1418, "id": "k3.jaguar", "era": "1793-07" } },
         { "do": "npc", "op": "spawn", "npc": "jost", "x": 1250, "z": -1568, "era": "1793-07", "chapter": "k3z", "yaw": 90, "mood": "warm" },
         {
           "do": "threat",
@@ -657,7 +669,7 @@
       "title_de": "Neun Kerben",
       "checkpoint": "k3_7",
       "enter": [
-        { "do": "cue", "id": "menagerie:clear", "data": { "id": "k3.jaguar" }, "delay": 2 },
+        { "do": "cue", "id": "menagerie:clear", "onResume": true, "data": { "id": "k3.jaguar" }, "delay": 2 },
         { "do": "say", "line": "jost.k3.04", "delay": 0.5 },
         { "do": "cue", "id": "k3:jost-run", "data": { "x": 1250, "z": -1568, "toX": 1150, "toZ": -1700 }, "delay": 3.5 },
         { "do": "npc", "op": "despawn", "npc": "jost", "delay": 3.6 },
@@ -672,6 +684,7 @@
       "id": "k3_9",
       "title_de": "Heimweg",
       "enter": [
+        { "do": "cue", "id": "menagerie:clear", "data": { "id": "k3.jaguar" }, "onResume": true },
         { "do": "quest", "op": "fail", "id": "q.k3.jaguar" },
         { "do": "quest", "op": "fail", "id": "q.k3.kabinett" },
         { "do": "quest", "op": "fail", "id": "q.k3.lehnstuhl" },

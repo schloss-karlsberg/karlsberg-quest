@@ -482,9 +482,9 @@ export class StoryEngine {
     const f = this.chapter();
     const b = this.beat();
     if (!f || !b) return;
-    s.beatTime += dt;
     s.chapterTime += dt;
     env = { ...env, chapterTime: s.chapterTime, chapter: s.chapter };
+    if (!b.timerWhile || evaluate(b.timerWhile, env, {}, 'clock', s.beatTime)) s.beatTime += dt;
     this.react(f.on ?? [], 'c', env, s.chapterTime);
     if (this.s.beat !== b.id || this.s.chapter !== f.chapter) return; // a reaction switched beats
     this.react(b.on ?? [], 'b', env, s.beatTime);

@@ -182,6 +182,7 @@ export function hintFor(o: QuestObjective & { hint_de?: string }, h: HintContext
       if (o.event === 'era:change') return 'Q für den Zeitsprung gedrückt halten.';
       return where ? `Zur Markierung gehen${go}.` : 'Folge der Aufgabenanzeige.';
     case 'calm':
+      if (o.animal === 'jaguar' || o.animal === 'k3.jaguar') return `Laterne anlassen, den Jaguar anvisieren und das Bannlicht dreimal auslösen${go}. Nicht zuschlagen.`;
       return `Ausweichen (Leertaste), bis es müde wird, nicht zuschlagen${go}.`;
     case 'escort':
       return `Vorausgehen, die Person folgt dir${go}.`;

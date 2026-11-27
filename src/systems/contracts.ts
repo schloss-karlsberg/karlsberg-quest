@@ -149,9 +149,9 @@ declare module '../core/events' {
      * (player-yaw convention), count for a group (dromedaries), id to address / clear it later.
      * Also accepted as story action `{"do":"cue","id":"menagerie:spawn","data":{animal,x,z,…}}`.
      */
-    'menagerie:spawn': { animal: MenagerieAnimal; x: number; z: number; id?: string; heading?: number; count?: number };
-    /** Remove one animal (id) or all of them. */
-    'menagerie:clear': { id?: string };
+    'menagerie:spawn': { animal: MenagerieAnimal; x: number; z: number; era?: Era; id?: string; heading?: number; count?: number };
+    /** Remove one animal (id) or all of them. keepProgress makes the removal temporary. */
+    'menagerie:clear': { id?: string; keepProgress?: boolean };
 
     // ---- chronik (owner: chronik) ---------------------------------------------------------
     'clue:found': { id: string; kind: string };
