@@ -65,3 +65,21 @@ talk-range check in `src/systems/npc/index.ts`; E stays free for others). As a s
 
 Checks: `tests/npc-has-words.test.ts` (fails on main), `e2e/tour-slice.spec.ts` at t6 (next to
 the guide: no „sprechen“ prompt). t2's conversation is covered by the same spec.
+
+## Follow-up: PR #126 (contributor)
+
+Started in parallel before the fix above landed; after merging `main` the PR keeps only what
+`main` does not have:
+
+- The stop-1 greetings need `tour.station1.ready` (`content/packs/tour.pack.json`), cleared on t2's
+  `exit` (`content/story/00-tour.story.json`): a player who skipped the car-park talk does not get
+  it at the Felsenpfad (`tests/tour-slice.test.ts`).
+- `tests/npc-talk-waits.test.ts`: no beat `complete` or `on[].when` in the tour and chapters 1-4
+  waits for a talk with someone who has nothing to say (`hasWords` with the flags the beat's
+  `enter` sets).
+- `tests/npc-encounter.test.ts`: no E once everything is said; a forced `kq.npc.talk` says the
+  silent line.
+- `e2e/tour-slice.spec.ts`: a short test for t6, t13 and t15 next to the guide and the forced open;
+  the t6 check in the full run reads only the visible prompt (`.kq-prompt.show`), because the hidden
+  element keeps its last text.
+- PR: https://github.com/schloss-karlsberg/karlsberg-quest/pull/126

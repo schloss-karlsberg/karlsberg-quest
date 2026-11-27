@@ -31,6 +31,7 @@ const STORY_FLAGS = new Set([
   'flag.k3_objekt', // ch. 3 rescued object: tuergriff / dukat / uhr / nichts
   'k2.wache_frei', // ch. 2 Wachhaus Irrlichter banned (story rule k2-wachfeuer-frei)
   'story.laub', // set when Laub first speaks at the spring (00-tour.story.json)
+  'tour.station1.ready', // the guide's car-park talk, set and cleared by tour beat t2 (00-tour.story.json)
   'quest.q.k1.lohn.soll', // quest mirror: Soll asked about Matthes (Hanne's 'Angewiesen' greeting)
 ]);
 /** Events from src/core/events.ts and src/systems/contracts.ts plus the custom events of the campaign. */

@@ -1306,6 +1306,9 @@ Round-4 (polish: set dressing) integration rules:
   second). Otherwise E stays free for other owners and no `npc.near` is set. The guide at the later
   tour stops speaks through the radio box only. A person with no lines at all keeps „(Schweigt und
   sieht dich an.)“, and a conversation never opens with an empty box (`tests/npc-has-words.test.ts`).
+  `tests/npc-talk-waits.test.ts` checks that no beat or reaction waits for a talk with someone who
+  has nothing to say then. The guide's car-park greetings need `tour.station1.ready`, which t2's
+  `exit` clears, so they are not offered at a later stop.
   On medium / high the figure is replaced by a `RiggedGhost` (`rigged.ts`, models from
   `characters/`) once the model is loaded: same shader look, idle / walk / talk / gesture clips,
   head look at the player; the procedural figure stays for `low`, while loading and for the kneel pose.

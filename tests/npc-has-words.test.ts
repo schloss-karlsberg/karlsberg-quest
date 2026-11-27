@@ -9,7 +9,8 @@ import type { DialogueLine } from '../src/content/types';
 import { answer, GREET, hasWords, talkLines } from '../src/systems/npc/logic';
 
 const pack = JSON.parse(readFileSync('content/packs/tour.pack.json', 'utf8')) as { dialogue: DialogueLine[] };
-const c = { era: 'today', flags: {}, chapter: 'tour', beat: null, clues: [] } as never;
+// at the car park (t2): the greetings need `tour.station1.ready`, which t2's exit clears
+const c = { era: 'today', flags: { 'tour.station1.ready': true }, chapter: 'tour', beat: null, clues: [] } as never;
 
 describe('a person offers a conversation only with something to say', () => {
   const lines = talkLines(pack.dialogue, 'imhoff', 'tour');
