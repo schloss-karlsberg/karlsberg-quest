@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SAVE_KEY } from '../src/core/save';
 import { throughTour } from './helpers/tour';
 import { openPause, waitForHooks } from './helpers/pause';
@@ -11,7 +12,7 @@ import { SCREENS } from './helpers/common';
  */
 mkdirSync(SCREENS, { recursive: true });
 // software WebGL on a busy machine can be slow: generous budgets
-test.describe.configure({ timeout: 300_000 });
+test.describe.configure({ timeout: ciScale(300_000) });
 
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];
 

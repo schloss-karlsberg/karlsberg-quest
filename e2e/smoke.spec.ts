@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale, desktopViewport, isCI } from './helpers/ci';
 import { openPause } from './helpers/pause';
 import { SCREENS } from './helpers/common';
 import { SAVE_KEY } from '../src/core/save';
@@ -186,7 +187,7 @@ test('the title asks before replacing an autosave that appears during name entry
 });
 
 for (const view of [
-  { name: 'desktop', viewport: { width: 1280, height: 720 }, mobile: false },
+  { name: 'desktop', viewport: desktopViewport, mobile: false },
   { name: 'phone', viewport: { width: 667, height: 375 }, mobile: true },
 ]) {
   test.describe(view.name, () => {
@@ -225,7 +226,7 @@ for (const view of [
         await expect(indicator).not.toHaveAttribute('aria-valuenow', /.+/);
         await expect(needle).toHaveCSS('animation-name', view.mobile ? 'kq-needle' : 'none');
         const before = await dial.boundingBox();
-        await page.screenshot({ path: `${SCREENS}/title-first-paint-${view.name}.png`, timeout: 60_000 });
+        await page.screenshot({ path: `${SCREENS}/title-first-paint-${view.name}.png`, timeout: ciScale(60_000) });
 
         bundle.release();
         await expect(page.getByTestId('title').getByTestId('title-loading')).toBeVisible();
@@ -240,7 +241,7 @@ for (const view of [
         await expect(indicator).toHaveAttribute('aria-valuenow', '89');
         await expect(indicator).toHaveText('Gelände wird geladen … 89 %');
         expect(await dial.boundingBox()).toEqual(before);
-        await page.screenshot({ path: `${SCREENS}/title-loading-${view.name}.png`, timeout: 60_000 });
+        await page.screenshot({ path: `${SCREENS}/title-loading-${view.name}.png`, timeout: ciScale(60_000) });
 
         terrain.release();
         await expect(page.getByTestId('title-new')).toBeFocused({ timeout: 90_000 });
@@ -328,7 +329,8 @@ test.describe('world', () => {
 
   test('renders every era and scan mode without errors', async ({ page }) => {
     // twelve full-frame screenshots on SwiftShader: past 2 min when the suite runs in parallel
-    test.setTimeout(360_000);
+    test.setTimeout(ciScale(360_000));
+    if (isCI) await page.setViewportSize(desktopViewport); // Preserve the reference screenshots.
     const errors = trackErrors(page);
     // today: forest over the ruin of the main palace (POI r03-01)
     await shoot(page, 'today-ruin', { era: 'today', x: 1240, z: -1060, yaw: 250, pitch: -4 });

@@ -6,6 +6,7 @@
  */
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SCREENS } from './helpers/common';
 
 mkdirSync(SCREENS, { recursive: true });
@@ -26,7 +27,7 @@ function trackErrors(page: Page): string[] {
 
 async function shot(page: Page, name: string): Promise<void> {
   await page.evaluate(() => window.kq!.screenshotReady());
-  await page.screenshot({ path: `${SCREENS}/fun-setpieces-${name}.png`, timeout: 150_000 });
+  await page.screenshot({ path: `${SCREENS}/fun-setpieces-${name}.png`, timeout: ciScale(150_000) });
 }
 
 async function place(page: Page, era: string, x: number, z: number, yaw: number, pitch = 0): Promise<void> {
@@ -44,7 +45,7 @@ async function place(page: Page, era: string, x: number, z: number, yaw: number,
 const PACK = { kind: 'pack', active: true, intensity: 0.45, hounds: 8, pikeur: true, sight: 30, center: { x: 1815, z: 290 }, radius: 170, lunges: true, flankers: 2 };
 
 test.describe('set pieces', () => {
-  test.describe.configure({ timeout: 600_000 });
+  test.describe.configure({ timeout: ciScale(600_000) });
   test.beforeEach(async ({ page }) => {
     await page.goto('./?notitle&nosave&fresh&manual');
     await page.waitForFunction(() => !!window.kq?.hunt && !!window.kq?.scenery && !!window.kq?.story && !!(window.kq as Any)?.interiors, null, { timeout: 180_000 });

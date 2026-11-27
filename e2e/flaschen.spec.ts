@@ -1,4 +1,5 @@
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { openPause, waitForHooks } from './helpers/pause';
 import { SCREENS, trackErrors } from './helpers/common';
 import { FLASCHENGRUEN } from '../src/player/cosmetics';
@@ -51,7 +52,7 @@ async function boot(page: Page): Promise<void> {
 }
 
 test.describe('Fläschchen', () => {
-  test.describe.configure({ timeout: 900_000 });
+  test.describe.configure({ timeout: ciScale(900_000) });
 
   test('all 24 bottles stand in their eras, on a surface, in view', async ({ page }) => {
     const errors = trackErrors(page);

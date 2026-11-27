@@ -36,6 +36,13 @@ the e2e test fails when a scene is over.
   baseline, `PERF_FRAMES=n` changes the frames per scene. Headless Chromium uses SwiftShader
   (a CPU rasteriser). Draw calls, triangles and bytes are suitable for e2e assertions. Frame
   and CPU milliseconds depend on the machine and its load.
+- **Hosted e2e** normally uses SwiftShader at 640×360 and Niedrig (pixel ratio 1, shorter LOD
+  distances, no shadows or MSAA). This quarters the pixel count relative to the default local
+  viewport. The draw-call and triangle budget and tier tests use 1280×720. CI also checks the
+  first-input transfer budget and retains failure screenshots with trace filmstrips disabled.
+  Run the timed cases in `e2e/framerate.spec.ts` and the walk sample in `e2e/walk.spec.ts` on a
+  quiet local machine with `scripts/dev/heavy.sh --exclusive`. Use `playwright.gpu.config.ts`
+  for the real-GPU specs.
 - **Tour group workload (TASK-050).** `e2e/walk.spec.ts` loads all 16 bodies, then samples eight
   stepped frames at the trailhead on each quality tier. Within each scene pass it draws the
   group hidden and visible at the same camera pose and tick. All 16 bodies must submit triangles

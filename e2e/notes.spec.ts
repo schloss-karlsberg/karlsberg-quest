@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SCREENS, trackErrors } from './helpers/common';
 
 /**
@@ -15,7 +16,7 @@ async function boot(page: Page): Promise<void> {
 }
 
 test.describe('F8 notes and arrow-key turning', () => {
-  test.describe.configure({ timeout: 240_000 });
+  test.describe.configure({ timeout: ciScale(240_000) });
 
   test('arrow keys turn the view (third and first person), PageUp / PageDown tilt, A / D still strafe', async ({ page }) => {
     const errors = trackErrors(page);

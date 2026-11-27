@@ -1,4 +1,5 @@
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale, desktopViewport, isCI } from './helpers/ci';
 import { waitForHooks } from './helpers/pause';
 import { SCREENS, throughParty, trackErrors } from './helpers/common';
 import { boot as bootK1, ensureHelpers, flush, story, upd, walk } from './helpers/k1';
@@ -14,7 +15,7 @@ import { boot as bootK1, ensureHelpers, flush, story, upd, walk } from './helper
  *   "Ende noch einmal wählen"; ending C lets the five hounds follow you at night.
  * Screenshots: test-results/screens/pol-flow-*.png.
  */
-test.describe.configure({ timeout: 600_000 });
+test.describe.configure({ timeout: ciScale(600_000) });
 
 async function shot(page: Page, name: string): Promise<void> {
   await page.evaluate(() => window.kq!.screenshotReady());
@@ -22,9 +23,19 @@ async function shot(page: Page, name: string): Promise<void> {
 }
 
 type Box = { x: number; y: number; w: number; h: number; name: string };
-/** Visible HUD boxes (screen px) of the elements that must not overlap. */
-const boxes = (page: Page) =>
-  page.evaluate(() => {
+/**
+ * Visible HUD boxes (screen px) of the elements that must not overlap. With `live`, first put up the
+ * parts whose timers run on the wall clock (a captioned sound for 8 s, a pickup line in the feed dock
+ * for 4.2 s) and measure in the same task, so a slow software frame cannot outlast them first.
+ */
+const boxes = (page: Page, live = false) =>
+  page.evaluate((live) => {
+    if (live) {
+      const k = window.kq!;
+      k.ctx.ui.hud.subtitle(null, '[Draußen im Hof: Schritte auf Kies, dann eine Tür]', 8000);
+      k.progression?.grant('item.balsam', 1);
+      k.step(2);
+    }
     const out: Box[] = [];
     const add = (name: string, el: Element | null) => {
       if (!el) return;
@@ -50,7 +61,7 @@ const boxes = (page: Page) =>
     const tracker = document.querySelector('[data-testid="quest-tracker"]');
     if (tracker && !tracker.closest('[data-testid="hud-topleft"]')) add('quest-tracker', tracker);
     return out;
-  });
+  }, live);
 
 function overlaps(bs: Box[]): string[] {
   const hit: string[] = [];
@@ -116,15 +127,11 @@ test('HUD: the top-left column, skill cards, dialogue and subtitles do not overl
         k.step(1);
       }
       k.story!.finishTyping();
-      // the real-time parts last (their timers run on the wall clock): a captioned sound and a
-      // pickup line in the feed dock (the vitals dock always shows the XP bar)
-      k.ctx.ui.hud.subtitle(null, '[Draußen im Hof: Schritte auf Kies, dann eine Tür]', 8000);
-      k.progression?.grant('item.balsam', 1);
-      k.step(2);
     });
     await expect(page.getByTestId('room-tag')).toBeVisible();
     await expect(page.getByTestId('dialogue')).toHaveClass(/kqs-show/);
-    const bs = await boxes(page);
+    // the real-time parts last, measured at once (the vitals dock always shows the XP bar)
+    const bs = await boxes(page, true);
     expect(bs.map((b) => b.name)).toEqual(expect.arrayContaining(['dialogue', 'subtitles']));
     expect(bs.filter((b) => b.name.startsWith('topleft')).length).toBeGreaterThanOrEqual(3); // era, room, objective
     expect(bs.some((b) => b.name.startsWith('skill-card'))).toBe(true);
@@ -248,6 +255,7 @@ test('the printout card sketches the palace site', async ({ page }) => {
 });
 
 test('endings: epilogue fits 1280×720, "Ende noch einmal wählen", ending C: the hounds follow', async ({ page }) => {
+  if (isCI) await page.setViewportSize(desktopViewport);
   const errors = trackErrors(page);
   // saving on: the field book before the choice goes to the 'ending' slot
   await page.goto('./?notitle&fresh&manual&idle');

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import jpeg from 'jpeg-js';
 import { SCREENS, trackErrors } from './helpers/common';
 
@@ -42,7 +43,7 @@ function stats(dataUrl: string): { w: number; h: number; mean: number; sd: numbe
 }
 
 test('pilot: act, observe, frames, look, telegraph, dialogue', async ({ page }) => {
-  test.setTimeout(300_000);
+  test.setTimeout(ciScale(300_000));
   const errors = trackErrors(page);
   await page.goto('./?notitle&nosave&fresh&manual');
   await page.waitForFunction(() => window.kq?.combat !== undefined && window.kq?.pilot !== undefined, null, { timeout: 90_000 });
@@ -77,7 +78,11 @@ test('pilot: act, observe, frames, look, telegraph, dialogue', async ({ page }) 
   expect(Array.isArray(o0.o.enemies)).toBe(true);
   expect(o0.o.paused).toBe(false);
 
-  // mouse look without pointer lock: 200 px right = 200 · 0.0022 rad ≈ 25° at sensitivity 1
+  // mouse look without pointer lock: 200 px right = 200 · 0.0022 rad ≈ 25° at sensitivity 1.
+  // Full Chromium (the hosted runs) grants the start's lock request without a click, unlike the
+  // headless shell: let go of it the way the game does (no pause menu), then look without it.
+  await page.evaluate(() => window.kq!.ctx.input.releaseLock());
+  await expect.poll(() => page.evaluate(() => document.pointerLockElement === null)).toBe(true);
   const look = await page.evaluate(() => {
     const k = window.kq!;
     k.ctx.player.mouseSensitivity = 1;

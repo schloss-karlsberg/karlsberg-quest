@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SCREENS } from './helpers/common';
 
 /**
@@ -43,7 +44,7 @@ async function place(page: Page, v: { era: string; x: number; z: number; yaw: nu
 
 test.describe('fx', () => {
   // software WebGL: the point-cloud and fire scenes take a few seconds per frame
-  test.describe.configure({ timeout: 300_000 });
+  test.describe.configure({ timeout: ciScale(300_000) });
   test.beforeEach(async ({ page }) => {
     await page.goto('./?notitle&nosave&fresh&manual');
     await page.waitForFunction(() => window.kq?.fx !== undefined, null, { timeout: 90_000 });

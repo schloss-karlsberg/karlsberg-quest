@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { trackErrors } from './helpers/common';
 import { boot } from './helpers/k1';
 import { QUELLE_STAND, flag, holdHome, qn, qs, story } from './helpers/prolog';
@@ -12,7 +13,7 @@ import { PIECES, REACH, toLocal, toWorld, touchLocal } from '../src/systems/quel
  * `kq.fx.shiftAt` to look at the moments in between. Screenshot (for the record, no comparison):
  * the still moment, in this test's output folder.
  */
-test.describe.configure({ timeout: 600_000 }); // software WebGL, a whole new game
+test.describe.configure({ timeout: ciScale(600_000) }); // software WebGL, a whole new game
 
 test('Karlsbergquelle: E at the trough, the still moment, the shift to 1789, Q home', async ({ page }, info) => {
   const errors = trackErrors(page);
@@ -110,7 +111,7 @@ test('Karlsbergquelle: E at the trough, the still moment, the shift to 1789, Q h
     document.head.append(st);
   });
   await page.evaluate(() => window.kq!.screenshotReady());
-  await page.screenshot({ path: info.outputPath('quelle-still-moment.png'), timeout: 90_000 });
+  await page.screenshot({ path: info.outputPath('quelle-still-moment.png'), timeout: ciScale(90_000) });
   await page.evaluate(() => document.getElementById('quelle-hide')?.remove());
 
   // ---- the touch: the story shifts (k1_0 → k1_0b); the player stays held -----------------------------

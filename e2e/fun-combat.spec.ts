@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SCREENS } from './helpers/common';
 
 /**
@@ -28,7 +29,7 @@ const FIELD = { x: 1452, z: -640, yaw: 330 };
 
 async function shot(page: Page, name: string): Promise<void> {
   await page.evaluate(() => window.kq!.screenshotReady());
-  await page.screenshot({ path: `${SCREENS}/fun-combat-${name}.png`, timeout: 150_000 });
+  await page.screenshot({ path: `${SCREENS}/fun-combat-${name}.png`, timeout: ciScale(150_000) });
 }
 
 async function arrive(page: Page, era: string, pitch = -4): Promise<void> {
@@ -58,7 +59,7 @@ test.describe('combat fun pass', () => {
   });
 
   test('the four bosses reveal themselves; one comes apart', async ({ page }) => {
-    test.setTimeout(480_000);
+    test.setTimeout(ciScale(480_000));
     const errors = trackErrors(page);
     for (const [kind, era, title] of [
       ['schuldbuch', '1789', 'Schuldbuch'],
@@ -98,7 +99,7 @@ test.describe('combat fun pass', () => {
   });
 
   test('a pack with its elite and escort; the Nebelweber; telegraphs on sand and in the night', async ({ page }) => {
-    test.setTimeout(420_000);
+    test.setTimeout(ciScale(420_000));
     const errors = trackErrors(page);
     await arrive(page, '1793-02');
     const pack = await page.evaluate(() => {
@@ -148,7 +149,7 @@ test.describe('combat fun pass', () => {
   });
 
   test('the Gnadenstoß: a reeling elite falls to one Wuchthieb', async ({ page }) => {
-    test.setTimeout(300_000);
+    test.setTimeout(ciScale(300_000));
     const errors = trackErrors(page);
     await arrive(page, '1793-07', -8);
     const id = await page.evaluate(() => {

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { trackErrors } from './helpers/common';
 import { waitForHooks } from './helpers/pause';
 
@@ -24,7 +25,7 @@ async function result(page: Page) {
 }
 
 test('accepting after three flares credits the saved calm exactly once', async ({ page }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(ciScale(240_000));
   const errors = trackErrors(page);
   await boot(page, true);
   const outcomes = await page.evaluate((id) => {
@@ -98,7 +99,7 @@ test('accepting after three flares credits the saved calm exactly once', async (
 });
 
 test('loading a stranded save pays once even after the jaguar spawn was cleared', async ({ page }) => {
-  test.setTimeout(300_000);
+  test.setTimeout(ciScale(300_000));
   const errors = trackErrors(page);
   await boot(page, true);
   const saved = await page.evaluate((id) => {

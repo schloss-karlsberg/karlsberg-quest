@@ -8,7 +8,10 @@
  */
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale, desktopViewport } from './helpers/ci';
 import { SCREENS } from './helpers/common';
+
+test.use({ viewport: desktopViewport });
 
 mkdirSync(SCREENS, { recursive: true });
 const IGNORED = [/GPU stall/i, /pointer ?lock/i, /WebGL.*(performance|ReadPixels)/i, /AudioContext was not allowed/i];
@@ -31,7 +34,7 @@ async function shot(page: Page, name: string): Promise<void> {
     document.querySelectorAll('[data-testid="story-card"]').forEach((e) => e.remove());
     return window.kq!.screenshotReady();
   });
-  await page.screenshot({ path: `${SCREENS}/r6-read-${name}.png`, timeout: 150_000 });
+  await page.screenshot({ path: `${SCREENS}/r6-read-${name}.png`, timeout: ciScale(150_000) });
 }
 
 /** Let a few real frames render (frame() work: camera clearance, dither, numbers, HUD). */
@@ -75,7 +78,7 @@ const FIELD = { x: 1452, z: -640, yaw: 330 };
 const VALLEY = { x: 560, z: -915, yaw: 90 };
 
 test.describe('round 6 readability', () => {
-  test.describe.configure({ timeout: 600_000 });
+  test.describe.configure({ timeout: ciScale(600_000) });
   test.beforeEach(async ({ page }) => {
     await page.goto('./?notitle&nosave&fresh&manual');
     await page.waitForFunction(() => window.kq !== undefined && window.kq.combat !== undefined && !!window.kq.hunt, null, { timeout: 180_000 });
