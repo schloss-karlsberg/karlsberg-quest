@@ -22,6 +22,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-27 | **Captions clear of the cards on phones (TASK-074).** On a landscape phone the level card and the standalone skill card step aside while a sound caption is shown under the dialogue (spoken subtitles do not hold them), so the line is never covered; the card's reading time pauses and it returns when the line has gone. Desktop, tablets and reduced motion are unchanged. |
 | unreleased | 2026-11-27 | **Captions stay readable (TASK-073).** Each subtitle line, sound captions included, stays on screen for at least 1.5 s before a newer line may push it out of the three-line box; lines that arrive while the box is full wait in order and are not lost. The tour's „[Diane und Bijou bellen]“ no longer vanishes as the dialogue starts. |
 | unreleased | 2026-11-27 | **Wegweiser on the frozen lake (TASK-071).** In February 1793 the trail and the „Weg“ marker lead across the walkable ice instead of hiding there; open water still blocks them. |
 | unreleased | 2026-11-27 | **Ending card after a reload (TASK-068).** A save taken during an ending scene or while its closing card is up shows the closing card again after title Continue or a pause-menu load, then the epilogue as before. Once the card is dismissed (the game checkpoints then), a reload opens the epilogue directly. Older saves from that stretch cannot tell the two apart and show the card once more. |

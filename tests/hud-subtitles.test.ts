@@ -71,6 +71,18 @@ function subtitleBox(hud: Hud) {
 }
 
 describe('Hud subtitles', () => {
+  it('counts only sound captions (no speaker) as caption lines, so a conversation does not hold a card (TASK-074)', () => {
+    const hud = new Hud();
+    hud.subtitle('Imhoff', 'Hier stand das Schloss.', 4000);
+    expect(hud.captionLines).toBe(0);
+    const off = hud.subtitle(null, '[Diane und Bijou bellen]', 20_000);
+    expect(hud.captionLines).toBe(1);
+    off();
+    expect(hud.captionLines).toBe(0);
+    hud.subtitle('Jost', 'Diane! Bijou!', 4000);
+    expect(hud.captionLines).toBe(0);
+  });
+
   it('keeps a sound caption up for a minimum time when a burst of dialogue lines follows it', () => {
     const hud = new Hud();
     const shown = subtitleBox(hud);

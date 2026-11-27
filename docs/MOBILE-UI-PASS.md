@@ -560,6 +560,17 @@ defers the notice or hides it and pauses its reading time if it is already up. A
 uses the same card director path as the level card and starts the 0.6 s fade, skipping a stamp that
 has yet to play. Each eligible Laub remark still queues once.
 
+**Captions with a card (TASK-074, 2026-11-27).** On a landscape phone the subtitle box (sound
+captions such as „[Diane und Bijou bellen]“, spoken subtitles) lands in the same band under the
+dialogue as the level and skill cards, and at 667×375 there is no free spot beside either card
+for it. While a sound caption (a line without a speaker) is up on a short touch layout
+(`max-height: 500px`), both cards step aside like they do for the held stick: hidden, their reading
+time paused, back when the caption has gone. Spoken subtitles do not hold them, or a card would wait
+out a whole conversation (`captionCoversCard`, `src/ui/cards.ts`). The card positions do not change; desktop, tablets
+and reduced motion keep both on screen as before. The mobile measurement reports any subtitle line
+under a visible card as `caption-covered`; the `level-card` and `skill-unlock` states shoot a
+caption with the card up (`-caption`) and require none on short units.
+
 **MR 9 and Pause.** The tour opening already supplies the short touch hint „Wischen: Schauen“.
 The HUD pill now wraps longer text between the vitals and Balsam/Ausweichen, with its position
 adjusted for HUD zoom. Combat callouts wrap below the dialogue band, left of Aktion and right of
