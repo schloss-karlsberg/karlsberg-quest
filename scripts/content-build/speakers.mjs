@@ -1,6 +1,11 @@
 import { write } from './common.mjs';
 
-const sp = (id, name, historical) => ({ id, name_de: name, historical });
+/**
+ * `dative`: the name after a dative preposition, as in the talk prompt „Mit {name} sprechen“
+ * (TASK-078). Required when the name starts with an article (Der, Die, Das, Ein, Eine, Zweite,
+ * Zweiter; checked by tests/npc-prompt-name.test.ts) and for a placed bare noun like „Diener“.
+ */
+const sp = (id, name, historical, dative) => ({ id, name_de: name, ...(dative ? { dative_de: dative } : {}), historical });
 write('speakers', {
   pack: 'speakers',
   speakers: [
@@ -11,28 +16,28 @@ write('speakers', {
     sp('hanne', 'Hanne', false),
     sp('jost', 'Jost', false),
     sp('peter', 'Peter', false),
-    sp('kollege', 'Ein Kollege (Funk)', false),
-    sp('stimme', 'Eine Stimme aus dem Nebel', false),
+    sp('kollege', 'Ein Kollege (Funk)', false, 'einem Kollegen (Funk)'),
+    sp('stimme', 'Eine Stimme aus dem Nebel', false, 'einer Stimme aus dem Nebel'),
     // 1789, the disguise opening (k1_0b / k1_0c; IDEAS-ROUND11 §2): fiction
     sp('liese', 'Liese, Wäscherin', false),
-    sp('hofgaertner', 'Der Hofgärtner', false),
-    sp('gardist', 'Ein Gardist', false),
-    sp('gardist-tor', 'Ein Gardist', false),
-    sp('lakai', 'Ein Lakai', false),
+    sp('hofgaertner', 'Der Hofgärtner', false, 'dem Hofgärtner'),
+    sp('gardist', 'Ein Gardist', false, 'einem Gardisten'),
+    sp('gardist-tor', 'Ein Gardist', false, 'einem Gardisten'),
+    sp('lakai', 'Ein Lakai', false, 'einem Lakaien'),
     // nameless extras in echoes (fiction)
-    sp('diener', 'Diener', false),
-    sp('diener2', 'Zweiter Diener', false),
-    sp('gaertner', 'Zweiter Gärtner', false),
+    sp('diener', 'Diener', false, 'dem Diener'),
+    sp('diener2', 'Zweiter Diener', false, 'dem zweiten Diener'),
+    sp('gaertner', 'Zweiter Gärtner', false, 'dem zweiten Gärtner'),
     sp('wache', 'Wache', false),
-    sp('wache2', 'Zweite Wache', false),
+    sp('wache2', 'Zweite Wache', false, 'der zweiten Wache'),
     sp('soldat', 'Soldat', false),
-    sp('soldat2', 'Zweiter Soldat', false),
-    sp('frau', 'Eine Frau', false),
-    sp('mann', 'Ein Mann', false),
-    sp('junge', 'Ein Junge', false),
+    sp('soldat2', 'Zweiter Soldat', false, 'dem zweiten Soldaten'),
+    sp('frau', 'Eine Frau', false, 'einer Frau'),
+    sp('mann', 'Ein Mann', false, 'einem Mann'),
+    sp('junge', 'Ein Junge', false, 'einem Jungen'),
     sp('fuhrmann', 'Fuhrmann', false),
-    sp('fuhrmann2', 'Zweiter Fuhrmann', false),
-    sp('menge', 'Die Menge', false),
+    sp('fuhrmann2', 'Zweiter Fuhrmann', false, 'dem zweiten Fuhrmann'),
+    sp('menge', 'Die Menge', false, 'der Menge'),
     sp('epilog', 'Epilog', false),
     /** Sound / stage cues as subtitles ([…]); never speech. */
     sp('geraeusch', 'Geräusch', false),
@@ -44,10 +49,10 @@ write('speakers', {
     sp('rose', 'Rosé, der Leibarzt', true),
     sp('salabert', 'Abbé Salabert', true),
     sp('esebeck', 'Freiherr von Esebeck', true),
-    sp('feuerwerker', 'Ein Feuerwerker aus Straßburg', true),
+    sp('feuerwerker', 'Ein Feuerwerker aus Straßburg', true, 'einem Feuerwerker aus Straßburg'),
     sp('landremont', 'General Landremont', true),
-    sp('handwerker', 'Ein Handwerker', true),
-    sp('kommissaer', 'Der Kommissär', true),
-    sp('hoefling', 'Ein Höfling', true),
+    sp('handwerker', 'Ein Handwerker', true, 'einem Handwerker'),
+    sp('kommissaer', 'Der Kommissär', true, 'dem Kommissär'),
+    sp('hoefling', 'Ein Höfling', true, 'einem Höfling'),
   ],
 });
