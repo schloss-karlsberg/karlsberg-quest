@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SAVE_KEY } from '../src/core/save';
 import { serializeState } from '../src/core/state';
+import { TRAVEL_DE } from '../src/systems/travel/strings';
 import { disposeTravel, setupTravel } from './travel-fixture';
 
 afterEach(disposeTravel);
@@ -66,6 +67,19 @@ describe('travel discoveries', () => {
 });
 
 describe('the outdoor sprint boost', () => {
+  it.each([
+    [false, TRAVEL_DE.sprint],
+    [true, TRAVEL_DE.sprintTouch],
+  ])('explains the Laufschritt once in the current input mode (touch %s)', (touch, text) => {
+    const { keys, step, input, ui } = setupTravel();
+    input.touchMode = touch;
+    keys.add('forward');
+    keys.add('sprint');
+    for (let i = 0; i < 6 * 60; i++) step();
+    const tips = vi.mocked(ui.toast).mock.calls.filter(([msg]) => String(msg).startsWith('Laufschritt'));
+    expect(tips).toEqual([[text, 4200]]);
+  });
+
   it('loses the boost on releasing sprint even after a minute on the trail', () => {
     const { keys, player, step } = setupTravel();
     keys.add('forward');

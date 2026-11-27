@@ -16,7 +16,7 @@ export function setupTravel() {
   const keys = new Set<string>();
   const pauseReasons = new Set<string>();
   const ground = { heightAt: () => 0, slopeDeg: () => 0 };
-  const input = { wasPressed: () => false, isDown: (key: string) => keys.has(key) };
+  const input = { wasPressed: () => false, isDown: (key: string) => keys.has(key), touchMode: false };
   const player = new Player({
     heightAt: ground.heightAt,
     collide: (x, z) => ({ x, z, hit: false }),
@@ -60,7 +60,7 @@ export function setupTravel() {
   travel.init(ctx);
   const step = (dt = 1 / 60) => travel.update(dt, ctx);
   step();
-  return { hooks: kq.travel!, events, player, keys, step, state, pauseReasons, save, storage, loop, heal, body };
+  return { hooks: kq.travel!, events, player, keys, step, state, pauseReasons, save, storage, loop, heal, body, input, ui: ctx.ui };
 }
 
 export function disposeTravel(): void {

@@ -4,7 +4,7 @@ aliases:
 - TASK-084
 title: 'Touch players are told to hold the „Umschalttaste“'
 slug: keyboard-hints-on-touch
-status: todo
+status: done
 priority: 2
 owner: ''
 projects: []
@@ -43,9 +43,23 @@ Other keyboard-only lines found with grep (not seen on the phone in this session
 
 ## Acceptance criteria
 
-- [ ] In touch mode these hints name the touch gesture (for example „Stick ganz nach vorn
+- [x] In touch mode these hints name the touch gesture (for example „Stick ganz nach vorn
       schieben“) or use the action label helper (`src/ui/actionLabel.ts`), as other prompts do
       („Wischen: Schauen“).
-- [ ] Desktop wording is unchanged.
-- [ ] A check (unit or content) flags hard-coded key names in player-facing strings that have no
+- [x] Desktop wording is unchanged.
+- [x] A check (unit or content) flags hard-coded key names in player-facing strings that have no
       touch variant.
+
+## Progress
+
+- 2026-11-27 — Travel: the Laufschritt tip shows `TRAVEL_DE.sprintTouch` („Schieb den
+  Bewegungsregler ganz nach vorn …“) in touch mode. Court: `court.hint.how.running.touch`, picked by
+  the new `tInput(id, touch)` helper in `src/i18n`. Chapter 3: the `k3.hinaus` objective (not a
+  dialogue or voiced line) now reads „… Renn, dann bist du kürzer im Rauch.“ for every input.
+  Desktop wording of the travel and court lines is unchanged. `tests/touch-wording.test.ts` flags
+  registered strings naming Shift without a `.touch` twin and story objectives/toasts naming keys.
+- Left open (follow-up): the chapter 1 kennel chase objective `k1.flucht` („weich aus [Leertaste]“)
+  and its toast („Aufstehen: [Leertaste]. Rennen: [Umschalt] …“) still name keys on touch. Story
+  objectives and toasts have no touch variant; a `touch` field on those actions (like prompts have)
+  would fix them. Both are allowlisted in the test. No dialogue or voiced line names the Shift key (grep;
+  no `k3.brand.aufbruch` line exists).

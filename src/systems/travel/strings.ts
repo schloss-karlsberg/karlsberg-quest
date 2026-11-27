@@ -30,6 +30,8 @@ export const TRAVEL_DE = {
   wakeHint: (name: string) => `Schnellreise: M öffnet die Karte. ${name} liegt nah am Ziel.`,
   firstMap: 'Mit M öffnest du die Karte. Zu entdeckten Reisepunkten kannst du direkt reisen.',
   sprint: 'Laufschritt: Halte die Umschalttaste, um außerhalb von Kämpfen schneller zu laufen.',
+  /** `sprint` in touch mode: the stick pushed to the rim runs (src/player/touchMap.ts `sprintAt`). */
+  sprintTouch: 'Laufschritt: Schieb den Bewegungsregler ganz nach vorn, um außerhalb von Kämpfen schneller zu laufen.',
   shrine: 'Der Wegstein ist warm. Die Lebenskraft kehrt zurück.',
   shrineCool: 'Der Wegstein ruht noch.',
   cacheOpen: 'Die Truhe springt auf.',
