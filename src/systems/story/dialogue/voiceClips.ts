@@ -16,7 +16,7 @@ import { type LineTexts, type VoiceFormat, type VoiceManifest, type VoiceManifes
 const CACHE_MAX = 16;
 /** Parallel fetch + decode jobs. */
 const CONCURRENCY = 3;
-/** Waiting jobs beyond this drop the oldest requests (an old beat's lines). */
+/** Overflow drops the oldest background preloads (an old beat's lines). */
 const QUEUE_MAX = 24;
 
 export interface ReadyClip {
@@ -71,8 +71,9 @@ export class VoiceClips implements ClipProvider {
   private readonly cache = new Lru<string, AudioBuffer>(CACHE_MAX);
   private readonly inflight = new Set<string>();
   private readonly failed = new Set<string>();
-  private queue: VoiceManifestEntry[] = [];
+  private readonly queue: { entry: VoiceManifestEntry; urgent: boolean }[] = [];
   private pending: PreloadLine[] = [];
+  private pendingPlayback: Parameters<ClipProvider['take']> | null = null;
   private active = 0;
   private stale = 0;
   private logged = false;
@@ -110,8 +111,13 @@ export class VoiceClips implements ClipProvider {
     this.state = this.manifest ? 'ok' : 'none';
     if (!this.manifest) this.debug('no voice manifest: every line murmurs');
     const p = this.pending;
+    const playback = this.pendingPlayback;
     this.pending = [];
-    if (this.manifest) this.preload(p);
+    this.pendingPlayback = null;
+    if (this.manifest) {
+      if (playback) this.take(...playback);
+      this.preload(p);
+    }
   }
 
   stats(): VoiceClipStats {
@@ -150,6 +156,7 @@ export class VoiceClips implements ClipProvider {
 
   /** The decoded clip for this line now, or null (none, stale, or not decoded yet: then it loads). */
   take(id: string | undefined, text: LineTexts, speaker?: string): ReadyClip | null {
+    if (this.state === 'loading') this.pendingPlayback = [id, text, speaker];
     if (!this.manifest) return null;
     const r = lookupClip(this.manifest, id, text, speaker);
     if (r.kind === 'stale') this.stale++;
@@ -167,15 +174,21 @@ export class VoiceClips implements ClipProvider {
   private want(entry: VoiceManifestEntry, urgent: boolean): void {
     const f = entryKey(entry);
     if (this.cache.has(f) || this.inflight.has(f) || this.failed.has(f)) return;
-    if (this.queue.some((q) => entryKey(q) === f)) return;
-    if (urgent) this.queue.unshift(entry);
-    else this.queue.push(entry);
-    if (this.queue.length > QUEUE_MAX) this.queue.splice(0, this.queue.length - QUEUE_MAX);
+    const queued = this.queue.findIndex((q) => entryKey(q.entry) === f);
+    if (urgent) {
+      if (queued >= 0) this.queue.splice(queued, 1);
+      this.queue.unshift({ entry, urgent });
+    } else if (queued < 0) this.queue.push({ entry, urgent });
+    if (this.queue.length > QUEUE_MAX) {
+      const oldestBackground = this.queue.findIndex((q) => !q.urgent);
+      // If every job was requested for playback, the oldest is at the tail.
+      this.queue.splice(oldestBackground >= 0 ? oldestBackground : this.queue.length - 1, 1);
+    }
   }
 
   private pump(): void {
     while (this.active < CONCURRENCY && this.queue.length) {
-      const entry = this.queue.shift()!;
+      const { entry } = this.queue.shift()!;
       this.active++;
       const key = entryKey(entry);
       this.inflight.add(key);

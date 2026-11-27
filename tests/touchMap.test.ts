@@ -1,6 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { EventBus } from '../src/core/events';
 import { DEFAULT_BINDINGS, Input, virtualCode } from '../src/player/input';
-import { TOUCH, crouchButtonMode, diffHeld, isTouchSetting, lookDelta, rotateWanted, stickToMove, touchActive, touchIconFor, touchName, touchPromptIcon } from '../src/player/touchMap';
+import { Player } from '../src/player/player';
+import { STANCES } from '../src/player/stance';
+import { TOUCH, TOUCH_BUTTON_ACTIONS, crouchButtonMode, diffHeld, isTouchSetting, lookDelta, rotateWanted, stickToMove, touchActive, touchIconFor, touchName, touchPromptIcon } from '../src/player/touchMap';
 import { actionLabel } from '../src/ui/actionLabel';
 import { mobileLevel } from '../src/render/mobileDefaults';
 
@@ -81,6 +84,12 @@ describe('prompt key → touch icon', () => {
     expect(touchIconFor('Ducken')).toBe('crouch');
     expect(touchIconFor('Sinken')).toBe('crouch');
   });
+  it('maps the finale hints to the prone and lantern controls', () => {
+    expect(touchIconFor('X')).toBe('prone');
+    expect(touchIconFor('L')).toBe('lantern');
+    expect(touchIconFor('Hinlegen')).toBe('prone');
+    expect(touchIconFor('Laterne')).toBe('lantern');
+  });
   it('gives the mouse (look / aim) the swipe hint, never the interact hand', () => {
     expect(touchIconFor('Maus')).toBe('look');
     expect(touchIconFor('Maus / Pfeiltasten')).toBe('look');
@@ -144,6 +153,53 @@ describe('Input.press (virtual touch actions)', () => {
     expect(inp.wasPressed('dodge')).toBe(true);
     expect(inp.isDown('dodge')).toBe(false);
   });
+  it('uses the same control to crouch on foot and descend in flight', () => {
+    const input = make();
+    const player = new Player({
+      heightAt: () => 0,
+      collide: (x, z) => ({ x, z, hit: false }),
+      bounds: () => ({ x0: -10, z0: -10, x1: 10, z1: 10 }),
+      surfaceAt: () => 'meadow',
+      coverAt: () => 0,
+      canFly: () => true,
+    }, input, new EventBus());
+    const hold = (down: boolean) => TOUCH_BUTTON_ACTIONS.crouch.forEach((action) => input.press(action, down));
+    hold(true);
+    hold(false);
+    player.update(1 / 60);
+    input.endStep();
+    expect(player.stance).toBe('crouch');
+
+    player.setFlying(true);
+    for (let i = 0; i < 180; i++) player.update(1 / 60);
+    const altitude = player.position.y;
+    hold(true);
+    for (let i = 0; i < 30; i++) player.update(1 / 60);
+    hold(false);
+    expect(player.position.y).toBeLessThan(altitude);
+    expect(player.stance).toBe('stand');
+  });
+  it('notifies touch controls after restoring the grounded player and saved stance', () => {
+    const events = new EventBus();
+    const player = new Player({
+      heightAt: () => 2,
+      collide: (x, z) => ({ x, z, hit: false }),
+      bounds: () => ({ x0: -10, z0: -10, x1: 10, z1: 10 }),
+      surfaceAt: () => 'meadow',
+      coverAt: () => 0,
+      canFly: () => true,
+    }, make(), events);
+    player.setFlying(true);
+    const observed: unknown[] = [];
+    events.on('player:restored', () => observed.push({
+      flying: player.flying,
+      stance: player.stance,
+      y: player.position.y,
+      eye: player.eyeHeight,
+    }));
+    player.readState({ x: 3, y: 30, z: 4, yaw: 0, pitch: 0, flying: true, stance: 'prone' });
+    expect(observed).toEqual([{ flying: false, stance: 'prone', y: 2, eye: STANCES.prone.eye }]);
+  });
   it('reads the Shift modifier at the relief key press', () => {
     const inp = make();
     inp.simulate('ShiftLeft', true);
@@ -203,6 +259,8 @@ describe('touch names in text (actionLabel)', () => {
     expect(actionLabel(touch, 'interact')).toBe('Aktion');
     expect(actionLabel(touch, 'shift')).toBe('Epoche');
     expect(actionLabel(touch, 'map')).toBe('Karte');
+    expect(actionLabel(touch, 'prone')).toBe('Hinlegen');
+    expect(actionLabel(touch, 'lantern')).toBe('Laterne');
     expect(actionLabel(touch, 'skill2')).toBe('2');
   });
   it('keeps the key for actions without a button', () => {

@@ -235,8 +235,9 @@ off screen or outside the shadow box are culled (round 9: Ehrenhof 1789 ≈ 100 
 playtest round 10, F-03 / F-07 / F-08 / F-15 / F-21 / F-31 / F-35; tests/camera.test.ts,
 tests/camera-palace.test.ts, e2e/camera.spec.ts). Per drawn frame: the pivot (head) → the preset
 (outdoors; a fight pulls the boom back and up; **indoors** — a ceiling over the character — a
-boom ≤ 2.3 m, 0.32 m higher, 0.5 m shoulder) → the shoulder offset (shrunk by a wall at the
-shoulder and on a short boom) → the **sweep** from the shoulder back along the view in 0.25 m
+boom ≤ 2.3 m, 0.32 m higher, 0.5 m shoulder) → the shoulder sweep from the pivot, which clamps both
+the current and requested offsets at the first side wall → the **sweep** from the shoulder back
+along the view in 0.25 m
 steps: `blocked` (footprints, solids and interior walls from the knee to 3.4 m over the feet, via
 the allocation-free `FootprintCollider.hits` / `PlanQuery.hits`) and `space` (`world.spaceAt`:
 −1 outdoors, a room index, −2 a door reveal / wall mass; the boom never leaves the character's
@@ -278,6 +279,14 @@ named `avatar-<costume>-<piece>` show only in their costume, everything else (`a
 `avatar-glasses`) always (`costumeHides` in costume.ts; built by `scripts/chars/mpfb/kqchar/court.py`).
 Gear on that rig is placed from the mesh: the staff grip from the finger bones, the lantern off the
 hip per costume (it moves out over the coat skirts), the staff on the back off the jacket.
+On `player:teleport`, the avatar takes the placement yaw and clears its sampled movement at the
+destination, including arrivals rendered with zero elapsed time under the travel curtain. Hiding
+the avatar clears sampled movement too, and reappearing aligns its facing with the current view.
+
+**Player placement.** Teleports clamp the destination to the map bounds, resample ground height,
+reset falling velocity, cancel any active push, and restart footstep distance and walking bob. Loading uses
+the same placement path and starts on foot. A movement freeze clears spirit flight velocity and
+holds the automatic climb timer until flight resumes. Look stays available unless `lookLocked` is set.
 
 Pause is a stack of reasons (`ctx.pause.push('menu')`); while any reason is active fixed updates
 stop and rendering follows the pacing above. `?manual` stops the real-time simulation entirely;
@@ -469,6 +478,7 @@ controls a `data-testid` and an `id` (the label's `for` is set from it).
 
 `game:start {resumed}`, `game:pause {paused}`, `era:change {from,to}` (world already switched),
 `scan:mode {mode}`, `player:stance {stance,previous}`, `player:fly {flying}`,
+`player:restored {}` (a load put the player back on the ground: position, view, stance),
 `player:step {x,z,surface,running}`, `player:teleport {x,z}`, `save:written {slot,reason}`,
 `save:loaded {slot}`, `settings:change {key}`, `ui:toast {text,ms?}`.
 Features add their own via declaration merging (see §4). Naming `<domain>:<what>`.
@@ -658,6 +668,10 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   mode of each draw against real post-processing targets. `tests/render-viewport.test.ts` and
   `tests/render-context.test.ts` dispatch resize, density and WebGL lifecycle events, including
   while the view is held. The FX tests inspect the particle geometry submitted to the scene.
+- `tests/player-fixture.ts` supplies a flat `PlayerWorld`, the real `Input` on event targets, and
+  an explicit 60 Hz `step()` for the player, touch and avatar tests.
+- `tests/audio-fixture.ts` provides a fake Web Audio context for mixer and story playback tests.
+  Set `currentTime` and call `end()` on a source to drive playback without an audio device.
 - `tests/travel-fixture.ts` runs the registered travel system on flat ground with a real game state
   store and event bus. Use `step()` for a simulation tick and Vitest's fake timers for a timed journey.
 - Pause and journal page tests use `tests/ui-fixture.ts` to run the real renderers and handlers on a
@@ -666,6 +680,8 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 - Unit (`tests/`): event bus, loop determinism, state/save round trip and throttling, settings,
   system ordering + error isolation, heightfield sampling, decoders (incl. real data), collision,
   forest determinism, validator (good + each failure class), ContentDB.
+- Survey unlocks (`tests/skills-runtime.test.ts`): `setupSkills` uses the real state store, event
+  bus and `CardDirector` with a small DOM stub and explicit frame steps for grants, pause and reload.
 - `tests/control-fixture.ts` records the controls that the settings form and touch overlay build.
   Node tests dispatch events to their handlers by test ID. Playwright covers layout, focus and native pointer capture.
 - Quest, story and Chronik units reuse the existing headless fixtures for quest reloads, chapter
@@ -925,9 +941,12 @@ Round-4 (polish: set dressing) integration rules:
 - **Modes** (`modes.ts`, pure): `patrol` (default); `drive` (Ch. 4: arc of hounds 12–20 m behind and
   beside the player, horn from behind / a flank, they give 5 m when you turn back, pushing through
   = soft catch `player:caught {by:'pack', soft:true}`, story curtain "Die Meute hat dich
-  heimgebracht", chronik loses nothing); `finale` (W8 at the kennel: 6 m circle, X + L in any order,
-  one key — `settings.oneKey` or gentle — X alone; hounds lie down, eyes dim, mist settles, they and
-  the Pikeur fade; > 10 m away = faded back into the circle; emits contract event
+  heimgebracht", chronik loses nothing); `finale` (W8 at the kennel: 6 m circle, X + L or Hinlegen
+  + Laterne on touch in either order. In one-key or gentle mode, lying down suffices. After seven
+  seconds in the wait phase, the HUD cues Landen in flight, Hinlegen on foot when standing or
+  crouching, and Laterne an when prone and still needing light. Hounds lie down, their eyes dim,
+  and they fade with the Pikeur as the mist settles. Beyond 10 m, the player
+  fades back into the circle. Emits contract event
   `hunt:finale {outcome: gathered|returned|calmed|faded}`); `parforce` (Ch. 2 long chase from `from`
   to `target`/water: release horn + head start, surges with a rubber-banded pack, breathers
   `hunt:rest`, the Pikeur riding in from a flank, `hunt:goal` → `hunt:end {reason:'escaped'}`;
@@ -962,12 +981,17 @@ Round-4 (polish: set dressing) integration rules:
   and at 40 m.
 - **Snow tracks** (`tracks.ts`, `trackVisuals.ts`; 1793-02 or a snowy look, `snow` overrides): boot
   prints on every `player:step`, paw / hoof prints of the pack, instanced decals that fade over
-  240 s. Your trail breaks on water, cobbles / building floors, today's roads and steep rock; the
+  240 s. A story trail can extend the lifetime of its own prints. Ordinary prints expire on
+  schedule even when a story trail passes through the same area. Hounds track player prints only.
+  Your trail breaks on water, cobbles / building floors, today's roads and steep rock; the
   pack follows it print by print (`hunt:tracking {on, why?}`, horn found / lost) but never across a
   break. Crouching / standing over the pack's prints reads them (Spurenleser: kind, number,
   rider, age, direction; tier 2 highlights their routes) → caption + `hunt:read`.
   The Warner's scripted boot trail is for the player to follow, not the hounds. Its hold extends
-  only its own lifetime. A cue with no valid positive stride uses the usual 1.4 m spacing.
+  only its own lifetime. The pack follows only the player's boots (agent −1) on a segment it has not
+  lost, never the Warner's (agent −2) or its own paw and hoof prints. Calm sentries on `beats` (the
+  K2 sneak) pick up no prints at all; their sight cones and hearing decide the sneak. Once they have
+  noticed you, the searching pack picks your prints up where it lost you (`PackSim.scanForTrail`). A cue with no valid positive stride uses the usual 1.4 m spacing.
   Each segment uses at most 1800 terrain samples, spread across its full length.
 - Emits `hunt:alert`, `hunt:horn {signal, x, z, mode}`, `hunt:finale`, `hunt:start`, `hunt:end {reason}`,
   `hunt:tracking`, `hunt:goal`, `hunt:rest`, `hunt:read`, `lantern:toggle/oil/empty`,
@@ -1092,7 +1116,7 @@ Round-4 (polish: set dressing) integration rules:
   tier pips, "Freigeschaltet" stamp, `data-testid=skill-card`), plays the stamp chime, emits
   `skill:unlocked {skill, level}` and lets Laub comment (`dialogue:say`, `skills.laub.<id>.<n>`)
   once `flags['story.laub']` is set (or without a running story). Cards wait while a modal or a
-  story card is open.
+  story card is open. A settled standalone unlock appears once the card director grants the slot.
 - **Free survey**: without a running story (sandbox, `?notitle` tests) every tool is open;
   `?skills=strict` forces gating, `?skills=all` opens everything. Locked keys leave a toast.
 - Survey checks the active scan and map against the incoming game's skills on its first tick.
@@ -1141,19 +1165,25 @@ Round-4 (polish: set dressing) integration rules:
   voice) and ContentDB dialogue triggers. Voice: a recorded clip when `voice/manifest.json`
   (under the Vite base; contract and FNV-1a `textHash` over the raw `text_de` in
   `dialogue/voiceManifest.ts`) has a current one for the line (by id, else by text hash for id-less
-  quest lines and variant / era ids) and it is already decoded (`dialogue/voiceClips.ts`: per-beat
-  preload, 3 parallel fetches, 16-clip LRU; Opus/WebM when `canPlayType` says "probably", else
-  AAC/M4A, an Opus decode failure retries as AAC and switches to AAC for the session; the old
-  single `file` is still read); else the per-syllable murmur. Both get the
-  speaker's character (`dialogue/voice.ts` `RADIO_CHAIN` / `RING_CHAIN` / `HALL_CHAIN`, a `blip`
+  quest lines and variant / era ids) and it is already decoded. `dialogue/voiceClips.ts` preloads
+  per beat with 3 parallel fetches, 24 waiting jobs and a 16-clip LRU. If a recording still needs to
+  be fetched, the latest playback request takes the next available slot. While the manifest loads,
+  the latest request is retained and resolved before pending preloads start. On overflow, the queue
+  drops the oldest background preload first. It drops the oldest playback request only when all
+  waiting jobs were requested for playback. Clips use Opus/WebM when `canPlayType` says "probably"
+  and AAC/M4A otherwise. An Opus decode failure retries as AAC and switches to AAC for the session.
+  The legacy single `file` is supported. A line without a ready clip uses the per-syllable murmur.
+  Both get the speaker's character (`dialogue/voice.ts` `RADIO_CHAIN` / `RING_CHAIN` / `HALL_CHAIN`, a `blip`
   and a `clip` variant; the clip values are the casting render's, so in-game clips sound like the
   casting page; clips at −18 LUFS enter at unity `CLIP_GAIN`). With a clip the typing paces to its
   length; skip / next stops it; the game's pause and an echo pause it; a suspended context (hidden
   tab, `AudioManager.setHidden`) freezes it and no clip starts then. Bullet time (`loop.manual`)
   does not pause clips: they run in real time while the simulation waits, and the subtitle
   completes when the clip ends. If a source's end event is delayed, the audio clock still marks
-  the clip as ended and releases speech ducking on the next playback state check. Stale counts
-  only lines whose id the manifest knows (an id-less line with a changed text just finds no match);
+  the clip as ended and releases speech ducking on the next playback state check. Loading a save or
+  starting a new game cancels any capture, discards its deferred dialogue and releases its curtain
+  and movement lock at state replacement. Loading also clears the previous line and waiting
+  subtitles before resuming an active story. The stale count covers lines whose id the manifest knows.
   NPC conversations keep the murmur (only presenter lines play clips). `public/voice/` holds
   committed MOSS clips only; the build emits an empty manifest when there is
   none (no 404). Hook: `kq.story.voice.stats()/preload()`. The title flow asks the visitor to read the
@@ -1527,7 +1557,10 @@ stand-ins, the **authored meshes later behind the same interface**.
   prologue before the compass first speaks at the Orangerie) mutes Laub's barks and the Chronik's
   hint ladder (its clock waits).
 - Emits `bark:idle` (60 s without input), `bark:enter-fire`, `dialogue:say`.
-- State `systems.barks {t, mem, memorials}`. Hooks `kq.barks.state/advance/reset`.
+- State `systems.barks {t, mem, memorials}`. Loading or starting a game clears pending requests,
+  resets the 60-second idle countdown and allows the idle bark to fire again. It also clears the
+  prior session's dialogue, curtain and intro deadlines. Loading restores the saved clock,
+  cooldowns and memorials. Hooks `kq.barks.state/advance/reset`.
 
 ### animals (`src/systems/animals/`) – tour animals: the roe doe and fawn, Jost's dogs
 Tour contract C5 (`docs/design/tour/systems.md` §4 / C5), the behaviour layer over the fauna bodies.
@@ -1767,6 +1800,19 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   shows from the last; when the lid springs the column shoots up and goes out.
 - Sprint (Laufschritt, `laufschritt.ts`): out of a fight and a chase, after 1.0 s of sprinting
   (1.8 s before playtest round 10) the move scale grows to ×1.45 over 1.4 s (multiplies combat's
+  `moveScale`, never compounds). Never indoors; no separate 1789-court rule exists.
+- Wegweiser (`trail.ts` + `src/world/route.ts`): A* over the collider (footprints, set solids and
+  interior walls), with no corner cutting and a 1 m grid for goals within 170 m, else 2 m. Each
+  search edge and shortcut checks its midpoint and samples at most 0.3 m apart. The probe radius
+  is 0.38 m, except at the exact start and on its first search edge (`wayStartBlocked` in
+  `points.ts`): there walls count at the player's 0.35 m less 5 cm, because a player pushed against
+  a wall sits exactly one radius away and rounding reads that as an overlap, and water counts only
+  past the 0.8 m wading limit, so a player in the shallows still gets a way out.
+  Because interior walls are height-aware, each probe sets the feet to the local ground-floor
+  height so the Durchfahrten and vestibules with a step up read open. From the player to the story
+  objective or tracked quest's goal, 48 glow motes flow along the first 70 m when a goal is new
+  (14 s), after 12 s without progress, or when the straight line within 30 m is blocked (round the
+  wings, through doors and gates instead of into corners). While that straight line is blocked the compass
   `moveScale`, never compounds). Releasing sprint eases the boost away even after a long run.
   Entering combat, a hunt or an interior clears the boost and its run-up.
 - Wegweiser (`trail.ts` + `src/world/route.ts`): A* on a 2 m grid over the collider (footprints +
@@ -1780,6 +1826,11 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   doors and gates instead of into corners). While that straight line is blocked the compass
   carries a chalk-blue "Weg" marker (`hud.setMarker('wegweiser')`) at the route's next bend
   (> 4 m ahead) beside the gold objective marker; hook `kq.travel.way()`.
+  The straight route checks both endpoints and skips the search when the segment is clear. A*
+  starts at the player's exact position and searches for a reachable cell with a clear final leg
+  to a free off-grid goal. Simplification reuses the checked search legs when it cannot find a
+  shortcut. Blocked goals and unfinished searches return a reachable approach; if no leg is
+  reachable, the single start point leaves the trail hidden.
   Present day (playtest round 10): the straight-line check counts only water (`wayLineBlocked`
   in `points.ts`; trunks and ruins would fire it every few steps, the Weiher must), and the A*
   takes a ground cost (`RouteOptions.cost` / `minCost`): OSM path cells (`World.pathAt`, the
@@ -2391,6 +2442,10 @@ Rules that came out of it:
   from `effectiveBindings` (defaults plus the player's remaps). Mouse look comes from pointer-locked
   `movementX/Y`, `addLook(dx, dy)` (the pilot and touch) and ← / → (`keyTurn.ts`).
   Changing modal input ownership or losing window focus clears pending presses, look and wheel movement.
+- **Focus changes.** Losing a held pointer lock clears queued mouse movement, wheel motion and
+  mouse buttons. Browser blur clears all held and queued input. `input.wasCancelled(action)`
+  reports a held action dropped by either event. Combat uses it to discard the pending attack
+  before it can interpret the cleared hold as a release.
 - **Virtual presses.** `input.press(action, down, edge?)` holds a binding-independent code `@<action>`.
   Remaps and the shared-key pairs (LMB = attack + interact, Space = dodge + up) stay untouched, and
   the touch layer says per button which actions it means. `releaseVirtual()` clears virtual holds
@@ -2409,7 +2464,11 @@ Rules that came out of it:
     tracked by pointer id.
   - **Buttons press actions:**
     - Hieb → `attack` + `interact`. Hold for the Wuchthieb; the ring fills in 0.45 s.
-    - Ausweichen → `dodge` + `up`. It becomes "Steigen" while flying, and "Sinken" (`down`) appears.
+    - Ausweichen → `dodge` + `up`. It becomes "Steigen" while flying. Ducken → `crouch` + `down`.
+      It toggles crouch on foot and becomes "Sinken" while flying.
+    - Hinlegen → `prone` on foot. Laterne → `lantern` to toggle the light.
+      `player:restored` refreshes the flight and stance controls after the player is back on the
+      ground, including when replaying an ending from Pause.
     - Bannlicht, Ziel (`lockOn`), Balsam (`quickUse`), abilities 1–3. An ability button stays hidden
       until it is learnt (`skillUnlocked(n)` from boot: `skillsForLevel(progression.level)`, re-checked
       on `level:up`, `stats:changed`, `game:start` and `save:loaded`).

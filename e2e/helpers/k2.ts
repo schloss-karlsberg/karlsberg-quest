@@ -122,8 +122,12 @@ interface WalkLog {
 /**
  * Walk (or sprint) along waypoints with the movement keys, like a player holding W and steering.
  * Stops early when caught or (optionally) when the story leaves `beat`.
+ *
+ * `sneak` (crouched, past sentries): like a player who watches the sight cones on the frost, it
+ * steps only where no hound will see or hear it within the next second, veers up to 75° to find
+ * such a step, otherwise holds still (silent, smaller) or backs away from the nearest hound.
  */
-export async function walk(page: Page, pts: [number, number][], o: { sprint?: boolean; crouch?: boolean; chunk?: number; maxSeconds?: number; dodge?: boolean } = {}): Promise<WalkLog> {
+export async function walk(page: Page, pts: [number, number][], o: { sprint?: boolean; crouch?: boolean; chunk?: number; maxSeconds?: number; dodge?: boolean; sneak?: boolean } = {}): Promise<WalkLog> {
   return page.evaluate(
     ([pts, o]) => {
       const k = window.kq!;
@@ -158,8 +162,52 @@ export async function walk(page: Page, pts: [number, number][], o: { sprint?: bo
             if (fwd > 0.5) yaw += (Math.sin(yaw) * dz - Math.cos(yaw) * dx > 0 ? -0.6 : 0.6) * (1 - d / 9);
           }
         }
+        let go = true;
+        const sim = o.sneak ? k.hunt!.sim() : null;
+        if (sim) {
+          // what the cones show (lastSight: the range a calm hound notices you at right now) and
+          // how far crouched steps carry (noise 0.18), with a metre to spare
+          const sense = sim.tune.sense;
+          const hear = 0.18 * sense.hearing * sense.acuity + 1;
+          const watched = (x: number, z: number, moving: boolean) =>
+            sim.agents.some((a) => {
+              // standing, slow or at the end of its beat: it is looking round
+              const turning = a.wait > 0 || a.speed < 0.9 || (!!a.target && Math.hypot(a.target.x - a.x, a.target.z - a.z) < 2.5);
+              for (const ahead of [0, 0.5, 1]) {
+                const hx = a.x - Math.sin(a.heading) * a.speed * ahead;
+                const hz = a.z - Math.cos(a.heading) * a.speed * ahead;
+                const dx = x - hx;
+                const dz = z - hz;
+                const d = Math.hypot(dx, dz);
+                if (d < (moving ? Math.max(4, hear) : 4)) return true;
+                if (d > sim.lastSight * (moving ? 1.1 : 1) + 1) continue;
+                if (turning || (-Math.sin(a.heading) * dx - Math.cos(a.heading) * dz) / d > Math.cos((80 * Math.PI) / 180)) return true;
+              }
+              return false;
+            });
+          const look = 1.6;
+          const free = (y: number) => !watched(p.x - Math.sin(y) * look, p.z - Math.cos(y) * look, true);
+          const turn = [0, 25, -25, 50, -50, 75, -75].find((deg) => free(yaw + (deg * Math.PI) / 180));
+          if (turn !== undefined) yaw += (turn * Math.PI) / 180;
+          else if (!watched(p.x, p.z, false)) go = false;
+          else {
+            // seen where you stand: back off where it is clear, else away from the nearest hound
+            let best = -Infinity;
+            for (let j = 0; j < 16; j++) {
+              const y = (j / 16) * Math.PI * 2;
+              const qx = p.x - Math.sin(y) * look;
+              const qz = p.z - Math.cos(y) * look;
+              const near = Math.min(...sim.agents.map((a) => Math.hypot(qx - a.x, qz - a.z)));
+              const score = (free(y) ? 100 : 0) + near;
+              if (score > best) {
+                best = score;
+                yaw = y;
+              }
+            }
+          }
+        }
         P.yaw = yaw;
-        k.ctx.input.simulate('KeyW', true);
+        k.ctx.input.simulate('KeyW', go);
         k.ctx.input.simulate('ShiftLeft', !!o.sprint);
         k.step(chunk);
         const h = k.hunt!.state();
@@ -168,7 +216,7 @@ export async function walk(page: Page, pts: [number, number][], o: { sprint?: bo
           break;
         }
         const q = P.position;
-        if (Math.hypot(q.x - last.x, q.z - last.z) < 0.02 * chunk) stuck++;
+        if (go && Math.hypot(q.x - last.x, q.z - last.z) < 0.02 * chunk) stuck++;
         else stuck = 0;
         last = { x: q.x, z: q.z };
         if (stuck > 12) break;
@@ -321,7 +369,8 @@ export async function playK2(page: Page, o: PlayOptions = {}): Promise<void> {
   const hunt = await page.evaluate(() => window.kq!.hunt!.state());
   expect(hunt?.active).toBe(true);
   expect(await page.evaluate(() => window.kq!.ctx.state.state.flags['hunt.cones'])).toBe(true);
-  const sneak = await walk(page, [[1478, -584]], { maxSeconds: 70, dodge: true });
+  // the sentries walk their beats across the way: watch the cones, wait for a gap, slip through
+  const sneak = await walk(page, [[1478, -584]], { maxSeconds: 70, sneak: true });
   expect(sneak.reached).toBe(true);
   expect(sneak.caught).toBe(false);
   expect(sneak.t).toBeLessThanOrEqual(60);

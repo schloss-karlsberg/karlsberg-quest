@@ -7,6 +7,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ENEMIES, enemyDef } from '../src/rpg/enemies';
+import { isCleared } from '../src/rpg/enemy-groups';
 import { BASE_STATS, deriveStats } from '../src/rpg/stats';
 import { homeSpot } from '../src/systems/home';
 import { QUELLE } from '../src/systems/quelle/layout';
@@ -196,6 +197,12 @@ describe('combat rules: geometry, tokens, leash', () => {
 });
 
 describe('combat rules: groups', () => {
+  it('treats a saved group as cleared once its kill count reaches its size', () => {
+    expect(isCleared({ count: 3, killed: 2 })).toBe(false);
+    expect(isCleared({ count: 3, killed: 3 })).toBe(true);
+    expect(isCleared({ count: 3, killed: 4 })).toBe(true);
+  });
+
   it('spawn requests are idempotent by group (kills survive a re-declare)', () => {
     const groups: Record<string, EnemyGroupState> = {};
     expect(upsertGroup(groups, { group: 'g', kind: 'nebelling', era: '1789', x: 1, z: 2, count: 3 })).toBe(true);

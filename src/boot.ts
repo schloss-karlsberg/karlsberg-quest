@@ -265,7 +265,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   // the authored MPFB player is the default; ?avatar=surveyor wears the CC0 surveyor (fallback)
   const avatarModel = (id: AvatarModelId) => () => assets.model(AVATAR_MODELS[id].asset);
   const avatarFirst = avatarModelParam(params.get('avatar'));
-  const avatar = new Avatar(scene, player, avatarModel(avatarFirst), AVATAR_MODELS[avatarFirst].height);
+  const avatar = new Avatar(scene, player, avatarModel(avatarFirst), events, AVATAR_MODELS[avatarFirst].height);
   let zoomSaved = 0;
   let capFps = 60;
   const applySettings = () => {
@@ -529,6 +529,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     ui.toast(t(flying ? 'fly.on' : 'fly.off'));
     syncFlyPrompt();
   });
+  events.on('player:restored', syncFlyPrompt);
   events.on('ui:toast', ({ text, ms }) => ui.toast(t(text), ms));
   // the character's short reactions (third person)
   events.on('player:damaged', () => avatar.react('hit'));

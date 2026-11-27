@@ -17,6 +17,7 @@ import { ERA_LOOKS, type EraLook } from '../../world/eraPresets';
 import type { NpcPlacement, ThreatConfig, ThreatKind } from '../contracts';
 import { creditSections } from '../party/creditContent';
 import { isBarkLine, pickSequence } from '../../content/triggers';
+import { isCleared } from '../../rpg/enemy-groups';
 import { assembleEpilogue } from './endings/assemble';
 import { isWrapped, newMeter, tickMeter } from './meters';
 import { Voice } from './dialogue/voice';
@@ -304,6 +305,7 @@ class StoryRuntime {
   private lastPos = { x: 0, z: 0 };
   private entryFlags: Map<string, string> | null = null;
   private readonly unbindGuideVoice: () => void;
+  private readonly unwatchState: () => void;
 
   constructor(private readonly ctx: GameContext, credits: ReturnType<typeof creditSections>) {
     this.files = storiesInPlay(loadBundledStories(), ctx.params);
@@ -431,17 +433,18 @@ class StoryRuntime {
     ctx.events.on('credits:done', () => {
       if (this.slice.ending && !this.slice.finished) this.finish();
     });
+    this.unwatchState = ctx.state.subscribe((_state, reason) => {
+      if (reason === 'load' || reason === 'new') this.cancelCaught();
+    });
     ctx.events.on('save:loaded', () => {
       // a curtain that was down belongs to the outgoing game: no wake teleport, meter reset or
       // shift home in the loaded one
       this.cancelCaught();
       this.resync();
+      this.presenter.clear();
       // a load during play (the pause menu's „Ende noch einmal wählen“) resumes the beat like a
       // boot does — e1's onResume opens the choice at the table (playtest round 4: it never came)
-      if (this.started && !ctx.pause.reasons.has('title') && this.slice.active) {
-        this.presenter.clear();
-        this.resumeFromSave();
-      }
+      if (this.started && !ctx.pause.reasons.has('title') && this.slice.active) this.resumeFromSave();
     });
     ctx.events.on('player:caught', ({ by, soft, family, boss }) => {
       const p = this.ctx.player.position;
@@ -684,7 +687,7 @@ class StoryRuntime {
       const waitFor = a.do === 'say' && a.wait ? (a.id ?? a.line) : undefined;
       const rest = waitFor && i + 1 < actions.length ? actions.slice(i + 1) : null;
       const exec = () => {
-        this.exec(a);
+        this.exec(a, resume);
         if (!waitFor || !rest) return;
         const ready = () => !this.presenter.hasLine(waitFor, scope.beat);
         const continueRun = () => this.run(rest, resume, scope);
@@ -806,7 +809,7 @@ class StoryRuntime {
     ctx.events.emit('npc:spawn', p);
   }
 
-  private exec(a: Action): void {
+  private exec(a: Action, resume = false): void {
     const ctx = this.ctx;
     const s = this.slice;
     switch (a.do) {
@@ -894,6 +897,16 @@ class StoryRuntime {
         }
         return;
       case 'cue':
+        if (a.id === 'k1.enge.resume') {
+          if (resume) {
+            const groups = ctx.state.state.systems.combat?.groups;
+            // An existing second wave already restores its survivors through combat.
+            const wave = groups?.['k1.enge.2'] ?? groups?.['k1.enge'];
+            // Restore only the story latch so combat and progression keep the original rewards.
+            if (wave && isCleared(wave)) this.engine.onEvent('enemy:cleared', { group: wave.group, kind: wave.kind });
+          }
+          return;
+        }
         ctx.events.emit('story:cue', { id: a.id, data: a.data });
         return;
       case 'chronik':
@@ -1472,17 +1485,18 @@ class StoryRuntime {
     this.caughtCombat = by === 'combat';
   }
 
-  /** A load under the curtain: drop the pending wake (teleport, meter reset, shift home, wake lines). */
+  /** A load or new game under the curtain: drop the pending wake (teleport, meter reset, shift home, wake lines). */
   private cancelCaught(): void {
-    if (!this.caughtBusy) return;
-    this.caughtBusy = false;
-    this.caughtT = 0;
+    this.wakeLines = [];
     this.caughtAt = null;
     this.caughtCombat = false;
-    this.wakeLines = [];
-    this.ctx.player.frozen = false;
-    this.ctx.ui.hud.busy('caught', false, 0);
-    this.overlays.curtainOff();
+    this.overlays.clearCurtain();
+    if (this.caughtBusy) {
+      this.caughtBusy = false;
+      this.caughtT = 0;
+      this.ctx.player.frozen = false;
+      this.ctx.ui.hud.busy('caught', false, 0);
+    }
   }
 
   private updateCaught(dt: number): void {
@@ -1867,6 +1881,8 @@ class StoryRuntime {
   dispose(): void {
     window.removeEventListener('keydown', this.onKey);
     this.overlays.closeChoice();
+    this.unwatchState();
+    this.cancelCaught();
     this.presenter.clear();
     this.unbindGuideVoice();
     this.stage.dispose();
