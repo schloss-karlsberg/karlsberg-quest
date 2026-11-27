@@ -37,7 +37,7 @@ import { type MapLayer, gateFrom, nextMap } from '../skills/logic';
 import { cacheOpen, chimeActivate, paper, shrineHum, travelSwell } from './audio';
 import { LORE, LORE_KIND_DE, loreById } from './lore';
 import { type MapModel, injectTravelCss, renderMap } from './map';
-import { SURVEY_POINTS, TRIPOD_SEED_BASE, type SurveyPoint, announceFor, cardMayTakeE, knownPoints, mayActivate, nearestPoint, pointById, travelBlock, wayLineBlocked, wayStartBlocked } from './points';
+import { SURVEY_POINTS, TRIPOD_SEED_BASE, type SurveyPoint, announceFor, cardMayTakeE, knownPoints, mayActivate, nearestPoint, isOpenWater, pointById, travelBlock, wayLineBlocked, wayStartBlocked } from './points';
 import { type QuietGate, hideWhileQuiet } from '../../core/quiet';
 import { LAUF_DELAY, LAUF_RISE, laufschrittTarget } from './laufschritt';
 import { CHAPTER_TIER, type Poi, cacheLoot, generatePois, poiXp } from './pois';
@@ -738,7 +738,8 @@ class Travel {
     return hit;
   };
 
-  private blockedAt = (x: number, z: number): boolean => this.wallAt(x, z, 0.38) || this.ctx.world.surfaceAt(x, z) === 'water';
+  private waterAt = (x: number, z: number): boolean => isOpenWater(this.ctx.world.surfaceAt(x, z), this.ctx.world.water.isFrozen);
+  private blockedAt = (x: number, z: number): boolean => this.wallAt(x, z, 0.38) || this.waterAt(x, z);
   // the player's own spot and first step: walls at the walking radius, water past wading depth
   // (the same depth rule as the player's movement, boot.ts)
   private startBlockedAt = wayStartBlocked(
@@ -747,7 +748,6 @@ class Travel {
     PLAYER_RADIUS,
     WADE_LIMIT_M,
   );
-  private waterAt = (x: number, z: number): boolean => this.ctx.world.surfaceAt(x, z) === 'water';
   private pathCost = pathGroundCost((x, z) => this.ctx.world.pathAt(x, z));
 
   routeTo(x: number, z: number): [number, number][] {

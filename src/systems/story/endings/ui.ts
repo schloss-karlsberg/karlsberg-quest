@@ -43,6 +43,8 @@ export interface EndingDeps {
   epilogue(ending: EndingId): Epilogue;
   /** The ending is chosen and confirmed (set flags, emit story:ending, autosave). */
   chosen(ending: EndingId): void;
+  /** The closing card's button was pressed (before the epilogue opens): the card is no longer owed. */
+  cardDone?(ending: EndingId): void;
   /** Credits closed. */
   finished(): void;
   /**
@@ -80,7 +82,7 @@ export class EndingScreen {
     return this.m?.el.dataset.stage ?? 'closed';
   }
 
-  /** Opens the choice (or `ending` directly at the scene, for debugging). */
+  /** Opens the choice (or `ending` directly at the scene card: a resumed save, debugging). */
   show(ending?: EndingId, staged = false): void {
     this.ensureModal();
     if (ending) {
@@ -164,8 +166,15 @@ export class EndingScreen {
       line('Marlene', 'radio', [s.marlene.replace('{Name}', this.d.name())]),
       h('p.kqs-end-picture', s.picture),
       h('p.kqs-fic-note', t('story.tag.fiction')),
-      h('div.actions', [h('button.kq-btn.primary', { 'data-testid': 'ending-next', onclick: () => this.showEpilogue(id) }, t('story.end.next'))]),
+      h('div.actions', [h('button.kq-btn.primary', { 'data-testid': 'ending-next', onclick: () => this.next(id) }, t('story.end.next'))]),
     ]);
+  }
+
+  /** The closing card's button: record that the card was read, then the epilogue. */
+  private next(id: EndingId): void {
+    if (!this.open || this.stage !== 'scene') return;
+    this.d.cardDone?.(id);
+    this.showEpilogue(id);
   }
 
   /** Opens the epilogue after the ending scene or when resuming its save. */

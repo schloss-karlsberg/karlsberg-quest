@@ -551,6 +551,11 @@ export class Water {
 
   private frozen = false;
 
+  /** The water is frozen (February 1793) and carries the player like land (`depthInside`). */
+  get isFrozen(): boolean {
+    return this.frozen;
+  }
+
   private bodyBox(b: WaterBody): { c0: number; r0: number; c1: number; r1: number } {
     const { cols, rows, cell, x0, z0 } = this.grid;
     const pad = 3;
