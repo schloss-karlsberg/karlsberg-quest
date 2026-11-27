@@ -33,7 +33,7 @@ import type { LoadedModel } from '../../assets/loader';
 import { modelFor } from '../characters/catalog';
 import { GhostFigure } from './figure';
 import { RiggedGhost } from './rigged';
-import { BYE, GREET, IDLE_TURN_S, NEAR_TURN_S, TALK_TURN_S, answer, approachYaw, askedTopics, availableTopics, clueFor, offersTalk, sweepYaw, talkLines, talkedFlag, yawToward } from './logic';
+import { BYE, GREET, IDLE_TURN_S, NEAR_TURN_S, TALK_TURN_S, answer, approachYaw, askedTopics, availableTopics, clueFor, hasWords, sweepYaw, talkLines, talkedFlag, yawToward } from './logic';
 import { lookFor, topicLabel } from './roster';
 import { ConversationView, questCardEl, type TalkLine, type TalkTopic } from './ui';
 import { GiverGlyphs } from './glyphs';
@@ -137,11 +137,12 @@ class NpcRuntime {
   private inQuest = false;
   private near: string | null = null;
   private prompt: string | null = null;
+  /** Who has something to say (TASK-076), re-checked a few times a second: npc → [checked at, yes]. */
+  private readonly words = new Map<string, [number, boolean]>();
+  private clock = 0;
   private hooks = false;
   /** The bound person told to talk in the open conversation (people contract v0.1). */
   private talker: Person | null = null;
-  /** Conversation lines per `npc|chapter` (the content does not change while the game runs). */
-  private readonly lineCache = new Map<string, DialogueLine[]>();
 
   constructor(private readonly ctx: GameContext) {
     this.voice = new Voice(ctx.audio);
@@ -164,7 +165,10 @@ class NpcRuntime {
     ev.on('era:change', ({ to }) => {
       for (const f of this.figs.values()) f.fig.setEra(to);
     });
-    ev.on('save:loaded', () => this.rebuild());
+    ev.on('save:loaded', () => {
+      this.words.clear();
+      this.rebuild();
+    });
     ev.on('player:caught', () => this.view.close());
     ev.on('npc:topics', ({ npc, topics }) => {
       if (topics.length) this.questTopics.set(npc, topics);
@@ -321,22 +325,21 @@ class NpcRuntime {
 
   // ---- conversation -------------------------------------------------------------------------
 
-  private trig(chapter: string | null = this.talking?.chapter ?? null): TriggerContext {
+  /** Has this person anything to say now (a greeting, a topic, a quest topic)? Without it no talk prompt. */
+  private canTalk(npc: string, chapter: string): boolean {
+    const hit = this.words.get(npc);
+    if (hit && this.clock - hit[0] < 0.25) return hit[1];
+    const ctx = this.ctx;
+    const s = ctx.state.state;
+    const c: TriggerContext = { era: ctx.era.current, flags: s.flags, chapter, beat: null, clues: s.inventory.clues };
+    const ok = hasWords(talkLines(ctx.content.dialogue.values(), npc, chapter), npc, chapter, c, new Set(this.slice.said), this.questTopics.get(npc)?.length ?? 0);
+    this.words.set(npc, [this.clock, ok]);
+    return ok;
+  }
+
+  private trig(): TriggerContext {
     const s = this.ctx.state.state;
-    return { era: this.ctx.era.current, flags: s.flags, chapter, beat: null, clues: s.inventory.clues };
-  }
-
-  private linesFor(npc: string, chapter: string): DialogueLine[] {
-    const key = `${npc}|${chapter}`;
-    let lines = this.lineCache.get(key);
-    if (!lines) this.lineCache.set(key, (lines = talkLines(this.ctx.content.dialogue.values(), npc, chapter)));
-    return lines;
-  }
-
-  /** Whether this placement has something to say now (TASK-076): only then it takes E. */
-  private offers(npc: string, f: Placed): boolean {
-    const chapter = f.p.chapter ?? '';
-    return offersTalk(this.linesFor(npc, chapter), npc, chapter, this.trig(chapter), this.slice.said, this.questTopics.get(npc)?.length ?? 0);
+    return { era: this.ctx.era.current, flags: s.flags, chapter: this.talking?.chapter ?? null, beat: null, clues: s.inventory.clues };
   }
 
   private toTalk(l: DialogueLine): TalkLine {
@@ -347,6 +350,7 @@ class NpcRuntime {
   }
 
   private remember(lines: DialogueLine[]): void {
+    this.words.clear();
     const s = this.slice;
     for (const l of lines) if (l.once && !s.said.includes(l.id)) s.said.push(l.id);
   }
@@ -356,7 +360,7 @@ class NpcRuntime {
     if (!f || this.view.open || this.ctx.ui.modals.count > 0) return false;
     const ctx = this.ctx;
     const chapter = f.p.chapter ?? '';
-    const lines = this.linesFor(npc, chapter);
+    const lines = talkLines(ctx.content.dialogue.values(), npc, chapter);
     this.talking = { npc, chapter, lines };
     this.frameT = 1.1;
     const meta = speakerMeta(npc, ctx.content);
@@ -377,8 +381,8 @@ class NpcRuntime {
     const greet = answer(lines, npc, chapter, GREET, this.trig(), new Set(this.slice.said));
     this.remember(greet);
     const say = greet.map((l) => this.toTalk(l));
-    // nothing to say and nothing to ask (a silent figure, or everything was said): never an empty box
-    if (!say.length && !this.questTopics.get(npc)?.length && !availableTopics(lines, npc, chapter, this.trig()).length) say.push({ id: 'npc.silent', speaker: meta, text: t('npc.silent') });
+    // never an empty box: no greeting, no topic, no quest topic → the silent look (TASK-076)
+    if (!say.length && !availableTopics(lines, npc, chapter, this.trig()).length && !this.questTopics.get(npc)?.length) say.push({ id: 'npc.silent', speaker: meta, text: t('npc.silent') });
     if (say.length) this.view.say(say, () => this.menu());
     else this.menu();
     return true;
@@ -506,6 +510,7 @@ class NpcRuntime {
     const ctx = this.ctx;
     if (!this.hooks && window.kq) this.installHooks();
     const p = ctx.player.position;
+    this.clock += dt;
     for (const id of this.follow) this.followStep(id, dt);
     let best: string | null = null;
     let bestD = TALK_R;
@@ -528,8 +533,8 @@ class NpcRuntime {
       const dy = Math.abs(p.y - body.floor);
       // `npc.hush` = id: this ghost does not take E (the Festsaal: the handle in Hanne's hand is the choice)
       const d = dy > 2.4 || ctx.state.state.flags['npc.hush'] === id ? Infinity : Math.hypot(p.x - body.x, p.z - body.z);
-      // E only for someone with something to say now (TASK-076: the guide after the car park)
-      if (d < bestD && this.offers(id, f)) {
+      // nothing to say (the guide at the later tour stops, TASK-076): no prompt, E stays free
+      if (d < bestD && this.canTalk(id, f.p.chapter ?? '')) {
         bestD = d;
         best = id;
       }

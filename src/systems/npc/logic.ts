@@ -63,24 +63,13 @@ export function answer(lines: DialogueLine[], npc: string, chapter: string, topi
 }
 
 /**
- * Whether a placed person offers E now (TASK-076: no empty conversation box). True when a greeting
- * can still play (the same rule as `answer`), a menu topic is available, or quests gave it a topic;
- * also for a silent figure without any lines (it answers „(Schweigt und sieht dich an.)“). False
- * once everything it had was said, e.g. the guide after the car-park talk. Allocation-light: runs
- * per frame for the person within talk range.
+ * Has this person anything to say now: a greeting, a topic, or a quest topic (`questTopics`)? Without
+ * it the talk prompt is not offered (TASK-076: the guide at the later tour stops opened an empty
+ * dialogue). A person with no lines at all keeps its silent look („Schweigt und sieht dich an.“).
  */
-export function offersTalk(lines: readonly DialogueLine[], npc: string, chapter: string, c: TriggerContext, said: readonly string[], questTopics = 0): boolean {
-  if (!lines.length || questTopics > 0) return true;
-  const greet = { npc, chapter, topic: GREET };
-  for (const l of lines) {
-    const tp = String(l.trigger.topic ?? '');
-    if (!tp || tp === BYE) continue;
-    if (tp === GREET) {
-      if (l.once && said.includes(l.id)) continue;
-      if (matchTrigger(l, 'npc:talk', greet, c)) return true;
-    } else if (!isFollowUp(l) && matchTrigger(l, 'npc:talk', payloadFor(npc, chapter, tp), c)) return true;
-  }
-  return false;
+export function hasWords(lines: DialogueLine[], npc: string, chapter: string, c: TriggerContext, said: ReadonlySet<string>, questTopics: number): boolean {
+  if (questTopics > 0 || !lines.length) return true;
+  return answer(lines, npc, chapter, GREET, c, said).length > 0 || availableTopics(lines, npc, chapter, c).length > 0;
 }
 
 export function talkedFlag(chapter: string, npc: string, topic?: string): string {

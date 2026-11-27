@@ -19,15 +19,13 @@ vi.mock('../src/systems/npc/ui', () => ({
 
 afterEach(() => { npc.dispose(); vi.unstubAllGlobals(); say.mockClear(); });
 
-/** `ask`: Soll also has a question to ask (a menu topic), so a later talk still has something. */
-function encounter({ ask = true, kq }: { ask?: boolean; kq?: object } = {}) {
+/** `kq`: a stand-in `window.kq`, where the system installs its debug hooks (`kq.npc.talk`). */
+function encounter({ kq }: { kq?: object } = {}) {
   vi.stubGlobal('window', kq ? { kq } : {});
   const events = new EventBus();
   const state = new GameStateStore(createInitialState());
   const clue = 'clue.k1.soll';
   const line = { id: 'test.greet', speaker: 'soll', text_de: 'Guten Tag.', once: true, trigger: { event: 'npc:talk', npc: 'soll', chapter: 'k1', topic: 'greet' } };
-  const topic = { id: 'test.wetter', speaker: 'soll', text_de: 'Es regnet.', trigger: { event: 'npc:talk', npc: 'soll', chapter: 'k1', topic: 'wetter' } };
-  const lines = ask ? [line, topic] : [line];
   const hold = vi.fn();
   const grants = vi.fn();
   const prompt = vi.fn();
@@ -35,7 +33,7 @@ function encounter({ ask = true, kq }: { ask?: boolean; kq?: object } = {}) {
   const ctx = {
     events, state, scene: new Scene(), era: { current: '1789' }, quality: { level: 'low', listeners: [] },
     player: { position: { x: 0, y: 10, z: 0 } }, input: { wasPressed: () => true },
-    content: { dialogue: new Map(lines.map((l) => [l.id, l])), speakers: new Map(), clues: new Set([clue]) },
+    content: { dialogue: new Map([[line.id, line]]), speakers: new Map(), clues: new Set([clue]) },
     world: { heightAt: (_x: number, _z: number, floor?: number) => floor ?? 10 },
     ui: { layer: () => ({ style: {}, classList: { add() {}, remove() {} } }), cards: { hold }, modals: { count: 0 }, hud: { prompt, el: { querySelector: () => null } } },
     save: { autosave() {} },
@@ -65,7 +63,8 @@ describe('campaign NPC encounters', () => {
     state.replace(JSON.parse(snapshot));
     events.emit('save:loaded', { slot: 'auto' });
     npc.update(1 / 60);
-    expect(hold.mock.calls).toEqual([['talk', true], ['talk', false], ['talk', true]]);
+    // the greeting is said and there is no topic: no new conversation, not an empty one (TASK-076)
+    expect(hold.mock.calls).toEqual([['talk', true], ['talk', false]]);
     expect(grants).toHaveBeenCalledTimes(1);
     expect(say).toHaveBeenCalledTimes(1);
     events.emit('npc:spawn', { npc: 'soll', chapter: 'k2', x: 1, z: 0 });
@@ -76,7 +75,7 @@ describe('campaign NPC encounters', () => {
 
   it('once everything is said, the person no longer takes E; a forced open shows a line, never an empty box (TASK-076)', () => {
     const kq: { npc?: { talk(npc: string): boolean; state(): { open: boolean } } } = {};
-    const { events, state, hold, prompt } = encounter({ ask: false, kq });
+    const { events, state, hold, prompt } = encounter({ kq });
     events.emit('npc:spawn', { npc: 'soll', chapter: 'k1', x: 1, z: 0 });
     npc.update(1 / 60);
     expect(say).toHaveBeenCalledTimes(1);

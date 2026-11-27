@@ -206,8 +206,13 @@ and 30 fps every 4th (every frame / every 2nd at 60 Hz).
 hooks that change the view ask (`teleport`, `setEra`, `setScanMode`, `setMapMix`, `spawnAsset`,
 `perfHud`, the bench camera), so do modal / pause / settings changes, resize, the tab becoming
 visible and, in bullet time, a real mouse move / key / wheel. `kq.step(n)`, `loop.renderOnce` and
-the pilot's `act` / `observe` normally render synchronously. With `?manual&faststep`, the step
-and press hooks prepare presentation synchronously and queue a paint. A frame woken solely for
+the pilot's `act` / `observe` normally render synchronously. `kq.step` / `kq.press` draw only when
+the GPU has finished their previous draw (a WebGL2 fence the browser updates between tasks;
+`src/debug/stepGate.ts`). So in a stepping loop within one task, only the first step draws.
+Otherwise, and always with `?manual&faststep`, they prepare presentation synchronously and
+queue a paint. `kq.step(n, { draw: true })` draws in any case (render measurements). Unpaced
+synchronous draws let software WebGL fall minutes behind, and the browser then grows until a
+hosted runner runs out of memory (TASK-075). A frame woken solely for
 that paint draws the prepared scene without running the camera, HUD or frame systems again.
 A synchronous full draw satisfies the queued paint. Explicit frame requests still run.
 With nothing to simulate (paused / manual) and nothing to draw the rAF loop parks until a
@@ -729,7 +734,7 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   1789-palace-air, 1793-02-night, 1793-07-fire, 1796-ruin, scan1, scan2, scan3, scan1-air,
   map1840}.png`. Look at them after visual changes.
 - Debug hooks (`window.kq`, always installed): `teleport(x, z, yawDeg, pitchDeg)`, `setEra`,
-  `setScanMode`, `setMapMix`, `step(n)`, `state()`, `press(code, steps)`, `screenshotReady()`.
+  `setScanMode`, `setMapMix`, `step(n, { draw? })`, `state()`, `press(code, steps)`, `screenshotReady()`.
   URL flags: `debug`, `notitle`, `nosave`, `fresh`, `manual`, `nomsaa`, `preserve`,
   `era=1789`, `x=…&z=…&yaw=…`, `scanall`, `perf` (overlay), `autoq` (auto-downgrade also under
   WebDriver), `warm` (shader warm-up also under WebDriver), `idle` (the full idle-render policy
@@ -1288,6 +1293,14 @@ Round-4 (polish: set dressing) integration rules:
   afterwards back to its placement yaw in 1.2 s; the rigged head looks at a player within 9 m, the
   procedural figure (no head look) slowly turns to a player within 8 m instead. Reduced motion
   snaps the turn and calms the figure.
+- Talk prompt (TASK-076): „E Mit … sprechen“ is offered only while the person has something to say
+  (`hasWords` in `logic.ts`: a greeting not yet said, a topic, or a quest topic; re-checked four times a
+  second). Otherwise E stays free for other owners and no `npc.near` is set. The guide at the later
+  tour stops speaks through the radio box only. A person with no lines at all keeps „(Schweigt und
+  sieht dich an.)“, and a conversation never opens with an empty box (`tests/npc-has-words.test.ts`).
+  `tests/npc-talk-waits.test.ts` checks that no beat or reaction waits for a talk with someone who
+  has nothing to say then. The guide's car-park greetings need `tour.station1.ready`, which t2's
+  `exit` clears, so they are not offered at a later stop.
   On medium / high the figure is replaced by a `RiggedGhost` (`rigged.ts`, models from
   `characters/`) once the model is loaded: same shader look, idle / walk / talk / gesture clips,
   head look at the player; the procedural figure stays for `low`, while loading and for the kneel pose.
@@ -1299,13 +1312,7 @@ Round-4 (polish: set dressing) integration rules:
   the turn-in card and `qt:` Übergeben (`quest:turnin`), then ONE history line (a quest's
   `history_at_turnin`, 0 = none: the story tells it later or it waits in the codex) (marked "Was wirklich
   war", with source and codex note); „Erzähl mehr“ (`more` topic) tells the rest (`quest:told`). No
-  stance prompt (docs/ACTION-RPG.md §8.6). A placement takes E only while it has something to say
-  now (`offersTalk` in `logic.ts`, TASK-076): a greeting that can still play, a menu topic, a quest
-  topic, or no lines at all (a silent figure answers „(Schweigt und sieht dich an.)“). Once its
-  `once` lines are said and nothing is left (the tour guide after the car park), the prompt goes and
-  E is free for others. A forced open with nothing to say shows the silent line, never an empty box.
-  `tests/npc-talk-waits.test.ts` checks that no beat or reaction waits for a talk with someone who
-  has nothing to say then. Quest glyphs over the head
+  stance prompt (docs/ACTION-RPG.md §8.6). Quest glyphs over the head
   (`glyphs.ts`, `npc:marker`: ! / ringed ! / ? with halo / grey ?), escort `npc:follow`, transient
   flag `npc.near`. Emits `npc:talk`,
   `npc:conversation`, `bark:npc-near`, `clue:grant` (first talk), flags `talked.*`, `npc.owns.<clue>`.
@@ -1348,9 +1355,9 @@ the guide, opt-in with `?people=authored`), and callers do not change.
   - People are not saved: whoever spawned them spawns them again after a load.
 - **Rules**
   - The people system updates every person in the render hook (`frame`, the rendered frame's dt),
-    not in the fixed `update`: `kq.step(n)` runs n updates but renders once, so it moves the people's
+    not in the fixed `update`: `kq.step(n)` runs n updates but presents once, so it moves the people's
     clips on by one frame only. A test or shot harness that needs n frames of people time calls
-    `kq.step(1)` n times.
+    `kq.step(1)` n times (each call runs the frame hooks, even when its GPU draw is deferred).
   - Callers never call update. They move and
     rotate `root` (world space, feet at the origin; `root.rotation.y = yaw` in the player's
     convention, forward −z) and call `setSpeed` / `face` / `play` / `lookAt`.
@@ -2368,7 +2375,8 @@ Each RPG track adds its own subsection here when it fills its system in.
   objective zones (≤ 200 m, era tint, fades inside); the lead is gold, 90 m tall, ≤ 420 m.
 - `wayfinding.ts` (pure, `tests/wayfinding.test.ts`): `objectiveTarget` (a place for every
   objective type, clue places from the content packs; none for a clue with `anchor: "portable"`,
-  the tablet's nominal spot is no place: playtest round 10, F-25), `hintFor` / `storyHint`, `StallWatch`
+  the tablet's nominal spot is no place: playtest round 10, F-25; a `reach` place is `anyEra`: shown
+  from every era, so „Im Ehrenhof: Q – in den Juli 1793“ has its marker in the present, TASK-083), `hintFor` / `storyHint`, `StallWatch`
   (60 s). `index.ts` picks the lead (`computeLead`: main quest, else the story objective, else side
   quests), drives compass + `hud.waymark` (`src/ui/waymark.ts`) + beacons and the stall hint;
   a goal behind walls leads door by door (`world.routeTo`, set by interiors: breadth-first over the
@@ -2554,6 +2562,11 @@ Rules that came out of it:
   fills a caption's or toast's `{key}`: the key label on desktop, the touch button's German name in
   touch mode (`touchName`: Hieb, Ausweichen, Bannlicht, Ziel, Balsam, Aktion, Epoche, and the survey
   tool names). Combat, progression and tools use it for contextual hints.
+- **Touch variants of key hints.** A string that names a key with no touch button (Shift for sprint)
+  gets a `<id>.touch` twin with touch words („Bewegungsregler ganz nach vorn“); `tInput(id, touch)`
+  (`src/i18n`) picks it in touch mode (court hint card; the Laufschritt tip uses `TRAVEL_DE.sprintTouch`).
+  `tests/touch-wording.test.ts` fails on a registered string naming Shift without a touch twin and on
+  story objectives/toasts naming keys (the chapter 1 kennel chase lines are listed as known open).
 - **Prompts.** `hud.setTouchIcons(fn)` turns a prompt's key cap into the icon of the answering
   button (`touchIconFor`: E → hand, Q → hourglass …). `hud.onPrompt(key, text)` lights that button.
 - **Mobile tier.** On first run a coarse pointer gets `mobileLevel()` (`src/render/mobileDefaults.ts`):

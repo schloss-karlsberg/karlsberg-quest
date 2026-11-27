@@ -1,5 +1,5 @@
 /**
- * A person takes E only while it has something to say (TASK-076, `offersTalk` in
+ * A person takes E only while it has something to say (TASK-076, `hasWords` in
  * src/systems/npc/logic.ts). So a beat or a reaction that waits for a talk (`talked`, or a
  * conversation event) must not wait for someone who has nothing to say then: that would be a
  * soft-lock. Checked for every beat `complete` and every `on[].when` of the tour and the chapters,
@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { TriggerFlag } from '../src/content/triggers';
 import type { ContentPack, DialogueLine } from '../src/content/types';
-import { offersTalk, talkLines } from '../src/systems/npc/logic';
+import { hasWords, talkLines } from '../src/systems/npc/logic';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => JSON.parse(readFileSync(`${ROOT}${path}`, 'utf8')) as unknown;
@@ -94,7 +94,7 @@ describe('beats that wait for a talk (TASK-076)', () => {
             return chapters.some((chapter) => {
               const lines = talkLines(LINES, w.npc, chapter);
               const c = { era: eraOf.get(w.npc) ?? String(story.era ?? ''), flags, chapter, beat: where, clues: [] };
-              return offersTalk(lines, w.npc, chapter, c, []);
+              return hasWords(lines, w.npc, chapter, c, new Set(), 0);
             });
           });
           if (!ok) problems.push(`${file} ${where}: waits for a talk with ${group.map((w) => w.npc).join(' / ')}, who has nothing to say then`);
@@ -108,8 +108,8 @@ describe('beats that wait for a talk (TASK-076)', () => {
   it('the check sees a wait for someone with nothing to say', () => {
     const silentAfter = [{ id: 'x.greet', speaker: 'x', text_de: 'Hallo.', trigger: { event: 'npc:talk', npc: 'x', chapter: 'c', topic: 'greet', flag: 'x.ready' } }] as DialogueLine[];
     const c = { era: 'today', flags: {}, chapter: 'c', beat: 'b', clues: [] };
-    expect(offersTalk(silentAfter, 'x', 'c', c, [])).toBe(false);
-    expect(offersTalk(silentAfter, 'x', 'c', { ...c, flags: { 'x.ready': true } }, [])).toBe(true);
+    expect(hasWords(silentAfter, 'x', 'c', c, new Set(), 0)).toBe(false);
+    expect(hasWords(silentAfter, 'x', 'c', { ...c, flags: { 'x.ready': true } }, new Set(), 0)).toBe(true);
     expect(blockingWaits({ any: [{ talked: { npc: 'x' } }, { timer: 60 }] })).toEqual([]);
     expect(blockingWaits({ all: [{ flag: 'f' }, { talked: { npc: 'x' } }] })).toEqual([[{ npc: 'x' }]]);
     expect(blockingWaits({ event: 'npc:conversation', match: { npc: 'x', open: false } })).toEqual([[{ npc: 'x' }]]);

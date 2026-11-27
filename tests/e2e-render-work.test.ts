@@ -78,7 +78,7 @@ describe('e2e tour-group render work', () => {
       added: { calls: 4, triangles: 100 },
     });
     expect(screenshotReady).toHaveBeenCalledOnce();
-    expect(step.mock.calls).toEqual([[15], [15]]);
+    expect(step.mock.calls).toEqual([[15, { draw: true }], [15, { draw: true }]]);
     expect(passes).toEqual([15, 30].flatMap((tick) => [shadow, camera].flatMap((passCamera) => [false, true].map((visible) => ({
       tick, camera: passCamera, x: passCamera === camera ? tick : 0, bodies: [visible, visible],
     })))));

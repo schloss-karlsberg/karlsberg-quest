@@ -715,7 +715,7 @@ class Travel {
     if (this.sprint < 0.002) this.sprint = 0;
     if (this.sprint > 0.3 && !this.slice.tips.includes('sprint')) {
       this.slice.tips.push('sprint');
-      ctx.ui.toast(TRAVEL_DE.sprint, 4200);
+      ctx.ui.toast(inp.touchMode ? TRAVEL_DE.sprintTouch : TRAVEL_DE.sprint, 4200);
     }
     this.lastBase = base;
     this.lastWritten = base * (1 + this.sprint);

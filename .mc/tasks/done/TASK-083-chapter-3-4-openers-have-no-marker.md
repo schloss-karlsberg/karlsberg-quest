@@ -4,7 +4,7 @@ aliases:
 - TASK-083
 title: 'Chapter 3 and 4 opening objectives show no marker in the present'
 slug: chapter-3-4-openers-have-no-marker
-status: todo
+status: done
 priority: 2
 owner: ''
 projects: []
@@ -50,8 +50,21 @@ generated: change `scripts/content-build/` and rebuild.
 
 ## Acceptance criteria
 
-- [ ] At the start of chapters 3 and 4 (fresh and via a normal chapter transition) the opening
+- [x] At the start of chapters 3 and 4 (fresh and via a normal chapter transition) the opening
       objective shows its distance and marker in the present.
-- [ ] After the Q shift the marker logic is unchanged (the next objective leads on).
-- [ ] A content or unit check: every objective whose text asks for a Q shift has a waymark in
+- [x] After the Q shift the marker logic is unchanged (the next objective leads on).
+- [x] A content or unit check: every objective whose text asks for a Q shift has a waymark in
       the era the player is in when it becomes active.
+
+## Result
+
+Fixed in the quest wayfinding, not in the content: a `reach` objective's place is now `anyEra`
+(`objectiveTarget` in `src/systems/quests/wayfinding.ts`), so it is shown from every era. All four
+„dort: Q“ openers (chapters 1 to 4) had the same tag; chapter 2 only worked because its story
+objective led instead. Other objective kinds still hide in another era. The stall hint for such a
+place reads „Zur Markierung gehen (… m Richtung …), dort Q halten, um … zu wechseln.“ After the
+shift the next objective leads as before.
+
+Checks: `tests/wayfinding.test.ts` (reach place from every era, hint) and
+`tests/quests-qshift-marker.test.ts` (every objective text with „Q –“ has a marker in the present;
+both fail on main), `e2e/quests.spec.ts` › chapter 3 / 4 opener markers.

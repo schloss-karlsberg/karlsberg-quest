@@ -874,7 +874,7 @@ class QuestRuntime {
     const clue = o.clue ? ctx.content.clues.get(o.clue) : undefined;
     // the place lies in another era (a goal in 1789 seen from today): say "Q"
     const tg = objectiveTarget(q, o, this.wayDeps());
-    const otherEra = !target && tg?.era && tg.era !== ctx.era.current && !tg.room ? tg.era : null;
+    const otherEra = (!target || target.anyEra) && tg?.era && tg.era !== ctx.era.current && !tg.room ? tg.era : null;
     return {
       target,
       otherEra,
