@@ -16,23 +16,21 @@
       "id": "reh.ricke",
       "kind": "animal",
       "era": "today",
-      "label_de": "Ricke (Platzhalter)",
+      "label_de": "Ricke",
       "animal": "ricke",
       "r": 0.8,
       "frame": { "minFrac": 0.055, "maxDist": 27, "needAll": ["reh.kitz"], "fallback": { "afterS": 90, "maxDist": 32, "minFrac": 0.045, "stars": 2 } },
-      "placeholder": true,
-      "note": "PLACEHOLDER: anchored to the animal 'ricke'. Until the animals system attaches it, only the ?debug test deer (kq.photo.deer) does."
+      "note": "Anchored to the animal 'ricke' of the animals system (tour t9/t10); with ?debug the test deer (kq.photo.deer) also carries it."
     },
     {
       "id": "reh.kitz",
       "kind": "animal",
       "era": "today",
-      "label_de": "Kitz (Platzhalter)",
+      "label_de": "Kitz",
       "animal": "kitz",
       "r": 0.65,
       "frame": { "minFrac": 0.044, "maxDist": 27, "needAll": ["reh.ricke"], "fallback": { "afterS": 90, "maxDist": 32, "minFrac": 0.036, "stars": 2 } },
-      "placeholder": true,
-      "note": "PLACEHOLDER: see reh.ricke."
+      "note": "Anchored to the animal 'kitz'; see reh.ricke."
     }
   ],
   "cards": []

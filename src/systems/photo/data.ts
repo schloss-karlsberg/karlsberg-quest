@@ -149,6 +149,7 @@ export function validatePhotoTargets(file: string, data: unknown, refs: PhotoRef
     if (!KINDS.has(t.kind)) err(id, `kind must be animal / detail / inscription / person, not '${String(t.kind)}'`);
     if (t.era !== 'today') err(id, `era must be 'today' (no signal in the past), not '${String(t.era)}'`);
     if (typeof t.label_de !== 'string' || !t.label_de.trim()) err(id, 'label_de missing');
+    else if (/platzhalter|placeholder/i.test(t.label_de)) err(id, 'label_de is player-facing: no placeholder marker (use the placeholder flag instead)');
     const anchors = [t.at !== undefined, t.npc !== undefined, t.animal !== undefined].filter(Boolean).length;
     if (anchors !== 1) err(id, `exactly one anchor (at / npc / animal), found ${anchors}`);
     if (t.at !== undefined) {

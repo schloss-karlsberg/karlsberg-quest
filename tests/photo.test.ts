@@ -310,13 +310,16 @@ describe('photo targets data (content/photo/targets.json, contract C3)', () => {
     const r = validatePhotoTargets('targets.json', file, { facts: new Set(), bounds });
     expect(r.errors).toEqual([]);
     expect([...r.ids].sort()).toEqual(['photo.parkplatz', 'reh.kitz', 'reh.ricke']);
-    expect(file.targets.every((t: { placeholder?: boolean }) => t.placeholder === true)).toBe(true);
+    // only the car-park demo board is still a placeholder; the deer are driven by the animals system
+    const flagged = file.targets.filter((t: { placeholder?: boolean }) => t.placeholder === true).map((t: { id: string }) => t.id);
+    expect(flagged).toEqual(['photo.parkplatz']);
+    for (const t of file.targets as { label_de: string }[]) expect(t.label_de).not.toMatch(/platzhalter/i);
   });
 
   it('catches the C3 rule breaks', () => {
     const bad = {
       targets: [
-        { id: 'a.b', kind: 'animal', era: '1789', label_de: 'x', r: 1, frame: { minFrac: 0.1 } },
+        { id: 'a.b', kind: 'animal', era: '1789', label_de: 'Ricke (Platzhalter)', r: 1, frame: { minFrac: 0.1 } },
         { id: 'a.c', kind: 'detail', era: 'today', label_de: 'x', at: { x: 9000, z: 0 }, npc: 'soll', r: 0, frame: { minFrac: 0.001, needAll: ['a.zz'] }, grants: { codex: 'cx.nope', card: 'ph.nope' } },
         { id: 'a.d', kind: 'inscription', era: 'today', label_de: 'x', at: { x: 500, z: -800 }, r: 0.3, frame: { minFrac: 0.1, maxDist: 6 } },
         { id: 'a.d', kind: 'detail', era: 'today', label_de: 'x', at: { x: 500, z: -800 }, r: 0.3, frame: { minFrac: 0.1 } },
@@ -325,6 +328,7 @@ describe('photo targets data (content/photo/targets.json, contract C3)', () => {
     const msgs = validatePhotoTargets('t.json', bad, { facts: new Set(['cx.01']), bounds }).errors.map((e) => `${e.id}: ${e.message}`);
     const has = (re: RegExp) => expect(msgs.some((m) => re.test(m)), `${re} in\n${msgs.join('\n')}`).toBe(true);
     has(/a\.b: era must be 'today'/);
+    has(/a\.b: label_de is player-facing: no placeholder marker/);
     has(/a\.b: exactly one anchor/);
     has(/a\.c: exactly one anchor/);
     has(/a\.c: at .* outside/);
