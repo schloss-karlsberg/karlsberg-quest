@@ -15,7 +15,7 @@
  *                 on to its end (credits:done {skipped: false}); Enter, Escape or „Überspringen"
  *                 ends the credits (skipped: true). Reduced motion shows a static list.
  * Persistent:     slice `party` {variant, credits} only: no bodies (the story re-issues party:set on
- *                 resume); credits playing at save time → credits:done {skipped: true} after the load.
+ *                 resume); only credits playing in the loaded slot → credits:done {skipped: true}.
  * Dev:            `?party=museum|burn|keep` boots into the party at dusk and rolls the credits.
  * Debug/test API: window.kq.party (PartyHooks).
  */

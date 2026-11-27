@@ -314,6 +314,19 @@ class StoryRuntime {
         this.run(actions, o.resume, { beat: o.beat ?? null, where: o.where ?? null, eraVisit: o.sameEra ? this.eraVisit : undefined }, o.source),
       chapterEntered: (f, o) => this.chapterEntered(f, o),
       beatEntered: (ch, b, o) => {
+        if (ch === 'enden' && b.id === 'e1' && !o.resume) {
+          const finaleLines = new Set(sayLineIds(this.engine.chapter()));
+          this.slice.said = this.slice.said.filter((id) => !finaleLines.has(id));
+          this.slice.ending = null;
+          this.slice.finished = false;
+          this.followEra = null;
+          ctx.state.update(({ flags }) => {
+            delete flags['flag.end'];
+            delete flags['story.party'];
+            delete flags['story.party.arrived'];
+            delete flags['story.credits'];
+          }, 'story');
+        }
         // the last beat's delayed lines are stale now; its delayed state changes happen at once
         this.retireScheduled(b.id);
         this.presenter.retireBeat(b.id);
@@ -423,9 +436,9 @@ class StoryRuntime {
     ctx.events.on('settings:change', ({ key }) => {
       if (key === 'bindings' && this.promptShown?.action) this.renderPrompt();
     });
-    // the credits over the party ended (naturally, skipped, or a load while they played): the story is finished
+    // Only the current party beat can finish the ending when the strip closes.
     ctx.events.on('credits:done', () => {
-      if (this.slice.ending && !this.slice.finished) this.finish();
+      if (this.inPartyBeat() && this.slice.ending && !this.slice.finished) this.finish();
     });
     this.unwatchState = ctx.state.subscribe((_state, reason) => {
       if (reason === 'load' || reason === 'new') this.cancelCaught();
@@ -438,7 +451,7 @@ class StoryRuntime {
       this.presenter.clear();
       // a load during play (the pause menu's „Ende noch einmal wählen“) resumes the beat like a
       // boot does — e1's onResume opens the choice at the table (playtest round 4: it never came)
-      if (this.started && !ctx.pause.reasons.has('title') && this.slice.active) this.resumeFromSave();
+      if (this.started && !ctx.pause.reasons.has('title') && this.slice.active) this.resume();
     });
     ctx.events.on('player:caught', ({ by, soft, family, boss }) => {
       const p = this.ctx.player.position;
@@ -541,18 +554,30 @@ class StoryRuntime {
       return;
     }
     this.resync();
-    if (resumed && this.slice.active) this.resumeFromSave();
+    if (resumed && this.slice.active) this.resume();
   }
 
-  private resumeFromSave(): void {
-    // a title Continue keeps the live state but drops the queue that would spawn Jost's pack
+  /**
+   * The one resume path (boot, an in-play load, the wake after being caught): re-enter the beat,
+   * then restore what a beat re-entry cannot. e2 already saved the ending and waits for the
+   * epilogue's button, but the modal is transient; e3's credits may have ended before the
+   * autosave caught `story.finished`.
+   */
+  private resume(useCheckpoint = false): void {
+    // a title Continue keeps the live state but drops the queue that would spawn Jost's pack (TASK-042)
     migrateInterruptedHunt(this.slice, this.ctx.state.mutable);
-    this.engine.resume(false);
+    this.engine.resume(useCheckpoint);
     const s = this.slice;
-    // The modal is transient, but e2 already saved the ending and is waiting for its button.
-    if (s.chapter === 'enden' && s.beat === 'e2' && s.ending && !s.finished && !this.ctx.state.state.flags['story.party']) {
+    const flags = this.ctx.state.state.flags;
+    if (s.chapter === 'enden' && s.beat === 'e2' && s.ending && !s.finished && !flags['story.party']) {
       this.endings.showEpilogue(s.ending);
     }
+    if (this.inPartyBeat() && flags['story.credits'] === true) this.finish();
+  }
+
+  private inPartyBeat(): boolean {
+    const s = this.slice;
+    return s.active && s.chapter === 'enden' && s.beat === 'e3';
   }
 
   /** Re-apply persistent presentation after a load. */
@@ -567,7 +592,8 @@ class StoryRuntime {
       ? this.engine.chapters.get('enden')?.beats.flatMap((beat) => beat.exit ?? [])
         .find((action) => action.do === 'objective' && action.id === 'end.frei')
       : undefined;
-    if (freeRoam) this.exec(freeRoam);
+    // a load already holding this hint (the second resync of one load) does not set it again
+    if (freeRoam && !(s.objective?.id === 'end.frei' && s.objective.text === (freeRoam as { text?: string }).text)) this.exec(freeRoam);
     else this.objectives.set(s.objective);
     this.applyLook();
     this.mirrorAllReadings();
@@ -580,9 +606,11 @@ class StoryRuntime {
     const ctx = this.ctx;
     // the ending card told the scene; nothing the ending queued plays again after the credits
     this.presenter.clear();
-    this.slice.finished = true;
     ctx.state.update((s) => (s.flags['story.credits'] = true), 'story');
+    if (this.inPartyBeat()) this.engine.tick(0, this.env());
+    this.slice.finished = true;
     ctx.events.emit('story:credits', {});
+    ctx.player.writeState(ctx.state.mutable.player);
     ctx.save.autosave('credits', true);
   }
 
@@ -882,6 +910,7 @@ class StoryRuntime {
         return;
       case 'teleport':
         runTeleport(a, ctx.state.mutable.flags, (x, z, yaw) => this.teleport(x, z, yaw));
+        ctx.player.writeState(ctx.state.mutable.player);
         return;
       case 'card':
         this.overlays.card(a.title, a.sub, a.note, a.seconds);
@@ -926,7 +955,7 @@ class StoryRuntime {
         // the save before the choice: "Ende noch einmal wählen" in the main menu loads it
         if (!s.ending) ctx.save.save(ENDING_SLOT, 'ending-choice');
         this.overlays.dropCard();
-        this.endings.show();
+        this.endings.show(s.ending ?? undefined);
         return;
       case 'autosave':
         ctx.save.autosave('story', true);
@@ -1554,7 +1583,7 @@ class StoryRuntime {
     if (this.slice.meters['oil']) ctx.events.emit('lantern:request', { lit: false, refill: true });
     this.caughtBusy = false;
     this.ctx.ui.hud.busy('caught', false, 2);
-    this.engine.resume(true);
+    this.resume(true);
     if (atAnchor && anchor && ctx.era.current === 'today' && !this.slice.objective?.text?.includes('Q')) {
       const text = t('story.caught.backQ');
       this.slice.objective = { text, x: anchor.x, z: anchor.z, id: 'story.back' };
