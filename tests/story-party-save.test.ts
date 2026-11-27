@@ -308,3 +308,33 @@ describe('ending save round-trips', () => {
     expect(game.state.state.flags).not.toHaveProperty(['story.credits']);
   });
 });
+
+describe('v0.5.0 ending saves (TASK-069)', () => {
+  // v0.5.0 closed its credits page with `finished` + `story.credits` and autosaved while e2 was
+  // still active; e2's exit (combat back on, free-play hint) only ran on the next tick. That
+  // version had no party, so the save holds no party slice.
+  function v050CreditsSave(completed: string[]): GameState {
+    const initial = endingSave('e2', { ending: 'keep', finished: true, completed });
+    Object.assign(initial.flags, { 'flag.end': 'behalten', 'story.credits': true, 'combat.disabled': true });
+    delete (initial.systems as Record<string, unknown>).party;
+    return initial;
+  }
+
+  it.each([
+    ['a first run', ['k1', 'k2', 'k3', 'k4']],
+    ['a chapter replay', ['k1', 'k2', 'k3', 'k4', 'enden']],
+  ])('finishes %s saved at the old credits checkpoint without replaying the ending', async (_label, completed) => {
+    const game = await setup(v050CreditsSave(completed));
+    expect(game.save.save()).toBe(true);
+    expect(game.save.load()).toBe(true);
+    game.resume();
+    game.step(10);
+
+    expect(game.hooks.state()).toMatchObject({ active: false, beat: null, finished: true, ending: 'keep' });
+    expect(game.hooks.state().completed).toContain('enden');
+    expect(game.state.state.flags['combat.disabled']).toBe(false);
+    expect(game.hooks.state().objective).toMatchObject({ id: 'end.frei' });
+    expect(showEnding).not.toHaveBeenCalled();
+    expect(showEpilogue).not.toHaveBeenCalled();
+  });
+});

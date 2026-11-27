@@ -200,6 +200,18 @@ export function migrateDieEngeReplay(story: StorySlice, groups: Record<string, E
 export function migrateEndingProgress(story: StorySlice, flags: Record<string, FlagValue>, player: PlayerState, party?: PartySlice): void {
   if (!story.active || story.chapter !== 'enden') return;
   const { beat } = story;
+  // v0.5.0 closed its credits page with `finished` + `story.credits` and autosaved while e2 was
+  // still active; e2's exit (combat back on, free-play hint) ran a tick later. e2 now ends on
+  // `story.party`, so that save stayed in e2 with combat off (TASK-069). That version had no
+  // party, hence no party slice: hand it to today's credits-done e3, whose resume finishes the
+  // story through e3's exit without replaying the ending.
+  if (beat === 'e2' && story.finished && story.ending && flags['story.credits'] === true && party === undefined) {
+    story.beat = 'e3';
+    story.beatTime = 0;
+    flags['story.party'] = story.ending;
+    flags['story.party.arrived'] = true;
+    return;
+  }
   // e1 can autosave before party:clear runs under the title card. In e3 an existing party's
   // completed credits can belong to this run, so only repair that beat if the party was cleared.
   const legacyReplay = story.completed?.includes('enden') && story.finished && flags['story.credits'] === true &&
