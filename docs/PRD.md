@@ -22,6 +22,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 
 | Version | Date | Change |
 | --- | --- | --- |
+| unreleased | 2026-11-27 | **Party reload position (TASK-067).** An old e3 save written while the credits rolled but still at the spring (its arrival teleport was lost) now loads at the party on the plateau, on boot and on an in-session load. |
 | unreleased | 2026-11-26 | **Legacy ending recovery (TASK-045).** Continue restores the epilogue's party button when needed, preserves identifiable plateau positions and recovers the missing free-play hint. Older chapter replays regain the ending choice and can earn the Keep return route again. Fresh replays play the finale dialogue again. |
 | unreleased | 2026-11-26 | **Ending saves and chapter replay (TASK-045).** Continue remembers a confirmed choice and completes a pending trip to the party. Credits checkpoint free play, including the Keep return route. Loading another slot does not complete its credits, and replaying the endings starts a fresh choice. |
 | unreleased | 2026-11-27 | **Chapter 2 progress and resume (TASK-042).** The Orangerie and Wachhaus no longer advance past unpaid main quests; older saves can still unlock the Wachfeuer after clearing the lights. Shifting during Jost's horn lead-in no longer sets the pack loose in the present, and a save or title Continue made before the pack appeared lets the hunt restart. |
