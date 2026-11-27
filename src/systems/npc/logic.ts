@@ -62,6 +62,27 @@ export function answer(lines: DialogueLine[], npc: string, chapter: string, topi
   return pickSequence(own, 'npc:talk', payloadFor(npc, chapter, topic), c, said, new Map(), 0, 0);
 }
 
+/**
+ * Whether a placed person offers E now (TASK-076: no empty conversation box). True when a greeting
+ * can still play (the same rule as `answer`), a menu topic is available, or quests gave it a topic;
+ * also for a silent figure without any lines (it answers „(Schweigt und sieht dich an.)“). False
+ * once everything it had was said, e.g. the guide after the car-park talk. Allocation-light: runs
+ * per frame for the person within talk range.
+ */
+export function offersTalk(lines: readonly DialogueLine[], npc: string, chapter: string, c: TriggerContext, said: readonly string[], questTopics = 0): boolean {
+  if (!lines.length || questTopics > 0) return true;
+  const greet = { npc, chapter, topic: GREET };
+  for (const l of lines) {
+    const tp = String(l.trigger.topic ?? '');
+    if (!tp || tp === BYE) continue;
+    if (tp === GREET) {
+      if (l.once && said.includes(l.id)) continue;
+      if (matchTrigger(l, 'npc:talk', greet, c)) return true;
+    } else if (!isFollowUp(l) && matchTrigger(l, 'npc:talk', payloadFor(npc, chapter, tp), c)) return true;
+  }
+  return false;
+}
+
 export function talkedFlag(chapter: string, npc: string, topic?: string): string {
   return `talked.${chapter}.${npc}${topic ? `.${topic}` : ''}`;
 }

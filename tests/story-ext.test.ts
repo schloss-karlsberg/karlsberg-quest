@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { barkGroup, fillText, germanNumber, isBarkLine, matchTrigger, pickSequence, valueKey } from '../src/content/triggers';
 import type { ContentPack, DialogueLine } from '../src/content/types';
 import { BUILTIN_MEMORIALS, GLOBAL_GAP, LINE_COOLDOWN, chooseBark, memorialAt, newMemory, quietReason, ready, record, seededRng } from '../src/systems/barks/rules';
-import { answer, availableTopics, askedTopics, clueFor, talkLines, talkedFlag } from '../src/systems/npc/logic';
+import { answer, availableTopics, askedTopics, clueFor, offersTalk, talkLines, talkedFlag } from '../src/systems/npc/logic';
 import { lookFor, topicLabel } from '../src/systems/npc/roster';
 import { substituteName } from '../src/systems/story/dialogue/presenter';
 import { type StoryEnv, type StorySlice, StoryEngine, createStorySlice, evaluate, runsOnResume, walkEvents } from '../src/systems/story/engine';
@@ -24,6 +24,7 @@ const K1 = pack('kapitel-1').dialogue ?? [];
 const K3 = pack('kapitel-3').dialogue ?? [];
 const VOICES = pack('voices').dialogue ?? [];
 const ENDEN = pack('enden').dialogue ?? [];
+const TOUR = pack('tour').dialogue ?? [];
 
 function env(over: Partial<StoryEnv> = {}): StoryEnv {
   return {
@@ -287,6 +288,42 @@ describe('npc conversations', () => {
     expect(answer(hanne, 'hanne', 'k1', 'greet', c({ clues: ['clue.k1.soll'] }), new Set()).map((l) => l.id)).toEqual(['hanne.k1.01']);
     expect(answer(hanne, 'hanne', 'k1', 'greet', c({ flags: { 'quest.q.k1.lohn.soll': true } }), new Set(['hanne.k1.01'])).map((l) => l.id)).toEqual(['hanne.k1.09']);
     expect(answer(hanne, 'hanne', 'k1', 'matthes', c(), new Set()).map((l) => l.id)).toEqual(['hanne.k1.02', 'hanne.k1.03']);
+  });
+  it('offersTalk: E only while there is something to say (TASK-076: the guide after the car park)', () => {
+    const tour = { ...c({ flags: { 'tour.station1.ready': true } }), era: 'today', chapter: 'tour' };
+    const imhoff = talkLines(TOUR, 'imhoff', 'tour');
+    const station1 = ['imhoff.t.station1', 'imhoff.t.station1a', 'imhoff.t.station1b'];
+    expect(offersTalk(imhoff, 'imhoff', 'tour', tour, [])).toBe(true);
+    expect(offersTalk(imhoff, 'imhoff', 'tour', tour, station1.slice(0, 1))).toBe(true);
+    // everything said, no topics: no E (it opened an empty box with only „Auf Wiedersehen“)
+    expect(offersTalk(imhoff, 'imhoff', 'tour', tour, station1)).toBe(false);
+    // a quest topic brings E back
+    expect(offersTalk(imhoff, 'imhoff', 'tour', tour, station1, 1)).toBe(true);
+    // greeting said, menu topics left: still E
+    const hanne = talkLines(K1, 'hanne', 'k1');
+    expect(offersTalk(hanne, 'hanne', 'k1', c(), hanne.filter((l) => l.once).map((l) => l.id))).toBe(true);
+    // greetings that all need a flag value: E only once the flag is set
+    const k3g = { ...c(), chapter: 'k3g' };
+    const hanneG = talkLines(K3, 'hanne', 'k3g');
+    expect(hanneG.length).toBeGreaterThan(0);
+    expect(offersTalk(hanneG, 'hanne', 'k3g', k3g, [])).toBe(false);
+    expect(offersTalk(hanneG, 'hanne', 'k3g', { ...k3g, flags: { 'flag.k3_objekt': 'uhr' } }, [])).toBe(true);
+    // a silent figure without lines keeps E („(Schweigt und sieht dich an.)“)
+    expect(offersTalk([], 'peter', 'k3', c(), [])).toBe(true);
+  });
+  it('offersTalk agrees with what a conversation would show (greeting or menu topic)', () => {
+    const all = [...K1, ...K3, ...TOUR, ...ENDEN];
+    const pairs = new Set(all.filter((l) => l.trigger.event === 'npc:talk').map((l) => `${l.trigger.npc}|${l.trigger.chapter}`));
+    expect(pairs.size).toBeGreaterThan(10);
+    for (const key of pairs) {
+      const [npc, chapter] = key.split('|');
+      const lines = talkLines(all, npc, chapter);
+      const ctx = { ...c(), chapter };
+      for (const said of [[], lines.filter((l) => l.once).map((l) => l.id)]) {
+        const shows = answer(lines, npc, chapter, 'greet', ctx, new Set(said)).length > 0 || availableTopics(lines, npc, chapter, ctx).length > 0;
+        expect(offersTalk(lines, npc, chapter, ctx, said), `${key} said ${said.length}`).toBe(shows);
+      }
+    }
   });
   it('flags, clue ids, labels, looks', () => {
     expect(talkedFlag('k1', 'hanne')).toBe('talked.k1.hanne');

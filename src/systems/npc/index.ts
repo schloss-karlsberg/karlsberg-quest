@@ -33,7 +33,7 @@ import type { LoadedModel } from '../../assets/loader';
 import { modelFor } from '../characters/catalog';
 import { GhostFigure } from './figure';
 import { RiggedGhost } from './rigged';
-import { BYE, GREET, IDLE_TURN_S, NEAR_TURN_S, TALK_TURN_S, answer, approachYaw, askedTopics, availableTopics, clueFor, sweepYaw, talkLines, talkedFlag, yawToward } from './logic';
+import { BYE, GREET, IDLE_TURN_S, NEAR_TURN_S, TALK_TURN_S, answer, approachYaw, askedTopics, availableTopics, clueFor, offersTalk, sweepYaw, talkLines, talkedFlag, yawToward } from './logic';
 import { lookFor, topicLabel } from './roster';
 import { ConversationView, questCardEl, type TalkLine, type TalkTopic } from './ui';
 import { GiverGlyphs } from './glyphs';
@@ -140,6 +140,8 @@ class NpcRuntime {
   private hooks = false;
   /** The bound person told to talk in the open conversation (people contract v0.1). */
   private talker: Person | null = null;
+  /** Conversation lines per `npc|chapter` (the content does not change while the game runs). */
+  private readonly lineCache = new Map<string, DialogueLine[]>();
 
   constructor(private readonly ctx: GameContext) {
     this.voice = new Voice(ctx.audio);
@@ -319,9 +321,22 @@ class NpcRuntime {
 
   // ---- conversation -------------------------------------------------------------------------
 
-  private trig(): TriggerContext {
+  private trig(chapter: string | null = this.talking?.chapter ?? null): TriggerContext {
     const s = this.ctx.state.state;
-    return { era: this.ctx.era.current, flags: s.flags, chapter: this.talking?.chapter ?? null, beat: null, clues: s.inventory.clues };
+    return { era: this.ctx.era.current, flags: s.flags, chapter, beat: null, clues: s.inventory.clues };
+  }
+
+  private linesFor(npc: string, chapter: string): DialogueLine[] {
+    const key = `${npc}|${chapter}`;
+    let lines = this.lineCache.get(key);
+    if (!lines) this.lineCache.set(key, (lines = talkLines(this.ctx.content.dialogue.values(), npc, chapter)));
+    return lines;
+  }
+
+  /** Whether this placement has something to say now (TASK-076): only then it takes E. */
+  private offers(npc: string, f: Placed): boolean {
+    const chapter = f.p.chapter ?? '';
+    return offersTalk(this.linesFor(npc, chapter), npc, chapter, this.trig(chapter), this.slice.said, this.questTopics.get(npc)?.length ?? 0);
   }
 
   private toTalk(l: DialogueLine): TalkLine {
@@ -341,7 +356,7 @@ class NpcRuntime {
     if (!f || this.view.open || this.ctx.ui.modals.count > 0) return false;
     const ctx = this.ctx;
     const chapter = f.p.chapter ?? '';
-    const lines = talkLines(ctx.content.dialogue.values(), npc, chapter);
+    const lines = this.linesFor(npc, chapter);
     this.talking = { npc, chapter, lines };
     this.frameT = 1.1;
     const meta = speakerMeta(npc, ctx.content);
@@ -362,7 +377,8 @@ class NpcRuntime {
     const greet = answer(lines, npc, chapter, GREET, this.trig(), new Set(this.slice.said));
     this.remember(greet);
     const say = greet.map((l) => this.toTalk(l));
-    if (!say.length && !lines.length && !this.questTopics.get(npc)?.length) say.push({ id: 'npc.silent', speaker: meta, text: t('npc.silent') });
+    // nothing to say and nothing to ask (a silent figure, or everything was said): never an empty box
+    if (!say.length && !this.questTopics.get(npc)?.length && !availableTopics(lines, npc, chapter, this.trig()).length) say.push({ id: 'npc.silent', speaker: meta, text: t('npc.silent') });
     if (say.length) this.view.say(say, () => this.menu());
     else this.menu();
     return true;
@@ -512,7 +528,8 @@ class NpcRuntime {
       const dy = Math.abs(p.y - body.floor);
       // `npc.hush` = id: this ghost does not take E (the Festsaal: the handle in Hanne's hand is the choice)
       const d = dy > 2.4 || ctx.state.state.flags['npc.hush'] === id ? Infinity : Math.hypot(p.x - body.x, p.z - body.z);
-      if (d < bestD) {
+      // E only for someone with something to say now (TASK-076: the guide after the car park)
+      if (d < bestD && this.offers(id, f)) {
         bestD = d;
         best = id;
       }
