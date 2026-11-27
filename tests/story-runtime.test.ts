@@ -64,6 +64,7 @@ async function boot(initial: GameState, withFx = false) {
     stance: 'stand',
     stats: { lanternLit: false, speed: 0 },
     teleport(x: number, z: number) { Object.assign(this.position, { x, z }); },
+    writeState(target: { x: number; z: number }) { Object.assign(target, { x: this.position.x, z: this.position.z }); },
   };
   let shiftPressed = false;
   const confirm = vi.fn(async () => true);
@@ -123,7 +124,8 @@ describe('ending runtime saves', () => {
     game.save.save(ENDING_SLOT);
     game.start();
     game.events.emit('credits:done', { skipped: false });
-    expect(rawAuto(game.storage).systems.story).toMatchObject({ active: true, objective: null });
+    // the credits autosave already carries the finished story (TASK-045)
+    expect(rawAuto(game.storage).systems.story).toMatchObject({ active: false, finished: true });
     game.tick();
     expect(rawAuto(game.storage).systems.story).toMatchObject({
       active: false,

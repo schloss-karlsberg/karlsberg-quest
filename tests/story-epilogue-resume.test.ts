@@ -62,8 +62,8 @@ async function boot(ending: EndingId, flags: Record<string, string> = {}, beat =
     systems: { get: () => undefined },
     content: { packs: [], cases: new Map(), dialogue: new Map(), dialogueFor: () => [] },
     era: { current: 'today' },
-    world: { look: structuredClone(ERA_LOOKS.today), heightAt: () => 0, applyLook() {} },
-    player: { position: { x: 0, y: 0, z: 0 }, yaw: 0, pitch: 0, stance: 'stand', stats: { lanternLit: false, speed: 0 } },
+    world: { look: structuredClone(ERA_LOOKS.today), heightAt: () => 0, applyLook() {}, forest: { invalidate() {} } },
+    player: { position: { x: 0, y: 0, z: 0 }, yaw: 0, pitch: 0, stance: 'stand', stats: { lanternLit: false, speed: 0 }, teleport() {}, writeState() {} },
     camera: new PerspectiveCamera(),
     loop: { manual: true },
     pause: { paused: false },
@@ -127,7 +127,8 @@ describe('continuing a saved epilogue', () => {
     });
 
     startPlay(ctx, true);
-    for (let i = 0; i < 3; i++) story.update(1 / 60);
+    // e3 waits 0.4 s for the plateau arrival before the party is set (TASK-045)
+    for (let i = 0; i < 40; i++) story.update(1 / 60);
 
     expect(state.state.systems.story?.beat).toBe('e3');
     expect(onParty.mock.calls).toEqual([[{ variant: ending }]]);

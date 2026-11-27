@@ -1,10 +1,11 @@
 import { allOf, isOneOf } from '../../core/saved';
 import type { EnemyGroupState } from '../../rpg/types';
 import { createStorySlice, DEFAULT_VISITOR_NAME, type StorySlice } from './engine';
-import type { GameState } from '../../core/state';
+import type { GameState, PlayerState } from '../../core/state';
 import { createQuestSlice } from '../quests/logic';
 import { HOME } from './hub/home';
-import type { EndingId, LookTime } from './types';
+import type { PartySlice } from '../party/types';
+import type { EndingId, FlagValue, LookTime } from './types';
 import type { WalkSlice } from '../walk/types';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -187,5 +188,45 @@ export function migrateDieEngeReplay(story: StorySlice, groups: Record<string, E
   if (BEFORE_DIE_ENGE.test(story.beat ?? '') || stalledReplay) {
     delete groups['k1.enge'];
     delete groups['k1.enge.2'];
+  }
+}
+
+/**
+ * Repair ending progress from older saves (a stale credits strip finished the story outside e3, a
+ * resume lost e3's arrival teleport, e2 kept another run's party flag). Needs the save's flags,
+ * player and party slice, so it runs after `readStorySlice` in `deserializeState`.
+ */
+export function migrateEndingProgress(story: StorySlice, flags: Record<string, FlagValue>, player: PlayerState, party?: PartySlice): void {
+  if (!story.active || story.chapter !== 'enden') return;
+  const { beat } = story;
+  // e1 can autosave before party:clear runs under the title card. In e3 an existing party's
+  // completed credits can belong to this run, so only repair that beat if the party was cleared.
+  const legacyReplay = story.completed?.includes('enden') && story.finished && flags['story.credits'] === true &&
+    (beat === 'e1' || beat === 'e2' || (beat === 'e3' && party?.credits === 'done' && party.variant === null));
+  if (legacyReplay) {
+    story.finished = false;
+    if (party) {
+      party.variant = null;
+      party.credits = 'none';
+    }
+    story.fired = story.fired.filter((id) => id !== 'c:behalten-q');
+    for (const id of ['story.credits', 'shift.allowed', 'shift.target', 'shift.x', 'shift.z', 'shift.r']) delete flags[id];
+    if (beat === 'e1') {
+      delete flags['story.party'];
+      // The old completion latch distinguishes a new choice from the previous run's choice.
+      if (!story.latched?.['b:e1']) {
+        story.ending = null;
+        delete flags['flag.end'];
+      }
+    }
+  }
+
+  if (beat === 'e2' && flags['story.party'] !== story.ending) delete flags['story.party'];
+
+  // The old teleport ran after 0.4 s. A save still at the spring can come from a resume that
+  // lost that action. The spring's 30 m chapter-entry radius covers its starting positions.
+  if (beat === 'e3' && flags['story.party.arrived'] === undefined && story.beatTime >= 0.4 &&
+      Math.hypot(player.x - HOME.spawn.x, player.z - HOME.spawn.z) > 30) {
+    flags['story.party.arrived'] = true;
   }
 }

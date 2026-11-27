@@ -223,6 +223,19 @@ Continuing from `enden/e2` restores the chosen epilogue from the saved ending an
 stays free to click Abspann. Abspann sets `story.party` to start `e3`. The `ending` save slot holds
 the pre-choice state for Ende noch einmal wählen.
 
+The saved `flag.end` completes `e1`. Continue opens the confirmed scene card if the save was
+taken before `e1` advanced. In `e2`, a party handoff that matches the confirmed ending advances
+to the party. Continue reopens the epilogue when the handoff is missing or mismatched.
+
+Starting `e1` via chapter replay clears the previous ending run and its spoken line IDs while
+keeping chapter history and deeds. Older replay saves can still carry the previous ending and its
+Keep route. Migration uses the legacy choice latch in `e1` and clears stale credits and route state
+so the new ending can complete normally.
+
+In `e3`, `story.party.arrived` checkpoints the trip to the plateau before the party begins. For
+older saves, elapsed beat time and the saved position distinguish a pending trip from a player who
+already arrived. Continue restores the free-play hint on completed endings with a missing objective.
+
 ## Skills and survey tools
 
 **Skills** (`skill {id, tier}`, system `skills`): ids `relief` (1–3), `kartograf` (1 map 1840, 2 map 1935,

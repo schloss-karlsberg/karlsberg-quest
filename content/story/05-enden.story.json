@@ -94,7 +94,7 @@
         }
       ],
       "complete": {
-        "event": "story:ending"
+        "flag": "flag.end"
       }
     },
     {
@@ -118,6 +118,7 @@
     {
       "id": "e3",
       "title_de": "Das Fest",
+      "wake": { "x": 1200, "z": -1095, "yaw": 40 },
       "enter": [
         {
           "do": "flag",
@@ -136,24 +137,23 @@
           "seconds": 2.6
         },
         {
-          "do": "teleport",
-          "x": 1200,
-          "z": -1095,
-          "yaw": 40,
-          "delay": 0.4
-        },
-        {
           "do": "look",
           "time": "dusk"
-        },
-        {
-          "do": "autosave"
         }
       ],
       "on": [
         {
+          "id": "fest-ankunft",
+          "when": { "all": [{ "timer": 0.4 }, { "not": { "flag": "story.party.arrived" } }, { "not": { "flag": "story.credits" } }] },
+          "do": [
+            { "do": "teleport", "x": 1200, "z": -1095, "yaw": 40 },
+            { "do": "flag", "set": { "story.party.arrived": true } },
+            { "do": "autosave" }
+          ]
+        },
+        {
           "id": "fest-museum",
-          "when": { "all": [{ "flag": "flag.end", "eq": "museum" }, { "not": { "flag": "story.credits" } }] },
+          "when": { "all": [{ "flag": "story.party.arrived" }, { "flag": "flag.end", "eq": "museum" }, { "not": { "flag": "story.credits" } }] },
           "do": [
             { "do": "cue", "id": "party:set", "data": { "variant": "museum" } },
             { "do": "say", "id": "imhoff.end.ankunft", "speaker": "imhoff", "text": "Da ist ja unser Nachzügler! Fünfzehn. Jetzt stimmt’s wieder.", "delay": 1.5 },
@@ -165,7 +165,7 @@
         },
         {
           "id": "fest-verbrennen",
-          "when": { "all": [{ "flag": "flag.end", "eq": "verbrennen" }, { "not": { "flag": "story.credits" } }] },
+          "when": { "all": [{ "flag": "story.party.arrived" }, { "flag": "flag.end", "eq": "verbrennen" }, { "not": { "flag": "story.credits" } }] },
           "do": [
             { "do": "cue", "id": "party:set", "data": { "variant": "burn" } },
             { "do": "say", "id": "imhoff.end.ankunft", "speaker": "imhoff", "text": "Da ist ja unser Nachzügler! Fünfzehn. Jetzt stimmt’s wieder.", "delay": 1.5 },
@@ -178,7 +178,7 @@
         },
         {
           "id": "fest-behalten",
-          "when": { "all": [{ "flag": "flag.end", "eq": "behalten" }, { "not": { "flag": "story.credits" } }] },
+          "when": { "all": [{ "flag": "story.party.arrived" }, { "flag": "flag.end", "eq": "behalten" }, { "not": { "flag": "story.credits" } }] },
           "do": [
             { "do": "cue", "id": "party:set", "data": { "variant": "keep" } },
             { "do": "say", "id": "imhoff.end.ankunft", "speaker": "imhoff", "text": "Da ist ja unser Nachzügler! Fünfzehn. Jetzt stimmt’s wieder.", "delay": 1.5 },

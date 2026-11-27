@@ -441,6 +441,46 @@ describe('story slice (readStorySlice)', () => {
       }
     }
   });
+
+  // migrateEndingProgress (TASK-045) runs on every load of the endings chapter.
+  const endingSave = (r: Seeded): GameState => {
+    const state = createInitialState();
+    const beat = r.pick(['e1', 'e2', 'e3'] as const);
+    const ending = beat === 'e1' && r.bool() ? null : r.pick(PARTY_VARIANTS);
+    state.systems.story = {
+      ...createStorySlice(), active: true, chapter: 'enden', beat, ending, beatTime: r.fraction() * 60,
+      unlocked: ['enden'], completed: r.bool() ? ['enden'] : [],
+    };
+    if (ending) state.flags['flag.end'] = ending;
+    if (beat === 'e3' || (beat === 'e2' && ending && r.bool())) state.flags['story.party'] = ending ?? 'museum';
+    if (beat === 'e3') state.flags['story.party.arrived'] = true;
+    state.systems.party = slices.party.valid(r);
+    return state;
+  };
+
+  it('leaves 200 current-format ending saves unchanged', () => {
+    for (let i = 0; i < CASES; i++) {
+      const seed = SEED + i;
+      const json = serializeState(endingSave(seeded(seed)));
+      expect(serializeState(deserializeState(json)), `ending, seed ${seed}`).toBe(json);
+    }
+  });
+
+  it('loads a finished legacy ending save with any party slice', () => {
+    const party = [undefined, {}, { variant: 7 }, { credits: null }, { variant: 'keep', credits: 'done' }, { variant: null, credits: 'done' }];
+    for (const [i, slice] of party.entries()) {
+      const state = endingSave(seeded(SEED + i));
+      state.systems.story = { ...state.systems.story!, finished: true, completed: ['enden'] };
+      state.flags['story.credits'] = true;
+      const raw = JSON.parse(serializeState(state)) as { systems: Record<string, unknown> };
+      if (slice === undefined) delete raw.systems.party;
+      else raw.systems.party = slice;
+      const { manager, store, storage } = slot();
+      storage.setItem(SAVE_KEY('auto'), JSON.stringify(raw));
+      expect(manager.load(), JSON.stringify(slice)).toBe(true);
+      expectLoadable(store.state, `legacy ending, party ${JSON.stringify(slice)}`);
+    }
+  });
 });
 
 it('allOf fails the typecheck when a union value is missing', () => {

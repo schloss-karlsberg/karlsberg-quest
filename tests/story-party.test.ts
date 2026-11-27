@@ -39,14 +39,17 @@ function run(at: string, flags: Record<string, FlagValue>) {
   let slice: StorySlice = createStorySlice();
   const runs: { src: string; actions: Action[] }[] = [];
   const engine = new StoryEngine([ENDEN], () => slice, {
-    run: (actions: Action[], o: RunOptions) => runs.push({ src: o.source, actions }),
+    run: (actions: Action[], o: RunOptions) => {
+      runs.push({ src: o.source, actions });
+      for (const a of actions) if (a.do === 'flag') Object.assign(flags, a.set);
+    },
     chapterEntered: () => {},
     beatEntered: () => {},
     chapterCompleted: () => {},
   });
   engine.goto('enden', at);
-  const tick = () => engine.tick(0.1, env(flags));
-  tick();
+  const tick = (dt = 0.1) => engine.tick(dt, env(flags));
+  tick(0.4);
   const all = () => runs.flatMap((r) => r.actions);
   const cues = () => all().filter((a): a is Extract<Action, { do: 'cue' }> => a.do === 'cue');
   const says = () => all().filter((a): a is Extract<Action, { do: 'say' }> => a.do === 'say');
