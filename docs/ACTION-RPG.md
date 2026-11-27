@@ -1019,6 +1019,15 @@ return. The combat payout belongs to the original fight.
 | `q.k4.graeben` "Gruslinge im Graben" | side | Laub (after `q.k4.steinplatz`) → auto | clear 3 robbed-out trenches of Grusling swarms (1232/−1188, 1236/−1180, 1226/−1194), compare with Relief 3 today (`clue.k4.graben_heute`) | grusling ×15 | 250 XP | rm.05 Ausbruchgraben (the "walls" of the prologue are trenches) |
 | `q.k4.pacht` "Die Pächter" | side | Soll (after `q.k4.baumagazin`) → Soll | recover 3 lease and demolition notices from Steinfresser lairs on the slope (650/−930, 800/−960, 1000/−1000; they drop them) | steinfresser ×3 | 250 XP | cx.30 Pacht und Abriss (1796) |
 
+**Continue and chapter replay:** The valley entrance, Steinbrecher, well and kennel beats restore
+missing quest starts without resetting accepted quests. The drive resumes the shift into today and
+marks the kennel even if the player is too far from the well for the pack to appear. A remembered
+1840 echo credits the well visit, including in saves already at the drive or kennel. The Pacht
+cutoff pays a ready quest and issues a failure only once. Reaching Jost's beat proves the pack has
+already calmed. The player still talks to Jost and turns in the quest for the horn. At dawn, Continue
+finishes an interrupted arrival or keeps the saved position and heading if the player already
+arrived. Both final clues are recorded before the chapter can end.
+
 ### 11.5 Endings
 
 The [ending design](../content/bible/06-enden.md) covers the choice at the table (museum / burn / keep), the plateau party with credits, and the epilogue assembled from
@@ -1089,6 +1098,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Photos vanish on reload and cannot be kept (TASK-006, 2026-11-26) | Every shot with signal is stored on the device: IndexedDB `kq-photos` holds a full JPEG (≤ 1920 px), a thumbnail and the shot's metadata, or memory where IndexedDB is blocked. The gallery opens with G on the phone, its „Galerie“ button on touch, or Pause → Album. It shows a grid, a full-size viewer, Löschen, Herunterladen and Teilen (the OS share sheet where files can be shared, else a download). At most 100 photos; beyond that a toast instead of a silent drop. The photos are not in the save, and the gallery says they live only on this device. `tests/photo-gallery.test.ts`, `e2e/photo.spec.ts`. |
 | Era hazards outlive their pack or target a different pack (TASK-028, 2026-11-26) | The second fire ring targets a member of the triggering pack. Despawning or dematerialising the responsible pack cancels its hazards. Regression tests cover the impact window for falling stones and both removal orders for fire rings. |
 | Hounds follow the Warner’s prints after player prints expire (TASK-028, 2026-11-26) | Patrol and search use the same lookup for player prints, skipping story trails. |
 | Attacks linger after an encounter disappears (TASK-028, 2026-11-26) | Removing an encounter clears its airborne attacks with its warnings. The regression tests also cover reloading earned kills and reached boss phases, restoring Bannlicht charges and capping healing. |
@@ -1155,6 +1165,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | The controls reference can become stale after keyboard remapping (TASK-027, 2026-11-26) | Pause → Steuerung shows the current keys, including alternates, unbound actions and feature-added survey tools. It uses the same keyboard-layout labels as the settings editor. |
 | A progression gate can rely on a pickup already taken, a depleted enemy group, or a late reaction (TASK-052, 2026-11-26) | The validator tracks stack-limited pickups and remaining enemies, measures reactions against beat deadlines, and carries forward quest state and rewards through the runtime transition rules. Laub's chapter-three basket cue checks the saved pickup objective before speaking. |
 | An objective can open after its only pickup or event (TASK-052, 2026-11-26) | Content validation checks offers, objective order, item sources and one-shot events against the story. The quest authoring guide describes backfilled objectives. |
+| Early well echo and repeated dawn arrival (TASK-044, 2026-11-26) | The 1840 echo also credits the well visit, including in older drive and kennel saves. The drive cutoff pays a ready Pacht quest and records failure once. Dawn records the spring teleport so Continue keeps the player's saved position and heading after arrival. |
 | Separate collection and progression entries crowd Pause (TASK-007, 2026-11-26) | Sammlungen includes the Funde section. I and Pause open Ausrüstung & Talente, with both sections on one scrollable page. The Pause entry counts unspent talent points. |
 | The spring’s general E menu competes with the water interaction (TASK-007, 2026-11-26) | The water uses E or the touch action when the story calls for it. Pause handles saving, chapter replay and collections. Entering the present-day spring ring still heals, refills oil, resets the hunt and enables respec. Q-hold return and the wake spot stay at the spring. |
 | K1 progression on Continue and chapter replay (TASK-041, 2026-11-26) | Restore the arrival prerequisite and recorded combat progress, including a missing Lohnzettel; make kill autosaves coherent, credit the already calmed Kasuar, and separate new Die Enge replays from previous clears. |

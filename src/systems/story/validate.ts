@@ -390,6 +390,7 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
         break;
       case 'teleport':
         if (!isNum(a.x) || !isNum(a.z)) err(file, where, 'teleport needs x/z');
+        if (a.onceFlag !== undefined && !isStr(a.onceFlag)) err(file, where, 'teleport onceFlag must be a flag name');
         break;
       case 'card':
         if (!isStr(a.title)) err(file, where, 'card needs a title');

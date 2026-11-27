@@ -8,7 +8,7 @@
 import type { Era } from '../../core/era';
 import type { ThreatConfig } from '../contracts';
 import { valueKey } from '../../content/triggers';
-import { type Action, type Beat, type Condition, type EndingId, type EventCond, type FlagValue, type LookTime, type Reaction, type StoryFile } from './types';
+import { type Action, type Beat, type Condition, type EndingId, type EventCond, type FlagValue, type LookTime, type Reaction, type StoryFile, type TeleportAction } from './types';
 
 export interface ObjectiveState {
   text: string;
@@ -153,6 +153,13 @@ const ONE_SHOT = new Set(['say', 'shift', 'teleport', 'card', 'sound', 'toast', 
 
 export function runsOnResume(a: Action): boolean {
   return a.onResume ?? !ONE_SHOT.has(a.do);
+}
+
+export function runTeleport(action: TeleportAction, flags: Record<string, FlagValue>, teleport: (x: number, z: number, yaw?: number) => void): void {
+  const { onceFlag, x, z, yaw } = action;
+  if (onceFlag && flags[onceFlag]) return;
+  teleport(x, z, yaw);
+  if (onceFlag) flags[onceFlag] = true;
 }
 
 /** Silent world setup: at time 0 of a chapter's opening beat it runs under the title card. */
