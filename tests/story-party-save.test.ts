@@ -12,10 +12,12 @@ const showEnding = vi.fn();
 const showEpilogue = vi.fn();
 let chooseEnding: (id: EndingId) => void;
 let goToParty: (id: EndingId) => void;
+let dismissCard: ((id: EndingId) => void) | undefined;
 vi.mock('../src/systems/story/endings/ui', () => ({ EndingScreen: class {
-  constructor(deps: { chosen: typeof chooseEnding; party: typeof goToParty }) {
+  constructor(deps: { chosen: typeof chooseEnding; party: typeof goToParty; cardDone?: typeof dismissCard }) {
     chooseEnding = deps.chosen;
     goToParty = deps.party;
+    dismissCard = deps.cardDone;
   }
   show = showEnding;
   showEpilogue = showEpilogue;
@@ -43,7 +45,7 @@ function endingSave(beat: string | null, extra: Partial<ReturnType<typeof create
   return state;
 }
 
-async function setup(initial: GameState) {
+async function setup(initial: GameState, o: { inPlayLoads?: boolean } = {}) {
   showEnding.mockClear();
   showEpilogue.mockClear();
   const state = new GameStateStore(initial);
@@ -61,7 +63,7 @@ async function setup(initial: GameState) {
     audio: { bindVoiceEmitter: () => () => {} }, settings: { state: {} },
     assets: { async licences() { return { assets: [] }; } }, data: { attribution: { items: [] } },
     content: { packs: [], cases: new Map(), dialogue: new Map(), dialogueFor: () => [] },
-    systems: { get() {} }, loop: { manual: true }, pause: { paused: false }, input: { wasPressed: () => false },
+    systems: { get() {} }, loop: { manual: true }, pause: { paused: false, ...(o.inPlayLoads ? { reasons: new Set<string>() } : {}) }, input: { wasPressed: () => false },
     ui: { layer: () => ({ classList: { remove() {} } }), hud: {}, cards: { hold() {}, soft() {} }, toast() {} },
   } as unknown as GameContext;
   const browser = { kq: {} as { story?: StoryHooks }, addEventListener() {}, removeEventListener() {}, setInterval: vi.fn(), clearInterval() {} };
@@ -132,7 +134,8 @@ describe('ending save round-trips', () => {
     expect(showEpilogue).not.toHaveBeenCalled();
   });
 
-  it.each([undefined, 'keep'])('reopens the e2 epilogue on load with an ambiguous handoff (%s)', async (handoff) => {
+  // a legacy save has no closing-card marker, so it reopens at the card (TASK-068), then the epilogue
+  it.each([undefined, 'keep'])('reopens the e2 ending card on load with an ambiguous handoff (%s)', async (handoff) => {
     const initial = endingSave('e2', { ending: 'burn', finished: true, completed: ['enden'] });
     initial.flags = { 'flag.end': 'verbrennen', 'story.credits': true };
     if (handoff) initial.flags['story.party'] = handoff;
@@ -143,7 +146,8 @@ describe('ending save round-trips', () => {
     game.resume();
     game.step(120);
     expect(game.hooks.state()).toMatchObject({ beat: 'e2', ending: 'burn' });
-    expect(showEpilogue).toHaveBeenCalledExactlyOnceWith('burn');
+    expect(showEnding).toHaveBeenCalledExactlyOnceWith('burn');
+    expect(showEpilogue).not.toHaveBeenCalled();
     goToParty('burn');
     game.step();
     expect(game.hooks.state().beat).toBe('e3');
@@ -336,5 +340,61 @@ describe('v0.5.0 ending saves (TASK-069)', () => {
     expect(game.hooks.state().objective).toMatchObject({ id: 'end.frei' });
     expect(showEnding).not.toHaveBeenCalled();
     expect(showEpilogue).not.toHaveBeenCalled();
+  });
+});
+
+describe('the ending card after a reload (TASK-068)', () => {
+  async function chosenAt(ending: EndingId) {
+    const game = await setup(endingSave('e1'), { inPlayLoads: true });
+    game.resume();
+    chooseEnding(ending);
+    game.step();
+    expect(game.hooks.state()).toMatchObject({ beat: 'e2', ending });
+    showEnding.mockClear();
+    showEpilogue.mockClear();
+    return game;
+  }
+
+  it('shows the closing card again for a save taken during the scene or the card', async () => {
+    const game = await chosenAt('burn');
+    // the choice autosaved before the staged scene; a manual save while the card is up
+    expect(game.save.peek()?.systems.story).toMatchObject({ beat: 'e2', ending: 'burn' });
+    expect(game.save.save('manual')).toBe(true);
+    // pause-menu load (in-play resume)
+    expect(game.save.load('manual')).toBe(true);
+    expect(showEnding.mock.calls).toEqual([['burn']]);
+    expect(showEpilogue).not.toHaveBeenCalled();
+    // the card's button continues to the epilogue as normal
+    dismissCard!('burn');
+    expect(game.state.state.flags['story.endcard']).toBe(true);
+
+    // title Continue (boot resume) of the autosave taken at the choice
+    const boot = await setup(structuredClone(game.save.peek('manual')!));
+    boot.resume();
+    expect(showEnding.mock.calls).toEqual([['burn']]);
+    expect(showEpilogue).not.toHaveBeenCalled();
+  });
+
+  it('goes straight to the epilogue for a save taken after the card was dismissed', async () => {
+    const game = await chosenAt('keep');
+    dismissCard!('keep');
+    // dismissing the card checkpoints, so the autosave already knows
+    expect(game.save.peek()?.flags['story.endcard']).toBe(true);
+    expect(game.save.load()).toBe(true);
+    expect(showEpilogue.mock.calls).toEqual([['keep']]);
+    expect(showEnding).not.toHaveBeenCalled();
+
+    const boot = await setup(structuredClone(game.save.peek()!));
+    boot.resume();
+    expect(showEpilogue.mock.calls).toEqual([['keep']]);
+    expect(showEnding).not.toHaveBeenCalled();
+  });
+
+  it('clears the marker when the ending is chosen again', async () => {
+    const game = await chosenAt('museum');
+    dismissCard!('museum');
+    chooseEnding('burn');
+    expect(game.state.state.flags['story.endcard']).toBeUndefined();
+    expect(game.save.peek()?.flags['story.endcard']).toBeUndefined();
   });
 });
