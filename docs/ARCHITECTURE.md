@@ -1288,6 +1288,11 @@ Round-4 (polish: set dressing) integration rules:
   afterwards back to its placement yaw in 1.2 s; the rigged head looks at a player within 9 m, the
   procedural figure (no head look) slowly turns to a player within 8 m instead. Reduced motion
   snaps the turn and calms the figure.
+- Talk prompt (TASK-076): „E Mit … sprechen“ is offered only while the person has something to say
+  (`hasWords` in `logic.ts`: a greeting not yet said, a topic, or a quest topic; re-checked four times a
+  second). Otherwise E stays free for other owners and no `npc.near` is set. The guide at the later
+  tour stops speaks through the radio box only. A person with no lines at all keeps „(Schweigt und
+  sieht dich an.)“, and a conversation never opens with an empty box (`tests/npc-has-words.test.ts`).
   On medium / high the figure is replaced by a `RiggedGhost` (`rigged.ts`, models from
   `characters/`) once the model is loaded: same shader look, idle / walk / talk / gesture clips,
   head look at the player; the procedural figure stays for `low`, while loading and for the kneel pose.

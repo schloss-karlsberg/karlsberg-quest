@@ -4,7 +4,7 @@ aliases:
 - TASK-076
 title: 'Talking to the guide at tour stops 2 to 4 opens an empty dialogue'
 slug: empty-guide-dialogue-at-tour-stops
-status: todo
+status: done
 priority: 2
 owner: ''
 projects: []
@@ -50,7 +50,18 @@ and has nothing to show. Only t2 has a real dialogue.
 
 ## Acceptance criteria
 
-- [ ] At t6, t13 and t15 the guide either offers no talk prompt while he has nothing to say, or E
+- [x] At t6, t13 and t15 the guide either offers no talk prompt while he has nothing to say, or E
       opens a dialogue with real lines (for example a repeat of the stop's talk).
-- [ ] No NPC dialogue in the tour or chapters opens with empty text (a unit or e2e check).
-- [ ] t2 (the first conversation) still works as before.
+- [x] No NPC dialogue in the tour or chapters opens with empty text (a unit or e2e check).
+- [x] t2 (the first conversation) still works as before.
+
+## Result
+
+The guide's tour lines (`content/packs/tour.pack.json`) are a three-step greeting for t2. After it
+he has no greeting, topic or quest topic left, but the talk prompt stayed. Now a person offers the
+prompt only while it has something to say (`hasWords` in `src/systems/npc/logic.ts`, used by the
+talk-range check in `src/systems/npc/index.ts`; E stays free for others). As a safety net
+`open()` shows „(Schweigt und sieht dich an.)“ whenever there would be no text and no topic.
+
+Checks: `tests/npc-has-words.test.ts` (fails on main), `e2e/tour-slice.spec.ts` at t6 (next to
+the guide: no „sprechen“ prompt). t2's conversation is covered by the same spec.
