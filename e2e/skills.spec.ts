@@ -358,8 +358,9 @@ test.describe('skills and survey tools', () => {
     expect(r.points).toBeGreaterThan(5000);
     await expect(indicator).toBeHidden();
     await page.evaluate(() => window.kq!.step(90));
-    await page.waitForTimeout(1600);
-    expect(await page.evaluate(() => window.kq!.tools!.state().clear)).toBeGreaterThan(0.9);
+    // the trees fade on rendered frames (render dt, at most 0.25 s a frame): wait for enough paced
+    // frames, not a wall-clock time a slow software renderer fills with one or two
+    await expect.poll(() => page.evaluate(() => window.kq!.tools!.state().clear), { timeout: ciScale(30_000) }).toBeGreaterThan(0.9);
     await shot(page, 'xray');
     // the paw prints (fiction) cross the Ehrenhof
     await page.evaluate(() => {
