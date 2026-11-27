@@ -110,6 +110,24 @@ function migrateChapter4Dawn(story: StorySlice, state: GameState): void {
   }
 }
 
+/**
+ * Repair persisted flags and the transient room from older or mid-chapter saves (TASK-043). Needs
+ * the flags, so deserializeState calls it after readStorySlice.
+ */
+export function migrateStoryFlags(story: StorySlice, flags: Record<string, boolean | number | string>): void {
+  // A checkpoint retry used to clear the committed Festsaal choice; the choice flag still has it.
+  const chosen = flags['choice.k3.objekt'];
+  if (chosen === 'tuergriff' || chosen === 'dukat' || chosen === 'uhr' || chosen === 'nichts') flags['festsaal.took'] = chosen;
+  // The Festsaal props are restaged after a load, so their saved interaction owner and Hanne's hush are stale.
+  if (flags['e.owner'] === 'festsaal') delete flags['e.owner'];
+  if (flags['npc.hush'] === 'hanne') delete flags['npc.hush'];
+
+  // The room is only known again once interiors have located the restored player.
+  story.room = null;
+  delete flags['interior.room'];
+  delete flags['interior.building'];
+}
+
 /** Update persisted labels and the return objective from before the spring became home. */
 function migrateStorySlice(story: StorySlice): void {
   const { name } = story;

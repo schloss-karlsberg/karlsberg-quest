@@ -1067,8 +1067,9 @@ export default defineSystem({
     });
     ctx.events.on('save:loaded', () => {
       if (!rt) return;
-      // a choice the outgoing game left open (or queued) does not come back in the loaded one
-      festsaalPending = null;
+      // a choice the outgoing game left open (shown or queued) does not come back in the loaded one;
+      // a loaded save still deciding restages it through its beat's `requisiten` reaction
+      clearFestsaal(ctx);
       restoreStorey(ctx);
       if (rt.ready) updateRoom(ctx);
     });
