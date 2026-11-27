@@ -25,7 +25,8 @@ import { acceptSound, objectiveSound, pageSound, readySound, tickSound, turninSo
 import { Beacons, type BeaconSpec } from './beacons';
 import { type HintContext, type WayDeps, type WayPoint, StallWatch, distanceText, hintFor, objectiveTarget, storyHint, targetVisible } from './wayfinding';
 import { enemyDef } from '../../rpg/enemies';
-import { loadBundledQuests, questsInPlay } from './data';
+import { giverPlacedIn, loadBundledQuests, questsInPlay, sideQuestClosed } from './data';
+import { loadBundledStories } from '../story/stories';
 import { Feed, RewardNotice, showBanner, Tracker, type RewardView, type TrackerQuest } from './hud';
 import { Waymark } from '../../ui/waymark';
 import { hideWhileQuiet } from '../../core/quiet';
@@ -158,6 +159,7 @@ class QuestRuntime {
     this.retired = retired;
     this.items = items;
     const self = this;
+    const stories = new Map(loadBundledStories().map(({ story }) => [story.chapter, story]));
     this.book = new QuestBook(this.defs, this.slice(), {
       get flags() {
         return ctx.state.mutable.flags;
@@ -171,6 +173,15 @@ class QuestRuntime {
       emit: (n, p) => ctx.events.emit(n, p),
       now: () => ctx.state.state.meta.playSeconds,
       rng: Math.random,
+      hasCalmed: (animal) => animal === 'cassowary' && ctx.state.state.systems.menagerie?.calmed?.includes('kasuar') === true,
+      takenPickups: () => ctx.state.state.systems.progression?.taken ?? [],
+      sideClosed: (id) => {
+        const story = ctx.state.state.systems.story;
+        return sideQuestClosed(stories.get(story?.chapter ?? ''), story?.beat ?? null, id);
+      },
+      canOfferAtNpc: (npc, chapter) => {
+        return giverPlacedIn(ctx.state.state.systems.npc?.placed?.[npc], chapter);
+      },
     });
     this.book.onChange = (why) => self.changed(why);
 
@@ -199,15 +210,16 @@ class QuestRuntime {
         else if (op === 'start') this.book.accept(id);
         else if (op === 'progress' && objective) this.book.progress(id, objective, n ?? 1, true);
         else if (op === 'complete') this.book.complete(id, true);
-        else if (op === 'fail') this.book.cutoff(id);
+        else if (op === 'fail') this.book.close(id);
         else if (op === 'reset') this.book.reset(id);
       }),
       ev.on('quest:accept', ({ id }) => this.book.accept(id)),
       ev.on('quest:decline', () => (this.dirty = true)),
       ev.on('quest:told', ({ id }) => this.book.told(id)),
       ev.on('quest:turnin', ({ id }) => this.book.complete(id)),
-      ev.on('story:chapter', ({ id }) => {
+      ev.on('story:chapter', ({ id, replay }) => {
         this.availIn = 0;
+        this.book.startChapter(id, replay);
         this.book.dropEarlier(id);
         // the main quest on offer is the chapter's (renderTracker)
         this.dirty = true;
@@ -217,6 +229,7 @@ class QuestRuntime {
         this.markIn = 0;
         this.dirty = true;
       }),
+      ev.on('story:beat', () => (this.availIn = 0)),
       ev.on('level:up', () => (this.availIn = 0)),
       ev.on('chronik:open', () => openPausePage(ctx.ui.modals, 'codex')),
       ev.on('game:start', ({ resumed }) => {
@@ -311,6 +324,7 @@ class QuestRuntime {
     this.restoring = true;
     try {
       this.settleKnown();
+      this.book.reconcileDeadlines(this.chapter());
     } finally {
       this.restoring = false;
     }
@@ -374,7 +388,7 @@ class QuestRuntime {
     acceptSound(this.ctx.audio);
     // The banner waits until the payout notice is gone.
     const first = q.objectives.find((o) => !o.optional && !o.hidden && !(o.after ?? []).length);
-    const xp = q.rewards?.xp ?? 0;
+    const xp = this.book.slice.replay?.quests[id] ? 0 : q.rewards?.xp ?? 0;
     const sub = [first?.text_de, xp > 0 ? t('quest.xp', { n: xp }) : ''].filter(Boolean).join(' · ');
     this.bannerQ.push(() => {
       // A saved calm can finish the quest on acceptance: no "Nebenaufgabe" banner after its payout.
@@ -459,7 +473,7 @@ class QuestRuntime {
   card(id: string, turnin = false): QuestCard | undefined {
     const q = this.defs.get(id);
     if (!q) return undefined;
-    const r = q.rewards ?? {};
+    const r = this.book.slice.replay?.quests[id] ? {} : q.rewards ?? {};
     const facts = new Set([...(q.history ?? []).map((l) => l.fact).filter((f): f is string => !!f), ...(r.codex ?? [])]);
     const g = giverOf(q);
     return {

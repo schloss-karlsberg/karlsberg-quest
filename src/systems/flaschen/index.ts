@@ -348,6 +348,7 @@ class Flaschen {
     this.slice.dropped.push(id);
     const l = this.live.get(id);
     if (l) l.vy = 0.6;
+    this.ctx.save.autosave('flaschen-drop', true);
   }
 
   pick(id: string): boolean {
@@ -362,9 +363,9 @@ class Flaschen {
     clink(ctx.audio, 0, 1);
     ctx.ui.toast(FLASCHEN_DE.toast(n, FLASCHEN_TOTAL), 2600);
     if (n === 1) ctx.ui.hud.subtitle(null, FLASCHEN_DE.card, 5200);
-    ctx.events.emit('flaschen:found', { id, count: n, total: FLASCHEN_TOTAL });
     this.milestones(s);
-    ctx.save.autosave('flaschen');
+    ctx.events.emit('flaschen:found', { id, count: n, total: FLASCHEN_TOTAL });
+    ctx.save.autosave('flaschen', true);
     return true;
   }
 
@@ -379,20 +380,27 @@ class Flaschen {
     if (s.era !== 'today' && !this.slice.said.includes('past')) this.say('past', 'laub', FLASCHEN_DE.laub1789);
     if (n >= MILESTONES.marlene) this.say('marlene', 'marlene', FLASCHEN_DE.marlene);
     if (n >= MILESTONES.laub) this.say('laub', 'laub', FLASCHEN_DE.laub);
-    if (n >= MILESTONES.all && !this.slice.said.includes('all')) {
-      this.slice.said.push('all');
-      this.applyCosmetics();
-      this.ctx.ui.toast(FLASCHEN_DE.all, 5000);
-      const facts = this.ctx.state.mutable.codex.facts;
-      if (!facts.includes('cx.47')) {
-        facts.push('cx.47');
-        this.ctx.events.emit('codex:unlocked', { factId: 'cx.47' });
-      }
+    if (n >= MILESTONES.all) {
+      const first = !this.slice.said.includes('all');
+      this.restoreReward();
+      if (first) this.ctx.ui.toast(FLASCHEN_DE.all, 5000);
+    }
+  }
+
+  restoreReward(): void {
+    const found = new Set(this.slice.found);
+    const complete = FLASCHEN.every((spot) => found.has(spot.id));
+    if (complete && !this.slice.said.includes('all')) this.slice.said.push('all');
+    this.applyCosmetics();
+    const facts = this.ctx.state.mutable.codex.facts;
+    if (complete && !facts.includes('cx.47')) {
+      facts.push('cx.47');
+      this.ctx.events.emit('codex:unlocked', { factId: 'cx.47' });
     }
   }
 
   /** The lantern glass follows the reward; the avatar (src/player/avatar.ts) listens for the event. */
-  applyCosmetics(): void {
+  private applyCosmetics(): void {
     cosmetics.lanternGlass = this.slice.said.includes('all') ? FLASCHENGRUEN : null;
     this.ctx.events.emit('player:lantern-tint', { hex: cosmetics.lanternGlass });
   }
@@ -471,7 +479,7 @@ class Flaschen {
     const reload = (): void => {
       this.slice = this.loadSlice();
       this.dropAll();
-      this.applyCosmetics();
+      this.restoreReward();
     };
     this.offs.push(ev.on('game:start', reload), ev.on('save:loaded', reload));
     this.offs.push(this.ctx.state.subscribe((_s, reason) => {
@@ -558,7 +566,7 @@ export default defineSystem({
     sys = new Flaschen(ctx);
     registerEraMaterials('flaschen.bottle', '*', () => [buildBottle(true, 0).group]);
     sys.wire();
-    sys.applyCosmetics();
+    sys.restoreReward();
     hooks = sys.hooks();
     addPageSection({ id: 'flaschen', page: 'sets', order: 10, render: () => sys?.renderRow() ?? null });
   },

@@ -13,8 +13,15 @@ import { itemDef } from '../src/rpg/items';
 import type { EnemyGroupState, FlagValue, QuestDef, QuestFile } from '../src/rpg/types';
 import { remaining, upsertGroup } from '../src/systems/combat/rules';
 import type { MenagerieSlice } from '../src/systems/menagerie';
-import { questsInPlay } from '../src/systems/quests/data';
+import { giverPlacedIn, questsInPlay, sideQuestClosed } from '../src/systems/quests/data';
 import { QuestBook, type QuestDefIn, type QuestEnv, availableHolds, createQuestSlice, normaliseSlice, seededRng, spawnGroup, turninOf } from '../src/systems/quests/logic';
+import type { StoryFile } from '../src/systems/story/types';
+import k1Quests from '../content/quests/01-kapitel-1.quests.json';
+import k2Quests from '../content/quests/02-kapitel-2.quests.json';
+import k3Quests from '../content/quests/03-kapitel-3.quests.json';
+import k4Quests from '../content/quests/04-kapitel-4.quests.json';
+import k3Story from '../content/story/03-kapitel-3.story.json';
+import k4Story from '../content/story/04-kapitel-4.story.json';
 import { ProgressionCore, createProgressionSlice } from '../src/systems/progression/logic';
 
 const testFile = JSON.parse(readFileSync(new URL('../content/quests/99-test.quests.json', import.meta.url), 'utf8')) as QuestFile;
@@ -285,6 +292,179 @@ describe('Chapter 1 save recovery', () => {
     expect(b.complete(quest)?.items).toEqual([{ item: 'item.charm.feder', count: 1 }]);
     expect(b.complete(quest)).toBeNull();
     expect(e.log.filter((x) => x.n === 'item:grant')).toHaveLength(1);
+  });
+});
+
+describe('optional progress across chapter windows and saves', () => {
+  it('normalises a saved replay attempt and drops a corrupt one', () => {
+    const ok = normaliseSlice({ quests: {}, replay: { chapter: 'k3', quests: { a: { state: 'hidden' }, b: { state: 'bogus' } } } } as never);
+    expect(ok.replay?.quests).toEqual({ a: { state: 'hidden', counts: {}, t: 0 } });
+    expect(normaliseSlice({ quests: {}, replay: { chapter: 3, quests: [] } } as never).replay).toBeUndefined();
+  });
+
+  it('accepts a giver placed with a sub-chapter of the running chapter (Hanne in the garden, k3g)', () => {
+    expect(giverPlacedIn({ chapter: 'k3g' }, 'k3')).toBe(true);
+    expect(giverPlacedIn({ chapter: 'k3' }, 'k3')).toBe(true);
+    expect(giverPlacedIn({}, 'k3')).toBe(true);
+    expect(giverPlacedIn({ chapter: 'k2' }, 'k3')).toBe(false);
+    expect(giverPlacedIn(undefined, 'k3')).toBe(false);
+  });
+
+  it('credits the already-homed Karlslust cassowary after accepting the gardener’s quest', () => {
+    const state = createInitialState();
+    state.systems.menagerie = { animals: [], calmed: ['kasuar'] };
+    const saved = deserializeState(serializeState(state));
+    const { b, e, of } = book((k1Quests as QuestFile).quests, 'k1');
+    const id = 'q.k1.kasuar';
+    Object.assign(e, { hasCalmed: (animal: string) => animal === 'cassowary' && saved.systems.menagerie?.calmed?.includes('kasuar') });
+    b.complete('q.k1.lohn', true);
+    b.offerAvailable('k1', '1789');
+    expect(b.accept(id)).toBe(true);
+    b.settleKnown(() => false);
+    expect(b.state(id)).toBe('ready');
+    expect(b.complete(id)).not.toBeNull();
+    b.settleKnown(() => false);
+    expect(of('quest:completed').filter((event) => event.id === id)).toHaveLength(1);
+  });
+
+  it('does not restart the Graben quest or keep its stale hint after the K4 deadline', () => {
+    const { b, e } = book((k4Quests as QuestFile).quests, 'k4');
+    let beat = 'k4_14';
+    e.sideClosed = (id) => sideQuestClosed(k4Story as StoryFile, beat, id);
+    b.complete('q.k4.steinplatz', true);
+    expect(b.offerAvailable('k4', 'today')).not.toContain('q.k4.graeben');
+    expect(b.state('q.k4.graeben')).toBe('hidden');
+    beat = 'k4_7';
+    expect(b.offerAvailable('k4', '1796')).toContain('q.k4.graeben');
+    expect(b.tracked()).toContain('q.k4.graeben');
+    beat = 'k4_15';
+    b.reconcileDeadlines('k4');
+    expect(b.state('q.k4.graeben')).toBe('failed');
+    expect(b.tracked()).not.toContain('q.k4.graeben');
+  });
+
+  it('uses Peter’s earlier departure and preserves bonus XP across repeated attempts', () => {
+    const chair = 'q.k3.lehnstuhl';
+    expect(sideQuestClosed(k3Story as StoryFile, 'k3_2', chair)).toBe(false);
+    expect(sideQuestClosed(k3Story as StoryFile, 'k3_3', chair)).toBe(true);
+    expect(sideQuestClosed(k3Story as StoryFile, 'k3_3', 'q.k3.kabinett')).toBe(false);
+    expect(sideQuestClosed(k4Story as StoryFile, 'k4_9', 'q.k4.pacht')).toBe(true);
+    const checkpoint = book((k3Quests as QuestFile).quests, 'k3');
+    checkpoint.b.accept(chair);
+    checkpoint.b.close(chair);
+    checkpoint.e.canOfferAtNpc = () => false;
+    expect(checkpoint.b.offerAvailable('k3', '1793-07')).not.toContain(chair);
+    checkpoint.e.canOfferAtNpc = (npc) => npc === 'peter';
+    expect(checkpoint.b.offerAvailable('k3', '1793-07')).toContain(chair);
+    const { b, of } = book((k4Quests as QuestFile).quests, 'k4');
+    const id = 'q.k4.zeichen';
+    b.accept(id);
+    b.progress(id, 'eins');
+    b.close(id);
+    b.offer(id);
+    b.close(id);
+    b.offer(id);
+    b.accept(id);
+    expect(b.progress(id, 'eins')).toBe(false);
+    expect(of('xp:grant')).toHaveLength(1);
+  });
+
+  it('offers a missed Bilderkisten quest again when replaying its original chapter', () => {
+    const { b } = book((k2Quests as QuestFile).quests, 'k2');
+    const id = 'q.k2.kisten';
+    b.complete('q.k2.spur', true);
+    b.offerAvailable('k2', '1793-02');
+    expect(b.accept(id)).toBe(true);
+    b.fail(id, 'chapter');
+    expect(b.offerAvailable('k3', '1793-07')).not.toContain(id);
+    expect(b.offerAvailable('k2', '1793-02')).toContain(id);
+    expect(b.state(id)).toBe('offered');
+  });
+
+  it('recovers the already-taken Bilderkiste in a replay save with reset objective counts', () => {
+    const id = 'q.k2.kisten';
+    const item = 'item.k2.kiste';
+    const { b, e } = book((k2Quests as QuestFile).quests, 'k2');
+    const state = createInitialState();
+    b.accept(id);
+    state.systems.quests = b.slice;
+    state.systems.progression = { ...createProgressionSlice(), taken: [`${id}.kisten.0`, 'another.quest.pickup'], inventory: { [item]: 1 } };
+    const afterLoad = deserializeState(serializeState(state));
+    b.slice = afterLoad.systems.quests!;
+    e.takenPickups = () => afterLoad.systems.progression!.taken;
+    b.settleKnown(() => false);
+    b.settleKnown(() => false);
+    expect(b.count(id, 'kisten')).toBe(1);
+    for (let index = 0; index < 3; index++) b.handle('item:pickup', { item, count: 1 });
+    for (let index = 0; index < 4; index++) kill(b, { quest: id, objective: 'hunde', kind: 'streuner' });
+    expect(b.state(id)).toBe('ready');
+  });
+
+  it('recovers a taken Pacht slip when a retry reuses the enemy drop ID after reload', () => {
+    const id = 'q.k4.pacht';
+    const { b, e, of } = book((k4Quests as QuestFile).quests, 'k4');
+    let saved = createInitialState();
+    saved.systems.progression = createProgressionSlice();
+    const pickup = new ProgressionCore(() => saved.systems.progression!, {
+      emit: (name, payload) => { b.handle(name, payload); },
+      item: (item) => (k4Quests as QuestFile).items?.find((entry) => entry.id === item),
+      setMembers: () => [],
+      statOptions: () => ({}),
+      setLevelFlag: () => {},
+    });
+    const emit = e.emit;
+    e.emit = (name, payload) => {
+      if (name === 'loot:place') pickup.place(payload as GameEvents['loot:place']);
+      if (name === 'loot:clear') pickup.clear(payload as GameEvents['loot:clear']);
+      emit(name, payload);
+    };
+    e.takenPickups = () => saved.systems.progression!.taken;
+    const defeat = (index: number) => {
+      const enemyId = `${id}.fresser.${index}#0`;
+      kill(b, { id: enemyId, quest: id, objective: 'fresser', kind: 'steinfresser', era: '1796' });
+      return of('loot:place').at(-1)!.id as string;
+    };
+    b.complete('q.k4.baumagazin', true);
+    b.offerAvailable('k4', '1796');
+    expect(b.accept(id)).toBe(true);
+    const first = defeat(0);
+    expect(pickup.take(first)).toBe(1);
+    b.close(id);
+    const taken = saved.systems.progression.taken;
+    taken.push(first, 'q.k3.kabinett.zettel.drop.other', `${id}.zettel-extra.drop.other`);
+    saved.systems.quests = b.slice;
+    saved = deserializeState(serializeState(saved));
+    b.slice = saved.systems.quests!;
+    expect(b.offerAvailable('k4', '1796')).toContain(id);
+    expect(b.accept(id)).toBe(true);
+    b.settleKnown(() => false);
+    b.settleKnown(() => false);
+    expect(b.count(id, 'zettel')).toBe(1);
+    expect(pickup.take(defeat(0))).toBe(0);
+    expect(pickup.take(defeat(1))).toBe(1);
+    expect(pickup.take(defeat(2))).toBe(1);
+    expect(b.count(id, 'fresser')).toBe(3);
+    expect(b.count(id, 'zettel')).toBe(3);
+    expect(b.state(id)).toBe('ready');
+  });
+
+  it('keeps earned main-quest bonuses once across repeated K3 attempts', () => {
+    const id = 'q.k3.buch';
+    const { b, e, of } = book((k3Quests as QuestFile).quests, 'k3');
+    b.accept(id);
+    b.progress(id, 'koenig');
+    b.complete(id, true);
+    b.startChapter('k3', [id]);
+    expect(e.flags[`quest.${id}`]).toBe('hidden');
+    expect(b.accept(id)).toBe(true);
+    expect(b.progress(id, 'koenig')).toBe(false);
+    expect(b.progress(id, 'messen')).toBe(true);
+    b.startChapter('k4');
+    expect(e.flags[`quest.${id}`]).toBe('done');
+    b.startChapter('k3', [id]);
+    expect(b.accept(id)).toBe(true);
+    expect(b.progress(id, 'messen')).toBe(false);
+    expect(of('xp:grant').map(({ reason }) => reason)).toEqual([`quest:${id}:koenig`, `quest:${id}`, `quest:${id}:messen`]);
   });
 });
 

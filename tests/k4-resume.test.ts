@@ -69,7 +69,7 @@ function play(storage = new MemoryStorage(), story = chapter as StoryFile) {
       case 'quest':
         if (action.op === 'start') book.accept(action.id);
         if (action.op === 'progress' && action.objective) book.progress(action.id, action.objective, action.n, true);
-        if (action.op === 'fail') book.cutoff(action.id);
+        if (action.op === 'fail') book.close(action.id);
         break;
       case 'flag':
         for (const [key, value] of Object.entries(action.set)) {
