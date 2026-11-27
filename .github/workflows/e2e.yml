@@ -92,6 +92,15 @@ jobs:
           KQ_E2E_CAMPAIGN: ${{ matrix.campaign && '1' || '0' }}
         run: |
           printf '%s\n' "$SPEC_FILES" > "$RUNNER_TEMP/e2e-specs.txt"
+          # Resource trace: hosted runners have been lost mid-run ("shutdown signal"); log memory and
+          # the biggest processes every 20 s so the cause shows up in the job log.
+          ( while true; do
+              echo "::group::resources $(date -u +%H:%M:%S)"
+              free -m | sed -n '1,3p'; uptime
+              ps -eo rss=,nlwp=,comm= --sort=-rss | head -5 | awk '{printf "%7.0f MB %5d thr %s\n", $1/1024, $2, $3}'
+              echo "::endgroup::"
+              sleep 20
+            done ) &
           pnpm exec playwright test --test-list "$RUNNER_TEMP/e2e-specs.txt" --workers=1
       - uses: actions/upload-artifact@v4
         if: failure()
