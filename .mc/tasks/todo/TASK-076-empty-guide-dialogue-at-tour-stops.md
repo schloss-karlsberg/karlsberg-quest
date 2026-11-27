@@ -85,9 +85,9 @@ who skipped the talk at the car park does not get the car-park talk at the Felse
 - [x] 2. npc system: `update()` offers E only to NPCs with something to say; `open()` guard; cached talk lines.
 - [x] 3. Tour content: stop-1 greetings need `tour.station1.ready`; t2's `exit` clears it; update `tests/tour-slice.test.ts`.
 - [x] 4. Content check `tests/npc-talk-waits.test.ts`: no beat waits for a talk with an NPC that has nothing to say then.
-- [ ] 5. e2e test in `e2e/tour-slice.spec.ts` (t2, t6, t13, t15, forced open).
+- [x] 5. e2e test in `e2e/tour-slice.spec.ts` (t2, t6, t13, t15, forced open).
 - [x] 6. Docs (`docs/ARCHITECTURE.md` npc note).
-- [ ] 7. Gates, e2e runs, after screenshots.
+- [x] 7. Gates, e2e runs, after screenshots.
 
 **Test plan:**
 - Unit: `pnpm exec vitest run tests/story-ext.test.ts tests/tour-slice.test.ts tests/npc-talk-waits.test.ts`.
@@ -118,3 +118,5 @@ because at the stops the guide is already talking in the speech box.
 - 2026-11-27: step 3 done - the three stop-1 greetings in `content/packs/tour.pack.json` need `tour.station1.ready`; t2's `exit` clears it. `tests/tour-slice.test.ts`: no car-park talk without the flag, the flag is gone after t2. `pnpm validate` green (28 warnings, none new).
 - 2026-11-27: step 4 done - `tests/npc-talk-waits.test.ts` (named so it does not mix with the existing `npc-talk-hint`): every beat `complete` and every `on[].when` (story and beat level) of the tour and chapters 1-4 that waits for a talk (`talked`, a closed `npc:conversation`) has someone who offers E then (`offersTalk` with the flags the beat's `enter` sets); an `any` with a timer or another way out does not block; a wait for one topic is skipped (whenever the topic is in the menu, E is offered). Plan updated: the file name.
 - 2026-11-27: step 6 done - `docs/ARCHITECTURE.md` (npc: E only with something to say, the silent-line guard, the talk-wait check), a row in `docs/ACTION-RPG.md` §14 and in the `docs/PRD.md` changelog.
+- 2026-11-27: step 5 done - new test in `e2e/tour-slice.spec.ts` (t2 talk as before; no prompt and no conversation next to the guide at t6, t13, t15; a forced open says the silent line): green in 3.0 min, and red on the old npc code (at „no E after the car-park talk“). It counts only the visible prompt (`.kq-prompt.show`): the HUD keeps the last text in the hidden element.
+- 2026-11-27: step 7 done, gates green - `pnpm typecheck`, `pnpm validate` (28 warnings, none new), `pnpm build` green. `pnpm test`: 2,365 passed; 6 files fail locally: `content-packs`, `save-fuzz`, `voice-moss`, `voice-assets`, `voice-service` (the known Windows-only ones, also on untouched `main`) and `i18n-text` (its 5 s timeout on a cold start; alone with a longer timeout it passes, 6/6). e2e `--workers=1`: `npc.spec.ts` 2/2, `tour-slice.spec.ts` 2/3 (the new test and the landscape-phone test green), `integration.spec.ts` 0/2. The three red ones fail on untouched `main` too, in a `main` worktree on this machine: integration „the tour and K1“ at the chapter card „Die Führung“ (its 5.5 s wall-clock cap under SwiftShader; `main` twice at the same line), integration „round 2“ waiting for Hanne's fade-in (`alpha > 0.95`, same line on `main`; `near` is still „hanne“ on this branch), and the full tour run (the 10-minute test timeout, on `main` too). After screenshots (real GPU) in `test-results/contribute/TASK-076/`: no talk prompt and no box at t6 and t13; the t2 talk unchanged.
