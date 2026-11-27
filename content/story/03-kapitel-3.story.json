@@ -265,7 +265,7 @@
           "id": "am-anker",
           "when": { "enter": { "x": 1210, "z": -1114, "r": 35, "era": "today" } },
           "repeat": true,
-          "do": [{ "do": "prompt", "key": "Q", "text": "Zeitwechsel: 28. Juli 1793" }]
+          "do": [{ "do": "prompt", "key": "Q", "text": "Zeitsprung: 28. Juli 1793" }]
         },
         {
           "id": "weg-vom-anker",
@@ -463,7 +463,7 @@
         {
           "do": "objective",
           "id": "k3.hinaus",
-          "text": "Hinaus in den Garten! Die Prunktreppe hinunter, solange sie hält, oder die schmale Dienertreppe Süd. Rennen (Shift) ist kürzer im Rauch",
+          "text": "Hinaus in den Garten! Nimm die Prunktreppe, solange sie hält, oder die schmale südliche Dienertreppe. Halte die Umschalttaste zum Rennen. So bist du kürzer im Rauch.",
           "x": 1285,
           "z": -1150
         },

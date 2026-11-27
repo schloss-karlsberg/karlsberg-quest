@@ -342,14 +342,21 @@ export class Input {
   isDown(a: Action, raw = false): boolean {
     if (!this.enabled) return false;
     if (!raw && this.muted.has(a)) return false;
-    return this.down.has(virtualCode(a)) || this.bindings[a].some((c) => this.down.has(c));
+    return this.matches(a, this.down);
   }
 
   /** True if the action was pressed since the last `endStep()`. */
   wasPressed(a: Action, raw = false): boolean {
     if (!this.enabled && a !== 'pause') return false;
     if (!raw && this.muted.has(a)) return false;
-    return this.pressedCodes.has(virtualCode(a)) || this.bindings[a].some((c) => this.pressedCodes.has(c));
+    return this.matches(a, this.pressedCodes);
+  }
+
+  private matches(action: Action, codes: ReadonlySet<string>): boolean {
+    if (codes.size === 0) return false;
+    if (codes.has(virtualCode(action))) return true;
+    for (const code of this.bindings[action]) if (codes.has(code)) return true;
+    return false;
   }
 
   /** A focus change dropped the held action before this step could see a normal release. */
@@ -426,9 +433,11 @@ export class Input {
   }
 }
 
-/** Binding-independent code of an action pressed by the touch layer (`Input.press`). */
+const virtualCodes = Object.fromEntries(Object.keys(DEFAULT_BINDINGS).map((action) => [action, `@${action}`])) as Record<Action, string>;
+
+/** Binding-independent code shared by the touch layer and fixed-step polls. */
 export function virtualCode(a: Action): string {
-  return `@${a}`;
+  return virtualCodes[a];
 }
 
 export function isTyping(t: EventTarget | null): boolean {

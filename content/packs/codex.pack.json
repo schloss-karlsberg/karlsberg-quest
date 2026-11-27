@@ -818,7 +818,7 @@
       "sources": [
         {
           "url": "https://www.shop.lvgl.saarland.de/",
-          "label": "LVGL Saarland: Geobasisdaten (DGM1 2025, Open Data)"
+          "label": "LVGL Saarland: Geobasisdaten (DGM1 2025, offene Daten)"
         },
         {
           "url": "https://www.shop.lvgl.saarland.de/",
@@ -1057,7 +1057,7 @@
     {
       "id": "cx.44",
       "title_de": "Wer hinauf durfte",
-      "text_de": "Den Karlsberg sah kaum ein Fremder von innen. Schon in den ersten Jahren auf dem Berg nahm der Herzog den Platzmangel als Vorwand, niemanden vorzulassen: „Niemand wagte sich zu zeigen, ohne gerufen zu sein oder die Erlaubnis dazu erhalten zu haben“, schreibt Mannlich. Ein Reisender, der 1792 hinauf wollte, brauchte eine ausdrückliche Erlaubnis des Herzogs, und die musste jeden Begleiter mit Namen nennen. Nur der Herzog fuhr hinauf, alle anderen gingen zu Fuß. Die Eingänge des Schlosses bewachten, so schreibt der Herausgeber von Mannlichs Erinnerungen 1910, hundert Gardisten.",
+      "text_de": "Kaum ein Fremder sah das Schloss von innen. Schon in den ersten Jahren auf dem Berg nahm der Herzog den Platzmangel als Vorwand, niemanden vorzulassen: „Niemand wagte sich zu zeigen, ohne gerufen zu sein oder die Erlaubnis dazu erhalten zu haben“, schreibt Mannlich. Ein Reisender, der 1792 hinauf wollte, brauchte eine ausdrückliche Erlaubnis des Herzogs, und die musste jeden Begleiter mit Namen nennen. Nur der Herzog fuhr hinauf, alle anderen gingen zu Fuß. Die Eingänge des Schlosses bewachten, so schreibt der Herausgeber von Mannlichs Erinnerungen 1910, hundert Gardisten.",
       "confidence": "D",
       "fiction": false,
       "sources": [
@@ -1115,7 +1115,7 @@
     {
       "id": "cx.47",
       "title_de": "Treibgut",
-      "text_de": "Erfunden: Seit Sie die Quelle berührt haben, spült sie kleine Fläschchen an Orte, wo jemand gern war, in jedes Jahr, auch in Jahre, in die sie nicht gehören. Laub, 1789: „Das gehört nicht in dieses Jahr.“ Vierundzwanzig haben Sie aufgelesen. Der Wald ist kein Keller.",
+      "text_de": "Erfunden: Seit du die Quelle berührt hast, spült sie kleine Fläschchen an Orte, an denen jemand gern war. Die Fläschchen tauchen auch in Jahren auf, in die sie nicht gehören. Laub, 1789: „Das gehört nicht in dieses Jahr.“ Vierundzwanzig hast du aufgelesen. Der Wald ist kein Keller.",
       "confidence": "D",
       "fiction": true,
       "sources": [],

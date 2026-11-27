@@ -264,6 +264,7 @@ did not move on).
 
 - Combat is on in every era, but **enemies only exist where content spawns them** (quest objectives,
   story `enemy` actions, ambient groups declared by chapters). The present (today) is calm by default.
+  Removing an encounter also clears its airborne attacks and their landing warnings.
 - **Safe zones** (no spawns, attacks do nothing, enemies leash out after 4.5 s): the home at the Karlsbergquelle (r 40 m; until tour WP-01 the field station),
   memorials (`memorial:set`), conversations, NPC talk radius (6 m), and `flags['combat.disabled']`
   (story sets it, e.g. the finale W8 and the endings).
@@ -396,7 +397,10 @@ A group of **three or more** in the past (not today, not a boss) is a pack:
 - **Era hazards** (`hazardOf` / `HAZARD`): in a pack fight, every 6.5 s: **1793-07 Glut** — two 2.3 m
   rings fill for 1.4 s with embers falling into them, then burn (10 to you, 30 % of their HP to
   enemies, elites half); **1796 Steinschlag** — one 2.1 m ring for 1.5 s, a dressed block falls onto
-  it (14, 45 %). Rings land near you and near the pack; enemies are fair game (lure them in).
+  it (14, 45 %). The second fire ring targets an enemy from the triggering pack. Enemies from
+  other packs can also take damage if they enter a ring.
+  Removing the pack that triggered a hazard cancels its warning rings, any falling stone and the
+  pending damage. Other encounters keep their attacks.
 
 **Balance (`tests/combat-balance.test.ts`, bots in `tests/combat-bots.ts`):** per chapter, at the
 intended build (§6), a standard encounter (prologue 4 Nebelinge today; K1 3 Streuner 1789; K2 4
@@ -946,6 +950,16 @@ Laub's reinforcement warning and the spawn wait for the return to 1789. If the s
 exists, combat restores its survivors. A saved second-wave clear advances to „Zum Wasser“. Combat
 holds autosaves until it has dispatched the tick's kill events and applied their XP and loot rewards.
 
+**Continue and replay (TASK-041).** Saves already at Ankunft count the spring prerequisite even
+if they predate the touch objective. A combat autosave takes the full kill batch, including quest
+credit, drops and the current HP, stamina and Bannlicht. Older K1 saves recover missing quest
+counts from their own defeated groups. A missing Lohnzettel appears at the Schuldbuch's spawn. If an
+old autosave captured only the boss's first loot drop, Continue also restores the rest of the loot,
+kill XP and bestiary credit once. The gardener accepts the Kasuar already led home, even after K1 cleared
+its spawn record, and pays on turn-in. Starting K1 again through Kapitel clears the old Die Enge packs and keeps quest rewards.
+An older replay saved before Die Enge also clears leftover packs, including a lone first pack.
+Saves after the encounter keep their recorded clears.
+
 | Id | Kind | Giver → turn-in | Objectives (place) | Enemies | Rewards | History taught |
 | --- | --- | --- | --- | --- | --- | --- |
 | `q.k1.ankunft` "Zu Fuß, außer einem" | main | Laub → auto | E at the Karlsbergquelle (`quelle`, event `quelle:touch`); on foot up to the Ehrenhof gate in 1789 (`wechsel`, id kept for saves, 1200/−1116 r 14); the guard's echo (`clue.k1.wache`); the wings (`clue.k1.fluegel`) | — | 60 XP | cx.11 Zu Fuß, außer einem |
@@ -972,6 +986,11 @@ As built (`content/quests/02-kapitel-2.quests.json`, `scripts/content-build/kapi
 | `q.k2.bodenbrett` "Das Bodenbrett" | side | Laub (after `q.k2.wachbuch`) → auto | **2 Irrlichter** in the gallery (1205/−1205); watch Soll's candle (`clue.k2.soll`) | irrlicht ×2 | 80 XP | cx.25, cx.26 |
 | `q.k2.lichter` "Lichter im Wald" | side | Laub (after `q.k2.wachbuch`) → Laub | three lights on the slope, each two Irrlichter; the kiln (`clue.k2.koehler`) | irrlicht ×6 | 120 XP, Kalkstaub ×3; stance `flag.k2_lichter` (kalkoefen / fackeln / wachfeuer / laternen / offen) | cx.19, rm.03 |
 | `q.k2.kisten` "Bepackte Wagen" | side | the servant (`diener`, 1268/−950) → servant (after `q.k2.spur`) | 4 crates for Mannheim in the snow; **4 Streuner** sniff at them | streuner ×4 | 110 XP, Riechsalz ×2 | cx.20 |
+
+The Landremont echo and the Pikeur fight can happen in either order. Hearing the echo after the
+fight credits the recorded clear of `k2.pikeur` and opens the return to the Quelle. Loading a stalled
+save applies the same credit. If the player is already in the present, the quest also credits the
+return. The combat payout belongs to the original fight.
 
 ### 11.3 Kapitel 3 "Die Nacht" (28 Jul 1793, afternoon → fire) — tier 3, levels 8–10
 
@@ -1070,6 +1089,9 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Era hazards outlive their pack or target a different pack (TASK-028, 2026-11-26) | The second fire ring targets a member of the triggering pack. Despawning or dematerialising the responsible pack cancels its hazards. Regression tests cover the impact window for falling stones and both removal orders for fire rings. |
+| Hounds follow the Warner’s prints after player prints expire (TASK-028, 2026-11-26) | Patrol and search use the same lookup for player prints, skipping story trails. |
+| Attacks linger after an encounter disappears (TASK-028, 2026-11-26) | Removing an encounter clears its airborne attacks with its warnings. The regression tests also cover reloading earned kills and reached boss phases, restoring Bannlicht charges and capping healing. |
 | The Wegweiser can draw through a wall or miss a reachable detour (TASK-026, 2026-11-26) | The solver checks grid edges during search and can try more than one approach to a free off-grid goal. It uses player clearance (less a little for a player pressed against a wall) and the wading limit to leave the start, keeps the quick straight route when clear, and stops at a reachable approach when it cannot finish. An enclosed start with no reachable leg hides the trail. |
 | Legacy garden saves can have every required objective credited after Continue without a turn-in topic (TASK-037, 2026-11-26) | After restoring counts, Continue marks the quest ready when its required objectives are complete. Hanne then offers the normal turn-in and pays once. Laub's exit lines queue first. The quests start on entry and queue their offers before the autosave. |
 | A Chapter 3 autosave can strand the player before a mandatory quest starts (TASK-037, 2026-11-26) | „Der Festsaal“ starts on entering „Hinauf“, and „Die Hunde los“ starts on entering „Zum Zwinger“, before each beat autosaves. „Hinaus“ also records the room and choice objectives on entry. Continue repairs missing quest progress proven by the saved beat. Hanne and Jost still handle turn-ins and rewards. |
@@ -1106,12 +1128,17 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | A load during a hunt or while collecting can carry an encounter or reward across slots (TASK-058, 2026-11-26) | The incoming slot restores the pack configuration, bottle count, lantern glass and codex receipt. Tests cover partial pickups, a bottle saved mid-fall, and loading a peaceful slot during a capture. |
 | Very large headings in shared links can freeze horizontal look (TASK-060, 2026-11-26) | Wrap the starting heading within one turn before converting it to radians so look input can adjust it. |
 | Invalid shared positions and interrupted gameplay events (TASK-060, 2026-11-26) | Both URL coordinates must be finite before teleporting. Each event observer can fail independently, so later listeners still receive the era change, reward or pause event. |
+| Shader warm-up can upload buffers before the first shift, and a pending title fade can hide the reopened menu (TASK-056, 2026-11-26) | Warm-up uses the shift effect's own geometries so teardown can release their buffers. Returning to the title cancels its pending hide. |
+| Replaying scenes or changing era can accumulate resources (TASK-056, 2026-11-26) | Stage pieces and Festsaal choices dispose their owned render resources. An era change drops retired interior distance records. Teardown clears the stage listeners and the shift's reusable passes. Repeated lifecycle tests check those resource counts. |
+| A display change or a restored GPU context leaves a held view stale (TASK-061, 2026-11-26) | Resize at the current display density and request a frame. Restore the active era's sky, shadows and reflections after context loss. |
 | Player transitions can leave a pending attack, a blocked lens or stale motion (TASK-057 review, 2026-11-26) | Cancel the pending charge when focus drops the held attack, sweep the shoulder from the pivot, clear frozen flight velocity, and snap the avatar to the placement yaw under the travel curtain. |
 | Camera and movement state can carry across focus and placement changes (TASK-057, 2026-11-26) | Drop stale input on pointer-lock loss or blur. Clamp the shoulder offset against a wall on contact. Reset stride and avatar motion at placement boundaries and hold spirit flight during a movement freeze. |
 | Capture and audio work carry across a session change (TASK-054 review, 2026-11-26) | Replacing the session cancels the capture curtain, deferred dialogue and wake teleport. A new idle-bark countdown starts after any load or new game. Voice requests made during playback take priority over background preloads, including during manifest loading. |
 | Dialogue and bark state after load (TASK-054, 2026-11-26) | Loading ends the previous session's clip and clears its waiting subtitles and bark requests. Saved bark cooldowns resume with the loaded clock. When a recording is unavailable at playback time, the subtitle and murmur start immediately and the recording moves to the head of the preload queue. |
 | Fast travel can save the departure pose or leave a curtain on a newly opened game (TASK-030, 2026-11-26) | The autosave captures the arrival pose before the travel pause is released. Loading a slot or starting a game clears the curtain during its fade. |
 | Travel effects can outlast the action that started them (TASK-030, 2026-11-26) | A loaded game cancels pending fast travel. The outdoor sprint boost clears on combat entry. Regression tests also exercise one-time lore XP and the 120-second Wegstein cooldown across a reload. |
+| The Pikeur browser fixture can reset to the Quelle or start the earlier Orangerie echo (TASK-036 review, 2026-11-26) | The fixture jumps to the dam beat before setting the era and position. It records the earlier Orangerie and Fackeln echoes as heard so E starts Landremont after the fight. |
+| An early Pikeur fight stalls Chapter 2 (TASK-036, 2026-11-26) | Once the Landremont echo is complete, the quest credits the saved clear of the named Pikeur encounter during play and on load (§11.2). |
 | The Chapter 4 kennel reminder could highlight a button the player had already used or could no longer see (TASK-035, 2026-11-26) | The reminder follows flight, stance and the lantern. Ending replay refreshes the touch controls once the player is back on foot. |
 | Touch players could stall at the Chapter 4 kennel (TASK-035, 2026-11-26) | Hinlegen and Laterne expose the two finale actions. Hinlegen suffices in one-key mode. Continuing at „Sich stellen“ restores the encounter and the empty-lantern fallback. |
 | A combat autosave records Die Enge kills before their rewards, or Laub warns from the present-day wake point (TASK-038 review, 2026-11-26) | Combat releases the autosave after all rewards from the tick have been applied. The reinforcement reaction waits for 1789. Unit and browser coverage check the survivors' regular and elite XP. |
@@ -1122,12 +1149,16 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | A finished quest can look as if it paid every optional bonus (TASK-047) | In Aufgaben, a bonus objective is checked only if its saved count reached the target, even after turn-in. The journal does not award XP. |
 | Campaign encounter reloads and terrain edges (TASK-048 review, 2026-11-26) | The selected save restores cassowary misses and jaguar flares. Overlapping animals separate on walkable ground. A saved deer follows a valid departure chain, with invalid chains restored as gone. Scripted trails cap sampling along each segment. The Soll reload test rebuilds his placement and verifies single rewards. |
 | Encounters contradict the player's save or tracks (TASK-048, 2026-11-26) | Loading restores permanent calming, not misses/flares from later play. A departing fawn stays with its doe. Overlapping animals split the displacement. Hounds track the player's boots, not the Warner's; a held trail does not extend other prints' lifetimes. |
+| Tour control cues and revision labels (TASK-034 review, 2026-11-26) | The deer hint cues Fotomodus before the camera opens and the shutter afterward. The sprint prompt belongs to the movement stick. The Zeitsprung button has a temporary accessible name for regrouping, and the news footer shares the in-game revision label. The localization test checks visible story prompt fields. |
+| Inconsistent menu and control terminology (TASK-034, 2026-11-26) | Use the [player-facing glossary](design/glossary.md) for save, travel, progression and Codex text. The localization test checks translation tables and the exact story exceptions for former surveyor terminology. |
 | The controls reference can misstate fixed shortcuts and modifier-only bindings (TASK-027 review, 2026-11-26) | Pause shows Escape. A bound Shift key cycles Relief-Blick backward on its own. Printable keys use the keyboard layout when available. The phone row describes the toggle in any era. |
 | The controls reference can become stale after keyboard remapping (TASK-027, 2026-11-26) | Pause → Steuerung shows the current keys, including alternates, unbound actions and feature-added survey tools. It uses the same keyboard-layout labels as the settings editor. |
 | A progression gate can rely on a pickup already taken, a depleted enemy group, or a late reaction (TASK-052, 2026-11-26) | The validator tracks stack-limited pickups and remaining enemies, measures reactions against beat deadlines, and carries forward quest state and rewards through the runtime transition rules. Laub's chapter-three basket cue checks the saved pickup objective before speaking. |
 | An objective can open after its only pickup or event (TASK-052, 2026-11-26) | Content validation checks offers, objective order, item sources and one-shot events against the story. The quest authoring guide describes backfilled objectives. |
 | Separate collection and progression entries crowd Pause (TASK-007, 2026-11-26) | Sammlungen includes the Funde section. I and Pause open Ausrüstung & Talente, with both sections on one scrollable page. The Pause entry counts unspent talent points. |
 | The spring’s general E menu competes with the water interaction (TASK-007, 2026-11-26) | The water uses E or the touch action when the story calls for it. Pause handles saving, chapter replay and collections. Entering the present-day spring ring still heals, refills oil, resets the hunt and enables respec. Q-hold return and the wake spot stay at the spring. |
+| K1 progression on Continue and chapter replay (TASK-041, 2026-11-26) | Restore the arrival prerequisite and recorded combat progress, including a missing Lohnzettel; make kill autosaves coherent, credit the already calmed Kasuar, and separate new Die Enge replays from previous clears. |
+| K1 save recovery review (TASK-041, 2026-11-26) | Remove stale Die Enge groups before the encounter and retain clears after it. Recover the missing Schuldbuch rewards from the old first-drop autosave and capture updated vitals in new kill autosaves. |
 | Following the tour group is dull (TASK-002, 2026-11-25) | 24 chestnuts (`item.kastanie`, kind `collectible`) lie in small clusters along the sections the group walks. Most are 1.5–4 m off the path, a few up to 10 m. None lie near a stop or before the deer. E, walking over one or the touch interact button picks one up, and the feed counts. Gerold, Herr Soll and Gerold again remark on the 1st, 12th and 24th. There is no XP, so collecting never delays the group: Gerold's 25 m wait and the find-the-group help are unchanged. `tests/tour-kastanien.test.ts`, `e2e/kastanien.spec.ts`. |
 | The tour deer are too far to see (TASK-001, 2026-11-25) | Ricke and Kitz graze 36 m below the `reh` stop in haze and cover a few dozen pixels in the normal view. Beat t10 opens with the skippable `reh` shot (fov 40 → 18, Kitz then Ricke). The camera stands 2.5 m ahead of the stop, clear of Gerold and the group, so the shot does not depend on where the player waits. The [C] prompt follows the shot. `e2e/animals.spec.ts` (d) measures the deer's share of the frame. |
 | Hoch first-input payload (TASK-008, slice 4) | The present-day title loads the opening scenery surfaces. The historic palace mesh and six surface pairs stream after play starts. Browser transfer and GPU checks are pending (docs/PERFORMANCE.md §2 and §4). |

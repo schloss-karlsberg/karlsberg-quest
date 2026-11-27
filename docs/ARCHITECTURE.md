@@ -435,7 +435,9 @@ toasts when the slot frees. In free play, Escape or a completed outside touch ta
 through and folds it away after 2.6 s (`DONE_LINGER_MS`). Tests: `tests/cards.test.ts`,
 `e2e/pacing.spec.ts` (one visible notice, modal priority, and two queued clue pages in sequence).
 
-**Title extras** (`src/ui/title.ts`): `titleHooks.extraActions()` returns more main-menu buttons
+**Title screen** (`src/ui/title.ts`): Returning to the menu during its start fade cancels the
+pending hide. Reduced motion hides the menu immediately on start.
+`titleHooks.extraActions()` returns more main-menu buttons
 (`{label, testid, run}`; `run` resolves true to start the game) — the story adds "Ende noch
 einmal wählen" (testid `title-ending-again`) once the auto save's story has an ending and the
 `ending` slot exists.
@@ -664,6 +666,10 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 - `tests/terrain-load.test.ts` uses `serveTerrain()` to serve two compressed grid cells from
   memory. Each layer has distinct values so the test detects swapped eras, incorrect units and
   ground or canopy rasters whose dimensions disagree with the height grid.
+- The render tests run without a GPU. `tests/render-post.test.ts` records the target and clear
+  mode of each draw against real post-processing targets. `tests/render-viewport.test.ts` and
+  `tests/render-context.test.ts` dispatch resize, density and WebGL lifecycle events, including
+  while the view is held. The FX tests inspect the particle geometry submitted to the scene.
 - `tests/player-fixture.ts` supplies a flat `PlayerWorld`, the real `Input` on event targets, and
   an explicit 60 Hz `step()` for the player, touch and avatar tests.
 - `tests/audio-fixture.ts` provides a fake Web Audio context for mixer and story playback tests.
@@ -673,9 +679,14 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 - Pause and journal page tests use `tests/ui-fixture.ts` to run the real renderers and handlers on a
   small in-memory element tree. Assert control state and text there; use Playwright for layout,
   browser focus behaviour and canvas drawing. The fixture does not run timers or animation frames.
+- `tests/disposal-counts.ts` listens for three.js `dispose` events on resources reached by a test.
+  Use it across repeated transitions to check the live count and detect double disposal. Track owned
+  textures and render targets explicitly so shared textures can remain live until their owner exits.
 - Unit (`tests/`): event bus, loop determinism, state/save round trip and throttling, settings,
   system ordering + error isolation, heightfield sampling, decoders (incl. real data), collision,
   forest determinism, validator (good + each failure class), ContentDB.
+- Survey unlocks (`tests/skills-runtime.test.ts`): `setupSkills` uses the real state store, event
+  bus and `CardDirector` with a small DOM stub and explicit frame steps for grants, pause and reload.
 - `tests/control-fixture.ts` records the controls that the settings form and touch overlay build.
   Node tests dispatch events to their handlers by test ID. Playwright covers layout, focus and native pointer capture.
 - Quest, story and Chronik units reuse the existing headless fixtures for quest reloads, chapter
@@ -975,7 +986,9 @@ Round-4 (polish: set dressing) integration rules:
   and at 40 m.
 - **Snow tracks** (`tracks.ts`, `trackVisuals.ts`; 1793-02 or a snowy look, `snow` overrides): boot
   prints on every `player:step`, paw / hoof prints of the pack, instanced decals that fade over
-  240 s. Your trail breaks on water, cobbles / building floors, today's roads and steep rock; the
+  240 s. A story trail can extend the lifetime of its own prints. Ordinary prints expire on
+  schedule even when a story trail passes through the same area. Hounds track player prints only.
+  Your trail breaks on water, cobbles / building floors, today's roads and steep rock; the
   pack follows it print by print (`hunt:tracking {on, why?}`, horn found / lost) but never across a
   break. Crouching / standing over the pack's prints reads them (Spurenleser: kind, number,
   rider, age, direction; tier 2 highlights their routes) → caption + `hunt:read`.
@@ -1031,6 +1044,10 @@ Round-4 (polish: set dressing) integration rules:
   increment `meta.shifts` unless the reason is `caught`. The transition emits `shift:begin` before
   it captures and freezes movement, so the court can release an active escort. The transition
   restores movement before `shift:done`. `scan:mode` 1–3 → scan pulse. Era particles always.
+  increment `meta.shifts` unless the reason is `caught`. `scan:mode` 1–3 → scan pulse. Era particles always.
+  A shift releases its point clouds and streaks at completion. The effect owns its screen passes
+  and shader warm-up samples. Warm-up draws with those same geometries, so effect teardown releases
+  their GPU buffers even when play ends before the first shift.
 - `threat:configure {kind:'fire'|'oblivion'}` → fire schedule over the real rooms (`fire:room`,
   `fire:progress`, smoke meter, `flags['fire.hold']` pauses it) / Steinfraß (`oblivion:progress`,
   pushed back by `clue:found`, `echo:start`, `oblivion:remember {amount?}`); full meter →
@@ -1062,7 +1079,8 @@ Round-4 (polish: set dressing) integration rules:
   the Chronik's registry (`chronik/staging.ts`). Shared bits in `common.ts` (instanced solid
   material with fog, `GlowPoints`, `GradeLoan` for a temporary grade). `end-memories.ts` is used by
   the burn ending (`endings/stage.ts`). Reduced motion / reduced flash honoured per piece. Hooks
-  `kq.stage.active/state/hold/cue/advance/line`.
+  `kq.stage.active/state/hold/cue/advance/line`. Retired pieces release instance buffers as well
+  as their geometry and materials. Director teardown releases the event subscriptions and card hold.
 
 ### chronik (`src/systems/chronik/`) – clues, echoes (the board is gone, D-008)
 - Clue markers + E examine card (`clue:found`, `noun:learned` kept for story conditions but no
@@ -1108,7 +1126,7 @@ Round-4 (polish: set dressing) integration rules:
   tier pips, "Freigeschaltet" stamp, `data-testid=skill-card`), plays the stamp chime, emits
   `skill:unlocked {skill, level}` and lets Laub comment (`dialogue:say`, `skills.laub.<id>.<n>`)
   once `flags['story.laub']` is set (or without a running story). Cards wait while a modal or a
-  story card is open.
+  story card is open. A settled standalone unlock appears once the card director grants the slot.
 - **Free survey**: without a running story (sandbox, `?notitle` tests) every tool is open;
   `?skills=strict` forces gating, `?skills=all` opens everything. Locked keys leave a toast.
 - Survey checks the active scan and map against the incoming game's skills on its first tick.
@@ -1610,7 +1628,9 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   window light `lightmap.ts`, nearest 12 candles/chandeliers) per building and era, built within
   60 m of the player, dropped beyond 85 m. 1789 candle-lit; 1793-02 dark, dust sheets, one candle
   in the Kabinett; 1793-07 looted (bible ch. 3) and burning; 1796 broken masonry, rubble, open
-  sky; today low mossy foundations only (no collision).
+  sky; today low mossy foundations only (no collision). Era changes release the old building
+  meshes, lightmaps and distance records. Festsaal choice replays release each prop geometry and
+  material once and reuse one glint texture until teardown.
 - Medium / high tier: the finishes take the CC0 surface layers (parquet, plaster, boards,
   marble, damask …) and the chandeliers / fauteuils are CC0 models (`Built.models`, instanced
   beside the mesh, dropped with it; candle flames sit at the model's candle tips). The model groups
@@ -2283,6 +2303,9 @@ Each RPG track adds its own subsection here when it fills its system in.
   chapters are reset (chapter jumps; the e2e `test` chapter counts as after the campaign). Side quests the
   player took keep running unless their chapter fails them. The book restores on a state `load`
   too (it fires before `save:loaded`, which reaches the story's resume first).
+- `migrate.ts` completes the Schuldbuch reward batch when deserialisation finds the defeated
+  quest boss and a loot roll saved at its first pickup. The remaining drops use the original roll
+  IDs and positions. XP and bestiary credit are applied before the systems restore their slices.
 - Main quest always visible (playtest round 10, F-30 / F-41, `tests/quests-tracker.test.ts`):
   a running main quest is always in `tracked()` (a lost entry heals on read, `track(id, false)`
   ignores it, Aufgaben shows no toggle for it). `mainOffer(chapter)`: with no main quest
@@ -2338,6 +2361,9 @@ Each RPG track adds its own subsection here when it fills its system in.
 | `strings.ts` | German captions (one per telegraph), boss hints, info lines |
 | `index.ts` | wiring: events in and out (see the diagram above), slice `state.systems.combat` (hp, stamina, bann, groups, deaths), `stats:changed` / `deriveStats` fallback, equip → weapon stage, `item:use` effects, `xp:grant` per kill, camera shake (none with reducedMotion), the boss reveal camera and death slow motion (none with reducedMotion), the lantern flare, death → `player:died` → `player:caught {by:'combat'}` → full heal on `player:teleport` (or after 8 s), heal on `hub:enter` and at the shift anchor; abilities by level (`skillsForLevel`; a new one rides on the level card through the card source `ability`, a toast only if no level card took it within 10 s of calm), keys `skill1–3` (T / Z(Y) / U, input.ts), the Ausfall's push through `player.impulse`; round 6 **camera clearance** (`cameraClearance`, after the reveal camera: when the camera ends up inside a big body's hull — a boss, a Steinfresser, a Foliant — the view eases out along the line from its axis, a little up, ≤ 3 m for a boss (to 1.3 × its hull), never under the ground; the player and the fight are untouched; `kq.combat.view()` reads the pull and each body's dither); `enemy:killed.by` maps the sim's `skill` / `hazard` to `heavy`; no `xp:grant` for called adds |
 
+- The per-step `combat:step` save hold is released only after the step's HP, stamina and
+  Bannlicht are mirrored into the combat slice, so a kill autosave carries the vitals after the
+  kill's XP (a level-up heals). `tests/combat-autosave.test.ts` checks the saved snapshot.
 - **Interact wins LMB**: an attack from the mouse is ignored while any `.kq-prompt` is shown
   (npc / chronik / menagerie); K always swings. Attacks are also blocked while measuring, flying,
   frozen, in a modal or a conversation, and with `flags['combat.disabled']` („Du hebst den Stab nicht.“).

@@ -19,11 +19,15 @@
 import { allOf, isOneOf, numberRecord } from '../../core/saved';
 import type { Era } from '../../core/era';
 import type { GameEvents } from '../../core/events';
-import type { FlagValue, ItemDef, QuestDef, QuestObjective, QuestPlace, QuestProgress, QuestRewards, QuestSlice, QuestState, QuestTopic, GiverMark, SpawnSpec } from '../../rpg/types';
+import type { CombatSlice, EnemyGroupState, FlagValue, ItemDef, QuestDef, QuestObjective, QuestPlace, QuestProgress, QuestRewards, QuestSlice, QuestState, QuestTopic, GiverMark, ProgressionSlice, SpawnSpec } from '../../rpg/types';
+import { isCleared } from '../../rpg/enemy-groups';
 import '../contracts';
 import type { MenagerieSlice } from '../menagerie';
 
 export type QuestDefIn = QuestDef & { chapter: string };
+
+/** Story-spawned menagerie animals by calm ID, for saves whose spawn record was cleared. */
+const STORY_ANIMALS: Readonly<Record<string, string>> = { kasuar: 'cassowary', 'k3.jaguar': 'jaguar' };
 
 export interface QuestEnv {
   /** The story flags (mutable: the book writes its mirror here). */
@@ -482,8 +486,35 @@ export class QuestBook {
   }
 
   /** After a load: re-declare the spawns and pickups of every running objective. */
-  reassert(): void {
+  reassert(combat?: CombatSlice, progression?: ProgressionSlice): void {
+    if (combat?.groups) this.recoverChapterOneCombat(combat.groups, progression);
     for (const q of this.running()) for (const o of this.openObjectives(q)) this.requestWorld(q, o);
+  }
+
+  private recoverChapterOneCombat(groups: CombatSlice['groups'], progression?: ProgressionSlice): void {
+    for (const quest of this.running()) {
+      if (quest.chapter !== 'k1') continue;
+      for (const objective of this.openObjectives(quest)) {
+        if (objective.type !== 'kill') continue;
+        const killed = (objective.spawn ?? []).reduce((total, spawn, index) => {
+          const group = groups[spawnGroup(quest, objective, spawn, index)];
+          if (group?.quest !== quest.id || group.objective !== objective.id) return total;
+          return total + Math.min(group.killed, group.count);
+        }, 0);
+        const missing = killed - this.count(quest.id, objective.id);
+        if (missing > 0) this.progress(quest.id, objective.id, missing);
+      }
+    }
+
+    const quest = this.def('q.k1.lohn');
+    const boss = groups['q.k1.lohn.buch'];
+    if (!quest || boss?.quest !== quest.id || boss.objective !== 'buch' || boss.killed < 1 || this.count(quest.id, 'buch') < 1) return;
+    const slip = this.openObjectives(quest).find((objective) => objective.id === 'zettel')?.item;
+    if (!slip) return;
+    if ((progression?.inventory?.[slip] ?? 0) > 0) this.progress(quest.id, 'zettel');
+    else if (!Object.values(progression?.placed ?? {}).some((pickup) => pickup?.item === slip)) {
+      this.env.emit('loot:place', { id: `${quest.id}.zettel.recovered`, item: slip, x: boss.x, z: boss.z, era: boss.era, quest: quest.id });
+    }
   }
 
   /** Re-write the whole flag mirror from the slice (load, old saves). */
@@ -685,13 +716,24 @@ export class QuestBook {
   /**
    * Credit clues, good photos and calmed animals from the save when an objective opens or on load.
    */
-  settleKnown(found: (clue: string) => boolean, hasPhoto: (target: string) => boolean = () => false): void {
+  settleKnown(
+    found: (clue: string) => boolean,
+    hasPhoto: (target: string) => boolean = () => false,
+    pikeur?: { group: EnemyGroupState; era: Era },
+  ): void {
     for (const q of this.running())
       for (const o of this.openObjectives(q)) {
         if ((o.type === 'examine' || o.type === 'echo') && o.clue && found(o.clue)) this.progress(q.id, o.id, need(o));
         else if (o.type === 'photo' && o.target && hasPhoto(o.target)) this.progress(q.id, o.id, need(o));
         else this.settleCalm(q, o);
       }
+
+    // The story can spawn the Pikeur before the Landremont echo opens his objective.
+    // Settle from the saved clear without replaying the kill event or its rewards.
+    if (!pikeur || pikeur.group.group !== 'k2.pikeur' || pikeur.group.kind !== 'pikeur' || !isCleared(pikeur.group)) return;
+    this.progress('q.k2.parforce', 'pikeur');
+    // A stalled save may already be in the present. The normal prerequisite still applies.
+    if (pikeur.era === 'today') this.progress('q.k2.parforce', 'heim');
   }
 
   private settleCalm(q: QuestDefIn, o: QuestObjective): void {
@@ -700,8 +742,8 @@ export class QuestBook {
     const animals = Array.isArray(menagerie.animals) ? menagerie.animals : [];
     const count = menagerie.calmed.filter((id) => {
       const animal = animals.find((spawn) => spawn.id === id)?.animal;
-      // Older garden saves can retain the calm ID after the story clears its spawn record.
-      const kind = animal ?? (q.id === 'q.k3.jaguar' && id === 'k3.jaguar' ? 'jaguar' : undefined);
+      // The calm ID outlives the spawn record once the story clears it (K1 ends, older garden saves).
+      const kind = animal ?? STORY_ANIMALS[id];
       return id === o.animal || kind === o.animal;
     }).length;
     this.progress(q.id, o.id, count - this.count(q.id, o.id));

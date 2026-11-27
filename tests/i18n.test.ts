@@ -65,13 +65,13 @@ describe('German string lookup', () => {
     }
   });
 
-  it('shows an unknown key and warns once, then uses a late feature registration', async () => {
+  it('shows the German placeholder for an unknown key and warns once, then uses a late feature registration', async () => {
     const { addStrings, hasString, t } = await import('../src/i18n');
     const key = 'test.late.label';
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     expect(hasString(key)).toBe(false);
-    expect(t(key)).toBe(key);
-    expect(t(key)).toBe(key);
+    expect(t(key)).toBe('Text nicht verfügbar');
+    expect(t(key)).toBe('Text nicht verfügbar');
     expect(warn).toHaveBeenCalledExactlyOnceWith(`[i18n] missing string '${key}'`);
     addStrings('de', { [key]: 'Stufe {n}' });
     expect(hasString(key)).toBe(true);
@@ -101,7 +101,7 @@ describe('German string lookup', () => {
     const { addStrings, hasString, t } = await import('../src/i18n');
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     expect(hasString('toString')).toBe(false);
-    expect(t('toString', {})).toBe('toString');
+    expect(t('toString', {})).toBe('Text nicht verfügbar');
     expect(warn).toHaveBeenCalledOnce();
     addStrings('de', { 'test.inherited': '{toString}' });
     expect(t('test.inherited', {})).toBe('{toString}');

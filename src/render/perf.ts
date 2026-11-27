@@ -90,6 +90,14 @@ export class PerfMonitor {
     this.timerExt = ext;
   }
 
+  /** Context loss invalidates both the extension and all its outstanding query objects. */
+  discardGpuQueries(): void {
+    this.gl = this.timerExt = null;
+    this.queries.length = this.pending.length = 0;
+    this.gpuAcc = this.gpuN = 0;
+    this.gpuMs = null;
+  }
+
   begin(): void {
     this.t0 = performance.now();
     this.renderer.info.reset();

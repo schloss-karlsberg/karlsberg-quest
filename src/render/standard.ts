@@ -144,6 +144,11 @@ export class EnvLight {
     this.scene.add(m);
   }
 
+  /** A context restore erased the sky capture even if the era stayed the same. */
+  invalidate(): void {
+    this.version = -1;
+  }
+
   /** Rebuild the PMREM when `version` changed (cheap check, call per frame). */
   update(renderer: WebGLRenderer, version: number): void {
     if (version === this.version) return;

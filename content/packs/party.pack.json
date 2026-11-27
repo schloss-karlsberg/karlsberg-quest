@@ -52,7 +52,7 @@
     {
       "id": "solld.end.nach",
       "speaker": "solld",
-      "text_de": "Kuchenkasse: ein Stück offen. Das buche ich unter ‚offen‘. Ordnung ist, wenn man trotzdem einträgt.",
+      "text_de": "Kuchenkasse: ein Stück offen. Das buche ich unter „offen“. Ordnung ist, wenn man trotzdem einträgt.",
       "trigger": { "event": "npc:talk", "npc": "solld", "chapter": "enden", "topic": "greet" }
     },
     {

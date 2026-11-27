@@ -39,6 +39,65 @@ function opts(o: Partial<PackOptions> = {}): PackOptions {
 }
 
 describe('the Warner’s trail (TrackField.addTrail)', () => {
+  it('expires ordinary prints on schedule among the held story trail', () => {
+    const tracks = new TrackField({ life: 30 });
+    const path = [{ x: 0, z: 0 }, { x: 0, z: -4 }];
+    tracks.addPlayer(0, 0, 0, 0, 1, 1, null);
+    const authored = tracks.addTrail(path, 0, 1, 1, 120);
+    tracks.addPack('paw', 1, 1, 1, 0, 0, 1, 1);
+    tracks.tick(20);
+    const fresh = tracks.addPlayer(0, -2, 0, tracks.now, -1, 1, null);
+    tracks.tick(16);
+
+    expect(tracks.prints).toHaveLength(authored + 1);
+    expect(tracks.prints.filter((print) => print.agent === -2)).toHaveLength(authored);
+    expect(tracks.playerPrintNear(0, 0, 3, tracks.now)).toBe(fresh);
+    expect(tracks.readPack(1, 1, 2, tracks.now)).toBeNull();
+
+    tracks.tick(20);
+    expect(tracks.playerPrintNear(0, 0, 3, tracks.now)).toBeNull();
+    expect(tracks.prints).toHaveLength(authored);
+
+    tracks.tick(120);
+    expect(tracks.prints).toHaveLength(0);
+  });
+
+  it('a patrol ignores the Warner’s prints after a player print expires', () => {
+    const tracks = new TrackField({ life: 30 });
+    const far = player({ x: -30, z: 150 });
+    const sim = new PackSim(walledWorld(), null, opts({ hounds: 1, from: { x: -30, z: 0 } }), far, tracks);
+    const authored = tracks.addTrail([{ x: -30, z: 0 }, { x: -30, z: -4 }], 0, 1, 1, 120);
+    tracks.addPlayer(far.x, far.z, 0, tracks.now, 1, 1, null);
+    tracks.tick(tracks.life + 5);
+
+    const events = sim.update(DT, far);
+    expect(tracks.prints).toHaveLength(authored);
+    expect(sim.state).toBe('calm');
+    expect(sim.tracking).toBe(false);
+    expect(events).not.toContainEqual(expect.objectContaining({ type: 'tracking', on: true }));
+
+    const { x, z } = sim.leader;
+    tracks.addPlayer(x, z, 0, tracks.now, 1, 1, null);
+    expect(sim.update(0.25, far)).toContainEqual({ type: 'tracking', on: true, x, z });
+    expect(sim.tracking).toBe(true);
+  });
+
+  it('keeps the last prints up to the cap and starts a fresh segment after clearing', () => {
+    const tracks = new TrackField({ max: 2 });
+    const first = tracks.addPlayer(0, 0, 0, 0, 1, 1, null)!;
+    tracks.addPlayer(0, 0, 0, 1, -1, 1, 'stone');
+    const second = tracks.addPlayer(0, -1, 0, 2, 1, 1, null)!;
+    const third = tracks.addPlayer(0, -2, 0, 3, -1, 1, null)!;
+    expect(tracks.prints).toEqual([second, third]);
+    expect(tracks.segmentEnd(first.seg)).toBeNull();
+    expect(tracks.segmentEnded(first.seg)).toBe(true);
+    tracks.clear();
+    expect(tracks.lastBreak).toBeNull();
+    expect(tracks.segmentEnded(third.seg)).toBe(true);
+    expect(tracks.playerPrintNear(0, -2, 1, 3)).toBeNull();
+    expect(tracks.addPlayer(0, -3, 0, 4, 1, 1, null)?.seg).toBe(third.seg + 1);
+  });
+
   it('lays alternating boot prints along a path, skips ground that takes none, and never counts as the player’s trail', () => {
     const T = new TrackField();
     const n = T.addTrail(
