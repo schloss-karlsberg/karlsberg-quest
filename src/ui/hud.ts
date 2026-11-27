@@ -5,6 +5,11 @@ import { Waymark } from './waymark';
 const PX_PER_DEG = 3.2;
 /** Pixels kept free between the top-left column and the bottom-left zone (vitals). */
 const ZONE_GAP = 18;
+/** Subtitle lines on screen at once, and how long each stays before a newer line may push it out. */
+const SUB_MAX = 3;
+const SUB_MIN_MS = 1500;
+
+type SubtitleLine = { el: HTMLElement; ms: number; shownAt: number; timer: ReturnType<typeof setTimeout> | undefined };
 
 const MOUSE_SVG = `<svg viewBox="0 0 24 32" class="kq-ctp-mouse" aria-hidden="true"><rect x="3" y="2" width="18" height="28" rx="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v10M3 12h18" stroke="currentColor" stroke-width="1.4" fill="none"/><path d="M4 11V11a8 8 0 0 1 8-8v9z" fill="currentColor" opacity="0.85"/></svg>`;
 
@@ -35,6 +40,9 @@ export class Hud {
   private readonly markers = new Map<string, HTMLElement>();
   private readonly promptEl: HTMLElement;
   private readonly subsEl: HTMLElement;
+  private readonly subsShown: SubtitleLine[] = [];
+  private readonly subsQueued: SubtitleLine[] = [];
+  private subsWake: ReturnType<typeof setTimeout> | undefined;
   private readonly threatEl: HTMLElement;
   private readonly threatEdge: HTMLElement;
   private readonly oilEl: HTMLElement;
@@ -380,16 +388,59 @@ export class Hud {
     return !top || top.low;
   }
 
-  /** Show a subtitle line; returns a function that removes it early. */
+  /**
+   * Show a subtitle line; returns a function that removes it early. The box holds SUB_MAX lines.
+   * When it is full, the oldest line gives way only once it has been up for SUB_MIN_MS; until then
+   * new lines wait in order, so a sound caption followed by a burst of dialogue stays readable and
+   * no line is lost (TASK-073). A line's own time starts when it appears.
+   */
   subtitle(speaker: string | null, text: string, ms = 4000, fiction = false): () => void {
-    const line = h('div', h('span.line', [speaker ? h('span.who', speaker) : null, text, fiction ? h('span.fiction', '(Fiktion)') : null]));
-    this.subsEl.append(line);
-    while (this.subsEl.childElementCount > 3) this.subsEl.firstElementChild?.remove();
-    const timer = setTimeout(() => line.remove(), ms);
-    return () => {
-      clearTimeout(timer);
-      line.remove();
+    const line: SubtitleLine = {
+      el: h('div', h('span.line', [speaker ? h('span.who', speaker) : null, text, fiction ? h('span.fiction', '(Fiktion)') : null])),
+      ms,
+      shownAt: 0,
+      timer: undefined,
     };
+    this.subsQueued.push(line);
+    this.flushSubtitles();
+    return () => this.dropSubtitle(line);
+  }
+
+  /** Move queued lines into the box while there is a free slot or a line that had its minimum time. */
+  private flushSubtitles(): void {
+    clearTimeout(this.subsWake);
+    this.subsWake = undefined;
+    while (this.subsQueued.length) {
+      const now = performance.now();
+      if (this.subsShown.length >= SUB_MAX) {
+        const oldest = this.subsShown[0]!;
+        const wait = oldest.shownAt + SUB_MIN_MS - now;
+        if (wait > 0) {
+          this.subsWake = setTimeout(() => this.flushSubtitles(), wait);
+          return;
+        }
+        this.dropSubtitle(oldest, false);
+      }
+      const line = this.subsQueued.shift()!;
+      line.shownAt = now;
+      this.subsShown.push(line);
+      this.subsEl.append(line.el);
+      line.timer = setTimeout(() => this.dropSubtitle(line), line.ms);
+    }
+  }
+
+  private dropSubtitle(line: SubtitleLine, flush = true): void {
+    clearTimeout(line.timer);
+    const queued = this.subsQueued.indexOf(line);
+    if (queued >= 0) {
+      this.subsQueued.splice(queued, 1);
+      return;
+    }
+    const shown = this.subsShown.indexOf(line);
+    if (shown < 0) return;
+    this.subsShown.splice(shown, 1);
+    line.el.remove();
+    if (flush && this.subsQueued.length) this.flushSubtitles();
   }
 
   setSubtitleSize(size: 's' | 'm' | 'l' | 'xl'): void {
