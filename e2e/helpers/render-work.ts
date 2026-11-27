@@ -72,7 +72,7 @@ export async function sampleRenderWork({ groupIds, frames, ticksPerFrame }: {
       seen.clear();
       probe = zero();
       delta = zero();
-      k.step(ticksPerFrame);
+      k.step(ticksPerFrame, { draw: true }); // every frame drawn: the render work is measured per frame
       const visible = diff(read(), probe); // remove the duplicate hidden draws from the frame total
       populated = peak(populated, visible);
       empty = peak(empty, diff(visible, delta));

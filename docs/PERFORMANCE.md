@@ -611,6 +611,43 @@ limit. The story also keeps the departing group
 drawn during the Bussole beat while it is still within range. Phone frame times need a rendered
 run.
 
+### 3.9 Hosted e2e memory (TASK-075, 2026-11-27)
+
+The hosted e2e shards ran out of memory (16 GB) with two `chrome-headless` processes at 9 + 6 GB,
+with and without trace recording.
+
+Reproduced in a Linux container like the runner: 4 CPUs, Playwright 1.64.1 image,
+chrome-headless-shell, ANGLE/SwiftShader, 640×360, Niedrig, no trace.
+
+**Cause.** `kq.step` drew synchronously, and nothing paces those draws. A spec loop of
+45 × `kq.step(1)` in one evaluate queues 45 frames for SwiftShader, which needs about 0.8 s per
+frame. The renderer main thread then blocks in a GPU round trip (native code, so a CDP pause
+never lands), and the SwiftShader threads use about 3.4 of the 4 CPUs.
+
+While the renderer is blocked, the renderer and browser processes each grow by 28–40 MB/s. The
+growth is in 2 MiB anonymous mappings (PartitionAlloc heap, not shared memory). The GPU process
+stays at 300–380 MB. The memory drains once the main thread runs again.
+
+**Browser.**
+
+- Only chrome-headless-shell grows like this.
+- Full Chromium in new-headless mode (`channel: 'chromium'`) stalls the same way but stays flat:
+  renderer 540 MB, browser 200 MB.
+- `--disable-gpu-compositing` does not help.
+- Real-time play without `?manual` stays flat after boot (2 min of walking at about 1 fps).
+
+**Fix** (`src/debug/stepGate.ts`). The step and press hooks draw only once a WebGL2 fence on
+their previous draw has signalled. Otherwise they prepare the frame and queue a paint, as with
+`?manual&faststep`. `kq.step(n, { draw: true })` forces a draw for render measurements.
+
+Same container, same build otherwise:
+
+| Run | Before | After |
+| --- | --- | --- |
+| 14 × 45 `kq.step(1)`, one evaluate each | batches 1.0–6.3 s, stall from batch 4 (> 70 s), renderer 1.4 → 2.9 GB and browser 1.2 → 2.5 GB in 50 s, still rising (with trace: container limit of 7 GB in 140 s) | all 14 batches; 3.2–7.6 s while the boot backlog drains, then 0.09–0.19 s; browser 2.7 → 0.17 GB, renderer settles at 1.5 GB |
+| Camera sequence (3 × F-03 with shots, F-07 40 steps, 6 dodges) | screenshots 49–70 s (on the runner the growth started at F-07) | done in 144 s; F-07 0.2 s; screenshots 15–28 s; peaks renderer 2.9 GB, browser 0.9 GB, both drain |
+| One `kq.step(1)` per evaluate | 45 steps in 76–101 s, renderer up to 4.0 GB | unchanged: the rAF loop's own full draws (every frame in `?manual` under WebDriver) pace it at about 1.6 fps; memory swings up to 3.3 GB / 1 GB and drains |
+
 ## 4. Loading
 
 On the fresh present-day title, the historic palace mesh and the architecture pairs for ashlar,

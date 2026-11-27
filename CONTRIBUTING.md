@@ -47,8 +47,13 @@ These are intentionally **on in production** too, so you can reproduce a bug on 
 
 For e2e gameplay waits, boot with `?manual` and use `kq.step(n)` up to a fixed game-tick budget.
 Assert the resulting state when the budget ends. Use `&idle` when the test owns the render
-schedule. Each `kq.step(n)` advances `n` fixed ticks and draws one frame. Use readiness
-assertions for asynchronous work such as asset loading and browser UI transitions.
+schedule. Each `kq.step(n)` advances `n` fixed ticks and presents one frame. It draws that frame
+on the GPU only when the GPU has finished the previous stepped draw, so in a loop within one task
+only the first step draws. The other steps prepare the frame (camera, HUD, frame-driven systems)
+and the next animation frame paints it. Unpaced synchronous draws let software WebGL fall minutes
+behind, and the browser then grows until a hosted runner runs out of memory (TASK-075). Use
+`kq.step(n, { draw: true })` only when the test measures each draw (draw calls, triangles).
+Use readiness assertions for asynchronous work such as asset loading and browser UI transitions.
 
 In the normal e2e suite, check fixed work such as draw calls, triangles or ticks. Check the
 active render cap in the browser and test the cadence with synthetic animation-frame timestamps.
