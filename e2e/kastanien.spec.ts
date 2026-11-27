@@ -1,4 +1,5 @@
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { trackErrors } from './helpers/common';
 import { waitForHooks } from './helpers/pause';
 
@@ -9,7 +10,7 @@ import { waitForHooks } from './helpers/pause';
  * survive a reload and the saved count is shown in the journal. The tour's end clears the
  * chestnuts left lying.
  */
-test.describe.configure({ timeout: 300_000 });
+test.describe.configure({ timeout: ciScale(300_000) });
 test.use({ hasTouch: true });
 
 const NUT = 'item.kastanie';

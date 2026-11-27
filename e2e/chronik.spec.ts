@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { openPause, waitForHooks } from './helpers/pause';
 import { SCREENS } from './helpers/common';
 
@@ -57,11 +58,11 @@ const events = (page: Page, name: string) =>
 
 async function shot(page: Page, name: string): Promise<void> {
   await page.evaluate(() => window.kq!.screenshotReady());
-  await page.screenshot({ path: `${SCREENS}/chronik-${name}.png`, timeout: 150_000 });
+  await page.screenshot({ path: `${SCREENS}/chronik-${name}.png`, timeout: ciScale(150_000) });
 }
 
 test.describe('chronik', () => {
-  test.setTimeout(900_000);
+  test.setTimeout(ciScale(900_000));
 
   test('world: markers, examine card, relief scan, lantern, echo, capture', async ({ page }) => {
     const errors = trackErrors(page);

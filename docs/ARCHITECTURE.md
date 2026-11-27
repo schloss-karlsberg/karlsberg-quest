@@ -727,6 +727,14 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   Chronik's measuring clue) → the story's pack in 1793-02 leaving snow tracks
   (`int-r2-*.png`). Unit rules of the integration: `tests/integration-round2.test.ts`.
   `KQ_E2E_PORT` picks the preview port (default 5281, or 5281 + k inside `scripts/dev/heavy.sh` slot k; an existing server on it is reused).
+- Hosted e2e (`.github/workflows/e2e.yml`) builds `dist/` once and shares it with up to 16 Linux
+  jobs. Each runs one Chromium worker with SwiftShader, whose Niedrig preset uses pixel ratio 1,
+  shorter LOD distances and no shadows. `playwright.config.ts` defaults to a 640×360 viewport on
+  CI. A spec can set its own viewport or tier for layout and rendering checks.
+  `scripts/dev/plan-e2e-shards.ts` assigns whole files based on runnable case counts and allowances
+  for long playthroughs and expensive rendering. The campaign runs alone with a 240-minute suite
+  deadline. Other shards have 180 minutes. Failed jobs upload `test-results/` with the HTML report,
+  traces and screenshots.
 - E2E (`e2e/smoke.spec.ts`, Chromium + SwiftShader WebGL): title → content note → name → paper map → "Tour starten" → game
   starts; every era and scan mode render with no console errors / failed requests; walking,
   crouch, spirit view rules and a save round trip.
@@ -2519,6 +2527,11 @@ Rules that came out of it:
   mouse buttons. Browser blur clears all held and queued input. `input.wasCancelled(action)`
   reports a held action dropped by either event. Combat uses it to discard the pending attack
   before it can interpret the cleared hold as a release.
+- **Pointer lock.** `requestLock()` asks for the lock for play and `releaseLock()` frees the mouse
+  for a menu, the title or the staged ending. The browser grants a lock asynchronously, so one
+  request can land after the game has already let go (closing the pause menu asks for it and
+  „Zum Titelbild“ follows in the same click). Boot calls `dropUnwantedLock()` on every
+  `pointerlockchange` and releases such a late lock at once, as the game's own release (no pause menu).
 - **Virtual presses.** `input.press(action, down, edge?)` holds a binding-independent code `@<action>`.
   Remaps and the shared-key pairs (LMB = attack + interact, Space = dodge + up) stay untouched, and
   the touch layer says per button which actions it means. `releaseVirtual()` clears virtual holds

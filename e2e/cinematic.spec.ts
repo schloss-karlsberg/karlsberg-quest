@@ -1,4 +1,5 @@
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SCREENS, trackErrors } from './helpers/common';
 
 /**
@@ -75,7 +76,7 @@ async function shot(page: Page, name: string): Promise<void> {
 }
 
 test.describe('cinematic', () => {
-  test.describe.configure({ timeout: 240_000 });
+  test.describe.configure({ timeout: ciScale(240_000) });
 
   test('orbit: start, camera moves, avatar visible, frozen, skip, clean hand-back; reduced motion', async ({ page }) => {
     const errors = trackErrors(page);

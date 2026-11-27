@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale, desktopViewport, isCI } from './helpers/ci';
 import { trackErrors } from './helpers/common';
 
 /**
@@ -10,13 +11,14 @@ import { trackErrors } from './helpers/common';
  */
 const OUT = 'test-results/animals';
 mkdirSync(OUT, { recursive: true });
-test.describe.configure({ timeout: 300_000 });
+test.describe.configure({ timeout: ciScale(300_000) });
 
 type Rec = { n: string; p: any }[];
 const START = { x: 524, z: -764 };
 
 async function boot(page: Page): Promise<void> {
-  await page.goto(`./?notitle&nosave&fresh&manual&x=${START.x}&z=${START.z}`);
+  // These demo checks step through AI and movement in batches. Paint their stepped frames on rAF.
+  await page.goto(`./?notitle&nosave&fresh&manual${isCI ? '&faststep' : ''}&x=${START.x}&z=${START.z}`);
   await page.waitForFunction(() => !!window.kq?.animals && !!window.kq?.fauna, null, { timeout: 180_000 });
   await page.evaluate(() => {
     const w = window as unknown as { rec: Rec };
@@ -229,6 +231,7 @@ const deerShares = (page: Page) =>
   });
 
 test('animals (d): t10 opens on the deer with the reh shot, from the stop and from 23 m back (TASK-001)', async ({ page }) => {
+  if (isCI) await page.setViewportSize(desktopViewport); // This case measures each deer's pixel coverage.
   const errors = trackErrors(page);
   const REH = { x: 727.4, z: -751.5 };
   await page.goto(`./?notitle&nosave&fresh&manual&x=${REH.x}&z=${REH.z}`);

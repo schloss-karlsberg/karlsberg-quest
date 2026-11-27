@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SCREENS } from './helpers/common';
 
 /**
@@ -46,7 +47,7 @@ async function enter(page: Page, era: string, room: string, o: EnterOpts): Promi
 }
 
 test.describe('interiors', () => {
-  test.describe.configure({ timeout: 300_000 });
+  test.describe.configure({ timeout: ciScale(300_000) });
   test.beforeEach(async ({ page }) => {
     await page.goto('./?notitle&nosave&fresh&manual');
     await page.waitForFunction(() => window.kq?.interiors !== undefined, null, { timeout: 90_000 });

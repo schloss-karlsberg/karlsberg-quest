@@ -1,4 +1,5 @@
 import { type Page, expect } from '@playwright/test';
+import { ciScale } from './ci';
 import { type PlayOptions, SCREENS } from './common';
 import { waitForHooks } from './pause';
 import { cna, fight, flag, holdHome, installQuestPlay, pickUp, qn, qs, talkQuest, until, untilQuest } from './prolog';
@@ -109,7 +110,7 @@ export async function shot(page: Page, name: string): Promise<void> {
   if (!SHOTS) return;
   await page.evaluate(() => window.kq!.screenshotReady());
   await page.waitForTimeout(150);
-  await page.screenshot({ path: `${SCREENS}/ch-k1-${name}.png`, timeout: 400_000 });
+  await page.screenshot({ path: `${SCREENS}/ch-k1-${name}.png`, timeout: ciScale(400_000) });
 }
 
 export const story = (page: Page) => page.evaluate(() => window.kq!.story!.state());
@@ -208,10 +209,25 @@ export async function listen(page: Page, id: string, screenshot?: string): Promi
   await page.evaluate(() => {
     window.kq!.chronik!.advanceEcho(240);
     window.kq!.step(2);
-    window.kq!.ctx.ui.modals.closeAll();
-    window.kq!.step(2);
   });
+  await closeEchoCard(page);
   expect((await inv(page)).clues).toContain(id);
+}
+/**
+ * Close an echo's card. It queues behind a dialogue line (src/ui/cards.ts: one centre card at a
+ * time; a soft hold lasts at most SOFT_MAX on the slot's frame clock) and would open over the next
+ * walk. Push that clock on until the queue is empty, then close what opened.
+ */
+async function closeEchoCard(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const k = window.kq!;
+    for (let i = 0; i < 80 && k.ctx.ui.cards.pending > 0; i++) {
+      k.ctx.ui.cards.tick(0.2);
+      k.step(1);
+    }
+    k.ctx.ui.modals.closeAll();
+    k.step(2);
+  });
 }
 /** E near an NPC → conversation; ask topics (in order), then goodbye. Returns the offered topics. */
 export async function talk(page: Page, npc: string, topics: string[]): Promise<string[]> {
@@ -584,9 +600,9 @@ export async function playK1(page: Page, o: PlayOptions = {}): Promise<void> {
   await page.evaluate(() => {
     window.kq!.chronik!.advanceEcho(120);
     window.kq!.step(2);
-    window.kq!.ctx.ui.modals.closeAll();
-    window.kq!.step(4);
   });
+  await closeEchoCard(page);
+  await page.evaluate(() => window.kq!.step(2));
   expect(await untilQuest(page, 'q.k1.ankunft', 'done', 12)).toBe('done');
   expect(await until(page, 'k1_2', 6)).toBe('k1_2');
 

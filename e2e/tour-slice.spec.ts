@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { trackErrors } from './helpers/common';
 import { waitForHooks } from './helpers/pause';
 import { expectHandover } from './helpers/tour';
@@ -15,7 +16,7 @@ import { toWorld, yawToWater } from '../src/systems/quelle/layout';
  */
 const OUT = 'test-results/tour';
 mkdirSync(OUT, { recursive: true });
-test.describe.configure({ timeout: 600_000 });
+test.describe.configure({ timeout: ciScale(600_000) });
 test.use({ isMobile: true, hasTouch: true });
 
 type K = NonNullable<typeof window.kq>;

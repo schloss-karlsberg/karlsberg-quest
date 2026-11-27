@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale, desktopViewport } from './helpers/ci';
 import { SCREENS } from './helpers/common';
 
 /**
@@ -63,7 +64,8 @@ async function walk(page: Page, yaw: number, steps: number): Promise<{ x: number
 }
 
 test.describe('scenery', () => {
-  test.describe.configure({ timeout: 420_000 });
+  test.use({ viewport: desktopViewport });
+  test.describe.configure({ timeout: ciScale(420_000) });
   test.beforeEach(async ({ page }) => {
     await page.goto('./?notitle&nosave&fresh&manual');
     await page.waitForFunction(() => window.kq?.scenery !== undefined, null, { timeout: 90_000 });

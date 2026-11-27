@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SAVE_KEY } from '../src/core/save';
 import { createInitialState, type GameState } from '../src/core/state';
 import { createQuestSlice } from '../src/systems/quests/logic';
@@ -22,7 +23,7 @@ for (const { from, previous, next, quest, x, z } of [
   { from: 'k3_6', previous: 'q.k3.festsaal', next: 'k3_7', quest: 'q.k3.hunde', x: 1270, z: -1293 },
 ]) {
   test(`Chapter 3 Continue starts ${quest} in the first ${next} autosave`, async ({ page }) => {
-    test.setTimeout(360_000);
+    test.setTimeout(ciScale(360_000));
     const errors = trackErrors(page);
     const state = createInitialState();
     state.era = '1793-07';

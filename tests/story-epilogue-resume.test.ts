@@ -68,7 +68,7 @@ async function boot(ending: EndingId, flags: Record<string, string | boolean> = 
     loop: { manual: true },
     pause: { paused: false },
     audio: { bindVoiceEmitter: () => () => {} },
-    input: { touchMode: false, requestLock, wasPressed: () => false },
+    input: { touchMode: false, requestLock, releaseLock() {}, wasPressed: () => false },
     ui: {
       layer: () => new ElementStub(),
       hud: { el: new ElementStub(), stack() {}, setMarker() {}, show() {} },

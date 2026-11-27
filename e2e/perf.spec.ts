@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale, desktopViewport } from './helpers/ci';
 import architecture from '../src/assets/manifests/architecture';
 import { SURFACE_SETS, surfAssetId } from '../src/world/surfaces';
 import { warnIfShared } from '../scripts/dev/heavy-env.mjs';
@@ -53,7 +54,8 @@ async function boot(page: Page, query = ''): Promise<void> {
 }
 
 test.describe('performance', () => {
-  test.describe.configure({ timeout: 900_000 });
+  test.use({ viewport: desktopViewport });
+  test.describe.configure({ timeout: ciScale(900_000) });
   test.beforeAll(() => warnIfShared('perf.spec.ts')); // timings need heavy.sh --exclusive
 
   test('bench route: every scene within the draw-call and triangle budget', async ({ page }) => {
@@ -151,7 +153,7 @@ test.describe('performance', () => {
 });
 
 test.describe('settings and accessibility', () => {
-  test.describe.configure({ timeout: 600_000 });
+  test.describe.configure({ timeout: ciScale(600_000) });
 
   test('settings page: sections, keyboard focus, volumes, key remapping', async ({ page }) => {
     const errors = trackErrors(page);

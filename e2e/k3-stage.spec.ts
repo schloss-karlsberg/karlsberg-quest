@@ -6,6 +6,7 @@
  */
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SCREENS } from './helpers/common';
 
 mkdirSync(SCREENS, { recursive: true });
@@ -26,13 +27,13 @@ function trackErrors(page: Page): string[] {
 
 async function shot(page: Page, name: string): Promise<void> {
   await page.evaluate(() => window.kq!.screenshotReady());
-  await page.screenshot({ path: `${SCREENS}/s5-k3stage-${name}.png`, timeout: 150_000 });
+  await page.screenshot({ path: `${SCREENS}/s5-k3stage-${name}.png`, timeout: ciScale(150_000) });
 }
 
 const state = (page: Page) => page.evaluate(() => (window.kq as Any).fx.k3.state());
 
 test('K3 on stage: Ehrenhof, torch, fire from outside, Zwinger', async ({ page }) => {
-  test.setTimeout(900_000);
+  test.setTimeout(ciScale(900_000));
   const errors = trackErrors(page);
   await page.goto('./?notitle&nosave&fresh&manual');
   await page.waitForFunction(() => !!(window.kq as Any)?.story && !!(window.kq as Any)?.fx?.k3, null, { timeout: 180_000 });

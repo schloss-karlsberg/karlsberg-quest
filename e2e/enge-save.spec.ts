@@ -1,4 +1,5 @@
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SAVE_KEY } from '../src/core/save';
 import { openPause, waitForHooks } from './helpers/pause';
 
@@ -39,7 +40,7 @@ async function saveAndContinue(page: Page, defeated: number | undefined): Promis
 }
 
 test('Die Enge resumes between waves and after two reinforcements fall', async ({ page }) => {
-  test.setTimeout(300_000);
+  test.setTimeout(ciScale(300_000));
   await page.goto(`${URL}&notitle&fresh`);
   await waitForHooks(page, ['story', 'combat', 'progression']);
   const firstKills = await page.evaluate((group) => {

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { trackErrors } from './helpers/common';
 import { canTouch, REACH, toWorld, touchLocal } from '../src/systems/quelle/layout';
 import { K1_START, SPRING, boot, distTo, frames, openAtSpring, playDisguise, shiftToPast, shot, story, upd, walk } from './helpers/k1';
@@ -12,7 +13,7 @@ import { K1_START, SPRING, boot, distTo, frames, openAtSpring, playDisguise, shi
  * Screenshots: test-results/screens/ch-k1-00-*.png, ch-k1-x0-*.png.
  */
 test('chapter 1 opens at the Karlsbergquelle: the touch, summer 1789, the walk up to the court', async ({ page }) => {
-  test.setTimeout(600_000);
+  test.setTimeout(ciScale(600_000));
   const errors = trackErrors(page);
   await boot(page);
   // Advance through the chapter card and its fade, then the objective's half-second delay.
@@ -41,7 +42,7 @@ test('chapter 1 opens at the Karlsbergquelle: the touch, summer 1789, the walk u
 });
 
 test('chapter 1: caught on the walk up, you wake at the spring and Q there takes you back', async ({ page }) => {
-  test.setTimeout(600_000);
+  test.setTimeout(ciScale(600_000));
   const errors = trackErrors(page);
   await boot(page, 'k1_0b');
   await page.evaluate(() => {

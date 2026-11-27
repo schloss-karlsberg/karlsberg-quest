@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { SCREENS } from './helpers/common';
 
 /**
@@ -29,7 +30,7 @@ const DAMM = { x: 816, z: -884 };
 const STUFE = { x: 1237, z: -966 };
 
 test.describe('travel: the Wegweiser on the Waldweg', () => {
-  test.describe.configure({ timeout: 240_000 });
+  test.describe.configure({ timeout: ciScale(240_000) });
   test.beforeEach(async ({ page }) => {
     await page.goto('./?notitle&nosave&fresh&manual');
     await page.waitForFunction(() => window.kq?.travel !== undefined, null, { timeout: 90_000 });

@@ -652,8 +652,10 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     const self = input.takeSelfRelease();
     const locked = input.locked;
     playDismissal.pointerLockChanged(locked, self, started && modalOpen === 0, !debug);
-    // The epilogue may have requested pointer lock just before the credits appeared.
-    if (locked && !allowCreditsLock && state.state.systems.party?.credits === 'playing') input.releaseLock();
+    // A lock that lands after the game let go of the mouse goes at once: closing the pause menu or
+    // the ending chooser asks for it, and „Zum Titelbild“ or the staged ending follows in the same
+    // click. The epilogue may also have requested it just before the credits appeared.
+    if (!input.dropUnwantedLock() && locked && !allowCreditsLock && state.state.systems.party?.credits === 'playing') input.releaseLock();
     ui.hud.showClickToPlay(started && !input.locked && modalOpen === 0);
   });
   // Optional dismissal keys must reach gameplay, text entry or the focused control when in use.

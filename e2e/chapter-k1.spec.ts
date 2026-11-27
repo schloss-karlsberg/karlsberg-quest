@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { trackErrors } from './helpers/common';
 import { boot, inv, playK1, shiftToPast, shot, story, upd } from './helpers/k1';
 import { openPause } from './helpers/pause';
@@ -13,7 +14,7 @@ import { qn, qs } from './helpers/prolog';
  * Screenshots: test-results/screens/ch-k1-*.png, cna-k1-*.png.
  */
 test('chapter 1 "Der Hof": the whole chapter as quests, both parts', async ({ page }) => {
-  test.setTimeout(3_000_000);
+  test.setTimeout(ciScale(3_000_000));
   const errors = trackErrors(page);
   await boot(page);
   await playK1(page);
@@ -31,7 +32,7 @@ test('chapter 1 "Der Hof": the whole chapter as quests, both parts', async ({ pa
 });
 
 test('chapter 1: an empty lantern (Teil A) and the pack (Teil B) cost nothing, you wake at the anchor', async ({ page }) => {
-  test.setTimeout(600_000);
+  test.setTimeout(ciScale(600_000));
   const errors = trackErrors(page);
   await boot(page);
   await page.evaluate(() => {

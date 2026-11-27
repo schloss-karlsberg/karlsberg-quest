@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { trackErrors } from './helpers/common';
 import { boot, clues, payloads, playK2, shiftAt, story } from './helpers/k2';
 import { qs } from './helpers/prolog';
@@ -14,7 +15,7 @@ import { qs } from './helpers/prolog';
  * Screenshots: test-results/screens/ch-k2-*.png.
  */
 test('chapter 2: Die Flucht, played through', async ({ page }) => {
-  test.setTimeout(2_700_000); // headless software GL: the 1280×720 pictures take a while
+  test.setTimeout(ciScale(2_700_000)); // headless software GL: the 1280×720 pictures take a while
   const errors = trackErrors(page);
   await boot(page);
   await playK2(page);
@@ -52,7 +53,7 @@ test('chapter 2: leaving during the departure unlocks the lantern choice without
 });
 
 test('chapter 2: caught in the hunt → home, nothing lost, anchor B back into the hunt', async ({ page }) => {
-  test.setTimeout(600_000);
+  test.setTimeout(ciScale(600_000));
   const errors = trackErrors(page);
   await boot(page);
   await page.evaluate(() => {

@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale } from './helpers/ci';
 import { openPause } from './helpers/pause';
 import { SCREENS } from './helpers/common';
 
@@ -44,7 +45,7 @@ async function look(page: Page, era: string, x: number, z: number, tx: number, t
 }
 
 test.describe('world', () => {
-  test.describe.configure({ timeout: 480_000 });
+  test.describe.configure({ timeout: ciScale(480_000) });
   test.beforeEach(async ({ page }) => {
     await page.goto('./?notitle&nosave&fresh&manual');
     await page.waitForFunction(() => window.kq?.travel !== undefined && window.kq?.scenery !== undefined, null, { timeout: 90_000 });

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { desktopViewport } from './helpers/ci';
 import { SCREENS } from './helpers/common';
 
 /**
@@ -7,6 +8,8 @@ import { SCREENS } from './helpers/common';
  * Look is judged on a real GPU (headed Chromium); here only the wiring is checked.
  */
 test.describe('art foundation', () => {
+  test.use({ viewport: desktopViewport });
+
   test('SwiftShader starts on the low tier: no shadows, no bloom / AO', async ({ page }) => {
     await page.goto('./?notitle&nosave&fresh&manual');
     await page.waitForFunction(() => window.kq?.ctx);

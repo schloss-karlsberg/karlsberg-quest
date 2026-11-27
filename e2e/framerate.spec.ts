@@ -1,4 +1,5 @@
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale, desktopViewport, isCI } from './helpers/ci';
 import { warnIfShared } from '../scripts/dev/heavy-env.mjs';
 import { trackErrors } from './helpers/common';
 import { observeRenderFrames } from './helpers/render-pacing';
@@ -29,11 +30,16 @@ async function boot(page: Page, query: string): Promise<void> {
   await page.waitForFunction(() => window.kq?.pilot !== undefined && !!(window as unknown as { __kqReady?: Record<string, number> }).__kqReady?.ready, null, { timeout: 120_000 });
 }
 
+const timingCheck = isCI ? {
+  annotation: { type: 'skip', description: 'Wall-clock render pacing measurements require a quiet local machine.' },
+} : {};
+
 test.describe('render pacing', () => {
-  test.describe.configure({ timeout: 300_000 });
+  test.use({ viewport: desktopViewport });
+  test.describe.configure({ timeout: ciScale(300_000) });
   test.beforeAll(() => warnIfShared('framerate.spec.ts')); // frame rates need heavy.sh --exclusive
 
-  test('pause menu: at most 15 fps, and with ?idle its frame is held', async ({ page }) => {
+  test('pause menu: at most 15 fps, and with ?idle its frame is held', timingCheck, async ({ page }) => {
     const errors = trackErrors(page);
     for (const idle of [false, true]) {
       await boot(page, `notitle${idle ? '&idle' : ''}`);
@@ -59,7 +65,7 @@ test.describe('render pacing', () => {
     expect(errors).toEqual([]);
   });
 
-  test('title: at most 30 fps', async ({ page }) => {
+  test('title: at most 30 fps', timingCheck, async ({ page }) => {
     const errors = trackErrors(page);
     await boot(page, 'idle');
     await expect(page.getByRole('button', { name: 'Neues Spiel', exact: true })).toBeEnabled();
@@ -67,7 +73,7 @@ test.describe('render pacing', () => {
     expect(errors).toEqual([]);
   });
 
-  test('bullet time with ?idle: frames only on request; step, pilot and screenshotReady still draw', async ({ page }) => {
+  test('bullet time with ?idle: frames only on request; step, pilot and screenshotReady still draw', timingCheck, async ({ page }) => {
     const errors = trackErrors(page);
     await boot(page, 'notitle&manual&idle');
     expect(await page.evaluate(() => window.kq!.ctx.loop.pace())).toBe(0);
@@ -134,7 +140,7 @@ test.describe('render pacing', () => {
     expect(errors).toEqual([]);
   });
 
-  test('without ?idle (e2e default) bullet time keeps paced rendering', async ({ page }) => {
+  test('without ?idle (e2e default) bullet time keeps paced rendering', timingCheck, async ({ page }) => {
     await boot(page, 'notitle&manual');
     const policy = await page.evaluate(() => {
       const { loop } = window.kq!.ctx;

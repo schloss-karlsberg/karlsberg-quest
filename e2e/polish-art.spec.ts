@@ -1,4 +1,5 @@
 import { type Page, expect, test } from '@playwright/test';
+import { ciScale, desktopViewport } from './helpers/ci';
 import { SCREENS, trackErrors } from './helpers/common';
 
 /**
@@ -6,7 +7,8 @@ import { SCREENS, trackErrors } from './helpers/common';
  * palace interior and the hounds in fog. Screenshots: test-results/screens/pol-art-*.png — look
  * at them after visual changes.
  */
-test.describe.configure({ timeout: 300_000 });
+test.describe.configure({ timeout: ciScale(300_000) });
+test.use({ viewport: desktopViewport });
 
 const ROSTER = ['hanne', 'soll', 'jost', 'pikeur', 'peter', 'matthes'];
 
@@ -22,7 +24,7 @@ async function boot(page: Page): Promise<void> {
 
 async function shot(page: Page, name: string): Promise<void> {
   await page.evaluate(() => window.kq!.screenshotReady());
-  await page.screenshot({ path: `${SCREENS}/pol-art-${name}.png`, timeout: 150_000 });
+  await page.screenshot({ path: `${SCREENS}/pol-art-${name}.png`, timeout: ciScale(150_000) });
 }
 
 async function view(page: Page, era: string | null, x: number, z: number, yaw: number, pitch: number, fly = 0): Promise<void> {
