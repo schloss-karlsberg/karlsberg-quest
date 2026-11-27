@@ -144,6 +144,7 @@ export function validateStories(files: { file: string; story: StoryFile }[], ref
       else chapterReactions.add(r.id);
       checkCond(r.when, file, `${ch}:on/${r.id}`, err);
       if (r.cooldown !== undefined && (!isNum(r.cooldown) || r.cooldown < 0 || !r.repeat)) err(file, ch, `reaction '${r.id}': cooldown needs repeat and a number ≥ 0`);
+      if (r.sameEra !== undefined && typeof r.sameEra !== 'boolean') err(file, ch, `reaction '${r.id}': sameEra must be a boolean`);
       lines += checkActions(r.do, file, `${ch}:on/${r.id}`, err, warn, refs, chapters);
     }
     for (const b of s.beats) {
@@ -169,6 +170,7 @@ export function validateStories(files: { file: string; story: StoryFile }[], ref
         else rids.add(r.id);
         checkCond(r.when, file, `${where}:on/${r.id}`, err);
         if (r.cooldown !== undefined && (!isNum(r.cooldown) || r.cooldown < 0 || !r.repeat)) err(file, where, `reaction '${r.id}': cooldown needs repeat and a number ≥ 0`);
+        if (r.sameEra !== undefined && typeof r.sameEra !== 'boolean') err(file, where, `reaction '${r.id}': sameEra must be a boolean`);
         lines += checkActions(r.do, file, `${where}:on/${r.id}`, err, warn, refs, chapters);
       }
     }

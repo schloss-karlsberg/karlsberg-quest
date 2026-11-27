@@ -67,7 +67,7 @@ The small authoring fixtures and the campaign regression run in
 | `test?` | test chapter (`99-test.story.json`): validated, but loaded only with `?storytest` |
 | `dev?` | dev chapter: loaded only with the URL switch of that name, and a new game then starts in it |
 | `leave?` | actions run once when the story leaves the chapter for another, whichever way (last beat, chapter list, debug jump): the tour sends its group home and lifts its rules (no combat, Laub silent) |
-| `on?` | chapter-wide reactions `{id, when, do, repeat?, cooldown?}` (`cooldown`: with `repeat`, not again within that many seconds) |
+| `on?` | chapter-wide reactions `{id, when, do, repeat?, cooldown?, sameEra?}` (`cooldown`: with `repeat`, not again within that many seconds; `sameEra`: see below) |
 | `beats` | `{id, title_de?, enter?, complete, exit?, next?, checkpoint?, wake?, on?, placeholder?}` |
 
 Starting or replaying a chapter resets reaction cooldowns and rising-edge state.
@@ -86,6 +86,11 @@ So a line the player must hear goes early in a reaction (short delays) or into t
 grants: put a `say` of the clue's triggered line right after the `grant` — it stays silent (the
 clue already said it) but reserves its reading time, so the next grant does not cut it off (k4_14).
 | `epilogue?` | fallback epilogue data (the endings pack's `epilog:line` lines win, see below) |
+
+**`sameEra` reactions.** On a chapter or beat reaction, `sameEra: true` drops the reaction's pending
+(delayed) actions when a shift starts or the era changes, instead of running them in the other era.
+Lines already on screen play out. K2 uses it for Jost's horn lead-in and the Ehrenhof retry, so the
+parforce pack never spawns in the present.
 
 **Chapter 3 recovery.** The Festsaal restages its objects while the choice is still open in July
 1793. The fallback counts 50 seconds spent in the upper Festsaal in that era. A saved

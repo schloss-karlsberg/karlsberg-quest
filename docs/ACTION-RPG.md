@@ -992,6 +992,13 @@ As built (`content/quests/02-kapitel-2.quests.json`, `scripts/content-build/kapi
 | `q.k2.lichter` "Lichter im Wald" | side | Laub (after `q.k2.wachbuch`) → Laub | three lights on the slope, each two Irrlichter; the kiln (`clue.k2.koehler`) | irrlicht ×6 | 120 XP, Kalkstaub ×3; stance `flag.k2_lichter` (kalkoefen / fackeln / wachfeuer / laternen / offen) | cx.19, rm.03 |
 | `q.k2.kisten` "Bepackte Wagen" | side | the servant (`diener`, 1268/−950) → servant (after `q.k2.spur`) | 4 crates for Mannheim in the snow; **4 Streuner** sniff at them | streuner ×4 | 110 XP, Riechsalz ×2 | cx.20 |
 
+The Orangerie beat advances once the trail quest pays out, not on its echo alone: a missed Allee
+waypoint stays in the tracker. At the Wachhaus, reading the book early counts but does not skip the
+four lights or the fire memory; the fire unlocks chapter-wide, so older saves already past the
+Wachhaus can still clear the lights and finish the quest. Jost's horn lead-in belongs to the night:
+shifting away drops the pending pack, and a save or title Continue made before the pack appeared
+lets the chase restart at the Ehrenhof. An active pack and earned quest progress survive (TASK-042).
+
 The Landremont echo and the Pikeur fight can happen in either order. Hearing the echo after the
 fight credits the recorded clear of `k2.pikeur` and opens the return to the Quelle. Loading a stalled
 save applies the same credit. If the player is already in the present, the quest also credits the

@@ -158,6 +158,22 @@ function migrateStorySlice(story: StorySlice): void {
   }
 }
 
+/**
+ * Chapter 2 sets `k2.jagd_laeuft` when Jost's horn lead-in starts, but the parforce pack only
+ * appears after his lines. Scheduled actions are not saved, and a title Continue discards them:
+ * without a matching pack the chase would claim to run forever. Clear the start state so the
+ * Ehrenhof retry (k2_10-wieder) can rearm it. Called by deserializeState and on every story resume.
+ */
+export function migrateInterruptedHunt(story: StorySlice, state: GameState): void {
+  if (story.chapter !== 'k2' || story.beat !== 'k2_10' || !isRecord(state.flags)) return;
+  const hunt: unknown = state.systems.hunt;
+  const pack = isRecord(hunt) ? hunt.pack : undefined;
+  if (isRecord(pack) && pack.era === state.era && isRecord(pack.opts) && pack.opts.mode === 'parforce') return;
+  delete state.flags['k2.jagd_laeuft'];
+  delete state.flags['k2.w4'];
+  delete state.flags['k2.wieder_da'];
+}
+
 // Neither pack can belong to the current run until k1_14b starts.
 const BEFORE_DIE_ENGE = /^k1_(?:0[bc]?|[1-9]|1[0-4])$/;
 
