@@ -313,7 +313,8 @@ class QuestRuntime {
   restore(): void {
     this.book.slice = this.slice();
     this.book.mirror();
-    this.book.reassert();
+    const { combat, progression } = this.ctx.state.state.systems;
+    this.book.reassert(combat, progression);
     this.restoring = true;
     try {
       this.settleKnown();

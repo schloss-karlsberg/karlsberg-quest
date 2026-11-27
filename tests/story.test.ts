@@ -2,6 +2,8 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { DialogueLine } from '../src/content/types';
+import { createInitialState, deserializeState, serializeState, type GameState } from '../src/core/state';
+import type { QuestFile } from '../src/rpg/types';
 import { holdSeconds, substituteName } from '../src/systems/story/dialogue/presenter';
 import { speakerKey, speakerMeta } from '../src/systems/story/dialogue/speakers';
 import { matchTrigger, pickLine } from '../src/systems/story/dialogue/triggers';
@@ -17,6 +19,8 @@ import { storiesInPlay } from '../src/systems/story/stories';
 import type { Action, Beat, NpcAction, StoryFile } from '../src/systems/story/types';
 import { validateStories } from '../src/systems/story/validate';
 import { loadStoryFiles } from '../src/systems/story/validate-cli';
+import { questsInPlay } from '../src/systems/quests/data';
+import { createQuestSlice, QuestBook } from '../src/systems/quests/logic';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
@@ -205,6 +209,100 @@ describe('story engine', () => {
 
 describe('story files', () => {
   const { files, parseErrors } = loadStoryFiles(ROOT);
+
+  function chapterOne(state: GameState) {
+    const data = JSON.parse(readFileSync(`${ROOT}content/quests/01-kapitel-1.quests.json`, 'utf8')) as QuestFile;
+    const story = state.systems.story ??= createStorySlice();
+    const book = new QuestBook(questsInPlay([{ data }], false).quests, state.systems.quests ??= createQuestSlice(), {
+      flags: state.flags, codex: state.codex.facts, now: () => 0, rng: () => 0,
+      emit: () => {},
+    });
+    book.mirror();
+    const engine = new StoryEngine(files.map((file) => file.story), () => story, {
+      chapterEntered: () => {}, beatEntered: () => {}, chapterCompleted: () => {},
+      run(actions, options) {
+        for (const action of actions) {
+          if (options.resume && !runsOnResume(action)) continue;
+          if (action.do === 'grant') state.inventory.clues.push(action.clue);
+          if (action.do === 'flag') {
+            for (const [key, value] of Object.entries(action.set)) {
+              if (value === null) delete state.flags[key];
+              else state.flags[key] = value;
+            }
+          }
+          if (action.do === 'quest' && action.op === 'offer') book.offer(action.id);
+          if (action.do === 'quest' && action.op === 'progress' && action.objective) book.progress(action.id, action.objective, action.n, true);
+          if (action.do === 'enemy' && action.op === 'despawn' && action.group && state.systems.combat) delete state.systems.combat.groups[action.group];
+        }
+      },
+    });
+    return { engine, book, story, tick() {
+      engine.tick(0.1, env({ era: state.era, flags: state.flags, inventory: state.inventory }));
+      book.settleKnown((clue) => state.inventory.clues.includes(clue));
+    } };
+  }
+
+  it('resumes a pre-Quelle arrival save without requiring a second spring touch', () => {
+    const state = createInitialState();
+    state.era = '1789';
+    state.systems.story = { ...createStorySlice(), active: true, chapter: 'k1', beat: 'k1_1' };
+    state.systems.quests = createQuestSlice();
+    state.systems.quests.quests['q.k1.ankunft'] = { state: 'active', counts: { wechsel: 1, wache: 1 }, t: 0 };
+    state.inventory.clues.push('clue.k1.wache');
+
+    const { engine, book, story, tick } = chapterOne(deserializeState(serializeState(state)));
+    engine.resume();
+    tick();
+    tick();
+    expect(book.state('q.k1.ankunft')).toBe('done');
+    expect(story.beat).toBe('k1_2');
+    expect(book.state('q.k1.registratur')).toBe('offered');
+  });
+
+  it('clears both completed Die Enge packs on a chapter replay, not on resume', () => {
+    const state = createInitialState();
+    const groups = ['k1.enge', 'k1.enge.2', 'another.group'];
+    state.systems.story = { ...createStorySlice(), active: true, chapter: 'k1', beat: 'k1_14b' };
+    state.systems.combat = { hp: 100, stamina: 100, bann: 100, deaths: 0, groups: Object.fromEntries(groups.map((group) =>
+      [group, { group, kind: 'streuner', era: '1789', x: 1811, z: 270, count: 3, killed: 3 }],
+    )) };
+    const loaded = deserializeState(serializeState(state));
+    const { engine } = chapterOne(loaded);
+    engine.resume();
+    expect(Object.keys(loaded.systems.combat!.groups)).toEqual(groups);
+    engine.goto('k2');
+    engine.goto('k1');
+    expect(Object.keys(loaded.systems.combat!.groups)).toEqual(['another.group']);
+
+    state.systems.story.doneBeats.push('k1/k1_14b');
+    const oldReplay = deserializeState(serializeState(state));
+    expect(Object.keys(oldReplay.systems.combat!.groups)).toEqual(['another.group']);
+    state.systems.story.fired.push('b:k1_14b.welle');
+    const currentWave = deserializeState(serializeState(state));
+    expect(Object.keys(currentWave.systems.combat!.groups)).toEqual(groups);
+  });
+
+  it.each(['k1_0', 'k1_13', 'k1_14'])('discards a lone stale Die Enge clear before the encounter at %s', (beat) => {
+    const state = createInitialState();
+    state.systems.story = { ...createStorySlice(), active: true, chapter: 'k1', beat };
+    const first = { group: 'k1.enge', kind: 'streuner', era: '1789' as const, x: 1811, z: 270, count: 3, killed: 3 };
+    state.systems.combat = { hp: 100, stamina: 100, bann: 100, deaths: 0, groups: { [first.group]: first } };
+
+    const loaded = deserializeState(serializeState(state));
+    expect(loaded.systems.combat!.groups).toEqual({});
+  });
+
+  it.each(['k1_14c', 'k1_15', 'k1_17'])('preserves both Die Enge clears after the encounter at %s', (beat) => {
+    const state = createInitialState();
+    state.systems.story = { ...createStorySlice(), active: true, chapter: 'k1', beat, doneBeats: ['k1/k1_14b'] };
+    const first = { group: 'k1.enge', kind: 'streuner', era: '1789' as const, x: 1811, z: 270, count: 3, killed: 3 };
+    const second = { ...first, group: 'k1.enge.2', x: 1803, z: 266, count: 4, killed: 4 };
+    const groups = { [first.group]: first, [second.group]: second };
+    state.systems.combat = { hp: 100, stamina: 100, bann: 100, deaths: 0, groups };
+
+    const loaded = deserializeState(serializeState(state));
+    expect(loaded.systems.combat!.groups).toEqual(groups);
+  });
 
   it('parse and validate (prologue + four chapters + endings)', () => {
     expect(parseErrors).toEqual([]);
