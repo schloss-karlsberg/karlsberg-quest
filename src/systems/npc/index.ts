@@ -27,7 +27,7 @@ import type { DialogueLine } from '../../content/types';
 import type { TriggerContext } from '../../content/triggers';
 import type { NpcPlacement } from '../contracts';
 import type { GiverMark, QuestLine, QuestTopic } from '../../rpg/types';
-import { speakerMeta } from '../story/dialogue/speakers';
+import { speakerDative, speakerMeta } from '../story/dialogue/speakers';
 import { Voice } from '../story/dialogue/voice';
 import type { LoadedModel } from '../../assets/loader';
 import { modelFor } from '../characters/catalog';
@@ -559,8 +559,10 @@ class NpcRuntime {
     const show = !!best && !this.view.open && ctx.ui.modals.count === 0;
     if (show) {
       // E belongs to the nearest ghost: (re)claim the prompt when it changes or another owner took it
-      if (this.prompt !== best || ctx.ui.hud.el.querySelector('.kq-prompt')?.textContent?.indexOf(speakerMeta(best!, ctx.content).name) === -1) {
-        ctx.ui.hud.prompt('E', t('npc.prompt', { name: speakerMeta(best!, ctx.content).name }), 'npc');
+      // the name in the dative: „Mit dem Hofgärtner sprechen“, not „Mit Der Hofgärtner“ (TASK-078)
+      const who = speakerDative(best!, ctx.content);
+      if (this.prompt !== best || ctx.ui.hud.el.querySelector('.kq-prompt')?.textContent?.indexOf(who) === -1) {
+        ctx.ui.hud.prompt('E', t('npc.prompt', { name: who }), 'npc');
         this.prompt = best;
       }
       if (ctx.input.wasPressed('listen')) this.open(best!);

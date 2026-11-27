@@ -63,7 +63,7 @@ _Status: approved 2026-11-27_
 
 **Steps:**
 - [x] 1. `dative_de` in the type and schema; `speakerDative()` with unit tests.
-- [ ] 2. The npc prompt uses it; HUD prompt test in `tests/npc-encounter.test.ts`.
+- [x] 2. The npc prompt uses it; HUD prompt test in `tests/npc-encounter.test.ts`.
 - [ ] 3. Dative forms in `speakers.mjs` (and `party.pack.json`), rebuild, `pnpm validate`; content rule test.
 - [ ] 4. Docs.
 - [ ] 5. Gates, e2e `npc.spec.ts`, after screenshots.
@@ -87,3 +87,4 @@ _Status: approved 2026-11-27_
 - Branch: `fix/task-078-talk-prompt-dative`
 - 2026-11-27: before screenshots (real GPU, Iris Xe) in `test-results/contribute/TASK-078/`: k1_0b (1789), next to the Hofgärtner „E Mit Der Hofgärtner sprechen“ and next to a Gardist „E Mit Ein Gardist sprechen“.
 - 2026-11-27: step 1 done - `Speaker.dative_de` (type, `content/schema/pack.schema.json`, `src/content/validate.ts`: a non-empty string if set); `speakerDative()` in `src/systems/story/dialogue/speakers.ts`; `tests/npc-prompt-name.test.ts`: an article name gives its dative form, a plain name, a built-in and an unknown id stay as they are.
+- 2026-11-27: step 2 done - `src/systems/npc/index.ts`: the talk prompt and its "is the name still shown" check use `speakerDative`. `tests/npc-encounter.test.ts`: „Mit dem Kanzlisten sprechen“ for a speaker with `dative_de`, „Mit Kanzlist Gottlob Soll sprechen“ without; fails on the old code. Set on the test context, not in the shared harness, so it does not overlap with PR #126.
