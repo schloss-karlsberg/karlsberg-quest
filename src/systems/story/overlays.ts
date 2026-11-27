@@ -41,16 +41,28 @@ export class CardLineHold {
   private fade = 0;
   private left = 0;
   private shown = false;
+  private wallUntil = Infinity;
+  private pausedAt: number | null = null;
 
-  show(chapter: boolean, seconds = 5.5): void {
+  show(chapter: boolean, seconds = 5.5, now?: number): void {
     this.up = chapter;
     this.fade = 0;
     this.left = seconds;
     this.shown = true;
+    this.wallUntil = chapter && now !== undefined ? (this.pausedAt ?? now) + seconds * 1000 : Infinity;
   }
 
-  hide(reducedMotion = false): void {
+  setPaused(paused: boolean, hidden: boolean, now: number): void {
+    if (paused || hidden) this.pausedAt ??= now;
+    else if (this.pausedAt !== null) {
+      this.wallUntil += now - this.pausedAt;
+      this.pausedAt = null;
+    }
+  }
+
+  hide(now?: number, reducedMotion = false): void {
     if (this.up) this.fade = storyFadeSeconds(CARD_FADE_HOLD, reducedMotion);
+    this.wallUntil = this.up && now !== undefined ? now + this.fade * 1000 : Infinity;
     this.up = false;
     this.shown = false;
   }
@@ -59,16 +71,18 @@ export class CardLineHold {
     this.up = false;
     this.fade = 0;
     this.shown = false;
+    this.wallUntil = Infinity;
   }
 
   /** Advance by `dt` s; true when the card's time ran out now (the caller fades it out). */
-  tick(dt: number, reducedMotion = false): boolean {
-    if (dt <= 0) return false;
-    if (this.fade > 0) this.fade = Math.max(0, this.fade - dt);
+  tick(dt: number, now?: number, reducedMotion = false): boolean {
+    if (this.pausedAt !== null) return false;
+    const wallElapsed = now !== undefined && now >= this.wallUntil;
+    if (this.fade > 0) this.fade = wallElapsed ? 0 : Math.max(0, this.fade - dt);
     if (!this.shown) return false;
     this.left -= dt;
-    if (this.left > 0) return false;
-    this.hide(reducedMotion);
+    if (this.left > 0 && !wallElapsed) return false;
+    this.hide(now, reducedMotion);
     return true;
   }
 
@@ -133,7 +147,7 @@ export class StoryOverlays {
     this.layer.append(el);
     this.cardEl = el;
     requestAnimationFrame(() => el.classList.add('kqs-show'));
-    this.hold.show(chapter, seconds);
+    this.hold.show(chapter, seconds, performance.now());
   }
 
   /** Let the title card go now (the ending table opens: the chapter card must not return after the credits). */
@@ -143,11 +157,15 @@ export class StoryOverlays {
   }
 
   /**
-   * Advance the title card (seconds of game time — 0 while the game is paused, so a card is never
-   * missed behind the pause menu or a modal).
+   * Advance the title card by game time, with a wall-clock cap for chapter cards during slow frames.
+   * Both clocks suspend while the game is paused or the document is hidden.
    */
-  tickCard(dt: number): void {
-    if (this.hold.tick(dt, this.reducedMotion())) this.hideCard();
+  tickCard(dt: number, now?: number): void {
+    if (this.hold.tick(dt, now, this.reducedMotion())) this.hideCard();
+  }
+
+  setCardPaused(paused: boolean, hidden: boolean): void {
+    this.hold.setPaused(paused, hidden, performance.now());
   }
 
   private hideCard(): void {

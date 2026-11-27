@@ -10,7 +10,7 @@ import story from '../src/systems/story';
 import { STAGE_SECONDS_REDUCED } from '../src/systems/story/endings/stage';
 import { createStorySlice } from '../src/systems/story/engine';
 import type { EndingId } from '../src/systems/story/types';
-import { titleHooks } from '../src/ui/title';
+import { endingTitleActions } from '../src/systems/story/title/actions';
 import { ERA_LOOKS } from '../src/world/eraPresets';
 
 // Exercise the story runtime and ending screen in Node with a stand-in for the DOM builder.
@@ -167,7 +167,7 @@ describe('continuing a saved epilogue', () => {
     save.save('ending');
     state.mutable.systems.story = afterChoice;
 
-    const replay = titleHooks.extraActions?.().find((action) => action.testid === 'title-ending-again');
+    const replay = endingTitleActions(save).find((action) => action.testid === 'title-ending-again');
     expect(await replay?.run()).toBe(true);
     const onBeat = vi.fn();
     events.on('story:beat', onBeat);

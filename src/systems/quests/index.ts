@@ -123,7 +123,7 @@ class QuestRuntime {
   private readonly beacons: Beacons;
   private readonly sentTopics = new Map<string, string>();
   private readonly sentMarks = new Map<string, GiverMark>();
-  private readonly compass = new Map<string, { el: HTMLElement | null; kind: CompassKind; bearing: number }>();
+  private readonly compass = new Map<string, { kind: CompassKind; bearing: number }>();
   private readonly following = new Set<string>();
   private lead: Lead | null = null;
   /** The door the marker leads to first (a goal inside a building, the player outside). */
@@ -224,6 +224,7 @@ class QuestRuntime {
         // the main quest on offer is the chapter's (renderTracker)
         this.dirty = true;
       }),
+      ev.on('objective:set', () => { this.markIn = 0; }),
       ev.on('era:change', () => {
         this.availIn = 0;
         this.markIn = 0;
@@ -546,18 +547,11 @@ class QuestRuntime {
     this.reward.tick(Math.min(dt, 0.1), ctx.player.position);
     // The "Neue Aufgabe" stamp waits for the payout and the chapter title.
     if (this.bannerQ.length && !this.reward.open && !this.reward.pending && !document.querySelector('.kqs-card.kqs-show')) this.bannerQ.shift()?.();
-    if (this.dirty) {
-      this.dirty = false;
-      this.renderTracker();
-      this.syncBeacons();
-    }
-    this.tracker.tick();
     const p = ctx.player.position;
-    this.beacons.frame(dt, p.x, p.z, ctx.settings.state.reducedMotion, ctx.camera.position.y);
-    if ((this.markIn -= dt) <= 0) {
+    const refreshMarkers = (this.markIn -= dt) <= 0;
+    if (refreshMarkers) {
       this.markIn = 0.1;
       this.syncCompass();
-      this.syncBeacons();
       this.stallTick(0.1);
       // the lead line's distance, refreshed with the markers (the tracker re-renders on change only)
       const tg = this.lead?.target ?? null;
@@ -568,6 +562,13 @@ class QuestRuntime {
         this.dirty = true;
       }
     }
+    if (refreshMarkers || this.dirty) this.syncBeacons();
+    if (this.dirty) {
+      this.dirty = false;
+      this.renderTracker();
+    }
+    this.tracker.tick();
+    this.beacons.frame(dt, p.x, p.z, ctx.settings.state.reducedMotion, ctx.camera.position.y);
     const canvas = ctx.renderer?.domElement;
     const cw = canvas?.clientWidth || window.innerWidth;
     const ch = canvas?.clientHeight || window.innerHeight;
@@ -740,9 +741,7 @@ class QuestRuntime {
     const p = ctx.player.position;
     const lead0 = this.computeLead();
     this.lead = lead0;
-    // the tracker's „→“ line reads the lead: a new lead (the story's own line changed with no quest
-    // event) re-renders it — it stayed stale (after the Karlsbergquelle's shift it still said „den
-    // Hang hinunter zur Karlsbergquelle“ in 1789)
+    // the tracker's „→“ line reads the lead, which can change without a quest event
     const leadKey = lead0 ? `${lead0.quest?.id ?? ''}/${lead0.obj?.id ?? ''}/${lead0.label}` : '';
     if (leadKey !== this.leadKey) {
       this.leadKey = leadKey;
@@ -803,7 +802,6 @@ class QuestRuntime {
       if (mark !== 'ready' && Math.hypot(p.x - n.x, p.z - n.z) > OFFER_RANGE) continue;
       want.set(`kqq:npc:${npc}`, { kind: mark, x: n.x, z: n.z });
     }
-    const compassEl = ctx.ui.hud.el.querySelector<HTMLElement>('.kq-compass');
     for (const id of [...this.compass.keys()])
       if (!want.has(id)) {
         ctx.ui.hud.setMarker(id, null);
@@ -812,22 +810,8 @@ class QuestRuntime {
     const colour: Record<CompassKind, string> = { obj: '#f2d58a', offer: '#f2c14e', 'offer-main': '#ffd66b', ready: '#ffe08a' };
     for (const [id, w] of want) {
       const b = this.bearing(w.x, w.z);
-      let cur = this.compass.get(id);
-      if (cur && cur.kind !== w.kind) {
-        ctx.ui.hud.setMarker(id, null);
-        this.compass.delete(id);
-        cur = undefined;
-      }
-      ctx.ui.hud.setMarker(id, b, colour[w.kind], { dist: w.dist, edge: w.edge });
-      if (!cur) {
-        // shape-coded (colour-blind safe): diamond (objective), "!" (offer), "!" ringed (main), "?" (turn-in)
-        const el = (compassEl?.lastElementChild as HTMLElement | null) ?? null;
-        if (el?.classList.contains('kq-compass-marker')) {
-          el.classList.add('kqq-cm', `kqq-cm-${w.kind}`);
-          el.dataset.kqq = id;
-        }
-        this.compass.set(id, { el, kind: w.kind, bearing: b });
-      } else cur.bearing = b;
+      ctx.ui.hud.setMarker(id, b, colour[w.kind], { dist: w.dist, edge: w.edge, kind: w.kind });
+      this.compass.set(id, { kind: w.kind, bearing: b });
     }
   }
 

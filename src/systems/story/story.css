@@ -348,6 +348,7 @@ body .kqs-dlg.kqs-dlg-raised {
   vertical-align: 3px;
 }
 .kqs-obj-dist {
+  white-space: nowrap;
   font-size: 19px;
   opacity: 0.75;
 }
@@ -1275,8 +1276,12 @@ html[data-kq-reduced-motion] .kqs-curtain.kqs-down {
   left: auto;
   max-width: 100%;
   margin-top: 2px;
-  overflow-wrap: break-word;
-  text-wrap: pretty;
+  display: flex;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+.kqs-obj-copy {
+  min-width: 0;
 }
 .kq-tl > .kqs-objective:not(.kqs-show) {
   display: none;

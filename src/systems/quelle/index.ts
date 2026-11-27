@@ -25,7 +25,8 @@ import type { Era } from '../../core/era';
 import { defineSystem } from '../../core/systems';
 import { cameraHints } from '../../player/camera';
 import { addStrings } from '../../i18n';
-import { brookLine, canTouch, clearings, lookFor, outlet, QUELLE, toWorld, touchLocal, TRAIL, trailLine, waterSpec, yawToWater, type WaterSpec } from './layout';
+import { brookLine, canTouch, clearings, lookFor, outlet, QUELLE, toWorld, touchLocal, TOUR_REACH, TRAIL, trailLine, waterSpec, yawToWater, type WaterSpec } from './layout';
+import { inTourQuelle } from './tour';
 import { springSound, type SpringSound } from './sound';
 import { applyLook, brookMesh, glowSprite, motes, poolMesh, streamMesh, trailMesh, waterUniforms, type Motes } from './water';
 
@@ -183,12 +184,14 @@ function build(ctx: GameContext, era: Era): void {
 }
 
 function setPrompt(ctx: GameContext, on: boolean): void {
-  if (on === promptOn) return;
-  promptOn = on;
-  ctx.ui.hud.prompt(on ? 'E' : null, on ? ctx.t('quelle.touch') : undefined, OWNER);
   const flags = ctx.state.mutable.flags;
-  if (on) flags['e.owner'] = OWNER;
-  else if (flags['e.owner'] === OWNER) delete flags['e.owner'];
+  if (on !== promptOn) {
+    promptOn = on;
+    ctx.ui.hud.prompt(on ? 'E' : null, on ? ctx.t('quelle.touch') : undefined, OWNER);
+    if (on) flags['e.owner'] = OWNER;
+  }
+  // A save from the water can carry an interaction claim even when its prompt is no longer up.
+  if (!on && flags['e.owner'] === OWNER) delete flags['e.owner'];
 }
 
 function startScene(ctx: GameContext): void {
@@ -212,6 +215,7 @@ function startScene(ctx: GameContext): void {
   pl.frozen = true;
   pl.lookLocked = true;
   setPrompt(ctx, false);
+  ctx.ui.hud.blockPrompts(OWNER, true);
 }
 
 function endScene(ctx: GameContext): void {
@@ -221,6 +225,7 @@ function endScene(ctx: GameContext): void {
   ctx.player.frozen = false;
   ctx.player.lookLocked = false;
   sound?.release();
+  ctx.ui.hud.blockPrompts(OWNER, false);
 }
 
 export function springSceneYaw(from: number, to: number, time: number, reducedMotion: boolean): number {
@@ -365,16 +370,19 @@ export default defineSystem({
     if (near && built !== era) build(ctx, era);
     if (group) group.visible = near;
     updateScene(dt, ctx);
-    const flags = ctx.state.state.flags;
+    const { flags, systems } = ctx.state.state;
+    const tour = inTourQuelle(systems.story);
+    const tourTouch = tour && systems.story?.beat === 't17' && era === 'today';
     const can =
       !scene &&
       flags[FLAG_CALL] === true &&
+      (!tour || tourTouch) &&
       !!spec &&
       !pl.flying &&
       !pl.frozen &&
       ctx.input.enabled &&
       ctx.ui.modals.count === 0 &&
-      canTouch(p.x, p.z, pl.yaw, era) &&
+      canTouch(p.x, p.z, pl.yaw, era, tourTouch ? TOUR_REACH : undefined) &&
       Math.abs(p.y - spec.y) < 2.5;
     setPrompt(ctx, can);
     if (can && ctx.input.wasPressed('listen')) startScene(ctx);

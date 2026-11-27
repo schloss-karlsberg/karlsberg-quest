@@ -4,8 +4,9 @@ import { EventBus } from '../src/core/events';
 import { MemoryStorage, SAVE_KEY, SaveManager } from '../src/core/save';
 import { createInitialState, GameStateStore, STATE_VERSION } from '../src/core/state';
 import { createStorySlice } from '../src/systems/story/engine';
-import { TitleScreen, titleHooks } from '../src/ui/title';
+import { type TitleAction, TitleScreen, titleHooks } from '../src/ui/title';
 
+let extraActions: (() => TitleAction[]) | undefined;
 const clicks = new Map<string, () => void | Promise<void>>();
 const elements = new Map<string, { disabled: boolean; textContent: string; classes: Set<string> }>();
 
@@ -47,7 +48,7 @@ function setup(enabled: boolean, raw: string | null = stored) {
   save.enabled = enabled;
   const onStart = vi.fn();
   const confirm = vi.fn(async (_text: string) => false);
-  const title = new TitleScreen({ save, onStart, confirm, onLicences() {} });
+  const title = new TitleScreen({ save, onStart, confirm, onLicences() {}, extraActions: () => extraActions?.() ?? [] });
   title.setReady();
   return { confirm, events, onStart, save, state, storage, title };
 }
@@ -59,7 +60,7 @@ function setupReplay(enabled = true) {
   const { save, storage, title } = game;
   storage.setItem(SAVE_KEY('ending'), JSON.stringify({ ...createInitialState(), era: '1796' }));
   const replay = vi.fn(() => save.load('ending'));
-  titleHooks.extraActions = () => [{ label: 'Ende noch einmal wählen', testid: 'title-ending-again', run: replay }];
+  extraActions = () => [{ label: 'Ende noch einmal wählen', testid: 'title-ending-again', run: replay }];
   title.setReady();
   return { ...game, replay, chooseEnding: clicks.get('title-ending-again')! };
 }
@@ -67,7 +68,7 @@ function setupReplay(enabled = true) {
 afterEach(() => {
   vi.unstubAllGlobals();
   delete titleHooks.beforeNewGame;
-  delete titleHooks.extraActions;
+  extraActions = undefined;
   clicks.clear();
   elements.clear();
 });

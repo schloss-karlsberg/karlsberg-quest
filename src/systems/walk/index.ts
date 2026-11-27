@@ -89,9 +89,8 @@ export function loadRoutes(): Map<string, Route> {
   return out;
 }
 
-/** Compass marker id and colour of the guide (find.ts). */
+/** Compass marker id of the guide (find.ts). */
 const GUIDE_MARKER = 'walk.guide';
-const GUIDE_COLOUR = '#f4a259';
 /** Line-group id suffix of the call-out („Hier drüben!“): '<speaker>.bark.hier'. */
 export const CALL_SUFFIX = '.bark.hier';
 
@@ -192,7 +191,7 @@ class WalkSystem {
   private showFind(marker: { bearing: number; dist: number } | null, prompt: boolean, group = this.findGroup ?? ''): void {
     const hud = this.ctx.ui.hud;
     if (marker) {
-      hud.setMarker(GUIDE_MARKER, marker.bearing, GUIDE_COLOUR, { dist: marker.dist, edge: true, label: 'Gruppe' });
+      hud.setMarker(GUIDE_MARKER, marker.bearing, undefined, { dist: marker.dist, edge: true, label: 'Gruppe', kind: 'obj', labelRow: 2 });
       this.markerUp = true;
     } else if (this.markerUp) {
       hud.setMarker(GUIDE_MARKER, null);

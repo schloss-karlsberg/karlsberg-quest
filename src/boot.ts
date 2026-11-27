@@ -37,6 +37,7 @@ import { TitleScreen } from './ui/title';
 import { TouchControls } from './ui/touch';
 import { SKILL_IDS, skillsForLevel } from './systems/combat/rules';
 import { CameraTakeover, OverrideSlot } from './systems/cinematic/takeover';
+import { endingTitleActions } from './systems/story/title/actions';
 import { mobileLevel } from './render/mobileDefaults';
 import { UI } from './ui/ui';
 import { atmosphere } from './world/atmosphere';
@@ -135,6 +136,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     onLicences: () => openLicences({ modals: ui.modals, attribution: () => ctxRef?.data.attribution.items ?? [] }),
     onNews: () => openNews(ui.modals, () => title.refreshNews()),
     confirm: (text) => ui.modals.confirm(text),
+    extraActions: () => endingTitleActions(save),
   }, skipTitle ? undefined : loader);
   if (!skipTitle) {
     ui.add(title.el);
@@ -555,18 +557,22 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   events.on('player:costume', ({ costume }) => avatar.setCostume(costume));
   events.on('player:lantern-tint', ({ hex }) => avatar.setLanternTint(hex));
   // The shift already covers its own wait. Only offer a loader for prefetch that outlasts it.
+  events.on('cinematic:start', () => ui.hud.blockPrompts('cinematic', true));
+  events.on('cinematic:end', () => ui.hud.blockPrompts('cinematic', false));
   let shifting = false;
   let eraLoad: { feedback?: LoadingRequest } | undefined;
   const showEraLoad = () => {
     if (eraLoad && !eraLoad.feedback) eraLoad.feedback = ui.loading.begin(t('loader.era'), 1);
   };
   events.on('shift:begin', () => {
+    ui.hud.blockPrompts('shift', true);
     shifting = true;
     ui.loading.setEnabled(false);
     eraLoad?.feedback?.finish();
     if (eraLoad) eraLoad.feedback = undefined;
   });
   events.on('shift:done', () => {
+    ui.hud.blockPrompts('shift', false);
     shifting = false;
     showEraLoad();
     ui.loading.setEnabled(started);
