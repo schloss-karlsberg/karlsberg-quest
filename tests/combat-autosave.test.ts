@@ -44,7 +44,7 @@ it('writes updated HP, stamina and Bannlicht in the autosave from a level-up kil
     state, events, save, scene: new Scene(), camera: new PerspectiveCamera(), audio: { unlocked: false, noise: () => null },
     settings: { state: defaultSettings() }, quality: { level: 'low', listeners: [] },
     player: { position: new Vector3(), yaw: 0, stats: { speed: 0 }, impulse() {} },
-    input: { enabled: true, isDown: () => false, wasPressed: () => false },
+    input: { enabled: true, isDown: () => false, wasPressed: () => false, wasCancelled: () => false },
     era: { current: '1789', info: { night: false } }, loop: { tick: 0, time: 0 },
     world: {
       heightAt: () => 0, surfaceAt: () => 'grass', collider: { enabled: false },
