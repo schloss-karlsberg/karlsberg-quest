@@ -1,4 +1,5 @@
 import { allOf, isOneOf } from '../../core/saved';
+import type { EnemyGroupState } from '../../rpg/types';
 import { createStorySlice, DEFAULT_VISITOR_NAME, type StorySlice } from './engine';
 import type { GameState } from '../../core/state';
 import { createQuestSlice } from '../quests/logic';
@@ -121,5 +122,21 @@ function migrateStorySlice(story: StorySlice, flags: Record<string, FlagValue>, 
     objective.text = 'Q halten: zurück zur Quelle';
   } else if (objective.id === 'k2.ende' && objective.text === 'Feldstation. Die Nacht ist vorbei.') {
     objective.text = 'An der Quelle. Die Nacht ist vorbei.';
+  }
+}
+
+// Neither pack can belong to the current run until k1_14b starts.
+const BEFORE_DIE_ENGE = /^k1_(?:0[bc]?|[1-9]|1[0-4])$/;
+
+/** Discard Die Enge packs left from an earlier chapter run (Pause → Kapitel replay of K1). */
+export function migrateDieEngeReplay(story: StorySlice, groups: Record<string, EnemyGroupState> | undefined): void {
+  if (!isRecord(groups) || story.chapter !== 'k1') return;
+  const first = groups['k1.enge'];
+  const second = groups['k1.enge.2'];
+  const stalledReplay = story.beat === 'k1_14b' && isRecord(first) && isRecord(second) && first.killed >= first.count && second.killed >= second.count &&
+    story.doneBeats.includes('k1/k1_14b') && !story.fired.includes('b:k1_14b.welle');
+  if (BEFORE_DIE_ENGE.test(story.beat ?? '') || stalledReplay) {
+    delete groups['k1.enge'];
+    delete groups['k1.enge.2'];
   }
 }
