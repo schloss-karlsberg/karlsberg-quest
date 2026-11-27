@@ -52,7 +52,7 @@ addStrings('de', {
   'photo.gallery.count': '{n} von {cap} Fotos',
   'photo.gallery.device': 'Die Fotos liegen nur auf diesem Gerät, nicht im Spielstand. Browser räumen solche Daten manchmal auf (Safari nach etwa sieben Tagen ohne Besuch): Lade die Fotos herunter, die du behalten willst.',
   'photo.gallery.session': 'Dieser Browser lässt hier keinen Speicher zu: Die Fotos bleiben nur bis zum Neuladen. Lade die herunter, die du behalten willst.',
-  'photo.gallery.empty': 'Noch keine Fotos. N hebt das Handy, ein Klick macht das Bild.',
+  'photo.gallery.empty': 'Noch keine Fotos. Öffne den Fotomodus und löse aus.',
   'photo.gallery.fullNote': 'Die Galerie ist voll. Neue Fotos werden erst wieder gespeichert, wenn du welche löschst.',
   'photo.gallery.full': 'Galerie voll ({cap} Fotos). Lösche Fotos, um neue zu behalten.',
   'photo.gallery.fail': 'Das Foto konnte nicht gespeichert werden.',
@@ -77,9 +77,10 @@ addStrings('de', {
   'photo.toast.menu': 'Erst das Menü schließen.',
   'photo.zoom': 'Zoom',
   'photo.album': 'Album',
-  'photo.album.empty': 'Noch keine Fotos. N hebt das Handy, ein Klick macht das Bild. Gute Fotos landen hier.',
-  'photo.album.session': 'Bilder dieser Sitzung; nach dem Neuladen bleibt die Karte. Alle Fotos findest du in der Galerie.',
+  'photo.album.empty': 'Noch keine Fotos. Öffne den Fotomodus und löse aus. Gute Fotos landen hier.',
+  'photo.album.session': 'Die Bilder sind in dieser Sitzung sichtbar. Nach dem Neuladen bleiben die Fotokarten erhalten. Alle Fotos findest du in der Galerie.',
   'photo.album.cards': 'Fotokarten',
+  'photo.album.unknown': 'Unbekanntes Fotomotiv',
   'photo.stars': '{n} von 3 Sternen',
   'ui.keys.photo': 'Handy-Kamera öffnen oder wegstecken',
 });
@@ -655,7 +656,7 @@ class Photo {
   }
 
   private label(id: string): string {
-    return core.targets.get(id)?.label_de ?? id;
+    return core.targets.get(id)?.label_de ?? t('photo.album.unknown');
   }
 
   private showCard(r: ShotResult, img: string | null): void {

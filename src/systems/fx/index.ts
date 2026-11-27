@@ -246,10 +246,10 @@ export default defineSystem({
     // staged set pieces (K2 / K4 / endings): what the captions used to tell, in the world
     stage = new StageDirector(ctx);
     quality.onChange(() => fire.rebuild());
-    // settings → Grafik (core preset, render/quality.ts): Niedrig = low, Mittel / Hoch = high; unset = auto
+    // Honor the active tier, including a session override. An unset non-low tier can still adapt.
     const applyGraphics = () => {
-      const g = ctx.settings.state.graphics;
-      if (g) quality.set(g === 'low' ? 'low' : 'high');
+      if (ctx.quality.level === 'low') quality.set('low');
+      else if (ctx.quality.override || ctx.settings.state.graphics) quality.set('high');
     };
     if (!ctx.params.has('fxq')) applyGraphics();
     ctx.events.on('settings:change', ({ key }) => key === 'graphics' && applyGraphics());

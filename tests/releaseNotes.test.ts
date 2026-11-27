@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { renderNewsPage } from '../vite.config';
 import {
   NEWS_SEEN_KEY,
   blocksToHtml,
@@ -115,6 +116,10 @@ describe('release notes: markdown subset', () => {
 describe('release notes: content', () => {
   const dir = 'content/release-notes';
   const files = readdirSync(dir).filter((f) => f.endsWith('.md'));
+
+  it('uses the German revision label in the public news footer', () => {
+    expect(renderNewsPage()).toMatch(/<footer>Aktuelle Version \d+\.\d+\.\d+ · Stand \S+ · <a href="\.\/">Zurück zum Spiel<\/a><\/footer>/);
+  });
 
   it('every file is named vX.Y.Z.md and has the three player sections', () => {
     expect(files.length).toBeGreaterThan(0);

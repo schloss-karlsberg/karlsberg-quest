@@ -664,6 +664,10 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 - `tests/terrain-load.test.ts` uses `serveTerrain()` to serve two compressed grid cells from
   memory. Each layer has distinct values so the test detects swapped eras, incorrect units and
   ground or canopy rasters whose dimensions disagree with the height grid.
+- The render tests run without a GPU. `tests/render-post.test.ts` records the target and clear
+  mode of each draw against real post-processing targets. `tests/render-viewport.test.ts` and
+  `tests/render-context.test.ts` dispatch resize, density and WebGL lifecycle events, including
+  while the view is held. The FX tests inspect the particle geometry submitted to the scene.
 - `tests/player-fixture.ts` supplies a flat `PlayerWorld`, the real `Input` on event targets, and
   an explicit 60 Hz `step()` for the player, touch and avatar tests.
 - `tests/audio-fixture.ts` provides a fake Web Audio context for mixer and story playback tests.
@@ -2308,6 +2312,9 @@ Each RPG track adds its own subsection here when it fills its system in.
   chapters are reset (chapter jumps; the e2e `test` chapter counts as after the campaign). Side quests the
   player took keep running unless their chapter fails them. The book restores on a state `load`
   too (it fires before `save:loaded`, which reaches the story's resume first).
+- `migrate.ts` completes the Schuldbuch reward batch when deserialisation finds the defeated
+  quest boss and a loot roll saved at its first pickup. The remaining drops use the original roll
+  IDs and positions. XP and bestiary credit are applied before the systems restore their slices.
 - Main quest always visible (playtest round 10, F-30 / F-41, `tests/quests-tracker.test.ts`):
   a running main quest is always in `tracked()` (a lost entry heals on read, `track(id, false)`
   ignores it, Aufgaben shows no toggle for it). `mainOffer(chapter)`: with no main quest
@@ -2363,6 +2370,9 @@ Each RPG track adds its own subsection here when it fills its system in.
 | `strings.ts` | German captions (one per telegraph), boss hints, info lines |
 | `index.ts` | wiring: events in and out (see the diagram above), slice `state.systems.combat` (hp, stamina, bann, groups, deaths), `stats:changed` / `deriveStats` fallback, equip → weapon stage, `item:use` effects, `xp:grant` per kill, camera shake (none with reducedMotion), the boss reveal camera and death slow motion (none with reducedMotion), the lantern flare, death → `player:died` → `player:caught {by:'combat'}` → full heal on `player:teleport` (or after 8 s), heal on `hub:enter` and at the shift anchor; abilities by level (`skillsForLevel`; a new one rides on the level card through the card source `ability`, a toast only if no level card took it within 10 s of calm), keys `skill1–3` (T / Z(Y) / U, input.ts), the Ausfall's push through `player.impulse`; round 6 **camera clearance** (`cameraClearance`, after the reveal camera: when the camera ends up inside a big body's hull — a boss, a Steinfresser, a Foliant — the view eases out along the line from its axis, a little up, ≤ 3 m for a boss (to 1.3 × its hull), never under the ground; the player and the fight are untouched; `kq.combat.view()` reads the pull and each body's dither); `enemy:killed.by` maps the sim's `skill` / `hazard` to `heavy`; no `xp:grant` for called adds |
 
+- The per-step `combat:step` save hold is released only after the step's HP, stamina and
+  Bannlicht are mirrored into the combat slice, so a kill autosave carries the vitals after the
+  kill's XP (a level-up heals). `tests/combat-autosave.test.ts` checks the saved snapshot.
 - **Interact wins LMB**: an attack from the mouse is ignored while any `.kq-prompt` is shown
   (npc / chronik / menagerie); K always swings. Attacks are also blocked while measuring, flying,
   frozen, in a modal or a conversation, and with `flags['combat.disabled']` („Du hebst den Stab nicht.“).

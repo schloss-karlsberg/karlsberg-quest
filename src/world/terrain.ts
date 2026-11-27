@@ -137,6 +137,8 @@ export class Terrain {
   private readonly frustum = new Frustum();
   private readonly box = new Box3();
   private readonly m4 = new Matrix4();
+  private readonly lastCull = { clip: new Matrix4(), eye: new Vector3(), far: 0, scale: 0, detail: false };
+  private cullDirty = true;
   readonly stats = { chunks: 0, triangles: 0 };
   /** LOD distance factor (graphics preset): < 1 switches to coarser chunks sooner. */
   lodScale = 1;
@@ -240,6 +242,7 @@ export class Terrain {
 
   setDataset(ds: TerrainDataset): void {
     this.dataset = ds;
+    this.cullDirty = true;
     const u = this.material.uniforms;
     u.uHeight!.value = ds.heightTex;
     u.uSurf!.value = ds.surfTex;
@@ -283,6 +286,7 @@ export class Terrain {
     }
     this.uniforms.uRelief!.value = texture;
     this.uniforms.uReliefGrid!.value = [x0, z0, RELIEF_RANGE_M];
+    this.cullDirty = true;
   }
 
   /**
@@ -310,12 +314,22 @@ export class Terrain {
     if (!ds) return;
     camera.updateMatrixWorld();
     this.m4.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-    this.frustum.setFromProjectionMatrix(this.m4);
-    for (const batch of this.lods) batch.count = 0;
     const u = this.uniforms;
     const detail = this.reliefEnabled && ds.key === '2025' && u.uScanMix!.value <= 0.001 && u.uMapMix!.value <= 0.001 ? this.relief : null;
     const cam = camera.position;
     const ls = this.lodScale;
+    // Identical culling inputs leave every instance batch and its GPU buffer valid.
+    const last = this.lastCull;
+    if (!this.cullDirty && last.scale === ls && last.detail === !!detail && last.far === camera.far
+      && last.eye.equals(cam) && last.clip.equals(this.m4)) return;
+    this.cullDirty = false;
+    last.eye.copy(cam);
+    last.clip.copy(this.m4);
+    last.far = camera.far;
+    last.scale = ls;
+    last.detail = !!detail;
+    this.frustum.setFromProjectionMatrix(this.m4);
+    for (const batch of this.lods) batch.count = 0;
     const size = CHUNK * this.cell;
     let tris = 0;
     for (let k = 0; k < this.chunks.length; k++) {
