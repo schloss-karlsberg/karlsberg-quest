@@ -1,7 +1,7 @@
 ---
-id: TASK-072
+id: TASK-073
 aliases:
-- TASK-072
+- TASK-073
 title: 'Dog-bark caption is pushed out of the subtitle box almost at once'
 slug: dog-bark-caption-pushed-out
 status: todo
