@@ -15,7 +15,7 @@ export async function initStory(ctx: GameContext, element: () => unknown) {
     content: { packs: [], dialogueFor: () => [], dialogue: new Map(), cases: new Map() },
     audio: { ...ctx.audio, bindVoiceEmitter: () => () => {} },
     assets: { licences: async () => null },
-    pause: { paused: false },
+    pause: { ...ctx.pause, paused: false },
     input: { ...ctx.input, isDown: () => false },
     ui: {
       ...ctx.ui, layer: () => layer,

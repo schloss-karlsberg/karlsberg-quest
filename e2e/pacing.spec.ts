@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { ciScale } from './helpers/ci';
+import { stepToCard } from './helpers/cards';
 import { SCREENS, trackErrors } from './helpers/common';
 import { openPause, waitForHooks } from './helpers/pause';
 import { newGame } from './helpers/prolog';
@@ -69,12 +70,9 @@ test('the test quest holds its payout during combat and shares the notice slot',
   }, quest);
   expect(during).toEqual({ inCombat: true, rewardOpen: false, rewardPending: 1 });
   await page.evaluate((id) => window.kq!.combat!.kill(id), group);
-  await page.waitForFunction(() => {
-    const k = window.kq!;
-    k.story!.finishTyping();
-    k.step(15);
-    return !k.combat!.state().inCombat && k.quests!.reward();
-  });
+  await page.evaluate(() => window.kq!.story!.finishTyping());
+  await stepToCard(page, '[data-testid="quest-reward"]', 'present');
+  expect(await page.evaluate(() => window.kq!.combat!.state().inCombat)).toBe(false);
   expect(await page.evaluate(() => window.kq!.ctx.ui.cards.showing)).toBe('reward');
   expect(await page.evaluate(() => window.kq!.skills!.card())).toBeNull();
   expect(await page.evaluate((id) => window.kq!.quests!.state().quests[id]?.state, quest)).toBe('done');
@@ -99,11 +97,7 @@ test('queued clue pages open one at a time above Pause', async ({ page }) => {
   await shot(page, '04-one-card');
 
   await page.keyboard.press('Escape');
-  await page.waitForFunction(() => {
-    window.kq!.step(1);
-    return document.querySelector('[data-testid="chronik-card"]')?.getAttribute('data-clue') === 'ct.clue.orangeriemauer';
-  });
-  await expect(card).toHaveCount(1);
+  await stepToCard(page, '[data-testid="chronik-card"][data-clue="ct.clue.orangeriemauer"]', 'present');
   await expect(card).toHaveAttribute('data-clue', 'ct.clue.orangeriemauer');
   await page.keyboard.press('Escape');
   await expect(pause).toBeVisible();

@@ -39,7 +39,7 @@ vi.mock('../src/ui/dom', () => ({
   svg: () => new ElementStub('svg'),
 }));
 
-async function boot(ending: EndingId, flags: Record<string, string> = {}, beat = 'e2') {
+async function boot(ending: EndingId, flags: Record<string, string | boolean> = {}, beat = 'e2') {
   const saved = createInitialState();
   saved.systems.story = { ...createStorySlice(), active: true, chapter: 'enden', beat, ending };
   saved.flags = flags;
@@ -91,7 +91,8 @@ afterEach(() => {
 
 describe('continuing a saved epilogue', () => {
   it.each(['museum', 'burn', 'keep'] as const)('restores the %s epilogue and hands off to the party once', async (ending) => {
-    const { ctx, state, modal, open, requestLock } = await boot(ending);
+    // saved after the closing card was dismissed (TASK-068)
+    const { ctx, state, modal, open, requestLock } = await boot(ending, { 'story.endcard': true });
     startPlay(ctx, true);
 
     expect(open).toHaveBeenCalledTimes(1);
@@ -114,6 +115,28 @@ describe('continuing a saved epilogue', () => {
     click();
     expect(modal.closed).toBe(true);
     expect(onParty.mock.calls).toEqual([[ending]]);
+  });
+
+  it.each(['museum', 'burn', 'keep'] as const)('reopens the %s closing card for a save without the card marker, then the epilogue', async (ending) => {
+    // a save from the staged scene or the card itself (or one older than the marker)
+    const { ctx, state, save, modal, open, requestLock } = await boot(ending);
+    startPlay(ctx, true);
+
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(requestLock).not.toHaveBeenCalled();
+    expect(modal.el.dataset.stage).toBe('scene');
+    const [next] = modal.setBody.mock.lastCall![0].at(-1)!.children as ElementStub[];
+    expect(next?.props['data-testid']).toBe('ending-next');
+    const click = next!.props.onclick as () => void;
+    click();
+    expect(modal.el.dataset.stage).toBe('epilogue');
+    expect(state.state.flags['story.endcard']).toBe(true);
+    expect(save.peek()?.flags['story.endcard']).toBe(true);
+    // a second tap on the stale button does nothing
+    const pages = modal.setBody.mock.calls.length;
+    click();
+    expect(modal.setBody.mock.calls.length).toBe(pages);
+    expect(open).toHaveBeenCalledTimes(1);
   });
 
   it.each([

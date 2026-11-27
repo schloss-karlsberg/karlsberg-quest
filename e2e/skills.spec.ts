@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 import { ciScale } from './helpers/ci';
+import { stepPastSkillCards, stepToCard } from './helpers/cards';
 import { SCREENS } from './helpers/common';
 
 /**
@@ -111,14 +112,15 @@ test.describe('skills and survey tools', () => {
     // skill:grant (the contract event) → state.skills, card, Laub
     await page.evaluate(() => window.kq!.ctx.events.emit('skill:grant', { skill: 'relief', level: 2 }));
     expect(await page.evaluate(() => window.kq!.state().skills)).toMatchObject({ relief: 2 });
+    await stepToCard(page, '.kqk-card:not(.kqk-held)', 'present');
     const card = page.getByTestId('skill-card');
     await expect(card).toBeVisible();
     await expect(card).toHaveAttribute('data-skill', 'relief');
     await expect(card).toContainText('Lokales Relief');
     expect(await events(page, 'skill:unlocked')).toEqual([{ skill: 'relief', level: 2 }]);
-    // the stamp lands after ~1.2 s of card time (frame clock, slow under software GL), then Laub speaks
+    // Laub speaks when the stamp lands at 1.15 seconds of visible card time.
     await expect(card).toHaveClass(/kqk-in/);
-    await page.waitForFunction(() => window.kq!.skills!.said().length > 0, null, { timeout: 60_000 });
+    await page.evaluate(() => window.kq!.step(70));
     expect((await events(page, 'dialogue:say')).map((d) => (d as { speaker: string }).speaker)).toContain('laub');
     await shot(page, 'unlock-card');
     await page.evaluate(() => {
@@ -150,7 +152,7 @@ test.describe('skills and survey tools', () => {
       k.step(40);
     });
     expect(await page.evaluate(() => window.kq!.survey!.state().map)).toBe(1840);
-    await page.waitForFunction(() => window.kq!.skills!.card() === null, null, { timeout: 120_000 }); // let the card leave
+    await stepPastSkillCards(page);
     await clearDialogue(page);
     await shot(page, 'map1840');
     await page.evaluate(() => {
@@ -178,6 +180,7 @@ test.describe('skills and survey tools', () => {
     const errors = trackErrors(page);
     await page.evaluate(() => window.kq!.teleport(1150, -1050, 120, -4));
     await page.evaluate(() => window.kq!.ctx.events.emit('skill:grant', { skill: 'relief', level: 2 }));
+    await stepToCard(page, '.kqk-card:not(.kqk-held)', 'present');
     const card = page.getByTestId('skill-card');
     await expect(card).toHaveClass(/kqk-in/);
     // a chapter title card comes up (the story's .kqs-card): the unlock card hides and waits

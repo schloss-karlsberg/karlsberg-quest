@@ -1,5 +1,6 @@
 import { type Page, expect, test } from '@playwright/test';
 import { ciScale } from './helpers/ci';
+import { stepToCard } from './helpers/cards';
 import { openPause, waitForHooks } from './helpers/pause';
 import { SCREENS, trackErrors } from './helpers/common';
 
@@ -132,11 +133,12 @@ test('XP bar, level-up stamp card (steps aside for a title card), rpg.level flag
   expect(parseFloat(fill0 || '0')).toBe(0);
 
   const card = page.getByTestId('level-card');
+  await stepToCard(page, '.kqp-card:not(.kqp-held)', 'present');
   await expect(card).toBeVisible();
   await expect(card).toHaveAttribute('data-level', '3');
   await expect(card).toContainText('Stufe III');
   await expect(card).toContainText('2 Talentpunkte frei');
-  await page.waitForFunction(() => !!document.querySelector('.kqp-card.kqp-stamped'), null, { timeout: 60_000 });
+  await stepToCard(page, '.kqp-card.kqp-stamped', 'present');
   // and the quick slot shows the default item (none yet)
   await expect(page.getByTestId('hud-quick')).toHaveAttribute('data-item', 'item.balsam');
   await page.evaluate(() => window.kq!.progression!.grant('item.balsam', 3));

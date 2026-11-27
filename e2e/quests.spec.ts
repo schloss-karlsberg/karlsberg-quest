@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 import { ciScale } from './helpers/ci';
+import { stepToCard } from './helpers/cards';
 import { openPause, waitForHooks } from './helpers/pause';
 import { SCREENS } from './helpers/common';
 
@@ -91,8 +92,9 @@ test('quests: Hanne gives a task, the tracker counts, the turn-in tells the hist
     k.story!.goto('test', 'q1');
     k.step(4);
   });
-  // the chapter title card runs on the frame clock: let it pass
-  await expect(page.getByTestId('story-card')).toHaveCount(0, { timeout: 60_000 });
+  // Advance the chapter title and its hold on the opening beat.
+  await page.evaluate(() => window.kq!.step(390));
+  await expect(page.locator('.kqs-card.kqs-show')).toHaveCount(0);
   // the opening beat's timeline (Hanne's offer) starts once the card has faded (M-11): a step runs it
   await page.evaluate((q) => {
     const k = window.kq!;
@@ -294,13 +296,8 @@ test('quests: Hanne gives a task, the tracker counts, the turn-in tells the hist
 
   // ---- the payout notice, after the conversation ------------------------------------------------
   // The level card gets extra reading time for the Ausfall unlock. Render until the payout takes the slot.
-  const payoutFrame = await page.waitForFunction(() => {
-    const payout = '[data-testid="quest-reward"]';
-    for (let frame = 0; frame < 12 && !document.querySelector(payout); frame++) window.kq!.step(1);
-    if (!document.querySelector(payout)) return false;
-    return document.querySelector('[data-testid="level-card"]') ? 'overlap' : 'reward';
-  });
-  expect(await payoutFrame.jsonValue()).toBe('reward');
+  await stepToCard(page, '[data-testid="quest-reward"]', 'present');
+  expect(await page.getByTestId('level-card').count()).toBe(0);
   await expect(reward).toBeVisible();
   await expect(reward).toHaveAttribute('role', 'status');
   await expect(reward).toContainText('Aufgabe erfüllt');

@@ -78,6 +78,7 @@ export class UnlockCards {
 
   push(req: CardRequest): void {
     // a later tier of the same skill replaces a queued earlier one
+    if (!this.queue.length) this.waited = 0;
     const i = this.queue.findIndex((q) => q.skill === req.skill);
     if (i >= 0) this.queue[i] = { skill: req.skill, level: Math.max(req.level, this.queue[i]!.level) };
     else this.queue.push(req);
@@ -102,7 +103,7 @@ export class UnlockCards {
     return this.current?.req ?? null;
   }
 
-  /** Advance the card clock. A hold keeps a queued or visible card waiting. */
+  /** Advance (game seconds). `hold` keeps the queue waiting (modal open, story card on screen). */
   frame(dt: number, reduced: boolean, hold: boolean): void {
     if (!this.current) {
       if (!this.queue.length) {
@@ -110,10 +111,8 @@ export class UnlockCards {
         return;
       }
       if (this.waited < SETTLE) {
-        // Once settled, let the director grant the slot on the next frame.
-        // A paused game (dt 0) still lets the merge window pass.
-        this.waited += Math.max(dt, 1 / 60);
-        return;
+        this.waited += dt;
+        return; // claim the shared slot on the first tick after settling
       }
       if (hold) return;
       const req = this.queue.shift()!;
