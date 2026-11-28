@@ -63,6 +63,7 @@ The small authoring fixtures and the campaign regression run in
 | `chapter`, `order`, `title_de`, `sub_de?` | id, play order, title card (5.5 s; the opening beat's `enter` timeline starts counting once it has faded, so its sounds, lines, objectives and quest offers keep their relative timing and need no extra `delay`, and its `timer` / `chapterTimer` conditions count from that moment too; only silent setup at time 0 — look, flag, npc, item, anchor, threat, shift, skill, teleport … — runs under the card; lines from other sources wait for it too) |
 | `start`, `next?`, `unlocks?` | first beat; chapter that follows; chapters unlocked at the map table |
 | `era?`, `checkpoint? {x,z,yaw?,era?}` | chapter era; start position (also where being caught returns to) |
+| `continues?` | `true`: when the story runs into the chapter from the one before, the checkpoint is not applied and the player keeps their era and place. A replay or a jump still starts at the checkpoint. „Der Hof“ goes on in 1789 where the tour's touch of the spring left the player |
 | `placeholder?` | skeleton chapter (title card says so) |
 | `test?` | test chapter (`99-test.story.json`): validated, but loaded only with `?storytest` |
 | `dev?` | dev chapter: loaded only with the URL switch of that name, and a new game then starts in it |
@@ -71,6 +72,14 @@ The small authoring fixtures and the campaign regression run in
 | `beats` | `{id, title_de?, enter?, complete, exit?, next?, checkpoint?, wake?, on?, placeholder?}` |
 
 Starting or replaying a chapter resets reaction cooldowns and rising-edge state.
+
+**One journey.** The tour's `t17` ends on `quelle:touch`; `t18` shifts to 1789 (`onResume`, so a
+Continue from its autosave finishes the jump), plays the arrival lines and hands over. „Der Hof“
+`continues`: `k1_0` sets the chapter up under the card (all its people stand at once), its
+`k1_0.damals` reaction lets Laub say where you are and what is needed once the card has faded, then
+`k1_0b` follows with the quests, so nothing is offered on the chapter card.
+Started from the chapter list, `k1_0` runs in the present and its `k1_0.heute` reaction makes the
+spring the Q anchor; the lines wait for the summer. The spring's „Wasser berühren“ is offered once in the game, in `t17`.
 
 **Wake places.** `wake {x, z, yaw?, era: "today", text?}` on a beat: being caught or an empty
 meter while it runs brings you to the present *there* (the resumed beat's `wake` wins, else the

@@ -984,19 +984,22 @@ history and unpaid rewards in `src/core/legacy-prologue-quests.ts` for old saves
 
 As built (`content/quests/01-kapitel-1.quests.json`, `scripts/content-build/kapitel1.mjs`); ends at level 6.
 
-**Opening at the Karlsbergquelle** (owner, 2026-11-20; design `docs/IDEAS-ROUND11.md` §1, phase 1;
-story `k1_0` → `k1_0b` → `k1_0c` → `k1_1`): the chapter checkpoint is the spring (1059.3/−833.1, yaw 204: the prologue's spot, within reach of the water), so
-the chapter opens there at dawn (`k1_0` „Morgengrauen an der Quelle“, `look dawn`), not in the station
-bed. Marlene radios („Du bist ja schon weg“), Laub says why it takes a second touch: yesterday's drop
-dried in the Bussole overnight (FIKTION, cx.42). `k1_0` sets no Q anchor (Q at the spring would skip
-the touch); E at the trough → the touch → the shift to summer 1789 (exit: `look day`). `k1_0b` „Die
-Brunnenstube, Sommer“ (one Laub line) is the walk up on foot by the trail west of the Orangerie to the
+**Opening at the Karlsbergquelle** (owner, 2026-11-20; one-way since 2026-11-28, TASK-089;
+story `k1_0` → `k1_0b` → `k1_0c` → `k1_1`): the chapter goes on in 1789 where the tour's touch left the
+player (`continues`: no teleport, no era change at the hand-over). `k1_0` „An der Brunnenstube“ sets
+the chapter up under the card (all people, flags, the prelude's `k1.vorspiel`); in 1789 its reaction
+`k1_0.damals` plays Laub's two arrival lines after the card and ends the beat (`k1.angekommen`).
+There is no dawn, no radio line and no second touch any more; the arrival quest lost its
+„das Wasser berühren“ step. The chapter checkpoint is the trough stand in the present (the shared home
+constant `HOME.spawn`): a replay from Pause → Kapitel or a debug jump starts there, and
+`k1_0.heute` makes the spring the Q anchor. `k1_0b` „Die
+Brunnenstube, Sommer“ (the coat quest and the arrival quest, offered after Laub's lines) is the walk up on foot by the trail west of the Orangerie to the
 Ehrenhof gate (1200/−1116, r 14); flag `k1.vorspiel` keeps the oil meter and the return tip off until
 `k1_1` clears it. Caught or back in today on the way: you wake at the spring, and Q there (anchor
 1058.5/−831 r 10) takes you back. **Anchor rule:** Q never anchors inside the Ehrenhof before the
 flag `court.admitted`; `k1_1` sets it (also `k1_2`/`k1_3`, so older saves keep their anchor), and the
-`k1_1`–`k1_3` today reactions anchor at the Ehrenhof only with it, else at the spring. Old saves in `k1_0` resume at the spring (an `onResume`
-teleport) with the old Ehrenhof anchor cleared. e2e `chapter-k1-quelle.spec.ts`, unit `tests/story.test.ts`.
+`k1_1`–`k1_3` today reactions anchor at the Ehrenhof only with it, else at the spring. Old saves in `k1_0`
+that waited in the present for the second touch load in 1789 at the spring (`migrateFirstJump`). e2e `chapter-k1-quelle.spec.ts`, unit `tests/story.test.ts`.
 
 **"Unauffällig": the disguise** (round 11 phase 2, design `docs/IDEAS-ROUND11.md` §2, system §4.6 /
 `src/systems/court`). `k1_0b` „Die Brunnenstube, Sommer“ now switches the court's watch set `k1` on
@@ -1184,6 +1187,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 | --- | --- |
 | Chestnuts as a ranged weapon or a free way past the pack (TASK-090, 2026-11-28) | A throw does 4 damage (a third of a first Hieb), 1 against armour, elites and bosses, never the last point, and staggers a small enemy at most once every 4 s. Only a calm or suspicious patrol follows the noise, with one hound, and that hound is warier afterwards. The chapter 2 chase, the drive and the kennel finale ignore it. |
 | „The spring is not in the live game anymore … the spring is on the right side of the Schlucht“ (owner, TASK-087, 2026-11-28; with TASK-081) | Nothing had been deleted: the set and the water still built in every era. Three things hid it. **Title:** sets and the spring's water are built in the fixed steps, which stand still under the title, and since the spring is home every save rests there, so „Weiter“ opened on the bare hollow; the title now builds the home set and its water per frame (`TITLE_SETS`). **Side:** the set stood at the OSM node on the north-east flank, on the left of the tour path, its wall end towards the arriving group, the guide's stop behind the wall. OSM puts the node 2.3 m right of the footpath and inside its hairpin, the brook stays on that side, and the 1 m LiDAR shows the spring hollow and the channel at the foot of the south-west bank (1058.5/−830.5). `QUELLE` moved 1061.0/−834.5 facing 234° → 1058.5/−831.0 facing 24°; the trough stand 1059.3/−833.1 stays (yaw 50 → 204), so chapter checkpoints keep their place. The brook leaves the trough to the right, the trail forks off the path to the forecourt and on to the hairpin, the steps reach the path's upper leg, the guide stops on the trail left of the trough and the group stands across it (14 slots). **Water:** the brook's run is a hand wide with moving sky streaks and foam, the trough runs over at its low end in a fall of half a metre, big ferns and mossy boulders dress the shaded hollow. **Find (TASK-081):** during „Nachsehen, was im Trog glänzt“ E „Untersuchen“ is offered anywhere before the trough, whatever the view (`quelle.find` → `quelle:find`); the marker is on the forecourt the arrival trail leads to. `tests/quelle-place.test.ts` holds the side, the registration, the wakes, the stop and the markers; relief re-baked (`pnpm prepare-data --mesh-detail`) |
+| The first time travel was a look and a return: 25 s in 1789, a fade, the present again, a second touch (TASK-089, 2026-11-28) | The touch at the trough is the journey. `tour/t18` is the arrival (shift with `onResume`, no fade, completes in 1789), „Der Hof“ `continues` where the player stands, `k1_0` asks for no touch. Old saves: `migrateFirstJump` (`src/systems/story/migrate.ts`), the `k1_0.heute` anchor as a net. A room-bound NPC placed before the interiors can answer no longer gets the player's storey, so it moves into its room instead of standing on the player; the servant also has coordinates. `tests/tour-handover.test.ts`, `tests/story-runtime.test.ts`, `e2e/quelle.spec.ts`, `e2e/chapter-k1-quelle.spec.ts`. |
 | The tour guide offers a talk at his stops that opens an empty box (TASK-076, 2026-11-27) | A person takes E only while it has something to say: a greeting that can still play, a menu topic, a quest topic, or a silent figure without any lines. A forced open with nothing to say shows „(Schweigt und sieht dich an.)“. The guide's car-park greetings belong to stop 1 (flag `tour.station1.ready`). `tests/npc-talk-waits.test.ts` keeps beats from waiting for a talk with someone who has nothing to say; `tests/npc-has-words.test.ts`, `tests/npc-encounter.test.ts`, `e2e/tour-slice.spec.ts`. |
 | Photos vanish on reload and cannot be kept (TASK-006, 2026-11-26) | Every shot with signal is stored on the device: IndexedDB `kq-photos` holds a full JPEG (≤ 1920 px), a thumbnail and the shot's metadata, or memory where IndexedDB is blocked. The gallery opens with G on the phone, its „Galerie“ button on touch, or Pause → Album. It shows a grid, a full-size viewer, Löschen, Herunterladen and Teilen (the OS share sheet where files can be shared, else a download). At most 100 photos; beyond that a toast instead of a silent drop. The photos are not in the save, and the gallery says they live only on this device. `tests/photo-gallery.test.ts`, `e2e/photo.spec.ts`. |
 | Talk prompts read „Mit Der Hofgärtner sprechen“ (TASK-078, 2026-11-27) | The prompt takes the speaker's dative form (`dative_de` in the speakers pack, e.g. „dem Hofgärtner“, „einem Gardisten“), else the name. Every speaker named with an article has one; `tests/npc-prompt-name.test.ts` checks the packs and every placed person, `tests/npc-encounter.test.ts` the HUD text. |

@@ -59,17 +59,18 @@ async function shot(page: Page, name: string): Promise<void> {
 const story = (page: Page) => page.evaluate(() => window.kq!.story!.state());
 
 /**
- * The chapter after `prev` has begun: completed list, first beat, at home (the Quelle) in the present,
+ * The chapter after `prev` has begun: completed list, first beat, at home (the Quelle) in the present
+ * (chapter 1: in 1789, where the tour's touch left the player),
  * standing, and nothing of the previous chapter still being said. (Quick: the chapter's own play
  * function checks its title card next, which fades after 5.5 s of real time; the picture is taken
  * by the chapter's 'start' hook.)
  */
-async function chapterStart(page: Page, prev: string, chapter: string, first: string): Promise<void> {
+async function chapterStart(page: Page, prev: string, chapter: string, first: string, era = 'today'): Promise<void> {
   const s = await story(page);
   expect(s.completed, `${prev} completed`).toContain(prev);
   expect(s.chapter).toBe(chapter);
   expect(s.beat, `${chapter} starts at its first beat`).toBe(first);
-  expect(s.era).toBe('today');
+  expect(s.era).toBe(era);
   expect(s.finished).toBeFalsy();
   expect(s.dialogue?.id ?? '', 'no line of the previous chapter runs on').not.toMatch(new RegExp(`\\.${prev === 'tour' ? 't' : prev}\\.`));
   expect(await page.evaluate(() => window.kq!.ctx.player.stance)).toBe('stand');
@@ -282,8 +283,8 @@ test('campaign: new game → tour → chapters 1–4 → ending → credits', as
       expect(voice.murmured).toBeGreaterThan(0);
     }
     lap('tour');
-    await chapterStart(page, 'tour', 'k1', 'k1_0');
-    // chapter 1 opens at the Karlsbergquelle (its checkpoint)
+    await chapterStart(page, 'tour', 'k1', 'k1_0', '1789');
+    // chapter 1 opens at the Karlsbergquelle (its checkpoint), in 1789
     expect(await distTo(page, K1_START.x, K1_START.z), 'k1 starts at the spring').toBeLessThan(30);
     // what the old prologue left behind, now from the tour (tests/tour-handover.test.ts)
     await expectHandover(page);

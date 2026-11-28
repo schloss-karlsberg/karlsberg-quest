@@ -107,12 +107,22 @@ describe('the opening beat timeline waits for the chapter card', () => {
     expect(h.holding()).toBe(true);
   });
 
-  it('kapitel 1: the radio crackle and Marlene stay 0.3 s apart (both wait for the card)', () => {
-    const k1 = opening(story('01-kapitel-1.story.json'));
-    const crackle = k1.find((x) => x.a.do === 'sound')!;
-    const marlene = k1.find((x) => x.a.do === 'say')!;
-    expect(crackle.waits && marlene.waits).toBe(true);
-    expect(marlene.at - crackle.at).toBeCloseTo(0.3, 5);
+  it('kapitel 1: the arrival beat sets the world up under the card; only the court’s watch waits for it', () => {
+    // „Der Hof“ opens in 1789 where the tour's touch left the player: the people stand at once,
+    // nothing is said, offered or pointed at in the beat's own list. Laub's arrival lines come from
+    // its 1789 reaction (held by the presenter until the card has faded) and end the beat, so the
+    // quests of k1_0b never land on the card.
+    const file = story('01-kapitel-1.story.json');
+    const k1 = opening(file);
+    expect(k1.length).toBeGreaterThan(10);
+    expect(k1.filter((x) => x.waits).map((x) => x.a.do)).toEqual(['cue']);
+    expect(k1.some((x) => ['say', 'sound', 'objective', 'quest', 'toast', 'prompt'].includes(x.a.do))).toBe(false);
+    const arrival = file.beats[0]!.on!.find((r) => r.id === 'k1_0.damals')!;
+    expect(arrival.when).toEqual({ era: '1789' });
+    // the place, then the first objective while he says what is needed, then the hand-on
+    expect(arrival.do.map((a) => (a.do === 'say' ? a.id : a.do))).toEqual(['laub.k1.brunnenstube', 'objective', 'laub.k1.fremde', 'flag']);
+    expect(arrival.do.filter((a) => a.do === 'say').every((a) => a.wait === true)).toBe(true);
+    expect(file.beats[0]!.complete).toEqual({ all: [{ era: '1789' }, { flag: 'k1.angekommen' }] });
   });
 });
 

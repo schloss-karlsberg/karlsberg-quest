@@ -12,6 +12,7 @@
     "yaw": 204,
     "era": "today"
   },
+  "continues": true,
   "on": [
     {
       "id": "oel-a",
@@ -886,7 +887,14 @@
   "beats": [
     {
       "id": "k1_0",
-      "title_de": "Morgengrauen an der Quelle",
+      "title_de": "An der Brunnenstube",
+      "wake": {
+        "x": 1059.3,
+        "z": -833.1,
+        "yaw": 204,
+        "era": "today",
+        "text": "Du kommst an der Quelle zu dir, im Heute. Nichts ist verloren."
+      },
       "enter": [
         {
           "do": "enemy",
@@ -902,7 +910,7 @@
         },
         {
           "do": "look",
-          "time": "dawn"
+          "time": "day"
         },
         {
           "do": "look",
@@ -929,6 +937,8 @@
           "op": "spawn",
           "npc": "diener",
           "room": "B10.1.s-pfeilersaal",
+          "x": 1241.9,
+          "z": -967.1,
           "era": "1789",
           "chapter": "k1",
           "yaw": 180
@@ -943,8 +953,11 @@
             "npc.owns.clue.k1.gagern": true,
             "npc.owns.clue.k1.insel": true,
             "npc.owns.clue.k1.amphitheater": true,
-            "quelle.guide": true,
-            "quelle.call": true
+            "quelle.guide": null,
+            "quelle.call": null,
+            "k1.vorspiel": true,
+            "npc.owns.clue.k1.papier": true,
+            "k1.angekommen": null
           }
         },
         {
@@ -983,74 +996,179 @@
           "to": null
         },
         {
-          "do": "teleport",
-          "x": 1059.3,
-          "z": -833.1,
-          "yaw": 204,
-          "onResume": true
+          "do": "npc",
+          "op": "spawn",
+          "npc": "liese",
+          "x": 1004.85,
+          "z": -870.3,
+          "era": "1789",
+          "chapter": "k1",
+          "yaw": 120
         },
         {
-          "do": "quest",
-          "op": "offer",
-          "id": "q.k1.ankunft",
-          "onResume": true
-        },
-        {
-          "do": "objective",
-          "id": "k1.quelle",
-          "text": "An der Quelle: E – das Wasser berühren",
-          "x": 1059.3,
-          "z": -833.1,
-          "delay": 0.5
-        },
-        {
-          "do": "sound",
-          "sound": "radio",
-          "caption": "[Das Funkgerät knackt]",
-          "delay": 2.5
-        },
-        {
-          "do": "say",
-          "id": "marlene.k1.morgen.quelle",
-          "speaker": "marlene",
-          "delay": 0.3,
-          "text": "Morgen, {Name}! Du bist ja schon weg. Die Brötchen liegen auf der Stufe. Ich ess deins, wenn du nicht bald zurück bist."
-        },
-        {
-          "do": "say",
-          "id": "laub.k1.morgen.quelle",
-          "speaker": "laub",
-          "delay": 1,
-          "until": {
-            "event": "quelle:touch"
-          },
-          "text": "Sie sind vor Sonnenaufgang los. Ich habe Sie nicht aufgehalten. Der Tropfen von gestern ist über Nacht in der Bussole eingetrocknet, die Nadel zeigt aufs Wasser, nicht auf den Ehrenhof. Ein zweites Mal also. Sie wissen, wie es geht."
-        }
-      ],
-      "complete": {
-        "event": "quelle:touch"
-      },
-      "exit": [
-        {
-          "do": "flag",
-          "set": {
-            "quelle.call": null,
-            "quelle.guide": null,
-            "k1.vorspiel": true
+          "do": "npc",
+          "op": "spawn",
+          "npc": "hofgaertner",
+          "x": 1221,
+          "z": -993,
+          "era": "1789",
+          "chapter": "k1",
+          "yaw": 110,
+          "watch": {
+            "fov": 70,
+            "range": 13,
+            "sweep": [
+              20,
+              200
+            ],
+            "period": 10,
+            "set": "k1",
+            "zone": "court.orangerie",
+            "who": "Der Hofgärtner"
           }
         },
         {
-          "do": "objective",
-          "text": null
+          "do": "npc",
+          "op": "spawn",
+          "npc": "gardist-tor",
+          "x": 1194.6,
+          "z": -1111.5,
+          "era": "1789",
+          "chapter": "k1",
+          "yaw": 270,
+          "watch": {
+            "fov": 70,
+            "range": 12,
+            "sweep": [
+              240,
+              300
+            ],
+            "period": 9,
+            "set": "k1",
+            "inspector": true,
+            "who": "Ein Gardist"
+          }
         },
         {
-          "do": "shift",
-          "to": "1789",
-          "reason": "quelle"
+          "do": "npc",
+          "op": "spawn",
+          "npc": "gardist",
+          "x": 1218,
+          "z": -1100,
+          "era": "1789",
+          "chapter": "k1",
+          "yaw": 210,
+          "watch": {
+            "fov": 70,
+            "range": 14,
+            "sweep": [
+              170,
+              250
+            ],
+            "period": 10,
+            "set": "k1",
+            "who": "Ein Gardist"
+          }
         },
         {
-          "do": "look",
-          "time": "day"
+          "do": "npc",
+          "op": "spawn",
+          "npc": "lakai",
+          "x": 1238,
+          "z": -1124,
+          "era": "1789",
+          "chapter": "k1",
+          "yaw": 285,
+          "watch": {
+            "fov": 70,
+            "range": 12,
+            "sweep": [
+              250,
+              320
+            ],
+            "period": 7,
+            "set": "k1",
+            "who": "Ein Lakai"
+          }
+        },
+        {
+          "do": "cue",
+          "id": "court:on",
+          "data": {
+            "set": "k1"
+          }
+        }
+      ],
+      "complete": {
+        "all": [
+          {
+            "era": "1789"
+          },
+          {
+            "flag": "k1.angekommen"
+          }
+        ]
+      },
+      "on": [
+        {
+          "id": "k1_0.damals",
+          "when": {
+            "era": "1789"
+          },
+          "do": [
+            {
+              "do": "say",
+              "id": "laub.k1.brunnenstube",
+              "speaker": "laub",
+              "delay": 1,
+              "wait": true,
+              "text": "Sommer 1789. Kies, Hunde, irgendwo eine Geige. Und mittendrin Sie. In Orange."
+            },
+            {
+              "do": "objective",
+              "id": "k1.rock",
+              "text": "Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach",
+              "x": 1001.5,
+              "z": -876.5
+            },
+            {
+              "do": "say",
+              "id": "laub.k1.fremde",
+              "speaker": "laub",
+              "delay": 0.4,
+              "wait": true,
+              "text": "Der Herzog lässt keine Fremden auf den Berg. Hundert Gardisten an den Türen, schreibt man. Wir brauchen zwei Dinge: einen Rock, der nicht leuchtet, und ein Papier, das jemand anders geschrieben hat. Unten an der Bleiche hängt Wäsche."
+            },
+            {
+              "do": "flag",
+              "set": {
+                "k1.angekommen": true
+              }
+            }
+          ]
+        },
+        {
+          "id": "k1_0.heute",
+          "when": {
+            "era": "today"
+          },
+          "repeat": true,
+          "do": [
+            {
+              "do": "anchor",
+              "to": "1789",
+              "x": 1058.5,
+              "z": -831,
+              "r": 10
+            },
+            {
+              "do": "objective",
+              "id": "k1.zurueck-q",
+              "text": "Zurück in den Sommer 1789: Q an der Quelle",
+              "x": 1059.3,
+              "z": -833.1
+            }
+          ]
         }
       ]
     },
@@ -1178,22 +1296,14 @@
         {
           "do": "quest",
           "op": "offer",
-          "id": "q.k1.kleider",
+          "id": "q.k1.ankunft",
           "onResume": true
         },
         {
-          "do": "say",
-          "id": "laub.k1.brunnenstube",
-          "speaker": "laub",
-          "delay": 4.5,
-          "text": "Sommer 1789. Kies, Hunde, irgendwo eine Geige. Und mittendrin Sie. In Orange."
-        },
-        {
-          "do": "say",
-          "id": "laub.k1.fremde",
-          "speaker": "laub",
-          "delay": 1,
-          "text": "Der Herzog lässt keine Fremden auf den Berg. Hundert Gardisten an den Türen, schreibt man. Wir brauchen zwei Dinge: einen Rock, der nicht leuchtet, und ein Papier, das jemand anders geschrieben hat. Unten an der Bleiche hängt Wäsche."
+          "do": "quest",
+          "op": "offer",
+          "id": "q.k1.kleider",
+          "onResume": true
         }
       ],
       "on": [
@@ -1644,13 +1754,6 @@
           "data": {
             "open": true
           }
-        },
-        {
-          "do": "quest",
-          "op": "progress",
-          "id": "q.k1.ankunft",
-          "objective": "quelle",
-          "onResume": true
         },
         {
           "do": "say",

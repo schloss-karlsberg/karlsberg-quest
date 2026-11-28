@@ -55,6 +55,18 @@
       "text_de": "Und das Schloss da oben? Am 28. Juli 1793 ist es abgebrannt.",
       "trigger": { "event": "npc:talk", "npc": "imhoff", "chapter": "tour", "topic": "greet", "step": 3, "flag": "tour.station1.ready" },
       "once": true
+    },
+    {
+      "id": "marlene.t.stab",
+      "speaker": "marlene",
+      "text_de": "Ein Fluchtstab. Esche, Eisenschuh, rot-weiß. Zum Messen gebaut, aber er hält mehr aus, als das Forstamt denkt.",
+      "trigger": { "event": "npc:talk", "npc": "marlene", "chapter": "tour", "topic": "greet", "step": 1 }
+    },
+    {
+      "id": "marlene.t.stab.b",
+      "speaker": "marlene",
+      "text_de": "Lauf ruhig mit den anderen weiter. Ich mess hier noch fertig und komm nachher aufs Plateau.",
+      "trigger": { "event": "npc:talk", "npc": "marlene", "chapter": "tour", "topic": "greet", "step": 2 }
     }
   ]
 }

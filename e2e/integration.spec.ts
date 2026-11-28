@@ -109,23 +109,25 @@ test('integration: the tour and K1 across story, fx, hunt and chronik', async ({
   expect(await payloads(page, 'clue:found')).toContainEqual({ id: 'ct.clue.hohlweg', kind: 'relief' });
   await shot(page, '06-clue');
 
-  // The tour introduces the Bussole. At the K1 checkpoint, the spring's E drives the shift.
+  // The tour introduces the Bussole; at its trough the spring's E drives the one shift of the opening.
   await installQuestPlay(page);
   await page.evaluate(() => {
     const k = window.kq!;
     k.ctx.ui.modals.closeAll();
     k.story!.goto('tour', 't17');
-    k.story!.flush();
-    k.story!.goto('k1');
-    k.story!.flush();
     k.step(4);
   });
-  expect((await story(page)).objective).toMatchObject({ id: 'k1.quelle', x: 1059.3, z: -833.1 });
-  expect(await payloads(page, 'objective:set')).toContainEqual(expect.objectContaining({ id: 'k1.quelle', x: 1059.3, z: -833.1 }));
+  // Laub's lines run, then the water is called (touchSpring steps to the trough)
+  for (let i = 0; i < 60 && !(await page.evaluate(() => window.kq!.state().flags['quelle.call'])); i++) await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
+  expect((await story(page)).objective).toMatchObject({ id: 'tour', text: 'Am Trog das Wasser berühren' });
   await expect(page.getByTestId('bussole')).toHaveClass(/kqs-show/);
   const spring = await touchSpring(page, () => shot(page, '07-spring'));
-  expect(spring).toMatchObject({ prompt: true, era: '1789', beat: 'k1_0b' });
+  expect(spring).toMatchObject({ prompt: true, era: '1789', beat: 't18' });
   expect(spring.scene).toBeGreaterThanOrEqual(1.5);
+  expect(await payloads(page, 'shift:request')).toEqual([{ to: '1789', reason: 'quelle' }]);
+  // the journey is one-way: the arrival lines, then „Der Hof“ begins right there, in 1789
+  for (let i = 0; i < 80 && (await story(page)).beat !== 'k1_0b'; i++) await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
+  expect(await story(page)).toMatchObject({ chapter: 'k1', beat: 'k1_0b', era: '1789' });
   expect(await payloads(page, 'shift:request')).toEqual([{ to: '1789', reason: 'quelle' }]);
   const shiftLog = (await events(page)).filter(([n]) => (n.startsWith('shift:') && n !== 'shift:request') || n === 'era:change').map(([n]) => n);
   expect(shiftLog).toEqual(['shift:begin', 'era:change', 'shift:midpoint', 'shift:done']);

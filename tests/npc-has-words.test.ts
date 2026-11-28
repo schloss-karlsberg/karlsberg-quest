@@ -31,4 +31,12 @@ describe('a person offers a conversation only with something to say', () => {
   it('a person without any lines keeps the silent look („Schweigt und sieht dich an.“)', () => {
     expect(hasWords([], 'niemand', 'tour', c, new Set(), 0)).toBe(true);
   });
+
+  it('Marlene at the Weiher has words about the staff she lends, as often as asked', () => {
+    // playtest 2026-11-28: E on her right after the loan opened „(Schweigt und sieht dich an.)“
+    const marlene = talkLines(pack.dialogue, 'marlene', 'tour');
+    const first = answer(marlene, 'marlene', 'tour', GREET, c, new Set());
+    expect(first.map((l) => l.id)).toEqual(['marlene.t.stab', 'marlene.t.stab.b']);
+    expect(hasWords(marlene, 'marlene', 'tour', c, new Set(first.map((l) => l.id)), 0)).toBe(true);
+  });
 });

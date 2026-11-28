@@ -25,7 +25,7 @@ The coordinates are game coordinates in metres (x / z). Beat IDs come from the [
 | `t15` | `quelle`, station 4 | Gather for all four station lines and `imhoff.t.pause`. After the farewell finishes or is skipped, the group continues via `p-aufstieg` and the pause timer starts. |
 | `t16` | Trough 1059.3 / −833.1 | Gerold falls silent. Give the trough its pause. At 9 s the player notices the glint. After 10 s, entering the 1.6 m radius (or already standing there) advances to the compass. |
 | `t17` | Trough, handoff to Laub | The group and dogs despawn. The compass clink is captioned, then Laub speaks. The player touches the water to trigger the shift. Keep Gerold silent. |
-| `t18` | Spring in 1789, then handover | The player and Laub react before the fade and chapter handover. Keep Gerold silent. |
+| `t18` | Spring in 1789, then handover | The player and Laub react while the player is free to look around; „Der Hof“ begins there (no fade, no return). Keep Gerold silent. |
 
 ## Station 1 · Wanderparkplatz (`t1`–`t2`)
 

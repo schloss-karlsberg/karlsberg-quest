@@ -67,7 +67,7 @@ async function shot(page: Page, name: string): Promise<void> {
   await page.screenshot({ path: `${OUT}/tour-${name}.png` });
 }
 
-const ORDER = [...Array.from({ length: 18 }, (_, i) => `t${i + 1}`), 'k1_0'];
+const ORDER = [...Array.from({ length: 18 }, (_, i) => `t${i + 1}`), 'k1_0', 'k1_0b'];
 const beatsSoFar = (page: Page) =>
   page.evaluate(() =>
     (window as unknown as { tourRec?: { n: string; p: { beat?: string }; t: number }[] }).tourRec
@@ -786,12 +786,31 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   expect(await page.evaluate(() => window.kq!.walk!.stats().visible)).toBe(0);
   expect(await page.evaluate(() => window.kq!.animals!.stats().visible)).toBe(0);
   await shot(page, '12-1789');
-  // a look round in 1789, then the hand-over into chapter 1 (no „Fortsetzung folgt“)
-  for (let i = 0; i < 80 && (await page.evaluate(() => window.kq!.story!.state().chapter)) === 'tour'; i++) await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
+  // the arrival lines in 1789, then the hand-over into chapter 1 right there: no fade, no way
+  // back to the present, no „Fortsetzung folgt“
+  const fades = await page.evaluate(() => {
+    const k = window.kq!;
+    let black = false;
+    for (let i = 0; i < 80 && k.story!.state().chapter === 'tour'; i++) {
+      k.story!.finishTyping();
+      for (let j = 0; j < 6; j++) {
+        k.step(10);
+        if (document.querySelector<HTMLElement>('[data-testid="story-fade"]')?.dataset['to'] === '1') black = true;
+        if (k.story!.state().era !== '1789') return { back: true, black };
+      }
+    }
+    k.step(2);
+    return { back: false, black };
+  });
+  expect(fades, 'after the touch: no fade to black, no return to the present').toEqual({ back: false, black: false });
   const s1 = await page.evaluate(() => window.kq!.story!.state());
   expect(s1.completed).toContain('tour');
   expect(s1.chapter).toBe('k1');
   expect(s1.beat).toBe('k1_0');
+  expect(s1.era).toBe('1789');
+  // the chapter card stands alone: no quest banner on it
+  expect(await page.evaluate(() => window.kq!.quests!.state().quests['q.k1.kleider']?.state ?? 'hidden')).toBe('hidden');
+  expect(await page.evaluate(() => window.kq!.quelle!.info().prompt), 'no second touch').toBe(false);
   expect(await page.evaluate(() => window.kq!.walk!.stats().bodies)).toBe(0);
   await expectHandover(page);
   // the deer photo is a tour-only extra on top

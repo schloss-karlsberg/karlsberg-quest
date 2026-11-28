@@ -5,16 +5,17 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { MemoryStorage, SaveManager, SAVE_KEY } from '../src/core/save';
-import { createInitialState, deserializeState, GameStateStore } from '../src/core/state';
+import { createInitialState, deserializeState, GameStateStore, type GameState } from '../src/core/state';
 import type { QuestFile, QuestState } from '../src/rpg/types';
 import { questsInPlay } from '../src/systems/quests/data';
 import { createQuestSlice, QuestBook } from '../src/systems/quests/logic';
 import { createProgressionSlice } from '../src/systems/progression/logic';
 import { levelForXp } from '../src/rpg/stats';
-import { createStorySlice, StoryEngine, runsOnResume } from '../src/systems/story/engine';
+import { createStorySlice, StoryEngine, runsOnResume, staysAtHandover } from '../src/systems/story/engine';
+import { HOME } from '../src/systems/story/hub/home';
 import { storiesInPlay } from '../src/systems/story/stories';
 import { loadStoryFiles } from '../src/systems/story/validate-cli';
-import type { StoryFile } from '../src/systems/story/types';
+import type { Action, StoryFile } from '../src/systems/story/types';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const json = <T>(p: string) => JSON.parse(readFileSync(`${ROOT}${p}`, 'utf8')) as T;
@@ -98,9 +99,41 @@ describe('the tour hands over into chapter 1', () => {
     }
   });
 
-  it('leads into chapter 1 at the Quelle in the present', () => {
+  it('leads into chapter 1 where the player stands in 1789; a replay starts at the Quelle in the present', () => {
     expect(story('00-tour').next).toBe('k1');
-    expect(story('01-kapitel-1').checkpoint).toMatchObject({ x: 1059.3, z: -833.1, yaw: 204, era: 'today' });
+    expect(story('01-kapitel-1').continues).toBe(true);
+    expect(story('01-kapitel-1').checkpoint).toEqual({ ...HOME.spawn, era: 'today' });
+  });
+
+  it('travels once: the touch shifts, the look at 1789 does not fade or return, chapter 1 asks for no touch', () => {
+    const tour = story('00-tour');
+    const t17 = tour.beats.find((b) => b.id === 't17')!;
+    const t18 = tour.beats.find((b) => b.id === 't18')!;
+    expect(tour.beats.at(-1)).toBe(t18);
+    expect(t17.complete).toEqual({ event: 'quelle:touch' });
+    // the shift belongs to the arrival beat, so a Continue from its autosave (era still today) finishes it
+    expect(t17.exit!.some((a) => a.do === 'shift')).toBe(false);
+    expect(t18.enter![0]).toEqual({ do: 'shift', to: '1789', reason: 'quelle', onResume: true });
+    expect(t18.enter!.some((a) => a.do === 'fade')).toBe(false);
+    expect(t18.complete).toEqual({ all: [{ flag: 'tour.ende' }, { era: '1789' }] });
+    const says = t18.enter!.filter((a) => a.do === 'say');
+    expect(says.map((a) => a.id)).toEqual(['player.q.wo', 'laub.t.1789', 'laub.t.seite']);
+    expect(says.every((a) => a.onResume === true)).toBe(true);
+    expect(JSON.stringify(t18)).not.toContain('genügt ein Blick');
+    // nothing after the tour sends the player back or asks for the water again before the court
+    const k1 = story('01-kapitel-1');
+    const opening = k1.beats.slice(0, k1.beats.findIndex((b) => b.id === 'k1_1'));
+    expect(opening.map((b) => b.id)).toEqual(['k1_0', 'k1_0b', 'k1_0c']);
+    for (const beat of opening) {
+      const actions = [...(beat.enter ?? []), ...(beat.exit ?? []), ...(beat.on ?? []).flatMap((r) => r.do)];
+      expect(actions.some((a) => a.do === 'shift' || a.do === 'fade'), beat.id).toBe(false);
+      expect(actions.some((a) => a.do === 'flag' && a.set['quelle.call'] === true), beat.id).toBe(false);
+      expect(JSON.stringify(beat.complete), beat.id).not.toContain('quelle:touch');
+    }
+    const ankunft = json<QuestFile>('content/quests/01-kapitel-1.quests.json').quests.find((q) => q.id === 'q.k1.ankunft')!;
+    expect(ankunft.objectives.map((o) => o.id)).toEqual(['wechsel', 'wache', 'fluegel']);
+    expect(ankunft.objectives.some((o) => o.after?.includes('quelle'))).toBe(false);
+    expect(JSON.stringify(ankunft)).not.toMatch(/über Nacht|Erst die Quelle|quelle:touch/);
   });
 
   it.each(['t12', 't13', 't17', 't18'])('continues a tour slot at %s with the correct staff ownership', (beat) => {
@@ -113,6 +146,185 @@ describe('the tour hands over into chapter 1', () => {
     expect(saved.systems.progression!.equipped.weapon).toBe(beat === 't12' ? null : 'item.stab.esche');
     expect(saved.systems.progression!.xp).toBe(0);
     expect(deserializeState(JSON.stringify(saved))).toEqual(saved);
+  });
+});
+
+describe('saves from the old opening (a look at 1789, back to the present, a second touch)', () => {
+  /** Load a save and run the story on it: shifts, flags and quest commands applied at once, delays ignored. */
+  function play(state: GameState) {
+    const current = deserializeState(JSON.stringify(state));
+    const defs = questsInPlay([{ data: json<QuestFile>('content/quests/01-kapitel-1.quests.json') }], false);
+    const quests = (current.systems.quests ??= createQuestSlice());
+    const book = new QuestBook(defs.quests, quests, {
+      flags: current.flags, codex: current.codex.facts, emit: () => {}, now: () => current.meta.playSeconds, rng: () => 0,
+    });
+    book.mirror();
+    const ran: Action[] = [];
+    const slice = () => current.systems.story!;
+    const engine = new StoryEngine(storiesInPlay(loadStoryFiles(ROOT).files, new URLSearchParams()), slice, {
+      run: (actions, { resume }) => {
+        for (const action of actions) {
+          if (resume && !runsOnResume(action)) continue;
+          ran.push(action);
+          if (action.do === 'shift') current.era = action.to;
+          if (action.do === 'quest' && action.op === 'offer') book.offer(action.id);
+          if (action.do === 'flag') {
+            for (const [key, value] of Object.entries(action.set)) {
+              if (value === null) delete current.flags[key];
+              else current.flags[key] = value;
+            }
+          }
+          if (action.do === 'anchor') {
+            if (action.to === null) for (const key of ['shift.allowed', 'shift.target', 'shift.x', 'shift.z', 'shift.r']) delete current.flags[key];
+            else Object.assign(current.flags, { 'shift.allowed': true, 'shift.target': action.to, 'shift.x': action.x, 'shift.z': action.z, 'shift.r': action.r });
+          }
+          if (action.do === 'objective') slice().objective = action.text ? { text: action.text, id: action.id } : null;
+        }
+      },
+      chapterEntered: (file, { resume, handover }) => {
+        // src/systems/story/index.ts `chapterEntered`: a new chapter starts in its checkpoint's era,
+        // unless it continues where the last one ended
+        if (!resume && !staysAtHandover(file, handover === true) && file.checkpoint?.era) current.era = file.checkpoint.era;
+      },
+      beatEntered: () => {}, chapterCompleted: () => {},
+    });
+    const tick = (n = 1) => {
+      for (let i = 0; i < n; i++) {
+        engine.tick(0.5, {
+          era: current.era, x: current.player.x, z: current.player.z, flags: current.flags, inventory: current.inventory,
+          chronik: current.chronik, scan: 0, map: false, stance: 'stand', lantern: false, caseFacts: () => null,
+        });
+      }
+    };
+    engine.resume();
+    return { current, engine, book, ran, tick, at: () => `${slice().chapter}/${slice().beat}` };
+  }
+
+  /** The saved flags and position of a player standing at the trough in the present. */
+  function atSpring(chapter: string, beat: string, flags: GameState['flags'] = {}): GameState {
+    const state = createInitialState();
+    state.era = 'today';
+    Object.assign(state.player, { x: HOME.spawn.x, z: HOME.spawn.z });
+    state.flags = { 'story.compass': true, 'story.laub': true, ...flags };
+    state.systems.story = { ...createStorySlice(), active: true, chapter, beat, unlocked: ['tour'], name: 'Mara' };
+    state.systems.progression = createProgressionSlice();
+    return state;
+  }
+
+  it('tour/t17 before the touch: one touch, the shift, the hand-over, the coat', () => {
+    const game = play(atSpring('tour', 't17', { 'quelle.call': true, 'quelle.guide': true, 'combat.disabled': true }));
+    expect(game.at()).toBe('tour/t17');
+    game.tick(4);
+    expect(game.at()).toBe('tour/t17');
+    game.engine.onEvent('quelle:touch', { era: 'today' });
+    game.tick();
+    expect(game.at()).toBe('tour/t18');
+    expect(game.current.era).toBe('1789');
+    game.tick(4);
+    expect(game.at()).toBe('k1/k1_0b');
+    expect(game.current.era).toBe('1789');
+    expect(game.current.systems.story!.completed).toContain('tour');
+    expect(game.current.flags['quelle.call']).toBeUndefined();
+    expect(game.current.flags['combat.disabled']).toBeUndefined();
+    expect(game.current.flags['k1.vorspiel']).toBe(true);
+    expect(game.book.state('q.k1.ankunft')).toBe('active');
+    expect(game.current.systems.story!.objective?.text).toBe('Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach');
+  });
+
+  it.each(['today', '1789'] as const)('tour/t18 saved in %s (the beat autosave is written before the shift runs): Continue finishes the jump', (era) => {
+    const state = atSpring('tour', 't18', { 'combat.disabled': true });
+    state.era = era;
+    const game = play(state);
+    // the resume repeats the shift (a no-op in 1789) and the latch of the lines
+    expect(game.ran).toContainEqual({ do: 'shift', to: '1789', reason: 'quelle', onResume: true });
+    expect(game.current.era).toBe('1789');
+    game.tick(4);
+    expect(game.at()).toBe('k1/k1_0b');
+    expect(game.current.era).toBe('1789');
+    expect(game.ran).toContainEqual({ do: 'xp', amount: 549, reason: 'story:tour' });
+    expect(game.ran.some((a) => a.do === 'fade' && a.to === 1)).toBe(false);
+  });
+
+  it('k1/k1_0 at dawn in the present, waiting for the second touch: loads in 1789 at the spring and walks on', () => {
+    const state = atSpring('k1', 'k1_0', { 'quelle.call': true, 'quelle.guide': true, 'npc.owns.clue.k1.fluegel': true });
+    Object.assign(state.player, { x: HOME.spawn.x + 4, z: HOME.spawn.z - 3, stance: 'crouch' });
+    Object.assign(state.systems.story!, {
+      completed: ['tour'], unlocked: ['tour', 'k1'], look: 'dawn', said: ['marlene.k1.morgen.quelle', 'laub.k1.morgen.quelle'],
+      objective: { id: 'k1.quelle', text: 'An der Quelle: E – das Wasser berühren', x: HOME.spawn.x, z: HOME.spawn.z },
+    });
+    state.systems.quests = { ...createQuestSlice(), tracked: ['q.k1.ankunft'], quests: { 'q.k1.ankunft': { state: 'active', counts: {}, t: 3 } } };
+    const loaded = deserializeState(JSON.stringify(state));
+    expect(loaded.era).toBe('1789');
+    expect(loaded.player).toMatchObject({ x: HOME.spawn.x, z: HOME.spawn.z, yaw: -HOME.spawn.yaw * Math.PI / 180, stance: 'stand' });
+    expect(loaded.flags['quelle.call']).toBeUndefined();
+    expect(loaded.flags['quelle.guide']).toBeUndefined();
+    expect(loaded.systems.story).toMatchObject({ chapter: 'k1', beat: 'k1_0', objective: null });
+    // the migration is stable: a re-save loads the same
+    expect(deserializeState(JSON.stringify(loaded))).toEqual(loaded);
+
+    const game = play(state);
+    expect(game.at()).toBe('k1/k1_0');
+    // the dawn of the old opening ends with the resume
+    expect(game.ran).toContainEqual({ do: 'look', time: 'day' });
+    game.tick(3);
+    expect(game.at()).toBe('k1/k1_0b');
+    expect(game.current.era).toBe('1789');
+    expect(game.current.flags['quelle.call']).toBeUndefined();
+    expect(game.book.state('q.k1.ankunft')).toBe('active');
+    expect(game.current.systems.story!.objective?.text).toBe('Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach');
+    // the arrival lines of the next beat are new to this save
+    expect(game.ran.filter((a) => a.do === 'say').map((a) => a.id)).toEqual(expect.arrayContaining(['laub.k1.brunnenstube', 'laub.k1.fremde']));
+  });
+
+  it.each(['k1_0b', 'k1_0c'])('k1/%s saved in the present after a wake: Q at the spring leads back, no touch', (beat) => {
+    const state = atSpring('k1', beat, { 'k1.vorspiel': true, ...(beat === 'k1_0c' ? { 'disguise.coat': true, 'disguise.letter': true } : {}) });
+    Object.assign(state.systems.story!, { completed: ['tour'], unlocked: ['tour', 'k1'] });
+    // the old arrival quest had counted the second touch
+    state.systems.quests = { ...createQuestSlice(), tracked: ['q.k1.ankunft'], quests: { 'q.k1.ankunft': { state: 'active', counts: { quelle: 1 }, t: 3 } } };
+    const game = play(state);
+    expect(game.current.era).toBe('today');
+    game.tick();
+    expect(game.at()).toBe(`k1/${beat}`);
+    expect(game.current.flags).toMatchObject({ 'shift.allowed': true, 'shift.target': '1789' });
+    expect(game.current.flags['quelle.call']).toBeUndefined();
+    expect(game.current.systems.story!.objective?.text).toBe('Zurück in den Sommer 1789: Q an der Quelle');
+    // the saved count of the retired objective neither blocks nor finishes the quest
+    expect(game.book.state('q.k1.ankunft')).toBe('active');
+    expect(game.current.systems.quests!.quests['q.k1.ankunft']!.counts.quelle).toBe(1);
+    game.current.era = '1789';
+    game.tick();
+    expect(game.at()).toBe(`k1/${beat}`);
+  });
+
+  it('leaves saves of the new flow alone (k1_0 in 1789 or waiting for Q in the present, later beats)', () => {
+    const arrived = atSpring('k1', 'k1_0');
+    arrived.era = '1789';
+    Object.assign(arrived.player, { x: 1040, z: -850 });
+    expect(deserializeState(JSON.stringify(arrived))).toMatchObject({ era: '1789', player: { x: 1040, z: -850 } });
+    // „Der Hof“ chosen from Pause → Kapitel: at the spring in the present, the Q anchor set, no call
+    // of the water. The player decides when to cross; loading must not do it for them.
+    const replay = atSpring('k1', 'k1_0', { 'shift.allowed': true, 'shift.target': '1789', 'k1.vorspiel': true });
+    Object.assign(replay.player, { x: HOME.spawn.x + 6, z: HOME.spawn.z + 2, stance: 'crouch' });
+    replay.systems.story!.objective = { id: 'k1.zurueck-q', text: 'Zurück in den Sommer 1789: Q an der Quelle', x: HOME.spawn.x, z: HOME.spawn.z };
+    const loaded = deserializeState(JSON.stringify(replay));
+    expect(loaded).toMatchObject({ era: 'today', player: { x: HOME.spawn.x + 6, z: HOME.spawn.z + 2, stance: 'crouch' }, flags: { 'shift.allowed': true } });
+    expect(loaded.systems.story!.objective).toMatchObject({ id: 'k1.zurueck-q' });
+    // and it still gets there without a touch: Q at the spring, Laub's lines, the prelude
+    const game = play(replay);
+    game.tick();
+    expect(game.at()).toBe('k1/k1_0');
+    expect(game.current.flags).toMatchObject({ 'shift.allowed': true, 'shift.target': '1789' });
+    game.current.era = '1789';
+    game.tick(3);
+    expect(game.at()).toBe('k1/k1_0b');
+    // an old save is told by the spring's call or by its objective, either is enough
+    const byObjective = atSpring('k1', 'k1_0');
+    byObjective.systems.story!.objective = { id: 'k1.quelle', text: 'An der Quelle: E – das Wasser berühren' };
+    expect(deserializeState(JSON.stringify(byObjective)).era).toBe('1789');
+    expect(deserializeState(JSON.stringify(atSpring('k1', 'k1_0', { 'quelle.call': true }))).era).toBe('1789');
+    const later = atSpring('k1', 'k1_6', { 'shift.allowed': true, 'shift.target': '1789' });
+    Object.assign(later.player, { x: 1300, z: -1200 });
+    expect(deserializeState(JSON.stringify(later))).toMatchObject({ era: 'today', player: { x: 1300, z: -1200 }, flags: { 'shift.allowed': true } });
   });
 });
 
@@ -129,8 +341,8 @@ describe('retired prologue saves', () => {
     expect(storage.getItem(SAVE_KEY('auto'))).toBe(bytes);
     expect(saves.load()).toBe(true);
     expect(store.state).toEqual(preview);
-    expect(preview.era).toBe('today');
-    expect(preview.player).toMatchObject({ x: 1059.3, z: -833.1, yaw: -204 * Math.PI / 180, stance: 'stand', flying: false });
+    expect(preview.era).toBe('1789');
+    expect(preview.player).toMatchObject({ x: HOME.spawn.x, z: HOME.spawn.z, yaw: -HOME.spawn.yaw * Math.PI / 180, stance: 'stand', flying: false });
     expect(preview.systems.story).toMatchObject({
       active: true, chapter: 'k1', beat: 'k1_0', name: 'Mara', completed: ['tour'], unlocked: ['prolog', 'k1'],
       doneBeats: original.systems.story!.doneBeats, said: original.systems.story!.said, objective: null,
@@ -163,21 +375,29 @@ describe('retired prologue saves', () => {
           if (resume && !runsOnResume(action)) continue;
           if (action.do === 'quest' && action.op === 'offer') book.offer(action.id);
           if (action.do === 'shift') current.era = action.to;
+          if (action.do === 'flag') {
+            for (const [key, value] of Object.entries(action.set)) {
+              if (value === null) delete current.flags[key];
+              else current.flags[key] = value;
+            }
+          }
         }
       },
       chapterEntered: () => {}, beatEntered: () => {}, chapterCompleted: () => {},
     });
     engine.resume();
     expect(engine.beat()?.id).toBe('k1_0');
-    expect(book.tracked()).toEqual(['q.k1.ankunft']);
-    expect(book.state('q.k1.ankunft')).toBe('active');
-    engine.onEvent('quelle:touch', { era: 'today' });
-    engine.tick(0.1, {
-      era: current.era, x: current.player.x, z: current.player.z, flags: current.flags, inventory: current.inventory,
-      chronik: current.chronik, scan: 0, map: false, stance: 'stand', lantern: false, caseFacts: () => null,
-    });
+    // no touch: the save arrives in 1789, Laub's arrival lines run and the beat hands on
+    for (let i = 0; i < 2; i++) {
+      engine.tick(0.1, {
+        era: current.era, x: current.player.x, z: current.player.z, flags: current.flags, inventory: current.inventory,
+        chronik: current.chronik, scan: 0, map: false, stance: 'stand', lantern: false, caseFacts: () => null,
+      });
+    }
     expect(engine.beat()?.id).toBe('k1_0b');
     expect(current.era).toBe('1789');
+    expect([...book.tracked()].sort()).toEqual(['q.k1.ankunft', 'q.k1.kleider']);
+    expect(book.state('q.k1.ankunft')).toBe('active');
 
     expect(saves.save()).toBe(true);
     expect(saves.load()).toBe(true);

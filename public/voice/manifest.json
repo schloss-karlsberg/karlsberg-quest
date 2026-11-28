@@ -4348,20 +4348,20 @@
     },
     "laub.t.1789": {
       "files": {
-        "opus": "laub.t.1789.3b8e3010.webm",
-        "aac": "laub.t.1789.0eef510a.m4a"
+        "opus": "laub.t.1789.eaba20f7.webm",
+        "aac": "laub.t.1789.3cc66ff3.m4a"
       },
-      "textHash": "cebfc582",
-      "speechHash": "cebfc582",
+      "textHash": "0b482203",
+      "speechHash": "0b482203",
       "speaker": "laub",
       "provider": "moss",
       "voiceId": "moss:laub:537c2310:102",
       "model": "MOSS-TTS-v1.5@cdd3b91",
       "licence": "apache-2.0-model",
       "date": "2026-11-22T20:39:10.695Z",
-      "chars": 122,
+      "chars": 94,
       "credits": 0,
-      "durationMs": 8760,
+      "durationMs": 7147,
       "attribution": "MOSS-TTS-v1.5, OpenMOSS, Apache-2.0",
       "engine": {
         "model": "MOSS-TTS-v1.5@cdd3b911b1585e3f2dbc7775ef10f9926f58850a",
@@ -4369,7 +4369,8 @@
         "warmup": "v1"
       },
       "serviceKey": "ca3ef7cffb6199b695cfdc7ed8b9ba79a26eea0f1df68b84750ccd499664897d",
-      "sha256Raw": "3c9bc9cdd4a3bb62be95a06fcecab8bfc29d75dad37e8308f588beecbfdb201f"
+      "sha256Raw": "3c9bc9cdd4a3bb62be95a06fcecab8bfc29d75dad37e8308f588beecbfdb201f",
+      "edit": "2026-11-28: cut after the fourth sentence of the same raw render (sha256Raw), last sentence dropped (TASK-089)"
     },
     "laub.t.intro": {
       "files": {

@@ -144,7 +144,8 @@ export interface RunOptions {
 
 export interface StoryHost {
   run(actions: Action[], opts: RunOptions): void;
-  chapterEntered(file: StoryFile, opts: { resume: boolean; replay?: readonly string[] }): void;
+  /** `handover`: the story ran into the chapter from the one before it (not a replay, jump or resume). */
+  chapterEntered(file: StoryFile, opts: { resume: boolean; replay?: readonly string[]; handover?: boolean }): void;
   beatEntered(chapter: string, beat: Beat, opts: { resume: boolean }): void;
   chapterCompleted(file: StoryFile): void;
 }
@@ -176,6 +177,15 @@ const OPENING_SETUP = new Set(['look', 'flag', 'npc', 'item', 'anchor', 'threat'
  */
 export function waitsForChapterCard(a: Action, at: number): boolean {
   return at > 0 || !OPENING_SETUP.has(a.do);
+}
+
+/**
+ * Does the player keep their era and place when this chapter begins? Only in a chapter that says
+ * so (`continues`), and only when the story ran into it from the chapter before (`handover`).
+ * Otherwise (a replay, a jump, any other chapter) the checkpoint sets era and place.
+ */
+export function staysAtHandover(f: Pick<StoryFile, 'continues'>, handover: boolean): boolean {
+  return f.continues === true && handover;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -374,7 +384,7 @@ export class StoryEngine {
   }
 
   /** Start a chapter at its start beat (or `beatId`). */
-  goto(chapterId: string, beatId?: string, opts: { resume?: boolean; replay?: readonly string[] } = {}): void {
+  goto(chapterId: string, beatId?: string, opts: { resume?: boolean; replay?: readonly string[]; handover?: boolean } = {}): void {
     const f = this.chapters.get(chapterId);
     if (!f) throw new Error(`story: unknown chapter '${chapterId}'`);
     const beat = beatId ?? f.start;
@@ -392,7 +402,7 @@ export class StoryEngine {
     for (const k of Object.keys(s.latched)) delete s.latched[k];
     s.fired = [];
     if (!s.unlocked.includes(chapterId)) s.unlocked.push(chapterId);
-    this.host.chapterEntered(f, { resume, replay: opts.replay });
+    this.host.chapterEntered(f, { resume, replay: opts.replay, ...(opts.handover ? { handover: true } : {}) });
     this.enterBeat(beat, resume);
   }
 
@@ -444,7 +454,7 @@ export class StoryEngine {
     if (!s.completed.includes(f.chapter)) s.completed.push(f.chapter);
     for (const u of [...(f.unlocks ?? []), ...(f.next ? [f.next] : [])]) if (!s.unlocked.includes(u)) s.unlocked.push(u);
     this.host.chapterCompleted(f);
-    if (f.next && this.chapters.has(f.next)) this.goto(f.next);
+    if (f.next && this.chapters.has(f.next)) this.goto(f.next, undefined, { handover: true });
     else {
       s.active = false;
       s.beat = null;

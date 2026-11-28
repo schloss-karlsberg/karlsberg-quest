@@ -1649,17 +1649,6 @@
       "once": false
     },
     {
-      "id": "laub.k1.morgen.quelle",
-      "speaker": "laub",
-      "text_de": "Sie sind vor Sonnenaufgang los. Ich habe Sie nicht aufgehalten. Der Tropfen von gestern ist über Nacht in der Bussole eingetrocknet, die Nadel zeigt aufs Wasser, nicht auf den Ehrenhof. Ein zweites Mal also. Sie wissen, wie es geht.",
-      "trigger": {
-        "event": "story:beat",
-        "chapter": "k1",
-        "beat": "1.0"
-      },
-      "once": true
-    },
-    {
       "id": "laub.k1.brunnenstube",
       "speaker": "laub",
       "text_de": "Sommer 1789. Kies, Hunde, irgendwo eine Geige. Und mittendrin Sie. In Orange.",
@@ -2058,17 +2047,6 @@
         "event": "story:beat",
         "chapter": "k1",
         "beat": "1.14"
-      },
-      "once": true
-    },
-    {
-      "id": "marlene.k1.morgen.quelle",
-      "speaker": "marlene",
-      "text_de": "Morgen, {Name}! Du bist ja schon weg. Die Brötchen liegen auf der Stufe. Ich ess deins, wenn du nicht bald zurück bist.",
-      "trigger": {
-        "event": "story:beat",
-        "chapter": "k1",
-        "beat": "1.0"
       },
       "once": true
     },

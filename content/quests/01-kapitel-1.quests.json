@@ -117,7 +117,7 @@
       "kind": "main",
       "era": "1789",
       "title_de": "Zu Fuß, außer einem",
-      "summary_de": "Die Bussole ist über Nacht trocken geworden. Ein neuer Tropfen aus der Karlsbergquelle bringt dich in den Sommer 1789. Von dort gehst du zum Hof wie alle anderen: zu Fuß, am Gitter vorbei, an dem eine Wache sehr genau weiß, wer fahren darf.",
+      "summary_de": "Ein Tropfen aus der Karlsbergquelle hat dich in den Sommer 1789 gebracht. Zum Hof gehst du wie alle anderen: zu Fuß, am Gitter vorbei, an dem eine Wache sehr genau weiß, wer fahren darf.",
       "giver": {
         "voice": "laub"
       },
@@ -125,7 +125,7 @@
       "offer": [
         {
           "speaker": "laub",
-          "text": "Erst die Quelle, dann gehen wir hinein. Zu Fuß, wie alle. Am Gitter steht eine Wache, die sehr genau weiß, wer fahren darf und wer nicht."
+          "text": "Wir gehen hinein. Zu Fuß, wie alle. Am Gitter steht eine Wache, die sehr genau weiß, wer fahren darf und wer nicht."
         }
       ],
       "turnin_lines": [
@@ -150,18 +150,8 @@
       ],
       "objectives": [
         {
-          "id": "quelle",
-          "type": "event",
-          "event": "quelle:touch",
-          "text_de": "An der Quelle: das Wasser berühren",
-          "hint_de": "Die Karlsbergquelle liegt im Hang westlich der Orangerie. Vor den Holztrog stellen, zum Wasser schauen und E drücken."
-        },
-        {
           "id": "wechsel",
           "type": "reach",
-          "after": [
-            "quelle"
-          ],
           "text_de": "Hinauf zum Ehrenhof, zu Fuß",
           "where": {
             "x": 1200,

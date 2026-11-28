@@ -38,7 +38,7 @@ async function continueGame(page: Page): Promise<void> {
 test.describe('landscape touch Continue with reduced motion', () => {
   test.use({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
 
-  test('a release slot resumes at the K1 spring, crosses, saves and reloads', async ({ page }) => {
+  test('a release slot resumes at the K1 spring in 1789, saves and reloads', async ({ page }) => {
     const errors = trackErrors(page);
     const bytes = readFileSync(new URL('../tests/fixtures/saves/v0.8.0.json', import.meta.url), 'utf8');
     await page.addInitScript(({ key, bytes }) => {
@@ -46,12 +46,15 @@ test.describe('landscape touch Continue with reduced motion', () => {
     }, { key: SAVE_KEY('auto'), bytes });
     await page.goto('./?manual&q=low');
     await continueGame(page);
+    // the old surveyor slot continues where the tour's touch leaves a new player: 1789, the prelude
     await page.waitForFunction(() => {
       const k = window.kq!;
-      k.step(1);
-      return k.quelle!.info().prompt && k.story!.state().objective?.id === 'k1.quelle';
+      k.step(6);
+      k.story!.flush();
+      return k.story!.state().beat === 'k1_0b' && k.story!.state().objective?.id === 'k1.rock' && k.quests!.state().quests['q.k1.ankunft']?.state === 'active';
     });
-    expect(await story(page)).toMatchObject({ chapter: 'k1', beat: 'k1_0', era: 'today', name: 'Mara', completed: ['tour'] });
+    expect(await story(page)).toMatchObject({ chapter: 'k1', beat: 'k1_0b', era: '1789', name: 'Mara', completed: ['tour'] });
+    expect(await page.evaluate(() => window.kq!.quelle!.info().prompt), 'no touch is asked for').toBe(false);
     await expectHandover(page);
     const counts = await page.evaluate(() => {
       const k = window.kq!;
@@ -67,20 +70,11 @@ test.describe('landscape touch Continue with reduced motion', () => {
       'q.p.relief': { state: 'active', counts: { damm: 1, mauer: 1 } },
       'q.k1.ankunft': { state: 'active' },
     });
-    expect(counts.tracker).toEqual(['q.k1.ankunft']);
+    expect([...counts.tracker].sort()).toEqual(['q.k1.ankunft', 'q.k1.kleider']);
     expect(counts.retiredGroups).toEqual([]);
     expect(counts.xp).toBe(549);
 
-    await page.getByTestId('touch-interact').tap();
-    await page.evaluate(() => {
-      const k = window.kq!;
-      for (let i = 0; i < 60 && !k.fx!.state().shift.active; i++) k.step(6);
-      k.fx!.shiftAt(3.6);
-      k.fx!.freeze(false);
-      k.step(12);
-    });
-    expect(await story(page)).toMatchObject({ chapter: 'k1', beat: 'k1_0b', era: '1789' });
-    expect(await page.evaluate(() => window.kq!.quests!.state().quests['q.k1.ankunft']?.counts.quelle)).toBe(1);
+    expect(await page.evaluate(() => window.kq!.quests!.state().quests['q.k1.ankunft']?.counts.quelle)).toBeUndefined();
 
     await page.getByTestId('touch-pause').tap();
     await page.getByTestId('pause-save').tap();
@@ -88,7 +82,7 @@ test.describe('landscape touch Continue with reduced motion', () => {
     await page.reload();
     await continueGame(page);
     expect(await story(page)).toMatchObject({ chapter: 'k1', beat: 'k1_0b', era: '1789', name: 'Mara' });
-    expect(await page.evaluate(() => window.kq!.quests!.state().quests['q.k1.ankunft']?.counts.quelle)).toBe(1);
+    expect(await page.evaluate(() => window.kq!.quests!.state().quests['q.k1.ankunft']?.state)).toBe('active');
     expect(await page.evaluate(() => window.kq!.progression!.state().xp)).toBe(549);
     expect(errors).toEqual([]);
   });
