@@ -33,6 +33,10 @@ type Push = { text: string; ageMs: number };
  * the subtitle live region and checks that record.
  */
 async function captionShown(page: Page, text: string): Promise<void> {
+  // at most two sound captions share the box (TASK-085): a third waits up to SUB_MIN_MS of wall time
+  await page
+    .waitForFunction((want) => (window as unknown as { tourCaptions: Caption[] }).tourCaptions.some((x) => x.text === want), text, { timeout: 5000 })
+    .catch(() => undefined);
   const seen = await page.evaluate((want) => {
     const caps = (window as unknown as { tourCaptions: Caption[] }).tourCaptions;
     const c = caps.find((x) => x.text === want);

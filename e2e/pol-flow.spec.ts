@@ -119,10 +119,12 @@ test('HUD: the top-left column, skill cards, dialogue and subtitles do not overl
       k.step(20);
       // a fresh unlock settles for 0.45 s of fixed updates before it asks for the centre slot
       // (src/ui/cards.ts: one card at a time, unlocks that come together share one card); Laub's
-      // line holds it back as a soft reason for at most SOFT_MAX (8 s on the slot's frame clock):
-      // that clock is pushed on a little per step, so the card comes up beside the line without
-      // 480 slow SwiftShader frames
+      // line holds it back as a soft reason; past SOFT_MAX (8 s on the slot's frame clock) the card
+      // waits for the line on screen to end or turn (TASK-085), so a second line follows after 9 s
+      // and the card comes up beside it. The clock is pushed on a little per step, without 480 slow
+      // SwiftShader frames
       for (let i = 0; i < 80 && !document.querySelector('.kqk-card'); i++) {
+        if (i === 45) k.ctx.events.emit('dialogue:say', { speaker: 'laub', priority: 'now', text: 'Und schau dir die Siegel an. Eines ist frisch, die anderen sind alt und brüchig.' });
         k.ctx.ui.cards.tick(0.2);
         k.step(1);
       }
