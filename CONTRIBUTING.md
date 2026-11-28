@@ -66,7 +66,9 @@ check is skipped under load. Absolute fps targets belong in dedicated GPU benchm
 
 ## The four gates
 
-Run all four before you open a pull request. The Pages workflow runs them on pushes to `main`.
+Run all four before you open a pull request. The Gates workflow (`.github/workflows/gates.yml`)
+runs them on every pull request and reports in about a minute. The Pages workflow runs them on
+pushes to `main` before the deploy.
 
 ```sh
 pnpm typecheck    # tsc --noEmit
@@ -75,11 +77,97 @@ pnpm validate     # content validation (packs, quests, story)
 pnpm build        # production build
 ```
 
+### What runs on a pull request
+
+**The merge bar: the checks "Gates" and "End-to-end tests" are green on the latest commit.** Both
+report on every pull request, also when no spec had to run, so there is never a check to wait for
+that does not arrive. Gates takes about a minute. How much "End-to-end tests" runs depends on the
+changed paths. `scripts/ci/e2e-areas.ts` holds the rules, and the first rule that matches a path
+decides:
+
+| The pull request changes | "End-to-end tests" runs | Typical time |
+| --- | --- | --- |
+| Only docs, `.mc/` task files, unit tests or developer tooling | Nothing. The check passes at once. | under 1 min |
+| A feature system, content, a spec or an e2e helper | The specs that cover those paths, plus smoke, on as many runners as the work needs | 5–20 min |
+| Shared code (boot, core, player, render, world, shared strings, content builders, the build, the Playwright config, `scripts/ci/`, any workflow) or a path without a rule | The full suite on 12 runners | 30–45 min |
+| Anything, from a fork | The full suite on 12 runners | 30–45 min |
+
+- See what your branch will run, before you push: `node scripts/ci/select-e2e.ts` (committed
+  changes against `origin/main`; `--base <ref>` picks another base). On the pull request, the
+  summary of the job "Select specs and build" lists every changed path with its rule.
+- Force the full suite on a pull request: add the label `full-e2e`, then push or re-run the run
+  (`gh run rerun <run-id>`). Or start it by hand on the branch: `gh workflow run e2e.yml --ref <branch>`.
+- The release campaign (`e2e/campaign.spec.ts`) only runs with the full suite.
+- A changed spec selects itself. A changed file in `e2e/helpers/` selects every spec that imports it.
+  A file that a spec imports or reads with `new URL('../…', import.meta.url)` (a game module, a
+  save fixture in `tests/fixtures/`) selects that spec too. Load files in specs only in these two
+  ways, never by a path relative to the working directory: the selection cannot see those.
+- Only a green "End-to-end tests" on the latest commit counts. A cancelled run does not pass.
+  Seen on #143, where a run was cancelled by hand while one shard ran and eleven waited: all
+  shards ended as cancelled within 20 seconds, "End-to-end tests" stayed pending until its job
+  got a runner (11 minutes that night) and then reported a failure. `gh pr checks` exits with 8
+  while it is pending and with 1 afterwards, and the checks API shows `completed / failure`.
+  `gh run rerun <run-id>` runs a cancelled run again.
+- A newer push cancels the old run's jobs, and shards that are still running stop themselves
+  within about a minute, so an older commit ends with a red "End-to-end tests".
+- A pull request that changes `scripts/ci/`, the shard planner or a workflow always runs the full
+  suite. The workflow decides that itself, before it runs the selection script, and it checks that
+  a full run contains every spec file. A pull request can still edit the workflow file it is
+  tested with. That is how `pull_request` workflows work, and it is what review is for.
+- A new directory needs no rule to be safe: an unknown path runs the full suite. New files below
+  `src/` need a rule (`tests/e2e-select.test.ts` says which), so that later changes stay cheap.
+- A failed shard: `gh run rerun <run-id> --failed` repeats only the failed shards.
+
+One-time transition (TASK-094, 2026-11-28): a run that started with the workflow from before this
+change is in another concurrency group, so the next push to that pull request does not cancel it.
+It would run all 16 shards for a commit nobody waits for. After such a push, look for a second
+run on the branch (`gh run list --workflow e2e.yml --branch <branch>`) and cancel the older one
+(`gh run cancel <run-id>`). Each pull request that was open at the merge needs this at most once.
+
+The full suite still runs before or right after every merge:
+
+- **On every push to `main`**, on 8 runners. Runs on `main` are never cancelled. One runs and one
+  waits, and the waiting run covers every merge that arrived in the meantime.
+- **In the merge queue** (`merge_group`), when the repository uses one: once for every pull
+  request that enters the queue, together with the ones ahead of it. GitHub does not combine the
+  builds of a group, so a queue does not save runs.
+- **By hand**: `gh workflow run e2e.yml --ref <branch>` without `specs`.
+
+A push to `main` does not repeat the suite when the same commit already passed it in the merge
+queue or in a manual full run. That makes a batch cheap: merge several green pull requests into
+one branch (`integrate/<name>`), run the full suite once on it
+(`gh workflow run e2e.yml --ref integrate/<name>`), and fast-forward `main` to that commit. The
+suite then ran once for the whole batch, before `main` moved.
+
+When the full suite passes before every merge in this way (batch branches, or a merge queue with
+"End-to-end tests" as a required check), the repository variable `E2E_SHARED_CODE=quick` makes a
+pull request that changes shared code run a cross-section of the game (`QUICK_SPECS` in
+`scripts/ci/e2e-areas.ts`) and leaves the full suite to the batch. Without the variable, shared
+code runs the full suite on the pull request.
+
+#### When main is red
+
+`main` deploys to the live game, so a red run on `main` comes first.
+
+- Whoever merges watches the run of that merge: `gh run list --workflow e2e.yml --branch main --limit 5`.
+- A failed run opens the issue "End-to-end tests are red on main" with the failed shards and the
+  commits since the previous push. Later red runs comment on it, and the first green run closes it.
+- Find the merge in that commit range, then fix forward or revert it. Until `main` is green, merge
+  only the fix or the revert.
+- The run on `main` does not retry: a flaky test turns `main` red, and the issue links its shard.
+  On a pull request a test that failed and then passed on its retry leaves the check green, but
+  the run carries the warning "Flaky e2e tests" and its summary lists them. Treat each as a bug:
+  fix it or file a task, and say so in the pull request.
+
 ### End-to-end tests
 
-The GitHub Actions e2e workflow runs on every opened, updated or reopened pull request and on
-pushes to `main`. It builds once and runs up to 16 file-level shards, each with one Chromium
-worker and SwiftShader. Hosted tests default to 640×360 and SwiftShader selects Niedrig, which
+The GitHub Actions e2e workflow (`.github/workflows/e2e.yml`) builds once and runs file-level
+shards, each with one Chromium worker and SwiftShader: up to 12, or 8 for the run after a merge.
+The organisation runs 20 hosted jobs at a time, shared by all open pull requests.
+`scripts/dev/plan-e2e-shards.ts` balances the shards with the minutes per spec in
+`scripts/ci/e2e-minutes.ts`. Every run prints a "Spec timings" table in its summary, which is the
+source for those minutes.
+Hosted tests default to 640×360 and SwiftShader selects Niedrig, which
 uses pixel ratio 1, shorter terrain and tree LOD distances, and no shadows. Touch layouts,
 reference screenshots and render checks can specify their own viewport or graphics tier.
 A check that raises the tier in `?manual` also boots with `&idle`: a Hoch frame takes tens of
@@ -87,10 +175,12 @@ seconds on a hosted runner, and each wait or screenshot otherwise queues behind 
 A newer run cancels the previous run for the same PR. Failed shards upload their HTML report,
 traces with DOM snapshots, and still screenshots as an `e2e-results-*` artifact.
 
-The hosted suite runs with zero retries. The default test and assertion timeouts and explicit
-test and screenshot timeouts are tripled through `ciScale` in `e2e/helpers/ci.ts`. The campaign
-runs alone with a 240-minute Playwright deadline in a 270-minute job. Other shards have
-180 minutes inside a 205-minute job.
+A failed test gets one retry on hosted runners; the campaign and the run on `main` after a merge
+get none. A test that passes on its retry is reported as flaky (see "When main is red"). Local
+runs never retry. The default test and
+assertion timeouts and explicit test and screenshot timeouts are tripled through `ciScale` in
+`e2e/helpers/ci.ts`. The campaign runs alone with a 240-minute Playwright deadline in a 270-minute
+job. Other shards have 180 minutes inside a 205-minute job.
 
 Hosted shards differ from a local run in two ways that tests must allow for. Full Chromium grants
 pointer lock without a click, while the local headless shell never does. A test that needs to run
@@ -103,7 +193,8 @@ clear. Software frames also take up to a second, so wall-clock waits stretch:
   acknowledgement stretches a tap past the 450 ms tap window.
 
 Use the Actions tab or the command below to run selected spec names on a branch. Leave `specs`
-blank to run the full suite.
+blank to run the full suite. A run of selected specs reports as "End-to-end tests (manual
+selection)", so it never stands in for the pull request's own check.
 
 ```sh
 gh workflow run e2e.yml -f specs="chapter-k2 smoke" --ref <branch>
@@ -282,7 +373,8 @@ docs(release): how to cut a release
 
 - Open pull requests against `main`. Keep them focused on one topic, with a Conventional Commits
   title (see above).
-- Check the hosted e2e results on your pull request.
+- A pull request can merge when "Gates" and "End-to-end tests" are green on its latest commit
+  (see "What runs on a pull request"). A maintainer merges it.
 - Fill in the pull request template: gates, asset credits, FIKTION labels.
 - For bugs, include the browser, GPU and URL flags, and if you can, the F8 note from the game.
 

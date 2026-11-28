@@ -31,7 +31,12 @@ pnpm assets:pack <in.glb> public/assets/models/<track>/<name>.glb        # pack 
 ```
 
 On a shared machine, wrap e2e and GPU runs in `scripts/dev/heavy.sh` if present.
-CI runs e2e in up to 16 SwiftShader shards with a 640×360 default viewport. Run a subset with `gh workflow run e2e.yml -f specs="chapter-k2 smoke" --ref <branch>`.
+CI on a pull request: "Gates" (the four gates, about a minute) and "End-to-end tests", which picks its
+specs from the changed paths (docs, tasks and unit tests: none; a feature system: its specs plus smoke;
+shared code: the full suite, 12 SwiftShader shards at 640×360). The merge bar is both green on the
+latest commit (`gh pr checks <n>`). `node scripts/ci/select-e2e.ts` shows what your branch will run; the
+rules are in `scripts/ci/e2e-areas.ts`. Run a subset with `gh workflow run e2e.yml -f specs="chapter-k2 smoke" --ref <branch>`;
+leave `specs` out, or label the pull request `full-e2e`, for the full suite.
 
 ## Rules
 

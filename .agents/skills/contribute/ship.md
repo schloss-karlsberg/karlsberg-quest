@@ -11,6 +11,7 @@ Goal: a reviewed, well-described PR, and the task file pointing at it.
   `pnpm build && pnpm exec playwright test e2e/<spec>.spec.ts --workers=1`
   (`pnpm e2e --workers=1` runs everything and can take about an hour). If the repo's shared-machine
   lock `scripts/dev/heavy.sh` is present and needed on your machine, wrap each spec in it.
+  `node scripts/ci/select-e2e.ts` lists the specs CI will run for the branch's committed changes.
 - Self-review the full diff: `git diff main...HEAD`. Look for bugs, leftovers, debug code
   (`console.log`, `debugger`, commented-out code), stray files, English text in the UI (must be German),
   missing asset credits.
@@ -67,6 +68,21 @@ Both render with SwiftShader (software). For the real-GPU look, `e2e/gpu/*.gpu.t
      never absolute machine paths; give the full paths only to the contributor.
      Don't drive their browser or desktop to upload them.
    - Risks and notes.
+3. Wait for the two checks of the merge bar: `gh pr checks <number> --watch`.
+   - **Gates** (the four gates) reports in about a minute.
+   - **End-to-end tests** runs the specs the changed paths can affect: nothing for docs, task files
+     and unit tests (green at once), a few specs plus smoke for a feature system (5–20 min), the
+     full suite for shared code such as `src/boot.ts`, `src/core/` or the build, and for every
+     pull request from a fork (30–45 min). The summary of its job "Select specs and build" says
+     which and why.
+   - Green with the warning "Flaky e2e tests"? A test passed only on its retry. Name it in the PR
+     and fix it or file a task.
+   - Red? Read the failed shard (`gh run view <run-id> --log-failed`), fix it and push; the new push
+     cancels the old run, whose commit ends red. A failure that is not yours:
+     `gh run rerun <run-id> --failed` repeats only the failed shards. Say so in the PR.
+   - Unsure whether the selected specs are enough? Label the PR `full-e2e` and push, or run
+     `gh workflow run e2e.yml --ref <branch>`.
+   - Don't merge the PR yourself; a maintainer merges it once both checks are green.
 
 ## Close out
 

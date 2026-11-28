@@ -16,11 +16,22 @@ export default defineConfig({
   expect: { timeout: ciScale(30_000) },
   fullyParallel: false,
   workers: 1,
-  retries: 0,
+  // One retry on hosted runners: a test that passes on its retry is reported as flaky (a warning
+  // on the run and in its summary) without failing the shard. The campaign runs for too long to
+  // repeat, and the run after a merge (KQ_E2E_RETRIES=0) does not retry: a flaky test turns
+  // main red there.
+  retries: isCI && process.env.KQ_E2E_CAMPAIGN !== '1' && process.env.KQ_E2E_RETRIES !== '0' ? 1 : 0,
   forbidOnly: isCI,
   // Keep setup and artifact upload headroom in the corresponding e2e.yml job budgets.
   globalTimeout: isCI ? shardMinutes * 60_000 : 0,
-  reporter: isCI ? [['github'], ['html', { outputFolder: 'test-results/playwright-report', open: 'never' }]] : [['list']],
+  reporter: isCI
+    ? [
+        ['github'],
+        ['html', { outputFolder: 'test-results/playwright-report', open: 'never' }],
+        // Read by scripts/ci/e2e-timings.ts for the per-spec timings in the run summary.
+        ['json', { outputFile: 'test-results/e2e-report.json' }],
+      ]
+    : [['list']],
   outputDir: slotDir('test-results/artifacts'),
   use: {
     baseURL: `http://127.0.0.1:${PORT}/`,

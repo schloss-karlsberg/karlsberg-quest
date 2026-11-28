@@ -727,14 +727,23 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   Chronik's measuring clue) → the story's pack in 1793-02 leaving snow tracks
   (`int-r2-*.png`). Unit rules of the integration: `tests/integration-round2.test.ts`.
   `KQ_E2E_PORT` picks the preview port (default 5281, or 5281 + k inside `scripts/dev/heavy.sh` slot k; an existing server on it is reused).
-- Hosted e2e (`.github/workflows/e2e.yml`) builds `dist/` once and shares it with up to 16 Linux
-  jobs. Each runs one Chromium worker with SwiftShader, whose Niedrig preset uses pixel ratio 1,
-  shorter LOD distances and no shadows. `playwright.config.ts` defaults to a 640×360 viewport on
-  CI. A spec can set its own viewport or tier for layout and rendering checks.
-  `scripts/dev/plan-e2e-shards.ts` assigns whole files based on runnable case counts and allowances
-  for long playthroughs and expensive rendering. The campaign runs alone with a 240-minute suite
-  deadline. Other shards have 180 minutes. Failed jobs upload `test-results/` with the HTML report,
-  traces and screenshots.
+- Hosted e2e (`.github/workflows/e2e.yml`) builds `dist/` once and shares it with up to 12 Linux
+  jobs (8 for the run after a merge). Each runs one Chromium worker with SwiftShader, whose Niedrig
+  preset uses pixel ratio 1, shorter LOD distances and no shadows. `playwright.config.ts` defaults
+  to a 640×360 viewport on CI. A spec can set its own viewport or tier for layout and rendering checks.
+  `scripts/ci/select-e2e.ts` decides what a run needs. A pull request runs the specs that its
+  changed paths can affect (`scripts/ci/e2e-areas.ts`: the first matching rule decides, a spec
+  selects itself, a helper selects the specs that import it), the full suite for shared code or a
+  path without a rule or a pull request from a fork, and nothing for docs, task files and unit
+  tests. The merge queue, pushes
+  to `main` and manual runs without a spec list run the full suite. The job "End-to-end tests"
+  reports the result in every case, so it can be a required check.
+  `scripts/dev/plan-e2e-shards.ts` assigns whole files by the minutes in `scripts/ci/e2e-minutes.ts`
+  (`scripts/ci/e2e-timings.ts` prints the measured minutes of every run) and sizes a selected run
+  to its work. The campaign runs alone with a 240-minute suite deadline and only with the full
+  suite. Other shards have 180 minutes. A failed test gets one retry on CI, except in the
+  campaign and in the run on `main` after a merge. Failed jobs upload `test-results/` with the HTML report, traces and screenshots.
+  `.github/workflows/gates.yml` runs the four gates on every pull request.
 - E2E (`e2e/smoke.spec.ts`, Chromium + SwiftShader WebGL): title → content note → name → paper map → "Tour starten" → game
   starts; every era and scan mode render with no console errors / failed requests; walking,
   crouch, spirit view rules and a save round trip.
