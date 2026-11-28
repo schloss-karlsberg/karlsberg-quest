@@ -563,6 +563,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   events.on('ui:toast', ({ text, ms }) => ui.toast(t(text), ms));
   // the character's short reactions (third person)
   events.on('player:damaged', () => avatar.react('hit'));
+  events.on('forage:throw', () => avatar.react('throw'));
   for (const ev of ['clue:found', 'item:pickup', 'measure:done', 'quelle:dip'] as const) events.on(ev, () => avatar.react('interact'));
   // the character's costume (the story's court disguise) and lantern tint (src/player/avatar.ts)
   events.on('player:costume', ({ costume }) => avatar.setCostume(costume));

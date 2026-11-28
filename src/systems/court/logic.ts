@@ -18,7 +18,7 @@
  * §2.6) and slot in by adding their detection to `activeTells` — the rest of the chain takes them
  * as they are.
  */
-export type TellId = 'hivis' | 'running' | 'staff' | 'take' | 'dodge' | 'lantern' | 'lawn' | 'place' | 'crouch' | 'tape' | 'linger';
+export type TellId = 'hivis' | 'running' | 'staff' | 'take' | 'throw' | 'dodge' | 'lantern' | 'lawn' | 'place' | 'crouch' | 'tape' | 'linger';
 
 export interface TellDef {
   id: TellId;
@@ -41,6 +41,11 @@ export const TELLS: Record<TellId, TellDef> = {
   staff: { id: 'staff', rate: 1.0, instant: 1.0, mvp: true },
   /** A pickup flagged `unseen` taken in view ('court:take'). */
   take: { id: 'take', rate: 0, instant: 1.0, mvp: true },
+  /**
+   * A chestnut thrown in view ('forage:throw'): a long look at once, not yet an escort. Throw from
+   * outside the fans. (A chestnut that strikes a watcher adds `DISTRACT.hit` whatever it sees.)
+   */
+  throw: { id: 'throw', rate: 0, instant: 0.45, mvp: true },
   // ---- LATER (designed, not detected yet) ----
   dodge: { id: 'dodge', rate: 0, instant: 0.6, mvp: false },
   lantern: { id: 'lantern', rate: 0.5, mvp: false },
@@ -86,6 +91,8 @@ export interface PlayerSignals {
   attacked: boolean;
   /** An `unseen` pickup was taken this tick. */
   took: boolean;
+  /** A chestnut left the hand this tick. */
+  threw?: boolean;
 }
 
 export interface TellHit {
@@ -99,6 +106,7 @@ export function activeTells(p: PlayerSignals): TellHit[] {
   const out: TellHit[] = [];
   if (p.attacked) out.push({ id: 'staff', kind: 'instant' });
   if (p.took) out.push({ id: 'take', kind: 'instant' });
+  if (p.threw) out.push({ id: 'throw', kind: 'instant' });
   if (!p.coat) out.push({ id: 'hivis', kind: 'rate' });
   if (p.speed >= RUN_SPEED) out.push({ id: 'running', kind: 'rate' });
   if (!p.attacked && p.staffAgo <= STAFF_WINDOW) out.push({ id: 'staff', kind: 'rate' });
