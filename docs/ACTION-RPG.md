@@ -201,8 +201,12 @@ backpack; the brass lantern hangs on the left hip and is the hunt lantern's ligh
 Messstab rides across the back and comes to hand in a fight. Upper and lower body blend apart:
 idle / walk / run / sprint by real ground speed (strafe and back-pedal while locked on), the combo
 as forehand – backhand – wide slash and the heavy from a full wind-up, scrubbed to the combat
-timing; dodge roll, hit, death, interact and wave as full-body or upper-body actions; crouch and
-prone lean the body. The body turns smoothly toward travel (or the target in a fight). Low tier
+timing; dodge roll, hit, death, interact and wave as full-body or upper-body actions. The crouch
+is a pose over whatever clip plays (`CROUCH` in `src/player/avatar.ts`): the hips sink and each
+knee bends as far as it takes to keep the foot where the clip put it (two-bone IK, `legBend.ts`),
+with a lean at the waist and the head up, so idle and walk keep their foot plants (the CC0
+surveyor, whose feet are not on its leg chain, leans and sinks). With the staff in hand the lean
+is smaller, so the staff's shoe stays out of the ground. Prone lays the body forward. The body turns smoothly toward travel (or the target in a fight). Low tier
 loads the same model (0.6 MB). `kq.avatar.state()` / `setMode()` for tests.
 
 ### 4.3 Feel ("juice")

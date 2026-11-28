@@ -63,6 +63,7 @@ import { BOOM_MIN } from './camera';
 import { COSTUME_IDS, type Costume, costumeColours, costumeEmissive, costumeHides, lanternColours, partOf, piecedCostumes, resolveCostume, resolveTint, slotHex, staffOnBack } from './costume';
 // camera session hooks (round 10): NaN guards (F-15) and the character's fade (round 9, F-07)
 import { clamp01, finiteOr, ribbonStep, safeDt, turnToward, usablePos } from './guards';
+import { bendLeg, legTurns } from './legBend';
 import type { Player } from './player';
 import { actionPose } from './pose';
 import { CharacterFade, FADE_BOUNDS_DEFAULT, type FadeBounds, plausibleFadeBounds } from './seeThrough';
@@ -134,6 +135,35 @@ const STRIDE = { walk: 1.75, run: 3.3 };
  */
 const MPFB_GEAR = { lanternOut: 0.088, lanternDown: 0.1, lanternFwd: 0.04, backOut: 0.028 };
 
+const _foot = new Vector3();
+const _hip = new Vector3();
+const _knee = new Vector3();
+const _fwd = new Vector3();
+const _turns = legTurns();
+
+/**
+ * The crouch (sneaking, C), laid over whatever clip plays as bone turns after the mixer, all
+ * scaled by the eased stance: the hips sink by `drop` of the leg length and each knee bends
+ * forward as far as it takes to keep the foot where the clip put it (`bendLeg`, legBend.ts), so
+ * foot plants, step height and stride stay the clip's; the trunk leans forward at the waist by
+ * `lean` rad and the head lifts by `head` rad so the eyes stay on the way ahead. With the staff in
+ * hand (a fight, a swing) only `guard` of the lean and the head lift is left: the staff is held
+ * level in front of the body, and the full lean would dig its shoe 0.14 m into the ground.
+ *
+ * The knees need a leg chain that ends in the foot (the MPFB player: thigh → calf → foot). On the
+ * CC0 surveyor (`?avatar=surveyor`) the feet are baked IK targets under the root, not on the legs:
+ * it keeps the lean and sinks by `sink` m instead.
+ */
+export const CROUCH = { drop: 0.28, lean: 0.42, head: 0.24, guard: 0.35, sink: 0.2 } as const;
+
+/** One leg for the crouch, and its length hip → knee → ankle (m, as scaled). */
+interface Leg {
+  thigh: Bone;
+  calf: Bone;
+  foot: Bone;
+  length: number;
+}
+
 interface Loco {
   name: string;
   low: AnimationAction;
@@ -170,6 +200,8 @@ export class Avatar {
   private wasShown = false;
   private spin = 0;
   private crouch = 0;
+  /** 0..1 the staff in hand (eased): a crouched guard stands more upright (`CROUCH.guard`). */
+  private guard = 0;
   private prone = 0;
   private readonly staffHand = new Group();
   private readonly staffBack = new Group();
@@ -186,8 +218,10 @@ export class Avatar {
   /** Rig of the model in (bones.ts), and its stride per loop (m). */
   private kind: RigKind | null = null;
   private stride = { ...STRIDE };
-  /** The bone the crouch bends (logical 'spine': Abdomen / spine_01), looked up once per model. */
+  /** The bones the crouch turns (`CROUCH`), looked up once per model: the waist ('spine': Abdomen / spine_01), the head, the legs. */
   private crouchBone: string | null = null;
+  private crouchHead: string | null = null;
+  private legs: Leg[] = [];
   /** The lantern's place on the hip bone per costume (the court coat's skirts stand off the hip). */
   private lanternAt: Partial<Record<Costume, Vector3>> = {};
   /** Costumes the model has outfit pieces for (MPFB avatar-<costume>-*). */
@@ -423,6 +457,18 @@ export class Avatar {
       }
     }
     this.crouchBone = rig.boneNameOf('spine');
+    this.crouchHead = rig.boneNameOf('head');
+    this.legs = [];
+    rig.root.updateMatrixWorld(true);
+    for (const side of ['l', 'r'] as const) {
+      const thigh = rig.boneOf(`thigh_${side}`);
+      const calf = rig.boneOf(`calf_${side}`);
+      const foot = rig.boneOf(`foot_${side}`);
+      // only a chain that carries its foot can bend at the knee and keep the foot planted (CROUCH)
+      if (!thigh || !calf || !foot || foot.parent !== calf || calf.parent !== thigh) continue;
+      const length = thigh.getWorldPosition(_hip).distanceTo(calf.getWorldPosition(_knee)) + _knee.distanceTo(foot.getWorldPosition(_foot));
+      this.legs.push({ thigh, calf, foot, length });
+    }
     // clips: locomotion split into legs / upper body, actions as upper-only and full-body copies
     // (names through the alias table, characters/bones.ts)
     const names = src.animations.map((a) => a.name);
@@ -503,6 +549,8 @@ export class Avatar {
     this.lanternAt = {};
     this.pieced = new Set();
     this.crouchBone = null;
+    this.crouchHead = null;
+    this.legs = [];
     this.bounds = FADE_BOUNDS_DEFAULT;
     this.debug.measured = null;
     this.trail.clear();
@@ -789,7 +837,9 @@ export class Avatar {
     const stride = this.stride.walk + (this.stride.run - this.stride.walk) * runK;
     if (!A.frozen) this.phase += (Math.max(sp, 0) / stride) * dt;
     // crouch / prone: slower, lower
-    this.crouch += ((pl.stance === 'crouch' ? 1 : 0) - this.crouch) * Math.min(1, dt * 8);
+    this.crouch += ((pl.stance === 'crouch' && !A.dead ? 1 : 0) - this.crouch) * Math.min(1, dt * 8);
+    const inHand = A.armed && (fight || !!A.swing || !!A.skill || A.charge !== null);
+    this.guard += ((inHand ? 1 : 0) - this.guard) * Math.min(1, dt * 8);
     this.prone += ((pl.stance === 'prone' ? 1 : 0) - this.prone) * Math.min(1, dt * 6);
     // ---- action layer
     const set = (n: string, up: number, full: number, t01: number) => {
@@ -903,11 +953,9 @@ export class Avatar {
     }
     this.debug.clip = best;
     rig.update(0);
-    // crouch: bend at the waist and sink; prone: lie forward along the facing
-    if (this.crouch > 0.01) {
-      rig.turnBone(this.crouchBone, 0, 0.42 * this.crouch);
-      rig.holder.position.y = -rig.info.minY * rig.scale - 0.2 * this.crouch;
-    } else rig.holder.position.y = -rig.info.minY * rig.scale;
+    // crouch: knees bent, a lean at the waist, the head up; prone: lie forward along the facing
+    rig.holder.position.y = -rig.info.minY * rig.scale;
+    if (this.crouch > 0.01) this.crouchPose(rig, this.crouch, fx, fz);
     if (this.prone > 0.01) {
       rig.root.rotateX(1.45 * this.prone);
       rig.root.position.y += 0.15 * this.prone;
@@ -917,7 +965,6 @@ export class Avatar {
     this.debug.armed = A.armed;
     if (A.armed) {
       this.setStage(A.stage);
-      const inHand = fight || !!A.swing || !!A.skill || A.charge !== null;
       const parent = inHand ? this.staffHand : this.staffBack;
       if (this.staff && this.staff.parent !== parent) parent.add(this.staff);
       if (this.staff) this.staff.visible = !A.lowered || !inHand;
@@ -950,6 +997,36 @@ export class Avatar {
       this.flame.visible = lit > 0.05;
       const fl = f.reducedFlash || f.reducedMotion ? 1 : 0.85 + 0.15 * Math.sin(f.time * 17);
       this.flame.scale.set(1, 1.6 * fl, 1).multiplyScalar(0.6 + 0.4 * Math.min(1, lit));
+    }
+  }
+
+  /**
+   * The crouch over the clip pose (`CROUCH`), `k` = 0..1; `fx`, `fz`: the body's facing. The turns
+   * last one frame: `Rig.update` starts from the mixer's pose again, so they never pile up on a
+   * bone that holds still in the clips (the MPFB player's spine_01; TASK-091).
+   */
+  private crouchPose(rig: Rig, k: number, fx: number, fz: number): void {
+    const upright = 1 - (1 - CROUCH.guard) * this.guard;
+    rig.turnBone(this.crouchBone, 0, CROUCH.lean * k * upright);
+    rig.turnBone(this.crouchHead, 0, -CROUCH.head * k * upright);
+    const legs = this.legs;
+    if (!legs.length) {
+      rig.holder.position.y -= CROUCH.sink * k;
+      return;
+    }
+    // the joints as the clip posed them, then the hips down and each knee bent to keep its foot
+    rig.root.updateMatrixWorld(true);
+    const drop = CROUCH.drop * k * legs[0]!.length;
+    rig.holder.position.y -= drop;
+    _fwd.set(fx, 0, fz);
+    for (const l of legs) {
+      l.thigh.getWorldPosition(_hip);
+      l.calf.getWorldPosition(_knee);
+      l.foot.getWorldPosition(_foot);
+      if (!bendLeg(_hip, _knee, _foot, drop, _fwd, _turns)) continue;
+      rig.rotateBone(l.thigh, _turns.thigh);
+      rig.rotateBone(l.calf, _turns.calf);
+      rig.rotateBone(l.foot, _turns.foot);
     }
   }
 

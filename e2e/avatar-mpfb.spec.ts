@@ -85,3 +85,78 @@ test('the MPFB avatar loads and swaps into the court costume and back', async ({
   expect(seen).toEqual(['court', 'default']);
   expect(errors).toEqual([]);
 });
+
+/** Heights (m) of the head, hips and ankles above the ground under the player, and the playing clip. */
+async function bodyPose(page: Page): Promise<{ head: number; hips: number; feet: number[]; clip: string }> {
+  return page.evaluate(() => {
+    const k = window.kq!;
+    const root = k.ctx.scene.getObjectByName('player-avatar')!;
+    const y = (name: string) => root.getObjectByName(name)!.matrixWorld.elements[13]! - k.ctx.player.position.y;
+    return { head: y('head'), hips: y('pelvis'), feet: [y('foot_l'), y('foot_r')], clip: k.avatar!.state().clip };
+  });
+}
+
+test('crouched idle keeps the head over the hips and the feet on the ground, in both outfits', async ({ page }) => {
+  test.setTimeout(ciScale(180_000));
+  const errors = trackErrors(page);
+  await page.goto('./?avatar=mpfb&notitle&nosave&fresh&manual');
+  await page.waitForFunction(() => window.kq?.avatar !== undefined, null, { timeout: 120_000 });
+  await page.evaluate(async () => {
+    const k = window.kq!;
+    await k.avatar!.ready();
+    k.step(30);
+  });
+  const stand = await bodyPose(page);
+  expect(stand.head - stand.hips).toBeGreaterThan(0.5);
+
+  /** Crouch for 150 drawn frames, then let the browser draw frames without game time. */
+  const crouch = async () => {
+    await page.evaluate(() => {
+      const k = window.kq!;
+      k.ctx.player.setStance('crouch');
+      for (let i = 0; i < 150; i++) k.step(1);
+    });
+    const stepped = await bodyPose(page);
+    await page.evaluate(async () => {
+      for (let i = 0; i < 20; i++) await new Promise((r) => requestAnimationFrame(r));
+    });
+    return { stepped, held: await bodyPose(page) };
+  };
+  const check = (p: { head: number; hips: number; feet: number[]; clip: string }) => {
+    expect(p.clip).toBe('Idle');
+    // lower than standing, the trunk still upright over the hips (the fold put the head at knee height)
+    expect(p.hips).toBeLessThan(stand.hips - 0.1);
+    expect(p.head).toBeLessThan(stand.head - 0.15);
+    expect(p.head - p.hips).toBeGreaterThan((stand.head - stand.hips) * 0.75);
+    // knees bent, not the body sunk into the ground
+    p.feet.forEach((f, i) => expect(Math.abs(f - stand.feet[i]!)).toBeLessThan(0.05));
+  };
+
+  const def = await crouch();
+  check(def.stepped);
+  check(def.held);
+  // one pose: frames without game time (pause, bullet time) must not add the lean again
+  expect(Math.abs(def.held.head - def.stepped.head)).toBeLessThan(0.03);
+
+  // the court costume: same skeleton, same pose
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.ctx.player.setStance('stand');
+    k.avatar!.setCostume('court');
+    for (let i = 0; i < 60; i++) k.step(1);
+  });
+  expect(await page.evaluate(() => window.kq!.avatar!.costume())).toBe('court');
+  const court = await crouch();
+  check(court.stepped);
+  check(court.held);
+
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.ctx.player.setStance('stand');
+    for (let i = 0; i < 90; i++) k.step(1);
+  });
+  const up = await bodyPose(page);
+  expect(Math.abs(up.head - stand.head)).toBeLessThan(0.03);
+  expect(Math.abs(up.hips - stand.hips)).toBeLessThan(0.03);
+  expect(errors).toEqual([]);
+});
