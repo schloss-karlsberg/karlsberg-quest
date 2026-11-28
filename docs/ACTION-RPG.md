@@ -79,7 +79,7 @@ unfinished group regain their strength).
 ## 3. Controls
 
 The guided tour uses movement, conversation, sneaking and the phone camera. Marlene lends the
-player the Messstab at the Weiher. Combat starts in Chapter 1; in the tour the Messstab already
+player the Messstab at the Weiher. Combat starts in Chapter 2; in the tour the Messstab already
 cuts ferns and grass, and chestnuts can be thrown from the first one picked up (§7.1).
 
 | Verb | Desktop (default, remappable) | Notes |
@@ -528,7 +528,8 @@ The tour and quests grant survey skills (`skill:grant`, unlock cards and Laub’
   Feb 1793 4, Jul 1793 3, 1796 5; the spring holds one in every year), never guarded, no glow, no map
   mark, no Bussole marker, not shown by Spürsinn. Hints: a soft clink within 6 m every 8–12 s
   (captioned with its side) and a glint when the camera faces one within 15° and 12 m in light. Some
-  need a verb: a Wuchthieb shakes two out of apple trees and one out of the spring's icicles; one shows
+  need a verb: a Wuchthieb, or a thrown chestnut that strikes within 2 m of them (§7.1), shakes two
+  out of apple trees and one out of the spring's icicles; one shows
   only in lantern light at night, one only with the lantern out. E „Fläschchen aufheben“ → toast
   „Fläschchen n/24“. Pause → Sammlungen shows era counts and one bottle per find. Marlene speaks
   at 8 and Laub at 16. Finding all 24 awards the lantern glass „Flaschengrün“ and the
@@ -578,9 +579,12 @@ lies for a second and is gone. Water swallows it.
 | Armour, a guard, an elite, a boss, the Pikeur | 1 damage, no flinch |
 | An Irrlicht before the flare, a veiled or warded body | It flies through |
 | Any enemy | It wakes: one can be pulled out of a pack. It never takes the last point of Lebenskraft: the last blow is the staff's |
-| A tree trunk, a palace wall, a person or a dog of the tour | It bounces off and drops. Nobody is hurt or alerted |
-| The ground | A noise (`world:noise`, loudness 0.7) |
+| A tree trunk, a palace wall, a placed person, a person or a dog of the tour | It bounces off and drops. Nobody is hurt (`world:pelt`: the npc system answers for placed people) |
+| A court watcher | It is alerted, not distracted (below) |
+| The ground | A noise (`world:noise`, loudness 0.7; half of that off a body, 0.5 in water) |
+| Within 2 m of a hanging Fläschchen (trunk, wall or ground) | The bottle falls, as after a Wuchthieb |
 
+Along each flight step, the first wall, trunk or body reached stops the chestnut.
 The noise is what animals and the pack hear. The tour's roe deer add it to their notice meter:
 one chestnut nearby makes them look up, two right next to them send them off, and they settle
 and graze again as after any flight. A pack on patrol that is calm or only suspicious sends its
@@ -589,8 +593,37 @@ about ten seconds; the hound that went stays warier while that fades, so the nex
 player counts for more. A pack that is searching or chasing ignores it, and so do the staged
 modes (the chapter 2 chase, the drive, the kennel finale).
 
+**Distracting a watcher** (TASK-095, `court/distract.ts`). This is what chestnuts are for at
+court: a watcher that hears one land goes to look, and the player passes behind it.
+
+- **Earshot** is 17 m × the loudness, so about 12 m for a landing chestnut. The watchers' fans
+  reach 12–14 m and a throw carries 22 m, so the player can stand outside a fan and land one
+  beyond or beside the watcher.
+- **What the watcher does:** it turns to the noise at once (0.7 s), walks towards it at 1.7 m/s,
+  never more than 8 m from its post and stopping 1.5 m short, looks around for 4 s with its head
+  swinging ±40°, and walks back. Walls, water and steep banks end the walk early; a noise less
+  than a step away is looked at from the post. Its fan points where it looks the whole time,
+  along its way home on the way back. The court's heading takes priority over looking at a nearby
+  player. From the first head turn to the post that is about 9–15 s.
+- **How it reads:** the fan on the ground swings away and travels with the figure, which walks
+  with its walk clip. Captions: „[Ein Gardist horcht auf und geht nachsehen]“ with a short line
+  from the watcher („Was war das?“), „[… geht zurück auf den Posten]“ when the window closes.
+- **Not a free pass.** Back at its post a watcher is wary for 20 s and only turns its head for
+  1.8 s („[… dreht nur kurz den Kopf]“). A watcher that is busy with one noise ignores the next.
+  The gate's inspector never leaves the gate and only glances. A watcher that reaches Misstrauen
+  breaks the search off and walks back. At Misstrauen it ignores landing noises.
+- **A chestnut that strikes a watcher** alerts it: it faces the thrower for 3 s, takes 0.55
+  suspicion at once whatever its fan saw (tell „du wirfst mit Kastanien“), and is wary for 30 s.
+- **Throwing in view** is a tell of its own: 0.45 at once for every watcher that sees the throw.
+
+The watcher's placement stays its post; the court sends the npc system where the figure stands
+for now (`npc:offset`), which is never saved. `court:distracted {watcher, phase}` reports each
+step (`turn`, `walk`, `look`, `back`, `post`, `glance`, `alert`).
+
 No throw in a scene that lowers the staff (`combat.disabled` outside the tour), in photo mode, in
-a conversation, while measuring, in the spirit view or lying flat.
+a conversation, while measuring, in the spirit view or lying flat. When another input owner mutes
+the throw, any held aim or buffered throw is cancelled. A throw animation expires while the avatar
+is hidden and is cleared on teleport.
 
 **Cutting.** Every swing reports where the staff came down (`combat:arc`: a Hieb or Wuchthieb
 mows the half-disc ahead, the Erdstoß's ring and the Wirbel the whole disc). Ferns, flower clumps
@@ -614,8 +647,9 @@ with the bound key or the Kastanie touch button. The staff tip enters the notice
 first gap in speech or after 12 seconds. Each tip shows once per save. While there are chestnuts,
 the vitals dock shows the key and count on desktop, and the touch button carries the count.
 
-**Feedback.** Procedural sounds for the throw, the landing (ground, wood, body, water), the cut
-and a find. Cut plants throw leaves in their own colours, a landing chestnut a few shell bits;
+**Feedback.** The avatar throws with the right arm over the walking legs (0.45 s, the body turns
+to the view), also with reduced motion. Procedural sounds for the throw, the landing (ground,
+wood, body, water), the cut and a find. Cut plants throw leaves in their own colours, a landing chestnut a few shell bits;
 the chestnut draws a short trail. With reduced motion there are no leaves and no trail, and the
 landing ring holds still.
 
@@ -979,7 +1013,7 @@ history and unpaid rewards in `src/core/legacy-prologue-quests.ts` for old saves
 | `q.p.trichter` "Nicht anfassen" | side | Marlene (after `q.p.bussole`) | find the bomb crater, **do not touch**, report it on the radio (story reaction `trichter-melden`) | — | 40 XP | rm.06 Bombentrichter, cx.35 |
 | `q.p.irrlichter` "Lichter am Weiher" | side | Laub (after `q.p.punktwolke`) | bann **3 Irrlichter** over the Karlsbergweiher (820/−869) | irrlicht ×3 | 50 XP, Lampenöl ×2 | rm.08 |
 
-### 11.1 Kapitel 1 "Der Hof" (1789, day → dusk → night) — tier 1, levels 3–6
+### 11.1 "Der Hof" (Chapter 2, 1789, day → dusk → night) — tier 1, levels 3–6
 
 As built (`content/quests/01-kapitel-1.quests.json`, `scripts/content-build/kapitel1.mjs`); ends at level 6.
 
@@ -993,7 +1027,9 @@ There is no dawn, no radio line and no second touch any more; the arrival quest 
 constant `HOME.spawn`): a replay from Pause → Kapitel or a debug jump starts there, and
 `k1_0.heute` makes the spring the Q anchor. `k1_0b` „Die
 Brunnenstube, Sommer“ (the coat quest and the arrival quest, offered after Laub's lines) is the walk up on foot by the trail west of the Orangerie to the
-Ehrenhof gate (1200/−1116, r 14); flag `k1.vorspiel` keeps the oil meter and the return tip off until
+Ehrenhof gate (1200/−1116, r 14). Since TASK-089 the day part has no oil meter. Loading removes an obsolete
+daytime meter before Hunt's first update. The night in the Karlslust starts an oil meter
+(`oel-b`) if there is none, keeps the saved meter on Continue and shows the lantern and return tip (`lauf-zurueck`). Flag `k1.vorspiel` kept the oil meter and the return tip off until
 `k1_1` clears it. Caught or back in today on the way: you wake at the spring, and Q there (anchor
 1058.5/−831 r 10) takes you back. **Anchor rule:** Q never anchors inside the Ehrenhof before the
 flag `court.admitted`; `k1_1` sets it (also `k1_2`/`k1_3`, so older saves keep their anchor), and the
@@ -1184,6 +1220,14 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Laub's „Nur Steine“ line can expire while earlier dialogue plays (TASK-099, 2026-11-28) | Pack dialogue from the event that completes the beat keeps its place through beat retirement and the handoff into the endings. Runtime tests cover waiting and active reactions, plus ordinary retirement. |
+| Chestnut distraction review (TASK-095, 2026-11-28) | A chestnut hits the first obstacle or body along its flight. A court heading takes priority over proximity gaze, the 20 s wary period starts on arrival at the post, and Misstrauen suppresses noise feedback. Muting the throw cancels aim and buffered throws. Throw animations expire while hidden and clear on teleport. |
+| A chestnut as a free pass through the court (TASK-095, 2026-11-28) | A distracted watcher is away for 9–15 s, then wary for 20 s and only glances; the gate's inspector never leaves; a throw seen by a watcher and a chestnut that strikes one raise suspicion; a watcher that reaches Misstrauen breaks its search off. |
+| Present-day survey tripods appeared in historical eras (TASK-089, owner decision 2026-11-28) | Travel streams and activates the eleven tripods only in the present. Era changes discard their meshes and close their discovery banners. The first map tip records completion after its banner has had a chance to paint and names the active map control. A pending tip stays in the save and can appear on returning to the present. Known map destinations remain usable under the existing travel rules. `tests/travel-era.test.ts` covers every playable past era. |
+| After the spring moved to the south-west flank the arrival in 1789 faced the fountain and a wooded slope, the palace behind the player (TASK-089, 2026-11-28) | At the shift's midpoint (screen covered), after touching the water or continuing a present-day `tour/t18` save, the spring puts the player six metres from the water on the line to the Corps de logis and turns them to it (`arrivalSpot`, `PALACE_SIGHT` = the fire's centre, `ARRIVAL_PITCH`), and lets the camera go from the water. The steps are needed: turned in place at the trough, the over-the-shoulder boom was squeezed against the fountain and craned over the flank, looking down on the player's head. Computed, so it follows the spring to either flank. `tests/quelle-arrival.test.ts`; real-GPU frames from `e2e/gpu/arrival.gpu.ts`. |
+| A quest banner on the chapter card of „Der Hof“ (seen in a capture that ran the timeline under the card) | `k1_0` also waits for `k1.karte`, which only its entry list sets in an action the card holds back; so `k1_0b` and its two offers never start while the card shows, also on a replay where Laub's lines are already said. A beat jumped to directly is the opening beat and its offers are gated as before. `tests/story-card-hold.test.ts`. |
+| The coat at the Bleiche: marker 4 m off, „E Untersuchen“, and walking in upright had no consequence (playtest 2026-11-28, TASK-089) | The story objective and the quest step point at the coat (`COAT_XZ`). A clue can name its prompt (`prompt_de`: „Rock nehmen“). `k1_0b.liese-sieht`: upright inside the front of the green (3.6 m round the lines before her) clears `k1.rock.frei`, which the coat's clue requires; Liese calls out and the objective says to back off. `k1_0b.liese-ruhig` frees it once the player is 14 m away. Crouched, round behind line B, or after asking her, nothing happens. `tests/k1-disguise.test.ts`. |
+| Six minutes after the gate the lantern sent the visitor back to the present (TASK-089, 2026-11-28) | No oil meter in the day part of „Der Hof“. Load clears obsolete daytime meters before Hunt can empty a saved lantern. The story calls for the return at `k1_6` after the Zwinger. At night, the return tutorial records completion when it appears and names the keyboard binding or the touch button „Epoche“. `tests/story.test.ts`, `tests/hunt-session.test.ts`, `e2e/chapter-k1.spec.ts`. |
 | Chestnuts as a ranged weapon or a free way past the pack (TASK-090, 2026-11-28) | A throw does 4 damage (a third of a first Hieb), 1 against armour, elites and bosses, never the last point, and staggers a small enemy at most once every 4 s. Only a calm or suspicious patrol follows the noise, with one hound, and that hound is warier afterwards. The chapter 2 chase, the drive and the kennel finale ignore it. |
 | „The spring is not in the live game anymore … the spring is on the right side of the Schlucht“ (owner, TASK-087, 2026-11-28; with TASK-081) | Nothing had been deleted: the set and the water still built in every era. Three things hid it. **Title:** sets and the spring's water are built in the fixed steps, which stand still under the title, and since the spring is home every save rests there, so „Weiter“ opened on the bare hollow; the title now builds the home set and its water per frame (`TITLE_SETS`). **Side:** the set stood at the OSM node on the north-east flank, on the left of the tour path, its wall end towards the arriving group, the guide's stop behind the wall. OSM puts the node 2.3 m right of the footpath and inside its hairpin, the brook stays on that side, and the 1 m LiDAR shows the spring hollow and the channel at the foot of the south-west bank (1058.5/−830.5). `QUELLE` moved 1061.0/−834.5 facing 234° → 1058.5/−831.0 facing 24°; the trough stand 1059.3/−833.1 stays (yaw 50 → 204), so chapter checkpoints keep their place. The brook leaves the trough to the right, the trail forks off the path to the forecourt and on to the hairpin, the steps reach the path's upper leg, the guide stops on the trail left of the trough and the group stands across it (14 slots). **Water:** the brook's run is a hand wide with moving sky streaks and foam, the trough runs over at its low end in a fall of half a metre, big ferns and mossy boulders dress the shaded hollow. **Find (TASK-081):** during „Nachsehen, was im Trog glänzt“ E „Untersuchen“ is offered anywhere before the trough, whatever the view (`quelle.find` → `quelle:find`); the marker is on the forecourt the arrival trail leads to. `tests/quelle-place.test.ts` holds the side, the registration, the wakes, the stop and the markers; relief re-baked (`pnpm prepare-data --mesh-detail`) |
 | The first time travel was a look and a return: 25 s in 1789, a fade, the present again, a second touch (TASK-089, 2026-11-28) | The touch at the trough is the journey. `tour/t18` is the arrival (shift with `onResume`, no fade, completes in 1789), „Der Hof“ `continues` where the player stands, `k1_0` asks for no touch. Old saves: `migrateFirstJump` (`src/systems/story/migrate.ts`), the `k1_0.heute` anchor as a net. A room-bound NPC placed before the interiors can answer no longer gets the player's storey, so it moves into its room instead of standing on the player; the servant also has coordinates. `tests/tour-handover.test.ts`, `tests/story-runtime.test.ts`, `e2e/quelle.spec.ts`, `e2e/chapter-k1-quelle.spec.ts`. |

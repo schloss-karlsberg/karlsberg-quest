@@ -4,6 +4,7 @@ import k4Pack from '../content/packs/kapitel-4.pack.json';
 import { ContentDB } from '../src/content/db';
 import type { ContentPack } from '../src/content/types';
 import type { GameContext } from '../src/core/context';
+import type { KqHooks } from '../src/debug/hooks';
 import type { Era } from '../src/core/era';
 import { EventBus } from '../src/core/events';
 import { MemoryStorage, SAVE_KEY, SaveManager } from '../src/core/save';
@@ -40,10 +41,11 @@ class Element {
   remove(): void {}
 }
 
-async function boot(initial: GameState, withFx = false) {
+async function boot(initial: GameState, { withFx = false, reducedMotion = false } = {}) {
+  let pollHooks = noop;
   vi.stubGlobal('Node', Element);
   vi.stubGlobal('document', { createElement: () => new Element(), createTextNode: () => new Element(), body: new Element() });
-  vi.stubGlobal('window', { addEventListener: noop, removeEventListener: noop, setInterval: noop, setTimeout: noop, clearTimeout: noop, clearInterval: noop });
+  vi.stubGlobal('window', { addEventListener: noop, removeEventListener: noop, setInterval: (fn: () => void) => { pollHooks = fn; }, setTimeout: noop, clearTimeout: noop, clearInterval: noop });
   vi.stubGlobal('requestAnimationFrame', noop);
   vi.stubGlobal('fetch', undefined);
   vi.stubGlobal('CSS', { escape: (text: string) => text });
@@ -84,7 +86,7 @@ async function boot(initial: GameState, withFx = false) {
       cards: { soft: noop, hold: noop },
     },
     input: { wasPressed: (key: string) => key === 'shift' && shiftPressed, isDown: () => false },
-    settings: { state: { reducedMotion: false } },
+    settings: { state: { reducedMotion } },
     loop: { manual: true },
     pause: { paused: false, reasons: new Set<string>() },
     systems: { get: (id: string) => id === 'fx' && withFx },
@@ -97,11 +99,108 @@ async function boot(initial: GameState, withFx = false) {
   await story.init(ctx);
   return {
     ctx, events, state, save, storage, era, player, confirm,
+    dialogue() {
+      window.kq = {} as KqHooks;
+      pollHooks();
+      return window.kq.story!;
+    },
     start: () => events.emit('game:start', { resumed: false }),
     tick(dt = 1 / 60) { story.update(dt); quests.update(dt); shiftPressed = false; },
     pressShift() { shiftPressed = true; },
   };
 }
+
+describe('beat retirement in the story runtime', () => {
+  async function dawn(backlogMs = 5200) {
+    const initial = createInitialState();
+    initial.systems.story = { ...createStorySlice(), active: true, chapter: 'k4', beat: 'k4_14' };
+    const game = await boot(initial, { reducedMotion: true });
+    game.player.teleport(1059.3, -833.1);
+    game.start();
+    const dialogue = game.dialogue();
+    game.events.emit('dialogue:say', { id: 'test.long', speaker: 'marlene', text: 'Einen Moment.', ms: backlogMs });
+    const find = (id: string) => {
+      game.state.mutable.inventory.clues.push(id);
+      game.events.emit('clue:found', { id, kind: 'dialogue' });
+      game.tick(0.25);
+    };
+    return { ...game, dialogue, find };
+  }
+
+  it('shows the completing clue reaction in order after the retirement grace passes', async () => {
+    const game = await dawn();
+    game.find('clue.k4.foto');
+    game.find('clue.k4.nur_steine');
+    expect(game.dialogue.state()).toMatchObject({ beat: 'k4_15', dialogue: { id: 'test.long' } });
+    for (let i = 0; i < 35; i++) game.tick(0.25);
+    expect(game.dialogue.shown()).toEqual(['test.long', 'laub.k4.nur_steine', 'laub.k4.x.luecken']);
+  });
+
+  it.each([8000, 15000])('keeps a completing reaction across the endings handoff (backlog: %s ms)', async (ms) => {
+    const game = await dawn(ms);
+    game.find('clue.k4.foto');
+    game.find('clue.k4.nur_steine');
+    for (let i = 0; i < 35; i++) game.tick(0.25);
+    expect(game.dialogue.state()).toMatchObject({
+      chapter: 'k4', beat: 'k4_15',
+      dialogue: { id: ms === 8000 ? 'laub.k4.nur_steine' : 'test.long' },
+    });
+    game.tick(0.25);
+    expect(game.dialogue.state()).toMatchObject({ chapter: 'enden', beat: 'e1' });
+    if (ms === 8000) {
+      expect(game.dialogue.state().dialogue?.id).toBe('laub.k4.nur_steine');
+      game.tick(0.25);
+      expect(game.dialogue.state().dialogue?.id).toBe('laub.k4.nur_steine');
+    } else expect(game.dialogue.state().pendingLines).toBe(1);
+    for (let i = 0; i < 24 && !game.dialogue.shown().includes('laub.k4.nur_steine'); i++) game.tick(0.25);
+    expect(game.dialogue.shown().filter((id) => id === 'laub.k4.nur_steine')).toHaveLength(1);
+    expect(game.dialogue.shown()).not.toContain('marlene.k4.foto');
+  });
+
+  it('keeps the story save format while a completing reaction is waiting', async () => {
+    const game = await dawn(15000);
+    game.find('clue.k4.foto');
+    game.find('clue.k4.nur_steine');
+    const saved = rawAuto(game.storage).systems.story;
+    expect(saved).toMatchObject({ chapter: 'k4', beat: 'k4_15', said: expect.arrayContaining(['laub.k4.nur_steine']) });
+    expect(saved).not.toHaveProperty('pendingCompletingDialogue');
+    expect(game.dialogue.shown()).toEqual(['test.long']);
+  });
+
+  it.each([['k4', 'k4_15'], ['enden', 'e1']])('ignores the retired pending reaction field at %s/%s', async (chapter, beat) => {
+    const game = await dawn(15000);
+    game.find('clue.k4.foto');
+    game.find('clue.k4.nur_steine');
+    if (chapter === 'enden') for (let i = 0; i < 36; i++) game.tick(0.25);
+    const saved = rawAuto(game.storage);
+    expect(saved.systems.story).toMatchObject({
+      chapter,
+      beat,
+      said: expect.arrayContaining(['laub.k4.nur_steine']),
+    });
+    expect(game.dialogue.shown()).toEqual(['test.long']);
+    const branchSave = {
+      ...saved,
+      systems: { ...saved.systems, story: { ...saved.systems.story, pendingCompletingDialogue: ['laub.k4.nur_steine'] } },
+    };
+    game.storage.setItem(SAVE_KEY('auto'), JSON.stringify(branchSave));
+    expect(game.save.load('auto')).toBe(true);
+    game.tick(0.25);
+    expect(game.dialogue.shown()).not.toContain('laub.k4.nur_steine');
+    expect(game.dialogue.state().said).toContain('laub.k4.nur_steine');
+    game.save.save('auto');
+    expect(rawAuto(game.storage).systems.story).not.toHaveProperty('pendingCompletingDialogue');
+  });
+
+  it('still expires the earlier clue reaction when it did not complete the beat', async () => {
+    const game = await dawn();
+    game.find('clue.k4.foto');
+    expect(game.dialogue.state()).toMatchObject({ beat: 'k4_14', pendingLines: 1 });
+    game.find('clue.k4.nur_steine');
+    for (let i = 0; i < 29; i++) game.tick(0.25);
+    expect(game.dialogue.shown()).not.toContain('marlene.k4.foto');
+  });
+});
 
 afterEach(() => {
   quests.dispose();
@@ -216,7 +315,7 @@ describe('optional quest windows in the story runtime', () => {
       [pacht]: { state: 'active', counts: {}, t: 0 },
       'q.k4.standpunkt': { state: 'active', counts: { brunnen: 1, echo: 1 }, t: 0 },
     } };
-    const game = await boot(initial, true);
+    const game = await boot(initial, { withFx: true });
     quests.init(game.ctx);
     game.start();
     const cues: string[] = [];

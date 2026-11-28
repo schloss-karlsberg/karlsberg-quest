@@ -61,30 +61,30 @@ test.describe('world', () => {
     // the spring is home and known from the start; the old Feldstation point is retired (tour WP-05)
     expect(known).toContain('karlsbergquelle');
     expect(known).not.toContain('feldstation');
-    // walking up to the Ehrenhof tripod measures it in (the beam rises, a card says so)
-    await look(page, '1789', 1214, -1112, 1230, -1127, 4);
+    const hasTripod = () => page.evaluate(() => !!window.kq!.ctx.scene.getObjectByName('travel-tripod'));
+    await look(page, '1789', 1229, -1125, 1230, -1127, 4);
+    expect(await hasTripod()).toBe(false);
     expect(await page.evaluate(() => window.kq!.travel!.state().activated)).not.toContain('ehrenhof');
-    await page.evaluate(() => {
-      const k = window.kq!;
-      k.teleport(1229, -1125, 135, 0);
-      k.step(4);
-    });
+    // Walking up to the same spot in the present measures it in.
+    await look(page, 'today', 1229, -1125, 1230, -1127, 4);
+    expect(await hasTripod()).toBe(true);
     expect(await page.evaluate(() => window.kq!.travel!.state().activated)).toContain('ehrenhof');
     const activatedCard = page.getByTestId('travel-card-activated');
     await expect(activatedCard).toBeVisible();
     await expect(activatedCard).toContainText('Reisepunkt entdeckt: Ehrenhof');
-    await look(page, '1789', 1214, -1112, 1230, -1127, 4, 10);
+    await look(page, 'today', 1214, -1112, 1230, -1127, 4, 10);
     await shot(page, 'tripod-activated');
     // the map: M opens it, the activated points have a "Hinreisen" button
     await page.evaluate(() => window.kq!.travel!.map(true));
     await expect(page.getByTestId('travel-go-ehrenhof')).toBeVisible();
     await shot(page, 'map');
     await page.evaluate(() => window.kq!.travel!.map(false));
-    // travel from far away: lands beside the tripod
+    // Known destinations still work from far away in 1789.
     await look(page, '1789', 760, -915, 1230, -1127);
     expect(await page.evaluate(() => window.kq!.travel!.go('ehrenhof'))).toBe(true);
     const at = await page.evaluate(() => ({ x: window.kq!.ctx.player.position.x, z: window.kq!.ctx.player.position.z }));
     expect(Math.hypot(at.x - 1230, at.z + 1127)).toBeLessThan(5);
+    expect(await hasTripod()).toBe(false);
     // not in a fight
     await page.evaluate(() => {
       const k = window.kq!;

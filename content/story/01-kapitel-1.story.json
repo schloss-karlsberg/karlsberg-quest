@@ -2,7 +2,7 @@
   "chapter": "k1",
   "order": 1,
   "title_de": "Der Hof",
-  "sub_de": "Kapitel 1 · Sommer 1789",
+  "sub_de": "Kapitel 2 · Sommer 1789",
   "era": "1789",
   "start": "k1_0",
   "next": "k2",
@@ -47,7 +47,7 @@
       "sameEra": true
     },
     {
-      "id": "oel-a",
+      "id": "oel-tag",
       "when": {
         "all": [
           {
@@ -57,26 +57,14 @@
             "not": {
               "flag": "k1.b"
             }
-          },
-          {
-            "not": {
-              "flag": "k1.vorspiel"
-            }
           }
         ]
       },
-      "repeat": true,
       "do": [
         {
           "do": "meter",
           "id": "oil",
           "active": false
-        },
-        {
-          "do": "meter",
-          "id": "oil",
-          "active": true,
-          "seconds": 360
         }
       ]
     },
@@ -94,16 +82,19 @@
             "not": {
               "flag": "k1.vorspiel"
             }
+          },
+          {
+            "not": {
+              "meter": {
+                "id": "oil",
+                "gte": 0
+              }
+            }
           }
         ]
       },
       "repeat": true,
       "do": [
-        {
-          "do": "meter",
-          "id": "oil",
-          "active": false
-        },
         {
           "do": "meter",
           "id": "oil",
@@ -165,13 +156,15 @@
     },
     {
       "id": "lauf-zurueck",
+      "repeat": true,
+      "sameEra": true,
       "when": {
         "all": [
           {
             "era": "1789"
           },
           {
-            "chapterTimer": 75
+            "flag": "k1.b"
           },
           {
             "not": {
@@ -180,22 +173,19 @@
           },
           {
             "not": {
-              "flag": "k1.tut.return"
+              "flag": "k1.tut.return.shown"
             }
           }
         ]
       },
       "do": [
         {
-          "do": "flag",
-          "set": {
-            "k1.tut.return": true
-          }
-        },
-        {
           "do": "toast",
-          "text": "Halte [Q], um ins Heute zurückzukehren. Die Laterne brennt nicht ewig: ist das Öl leer, lässt dich die Erinnerung los.",
-          "ms": 6500
+          "text": "Die Laterne brennt nicht ewig: Ist das Öl leer, lässt dich die Erinnerung los. Halte {key}, um vorher ins Heute zurückzukehren.",
+          "action": "shift",
+          "onceFlag": "k1.tut.return.shown",
+          "ms": 6500,
+          "delay": 8
         }
       ]
     },
@@ -989,7 +979,8 @@
             "quelle.call": null,
             "k1.vorspiel": true,
             "npc.owns.clue.k1.papier": true,
-            "k1.angekommen": null
+            "k1.angekommen": null,
+            "k1.karte": null
           }
         },
         {
@@ -1129,6 +1120,13 @@
           "data": {
             "set": "k1"
           }
+        },
+        {
+          "do": "flag",
+          "set": {
+            "k1.karte": true
+          },
+          "delay": 0.2
         }
       ],
       "complete": {
@@ -1138,6 +1136,9 @@
           },
           {
             "flag": "k1.angekommen"
+          },
+          {
+            "flag": "k1.karte"
           }
         ]
       },
@@ -1219,7 +1220,8 @@
           "do": "flag",
           "set": {
             "k1.vorspiel": true,
-            "npc.owns.clue.k1.papier": true
+            "npc.owns.clue.k1.papier": true,
+            "k1.rock.frei": true
           }
         },
         {
@@ -1424,6 +1426,106 @@
               "text": "Papier und Siegel: zum Hofgärtner vor der Orangerie (langsam, Stab weg)",
               "x": 1221,
               "z": -993
+            }
+          ]
+        },
+        {
+          "id": "k1_0b.liese-sieht",
+          "when": {
+            "all": [
+              {
+                "enter": {
+                  "x": 1003.6,
+                  "z": -875.7,
+                  "r": 3.6,
+                  "era": "1789"
+                }
+              },
+              {
+                "stance": "stand"
+              },
+              {
+                "flag": "k1.rock.frei"
+              },
+              {
+                "not": {
+                  "flag": "disguise.coat"
+                }
+              },
+              {
+                "not": {
+                  "talked": {
+                    "npc": "liese",
+                    "topic": "rock"
+                  }
+                }
+              }
+            ]
+          },
+          "repeat": true,
+          "do": [
+            {
+              "do": "flag",
+              "set": {
+                "k1.rock.frei": null
+              }
+            },
+            {
+              "do": "say",
+              "id": "liese.k1.sieht",
+              "speaker": "liese",
+              "variants": [
+                "He! Finger von der Wäsche! Die ist für den Hof, nicht für Feuersalamander.",
+                "Ich seh Ihn doch. Da vorn zwischen den Leinen hat Er nichts verloren."
+              ],
+              "repeat": true
+            },
+            {
+              "do": "objective",
+              "id": "k1.rock",
+              "text": "Liese hat dich gesehen. Erst weg von der Bleiche, dann geduckt oder außen herum hinter die zweite Leine. Oder frag sie",
+              "x": 1001.08,
+              "z": -880.9
+            }
+          ]
+        },
+        {
+          "id": "k1_0b.liese-ruhig",
+          "when": {
+            "all": [
+              {
+                "not": {
+                  "flag": "k1.rock.frei"
+                }
+              },
+              {
+                "not": {
+                  "flag": "disguise.coat"
+                }
+              },
+              {
+                "leave": {
+                  "x": 1001.5,
+                  "z": -876.5,
+                  "r": 14
+                }
+              }
+            ]
+          },
+          "repeat": true,
+          "do": [
+            {
+              "do": "flag",
+              "set": {
+                "k1.rock.frei": true
+              }
+            },
+            {
+              "do": "objective",
+              "id": "k1.rock",
+              "text": "Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach",
+              "x": 1001.08,
+              "z": -880.9
             }
           ]
         },

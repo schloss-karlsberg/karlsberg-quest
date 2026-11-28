@@ -70,6 +70,8 @@ export interface Clue {
   echoDate_de?: string;
   /** Only findable with the lantern lit. */
   needsLantern?: boolean;
+  /** The E prompt for this clue instead of „Untersuchen“ (a thing you take: „Rock nehmen“). */
+  prompt_de?: string;
   /** Story chapter this clue belongs to (e.g. 'p', 'k1' … 'k4'); for tooling and story flow. */
   chapter?: string;
   /**

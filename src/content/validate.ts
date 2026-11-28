@@ -125,6 +125,7 @@ export function validateContent(packs: LoadedPack[], opts: ValidateOptions = {})
     for (const fl of [...(c.requires?.flags ?? []), ...(c.reveals?.flags ?? [])]) if (!isStr(fl)) err(file, c.id, 'clue: flags must be non-empty strings');
     if (c.echoDate_de !== undefined && !isStr(c.echoDate_de)) err(file, c.id, 'clue: "echoDate_de" must be a non-empty string');
     if (c.needsLantern !== undefined && typeof c.needsLantern !== 'boolean') err(file, c.id, 'clue: "needsLantern" must be true or false');
+    if (c.prompt_de !== undefined && !isStr(c.prompt_de)) err(file, c.id, 'clue: "prompt_de" must be a non-empty string');
     if (c.chapter !== undefined && !isStr(c.chapter)) err(file, c.id, 'clue: "chapter" must be a non-empty string');
     if (c.sketch !== undefined) {
       const sk = c.sketch;

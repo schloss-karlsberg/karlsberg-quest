@@ -306,6 +306,7 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   const s0 = await page.evaluate(() => window.kq!.story!.state());
   expect(s0.chapter).toBe('tour');
   expect(s0.beat).toBe('t1');
+  await expect(page.getByTestId('story-card')).toContainText('Kapitel 1 · heute, ein Novembernachmittag');
   // the animals system is the real one (main's animals system, kq.animals.ready), with the dogs at Jost's heels
   expect(await page.evaluate(() => window.kq!.animals?.ready)).toBe(true);
   await page.evaluate(() => window.kq!.step(120));
@@ -861,6 +862,7 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   expect(s1.beat).toBe('k1_0');
   expect(s1.era).toBe('1789');
   expect(s1.objective).toMatchObject({ id: 'k1.rock' });
+  await expect(page.getByTestId('story-card')).toContainText('Kapitel 2 · Sommer 1789');
   // the chapter card stands alone: no quest banner on it
   expect(await page.evaluate(() => window.kq!.quests!.state().quests['q.k1.kleider']?.state ?? 'hidden')).toBe('hidden');
   expect(await page.evaluate(() => window.kq!.quelle!.info().prompt), 'no second touch').toBe(false);

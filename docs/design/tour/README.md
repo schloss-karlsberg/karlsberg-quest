@@ -51,6 +51,8 @@ i just want to travel once and stay there. if i travel, tutorials (chapter 1 fin
 begins (outside the castle)." The scope below was set by the coordinator while the owner's answers
 are pending; PRD D-012.
 
+- **Chapter numbers.** The tour is chapter 1, „Der Hof“ is chapter 2, and the remaining chapters
+  are numbered 3–5. The testing aid `?kapitel=2…5` follows those numbers.
 - **One touch.** `t17` ends on the touch, `t18` is the arrival: the shift, `player.q.wo`,
   `laub.t.1789` (without „Für heute genügt ein Blick.“) and `laub.t.seite`, with the player free to
   move as soon as the shift is done. The coat objective appears on arrival and stays visible
@@ -62,10 +64,18 @@ are pending; PRD D-012.
   Pause → Kapitel the chapter starts at the spring in the present, and Q there leads into the summer.
 - **Arrival spot:** the spring itself, the invented Brunnenstube (cx.42), about 310 m from the
   palace gate. Positions come from the shared home constant (`src/systems/story/hub/home.ts`).
+- **Arrival view:** during the shift the visitor takes six steps from the water and turns to the
+  palace, so it stands on the horizon when 1789 shows and the camera has room. Place and yaw are
+  computed from the stand to the Corps de logis.
 - **Cut:** the dawn opening, Marlene's radio line and Laub's „Ein zweites Mal also“, the arrival
   quest's „das Wasser berühren“ step. The next-morning framing also broke the one-afternoon rule.
-- **How far "stay" reaches:** the first jump is one-way. Not built: a chapter or a game without
-  the present (wake in the past, no Q home); see TASK-089, follow-ups.
+- **How far "stay" reaches:** the first jump is one-way and the day part of „Der Hof“ has no oil
+  eviction, so the first return is the story's own („Gehen wir erst nach Hause“ after the Zwinger).
+  Holding Q and waking at the Quelle after a defeat work as before. Not built: a chapter or a game
+  without the present (wake in the past, no Q home); see TASK-089, follow-ups.
+- **Survey tripods (owner, 2026-11-28).** The eleven tripods, their beams and walk-up discovery
+  belong to the present. Known survey points still serve as map destinations. Story and quest
+  markers in the past come from their own objectives.
 
 ## First 15 minutes (2026-11-28, TASK-100)
 

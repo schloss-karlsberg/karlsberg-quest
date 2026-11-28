@@ -19,6 +19,8 @@
  *   'court:ejected' {zone, n, tell}, 'court:refused' {reason:'letter'|'coat', watcher}.
  * Inspector: `watch.inspector: true` → within 4 m, while not admitted, E "Brief vorzeigen" (hold
  *   1 s) replaces talking to that NPC (flag npc.hush). Ring 2.5 s, every tell ×3.
+ * Noises: a thrown chestnut that lands in earshot draws a watcher off its post for a while
+ *   (./distract.ts; 'world:noise', 'forage:impact', 'forage:throw' → 'court:distracted', 'npc:offset').
  * Pike: roster look `pike: true` (npc/roster.ts).
  * Strings: ./strings.ts (ids listed there; content may override them).
  * Debug: kq.court.state() / watchers() / inspect() / set(level) / zones() / signal() / on() / off().
@@ -59,6 +61,7 @@ import {
   zoneMul,
 } from './logic';
 import './strings';
+import { DISTRACT, type Distract, type DistractPhase, type Noise, abort, createDistract, distractYaw, distracted, hearNoise, hears, stepDistract, strike } from './distract';
 import { type CourtZone, EHRENHOF_OUTSIDE, ZONES, watcherZone, zoneAt, zoneById } from './zones';
 
 export interface CourtSlice {
@@ -86,6 +89,12 @@ declare module '../../core/events' {
     'court:refused': { reason: 'letter' | 'coat'; watcher: string };
     /** A pickup flagged `unseen` was taken: an instant tell for every watcher that sees it. */
     'court:take': { what?: string };
+    /**
+     * A watcher's attention moved (./distract.ts): it heard a noise and goes to look ('turn'),
+     * only glances ('glance'), was struck by a chestnut ('alert'), walks on ('walk', 'look',
+     * 'back') or stands at its post again ('post').
+     */
+    'court:distracted': { watcher: string; phase: DistractPhase };
   }
 }
 
@@ -103,6 +112,12 @@ export interface CourtWatcherInfo {
   inspector: boolean;
   zone: string | null;
   set: string | null;
+  /** Where its attention is (./distract.ts) and its post (x / z above are where it stands now). */
+  distract: DistractPhase;
+  postX: number;
+  postZ: number;
+  /** Seconds left in which a noise only earns a glance. */
+  wary: number;
 }
 
 export interface CourtHooks {
@@ -130,8 +145,8 @@ export interface CourtHooks {
   /** Set every active watcher's (or one's) suspicion. */
   set(level: number, npc?: string): void;
   zones(): readonly CourtZone[];
-  /** Fake a tell signal this tick (tests): 'attack' (a blow), 'staff' (lock-on / charge), 'take'. */
-  signal(kind: 'attack' | 'staff' | 'take'): void;
+  /** Fake a tell signal this tick (tests): 'attack' (a blow), 'staff' (lock-on / charge), 'take', 'throw'. */
+  signal(kind: 'attack' | 'staff' | 'take' | 'throw'): void;
   on(set?: string): void;
   off(set?: string): void;
 }
@@ -149,14 +164,23 @@ interface WatchRt {
   /** Head turn (degrees) sent to the npc system, or null (sweep / placement yaw). */
   turned: number | null;
   sees: boolean;
+  /** A noise took its attention (./distract.ts). */
+  d: Distract;
+  /** The offset last sent to the npc system. */
+  sentX: number;
+  sentZ: number;
 }
 
 interface Active {
   id: string;
   p: NpcPlacement & { era: string };
   w: NpcWatch;
+  /** Where it stands now (its post, or on its way to a noise and back). */
   x: number;
   z: number;
+  /** Its post (the placement). */
+  hx: number;
+  hz: number;
   yaw: number;
   zone: CourtZone | null;
 }
@@ -165,6 +189,8 @@ interface Active {
 const CHARGE_S = 0.25;
 /** Head turns: re-aim when the player has moved this far off the turned heading (degrees). */
 const TURN_GAP = 12;
+/** A watcher looking round at a noise re-aims in steps of this many degrees. */
+const LOOK_GAP = 6;
 /** Leaving the inspector by more than INSPECT_R + this (m) during the ring ends the Musterung: escorted out. */
 const RING_LEAVE = 2.5;
 /** Footprints that do not block sight (railings). */
@@ -191,6 +217,11 @@ class CourtRuntime {
   // signals of this tick (events between ticks)
   private attacked = false;
   private took = false;
+  private threw = false;
+  // noises and struck watchers since the last tick
+  private readonly noises: Noise[] = [];
+  private readonly struck: string[] = [];
+  private barkN = 0;
   private staffAgo = Infinity;
   private attackHeld = 0;
   // ejection (game time; deterministic with kq.step)
@@ -237,6 +268,14 @@ class CourtRuntime {
       if (inCombat) this.staffAgo = 0;
     });
     ev.on('court:take', () => (this.took = true));
+    // chestnuts (src/systems/forage): a throw in view is a tell, a landing is a noise, a hit alerts
+    ev.on('forage:throw', () => (this.threw = true));
+    ev.on('world:noise', ({ x, z, loud }) => {
+      if (this.noises.length < 8) this.noises.push({ x, z, loud });
+    });
+    ev.on('forage:impact', ({ npc }) => {
+      if (npc) this.struck.push(npc);
+    });
     ev.on('story:cue', ({ id, data }) => {
       if (id === 'court:on') this.setOn(typeof data?.set === 'string' ? data.set : '*', true);
       else if (id === 'court:off') this.setOn(typeof data?.set === 'string' ? data.set : '*', false);
@@ -314,20 +353,23 @@ class CourtRuntime {
       if (!w || p.era !== era || !this.setActive(w)) continue;
       const r = this.rtOf(id);
       const yaw = r.turned ?? sweepYaw(w, p.yaw, this.ctx.loop.time);
-      out.push({ id, p, w, x: p.x, z: p.z, yaw, zone: watcherZone(p.x, p.z, era, w.zone) });
+      out.push({ id, p, w, x: p.x + r.d.ox, z: p.z + r.d.oz, hx: p.x, hz: p.z, yaw, zone: watcherZone(p.x, p.z, era, w.zone) });
     }
     return out;
   }
 
   private rtOf(id: string): WatchRt {
     let r = this.rt.get(id);
-    if (!r) this.rt.set(id, (r = { level: 0, stage: 0, tell: null, turned: null, sees: false }));
+    if (!r) this.rt.set(id, (r = { level: 0, stage: 0, tell: null, turned: null, sees: false, d: createDistract(), sentX: 0, sentZ: 0 }));
     return r;
   }
 
   private resetAll(): void {
     for (const [id, r] of this.rt) {
       if (r.turned !== null) this.ctx.events.emit('npc:yaw', { npc: id, yaw: null });
+      if (r.sentX !== 0 || r.sentZ !== 0) this.ctx.events.emit('npc:offset', { npc: id, dx: 0, dz: 0 });
+      r.d = createDistract();
+      r.sentX = r.sentZ = 0;
       r.level = 0;
       r.stage = 0;
       r.tell = null;
@@ -364,7 +406,8 @@ class CourtRuntime {
    * watcher stands in (a Gardist in a doorway) and see-through railings (the Ehrenhof gitter).
    */
   private blockers(a: Active): Ring[] {
-    const key = `${a.id}@${a.x.toFixed(1)},${a.z.toFixed(1)}`;
+    // (by its post: a watcher on its way to a noise keeps the walls of its post)
+    const key = `${a.id}@${a.hx.toFixed(1)},${a.hz.toFixed(1)}`;
     let rings = this.obstacles.get(key);
     if (!rings) {
       rings = [];
@@ -372,8 +415,8 @@ class CourtRuntime {
       for (const b of this.ctx.data.footprints.buildings) {
         if (SEE_THROUGH.has(b.id)) continue;
         const ring = b.ring as Ring;
-        if (!ring.some(([x, z]) => Math.abs(x - a.x) < r && Math.abs(z - a.z) < r)) continue;
-        if (pointInRing(a.x, a.z, ring)) continue;
+        if (!ring.some(([x, z]) => Math.abs(x - a.hx) < r && Math.abs(z - a.hz) < r)) continue;
+        if (pointInRing(a.hx, a.hz, ring)) continue;
         rings.push(ring);
       }
       this.obstacles.set(key, rings);
@@ -423,9 +466,12 @@ class CourtRuntime {
     this.attackHeld = inp.isDown('attack') ? this.attackHeld + dt : 0;
     if (this.attackHeld >= CHARGE_S) this.staffAgo = 0;
     if (this.attacked) this.staffAgo = 0;
-    const signals = { coat, speed: ctx.player.stats.speed, staffAgo: this.staffAgo, attacked: this.attacked, took: this.took };
+    const signals = { coat, speed: ctx.player.stats.speed, staffAgo: this.staffAgo, attacked: this.attacked, took: this.took, threw: this.threw };
     this.attacked = false;
     this.took = false;
+    this.threw = false;
+    const noises = this.noises.splice(0);
+    const struck = this.struck.splice(0);
     this.staffAgo += dt;
 
     if (this.shifting) return;
@@ -446,6 +492,9 @@ class CourtRuntime {
     let worst: { a: Active; r: WatchRt } | null = null;
     for (const a of watchers) {
       const r = this.rtOf(a.id);
+      const d = r.d;
+      const hit = struck.includes(a.id);
+      if (hit) this.onStruck(a, r);
       const s = this.sees(a, zone !== null, ringed);
       r.sees = s.sees;
       const step = stepSuspicion(r.level, hits, s.sees, s.dist, mul, dt);
@@ -453,20 +502,102 @@ class CourtRuntime {
       if (step.tell) r.tell = step.tell;
       const stage = stageOf(r.level, r.stage);
       if (stage !== r.stage) this.stageChanged(a, r, stage);
-      // the head follows a player it is suspicious of
-      if (r.stage >= 1 && s.sees) {
+      if (this.eject) return;
+      // it has made the player out: the search for the noise is over
+      if (r.stage >= 2 && d.phase !== 'alert') abort(d);
+      else if (!hit && r.stage < 2) {
+        const heard = noises.find((n) => hears(a.x, a.z, n));
+        if (heard) this.onNoise(a, r, heard);
+      }
+      const phase = stepDistract(d, dt);
+      if (phase) this.phaseChanged(a, phase);
+      if (d.ox !== r.sentX || d.oz !== r.sentZ) {
+        r.sentX = d.ox;
+        r.sentZ = d.oz;
+        ctx.events.emit('npc:offset', { npc: a.id, dx: d.ox, dz: d.oz });
+      }
+      // the head follows a player it is suspicious of, or one whose chestnut struck it; a
+      // distracted watcher looks at the noise, and its fan with it
+      if ((r.stage >= 1 && s.sees) || d.phase === 'alert') {
         const want = yawDegToward(a.x, a.z, p.x, p.z);
         if (r.turned === null || yawGap(r.turned, want) > TURN_GAP) {
           r.turned = want;
           ctx.events.emit('npc:yaw', { npc: a.id, yaw: want });
         }
+      } else if (distracted(d)) {
+        const want = distractYaw(d, { x: a.hx, z: a.hz });
+        if (want !== null && (r.turned === null || yawGap(r.turned, want) > LOOK_GAP)) {
+          r.turned = want;
+          ctx.events.emit('npc:yaw', { npc: a.id, yaw: want });
+        }
+      } else if (phase === 'post' && r.stage === 0 && r.turned !== null) {
+        r.turned = null;
+        ctx.events.emit('npc:yaw', { npc: a.id, yaw: null });
       }
       if (!worst || r.level > worst.r.level) worst = { a, r };
-      if (this.eject) return;
     }
     // watchers that left (despawned / set off): forget them
-    for (const id of this.rt.keys()) if (!watchers.some((a) => a.id === id)) this.rt.delete(id);
+    for (const [id, r] of this.rt) {
+      if (watchers.some((a) => a.id === id)) continue;
+      // (one that was away from its post stands on it again)
+      if (r.sentX !== 0 || r.sentZ !== 0) ctx.events.emit('npc:offset', { npc: id, dx: 0, dz: 0 });
+      this.rt.delete(id);
+    }
     this.stepInspection(dt, watchers);
+  }
+
+  // ---- noises (./distract.ts) ----------------------------------------------------------------
+
+  /** How far a watcher can walk from its post along ux/uz (m, up to `want`): walls, water and steep banks stop it. */
+  private freeWay(a: Active, ux: number, uz: number, want: number): number {
+    const w = this.ctx.world;
+    const col = w.collider;
+    let free = 0;
+    for (let s = 0.5; s <= want + 1e-6; s += 0.5) {
+      const x = a.hx + ux * s;
+      const z = a.hz + uz * s;
+      // (the first step is still its own body's place)
+      if (w.surfaceAt(x, z) === 'water' || w.heightfield.slopeDeg(x, z) > 35 || (s >= 1 && col.enabled && col.resolve(x, z, 0.3).hit)) return Math.max(0, free - 0.4);
+      free = s;
+    }
+    return want;
+  }
+
+  private who(a: Active): string {
+    return a.w.who ?? t('court.who');
+  }
+
+  private bark(a: Active, prefix: string): void {
+    const lines = variants(prefix);
+    if (lines.length) this.ctx.ui.hud.subtitle(this.speaker(a.id), lines[this.barkN++ % lines.length]!, 2600);
+  }
+
+  private onNoise(a: Active, r: WatchRt, n: Noise): void {
+    // the gate's inspector keeps the gate, and a watcher in a Musterung stays
+    const stay = a.w.inspector === true || this.ring?.watcher === a.id;
+    const res = hearNoise(r.d, { x: a.hx, z: a.hz }, n, { stay, free: (ux, uz, want) => this.freeWay(a, ux, uz, want) });
+    if (!res) return;
+    const hud = this.ctx.ui.hud;
+    if (res === 'go') {
+      hud.subtitle(null, t('court.cap.noise', { who: this.who(a) }), 3200);
+      this.bark(a, 'court.noise.bark');
+    } else hud.subtitle(null, t('court.cap.glance', { who: this.who(a) }), 2600);
+    this.ctx.events.emit('court:distracted', { watcher: a.id, phase: r.d.phase });
+  }
+
+  /** The chestnut struck the watcher itself: it looks for the thrower, whatever its fan saw. */
+  private onStruck(a: Active, r: WatchRt): void {
+    strike(r.d);
+    r.level = Math.min(1, r.level + DISTRACT.hit);
+    r.tell = 'throw';
+    this.ctx.ui.hud.subtitle(null, t('court.cap.struck', { who: this.who(a) }), 3200);
+    this.bark(a, 'court.struck.bark');
+    this.ctx.events.emit('court:distracted', { watcher: a.id, phase: 'alert' });
+  }
+
+  private phaseChanged(a: Active, phase: DistractPhase): void {
+    if (phase === 'back') this.ctx.ui.hud.subtitle(null, t('court.cap.back', { who: this.who(a) }), 2600);
+    this.ctx.events.emit('court:distracted', { watcher: a.id, phase });
   }
 
   private stageChanged(a: Active, r: WatchRt, stage: Stage): void {
@@ -749,7 +880,7 @@ class CourtRuntime {
       watchers: () =>
         this.active().map((a) => {
           const r = this.rtOf(a.id);
-          return { npc: a.id, x: a.x, z: a.z, yaw: a.yaw, fov: a.w.fov, range: a.w.range, level: r.level, stage: STAGE_NAMES[r.stage], tell: r.tell, sees: r.sees, inspector: a.w.inspector === true, zone: a.zone?.id ?? null, set: a.w.set ?? null };
+          return { npc: a.id, x: a.x, z: a.z, yaw: a.yaw, fov: a.w.fov, range: a.w.range, level: r.level, stage: STAGE_NAMES[r.stage], tell: r.tell, sees: r.sees, inspector: a.w.inspector === true, zone: a.zone?.id ?? null, set: a.w.set ?? null, distract: r.d.phase, postX: a.hx, postZ: a.hz, wary: r.d.wary };
         }),
       inspect: (npc) => {
         const p = this.ctx.player.position;
@@ -768,6 +899,7 @@ class CourtRuntime {
       signal: (kind) => {
         if (kind === 'attack') this.attacked = true;
         else if (kind === 'take') this.took = true;
+        else if (kind === 'throw') this.threw = true;
         else this.staffAgo = 0;
       },
       on: (set) => this.setOn(set ?? '*', true),

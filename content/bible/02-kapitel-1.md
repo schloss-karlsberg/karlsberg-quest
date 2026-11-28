@@ -9,7 +9,7 @@
 | Ära | `1789-07` (ein Sommertag; Teil A Vormittag bis Nachmittag am Schloss, Teil B Abend und Nacht in der Karlslust). Echo `1785-12` am Rondell |
 | Dauer | 30–35 min |
 | Anker | A: Ehrenhof (1216/−1114). B: Tschifflik-Terrasse (KL-B46, 1822/49), frei ab dem 1. bestätigten Satz |
-| Ölvorrat | A: 6 min je Wechsel; B: 7 min je Wechsel (sanfter Modus +50 %, Rauhnacht −30 %) |
+| Ölvorrat | A: keiner (seit TASK-089: der erste Aufenthalt wird nicht abgebrochen; früher 6 min je Wechsel); B: 7 min je Wechsel (sanfter Modus +50 %, Rauhnacht −30 %) |
 | Ziel | Hannes Frage beantworten: Warum bekommt sie den Lohn ihres Mannes nicht? Dabei lernt man den Hof, seine Kosten, seine Hunde und seine Tiere kennen und findet den Ort von 1785 |
 | Ende | Fallseite „Der Hof“ ganz bestätigt → Kapitel 2 offen |
 
@@ -335,7 +335,7 @@
 
 ## 9. Bedrohung (Notizen für Designer)
 
-**Teil A (Tag):** keine Meute. Druck entsteht nur durch den Ölvorrat. Hofleute sind Echos und sehen dich nicht. Einzige Regel mit Humor: Wer im Ehrenhof rennt (Shift), wird von der Wache mit „Langsam! Hier rennt nur das Geld davon.“ angerufen, aber nicht aufgehalten. Das ist ein Running Gag (Reaktion `wache-rennen`, Zeile `wache.k1.rennen`, höchstens alle 30 s), der beim wiederholten Rennen eskaliert und nach der vierten Zeile verstummt:
+**Teil A (Tag):** keine Meute und seit TASK-089 kein Ölvorrat als Zeitdruck (ursprünglich: Druck entsteht nur durch den Ölvorrat). Hofleute sind Echos und sehen dich nicht. Einzige Regel mit Humor: Wer im Ehrenhof rennt (Shift), wird von der Wache mit „Langsam! Hier rennt nur das Geld davon.“ angerufen, aber nicht aufgehalten. Das ist ein Running Gag (Reaktion `wache-rennen`, Zeile `wache.k1.rennen`, höchstens alle 30 s), der beim wiederholten Rennen eskaliert und nach der vierten Zeile verstummt:
   1. „Langsam! Hier rennt nur das Geld davon.“
   2. „Schon wieder? Dem Geld läuft Er so nicht hinterher. Das ist längst über alle Berge.“
   3. „Ich schreib Ihn auf. Gleich hinter die Baurechnung, da ist noch Platz.“
