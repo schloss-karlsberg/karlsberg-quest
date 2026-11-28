@@ -256,12 +256,19 @@ test('story: Pause chapters, objective and Bussole', async ({ page }) => {
   await waitForHooks(page, ['quelle', 'fx', 'quests']);
   await throughTour(page);
   expect(await page.evaluate(() => window.kq!.state().inventory.items)).toContain('item.bussole');
-  await page.evaluate(() => {
+  // the arrival in 1789: Laub's lines name the first goal (the coat at the Bleiche). Seen from the
+  // spring with the view on that goal, the Bussole glows
+  const goal = await page.evaluate(([from]) => {
     const k = window.kq!;
     k.story!.flush();
-    k.teleport(1052, -833.1, 90, 0);
     k.step(4);
-  });
+    const o = k.story!.state().objective;
+    if (!o || o.x === undefined || o.z === undefined) return o?.id ?? null;
+    k.teleport(from.x, from.z, (Math.atan2(o.x - from.x, -(o.z - from.z)) * 180) / Math.PI, 0);
+    k.step(4);
+    return o.id;
+  }, [HOME.spawn] as const);
+  expect(goal, 'the arrival sets a goal with a place').toBe('k1.rock');
   await expect(page.getByTestId('objective')).toHaveClass(/kqs-show/);
   await expect(page.getByTestId('bussole')).toHaveClass(/kqs-show/);
   await page.waitForTimeout(1500);
