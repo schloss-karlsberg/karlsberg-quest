@@ -85,7 +85,7 @@ each. The photo judge gets a one-off pixel test at the shutter: the subjects are
 against the scene's depth into a small target and the share of each silhouette that is not hidden
 replaces the sight rays for targets that have a drawn body. It lives in its own module; `core.ts`
 only reads the share. The card names the reason for a weak shot. Chestnuts use the events that are
-on main: `world:noise` (look toward it) and the `combat:pelt` receipt (a hit, flight).
+on main: `world:noise` (look toward it), `world:pelt` and `forage:impact` (a hit, flight).
 
 **Files to touch:**
 - `src/systems/photo/visibility.ts` (new) - subject registry, the pixel test, pure counting and the German tips.
@@ -146,8 +146,8 @@ the new feedback is captions, the card and one toast.
   measured target also needs it big in the frame (1.8 × `minFrac`: the 2× zoom from the sneak
   path, or closer than about 9.5 m at 1×).
 - 2026-11-28: steps 4 to 6 done - deer core (glances, the look, the step, the hold outside the flee
-  radius, open-ground flights, `hitDeer`), runtime (head look-at, captions, the `combat:pelt`
-  receipt, the hint), the tour story (every flight answered, 60 s for another try, the hit).
+  radius, open-ground flights, `hitDeer`), runtime (head look-at, captions, the chestnut hit,
+  the hint), the tour story (every flight answered, 60 s for another try, the hit).
   tests/animals-deer.test.ts (+11), tests/animals-system.test.ts (+4), tests/tour-slice.test.ts.
 - 2026-11-28: step 7 done - after captures at the same views, real GPU (ANGLE Metal, Apple M5 Pro),
   `test-results/contribute/TASK-080/after/` (not committed). Seen in the frames:
@@ -169,10 +169,16 @@ the new feedback is captions, the card and one toast.
 - 2026-11-28: step 8 done - `e2e/tour-slice.spec.ts` shoots once with a screen in front of the
   pair („Verdeckt“, the tip) before the good shot; docs (PRD, ACTION-RPG §7.1 and §14,
   ARCHITECTURE, the tour design, the prologue bible).
-- Open pull requests: #146 (phone out of the pocket) edits `photo/index.ts`, `core.ts` and
-  `e2e/photo.spec.ts`; #148 (chestnut distraction) edits forage, court, `combat:pelt` and the
-  docs. A trial merge of this branch with each (`git merge-tree`) is clean. With #148 the
-  chestnut asks `combat:pelt` last and passes `before`; the deer's answer honours it.
+- 2026-11-28: main moved to a229084c (#148 chestnut distraction, #149 chapter numbering, #150
+  completing reactions) and was merged in; the only conflict was the PRD changelog (both rows
+  kept). The chestnut hit now uses #148's events: a deer in the way answers `world:pelt` like a
+  placed person (`npc: 'animal:<id>'`, the nearest body keeps the answer), and the flight starts
+  on `forage:impact` (that body, or the ground within 0.9 m of a deer). The `combat:pelt` receipt
+  and the `world:noise` special case of the first version are gone.
+- Open pull request #146 (phone out of the pocket) edits `photo/index.ts`, `core.ts` and
+  `e2e/photo.spec.ts`. A trial merge with it (`git merge-tree`) adds no conflict from this
+  branch: the edits here keep at least one untouched line away from its hunks. (#146 conflicts
+  with main itself in `src/player/avatar.ts` since #148; this branch does not touch that file.)
 - Not done, by decision: no new spoken lines (voice clips); the coat stays grey; the 1× lens still
   shows the pair small. Follow-up worth a task: the throw preview's ring does not account for
   rising ground (the nut lands short of the ring on a slope).
@@ -180,4 +186,8 @@ the new feedback is captions, the card and one toast.
   passed, `pnpm validate`: 0 errors, `pnpm build`). Local e2e (SwiftShader), one worker:
   `e2e/tour-slice.spec.ts` 3 passed, `e2e/animals.spec.ts` 4 passed, `e2e/photo.spec.ts` 8 passed
   (run one commit before the caption gating and the 260 s fallback; the hosted run covers the head).
+- 2026-11-28: after the merge of main: gates green again (`pnpm test`: 250 files, 2835 passed);
+  local e2e `tour-slice` 3 passed, `animals` 4 passed, `forage` 1 passed; the after captures were
+  taken again on the merged branch (same results; a chestnut through the doe arrives as
+  `forage:impact` on `animal:ricke`).
 - PR: https://github.com/schloss-karlsberg/karlsberg-quest/pull/152
