@@ -463,7 +463,8 @@ export class Hud {
       const sounds = this.subsShown.filter((l) => l.sound);
       const full = this.subsShown.length >= SUB_MAX || (next.sound && sounds.length >= SOUND_MAX);
       if (full) {
-        const oldest = this.subsShown.length >= SUB_MAX ? this.subsShown[0]! : sounds[0]!;
+        // a sound caption only ever replaces a sound caption, so the box never holds more than SOUND_MAX
+        const oldest = next.sound && sounds.length >= SOUND_MAX ? sounds[0]! : this.subsShown[0]!;
         const wait = oldest.shownAt + SUB_MIN_MS - now;
         if (wait > 0) {
           this.subsWake = setTimeout(() => this.flushSubtitles(), wait);

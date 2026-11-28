@@ -192,6 +192,18 @@ describe('Hud subtitles', () => {
     expect(hud.captionLines).toBe(2);
   });
 
+  it('a sound caption replaces a sound caption, never a spoken line (TASK-085)', () => {
+    const hud = new Hud();
+    const shown = subtitleBox(hud);
+    hud.subtitle('Laub', 'Hier.', 8000);
+    hud.subtitle(null, 'Wind rauscht.', 8000);
+    hud.subtitle(null, 'Ein Bach plätschert.', 8000);
+    hud.subtitle(null, 'Vögel zwitschern.', 8000);
+    vi.advanceTimersByTime(1500);
+    expect(shown()).toEqual(['LaubHier.', 'Ein Bach plätschert.', 'Vögel zwitschern.']);
+    expect(hud.captionLines).toBe(2);
+  });
+
   it('removes a queued line when its owner cancels it, and lets a freed slot take the next line', () => {
     const hud = new Hud();
     const shown = subtitleBox(hud);
