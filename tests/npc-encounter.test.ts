@@ -1,9 +1,10 @@
-import { Scene } from 'three';
+import { Group, PerspectiveCamera, Scene } from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { GameContext } from '../src/core/context';
 import { EventBus } from '../src/core/events';
 import { createInitialState, GameStateStore } from '../src/core/state';
 import npc from '../src/systems/npc';
+import { RiggedNpc } from '../src/systems/npc/rigged';
 
 const { say } = vi.hoisted(() => ({ say: vi.fn() }));
 vi.mock('../src/systems/npc/ui', () => ({
@@ -14,10 +15,11 @@ vi.mock('../src/systems/npc/ui', () => ({
     close() { if (this.open) { this.open = false; this.onClose?.(); } }
     say = say;
     setTopics() {}
+    tick() {}
   },
 }));
 
-afterEach(() => { npc.dispose(); vi.unstubAllGlobals(); say.mockClear(); });
+afterEach(() => { npc.dispose(); vi.unstubAllGlobals(); say.mockClear(); vi.restoreAllMocks(); });
 
 /** `kq`: a stand-in `window.kq`, where the system installs its debug hooks (`kq.npc.talk`). */
 function encounter({ kq }: { kq?: object } = {}) {
@@ -31,6 +33,8 @@ function encounter({ kq }: { kq?: object } = {}) {
   const prompt = vi.fn();
   events.on('clue:grant', grants);
   const ctx = {
+    assets: { peek: () => ({ scene: new Group(), animations: [] }) },
+    loop: { time: 0, requestRender: vi.fn() },
     events, state, scene: new Scene(), era: { current: '1789' }, quality: { level: 'low', listeners: [] },
     player: { position: { x: 0, y: 10, z: 0 } }, input: { wasPressed: () => true },
     content: { dialogue: new Map([[line.id, line]]), speakers: new Map(), clues: new Set([clue]) },
@@ -102,6 +106,22 @@ describe('campaign NPC encounters', () => {
     // another era: nobody there
     events.emit('npc:spawn', { npc: 'soll', chapter: 'k1', x: 6, z: 0, era: 'today' });
     expect(pelt(6).hit).toBe(false);
+  });
+
+  it('does not give a nearby player the rig gaze while a watcher has a court heading', () => {
+    const { events, ctx } = encounter();
+    const camera = new PerspectiveCamera();
+    Object.assign(ctx, { camera, renderer: { domElement: { height: 360 } }, settings: { state: { reducedMotion: true } } });
+    const frame = vi.spyOn(RiggedNpc.prototype, 'frame');
+    events.emit('npc:spawn', { npc: 'soll', chapter: 'k1', x: 6, z: 0, watch: { fov: 70, range: 14 } });
+    npc.frame(1 / 60);
+    expect(frame).toHaveBeenLastCalledWith(expect.objectContaining({ lookAt: camera.position }));
+    events.emit('npc:yaw', { npc: 'soll', yaw: 0 });
+    npc.frame(1 / 60);
+    expect(frame).toHaveBeenLastCalledWith(expect.objectContaining({ lookAt: null }));
+    events.emit('npc:yaw', { npc: 'soll', yaw: null });
+    npc.frame(1 / 60);
+    expect(frame).toHaveBeenLastCalledWith(expect.objectContaining({ lookAt: camera.position }));
   });
 
   it('once everything is said, the person no longer takes E; a forced open shows a line, never an empty box (TASK-076)', () => {

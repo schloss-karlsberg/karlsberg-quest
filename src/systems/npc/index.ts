@@ -732,7 +732,8 @@ class NpcRuntime {
         f.fig.kneel = 0;
       }
       f.fig.talk = this.talking?.npc === id && this.view.busy ? 1 : 0;
-      f.fig.frame(dt, { reducedMotion: reduced, reducedFlash: ctx.settings.state.reducedFlash, px, face: 0, lookAt: d < 9 || this.talking?.npc === id ? face : null, dist: cam.position.distanceTo(o.position) });
+      const lookAt = this.talking?.npc === id || (d < 9 && !(watching && f.yawOverride !== undefined)) ? face : null;
+      f.fig.frame(dt, { reducedMotion: reduced, reducedFlash: ctx.settings.state.reducedFlash, px, face: 0, lookAt, dist: cam.position.distanceTo(o.position) });
     }
     // quest glyphs over the heads (hidden while that conversation is open)
     this.glyphs.frame(
