@@ -39,7 +39,7 @@ import { TouchControls } from './ui/touch';
 import { SKILL_IDS, skillsForLevel } from './systems/combat/rules';
 import { CameraTakeover, OverrideSlot } from './systems/cinematic/takeover';
 import { endingTitleActions } from './systems/story/title/actions';
-import { kapitelJump } from './systems/story/devstart';
+import { kapitelJump, startAtChapter } from './systems/story/devstart';
 import { mobileLevel } from './render/mobileDefaults';
 import { UI } from './ui/ui';
 import { atmosphere } from './world/atmosphere';
@@ -804,7 +804,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
       offStart();
       if (resumed) return;
       // after the story system's own game:start handler has started the prologue
-      setTimeout(() => startAtChapter(kapitel), 0);
+      setTimeout(() => startAtChapter(window.kq, kapitel), 0);
     });
   }
   window.kq!.camera = {
@@ -863,27 +863,4 @@ export function startPlay({ events, ui, input }: Pick<GameContext, 'events' | 'u
   // A resume handler can restore a modal synchronously while pointer lock is granted asynchronously.
   events.emit('game:start', { resumed });
   if (ui.modals.count === 0) input.requestLock();
-}
-
-/** Start a fresh game at the given K1–K4 index, resolved by kapitelJump. */
-function startAtChapter(n: number): void {
-  const k = window.kq;
-  if (!k?.story || !k.skills || !k.progression || !k.quests) return;
-  const skills: [string, number][] = n === 1 ? [['relief', 3], ['kartograf', 1]] : [['relief', 2], ['kartograf', 2]];
-  if (n >= 2) skills.push(['baumeister', 1], ['spurenleser', 1]);
-  for (const [id, tier] of skills) k.skills.grant(id, tier, true);
-  k.progression.level(n * 2 + 1);
-  if (n === 1) {
-    k.ctx.state.update((s) => {
-      s.flags['story.compass'] = true;
-      for (const item of ['item.bussole', 'item.p.seite']) {
-        if (!s.inventory.items.includes(item)) s.inventory.items.push(item);
-      }
-    }, 'story');
-    k.progression.grant('item.balsam', 4, true);
-    k.progression.grant('item.lampenoel', 1, true);
-  }
-  const earlier = new RegExp(`^q\\.(p|${Array.from({ length: n - 1 }, (_, i) => `k${i + 1}`).join('|')})\\.`);
-  for (const id of k.quests.ids()) if (earlier.test(id) && k.quests.state().quests[id]?.state !== 'done') k.quests.reset(id);
-  k.story.goto(`k${n}`, `k${n}_0`);
 }

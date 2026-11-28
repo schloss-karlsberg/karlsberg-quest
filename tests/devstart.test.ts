@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createInitialState, GameStateStore } from '../src/core/state';
+import type { KqHooks } from '../src/debug/hooks';
+import { itemDef } from '../src/rpg/items';
+import { createProgressionSlice, ProgressionCore } from '../src/systems/progression/logic';
 import type { SettingsStore } from '../src/core/save';
-import { kapitelJump, partyDevVariant, skipsTourRoute } from '../src/systems/story/devstart';
+import { kapitelJump, partyDevVariant, skipsTourRoute, startAtChapter } from '../src/systems/story/devstart';
 import { runNewGameFlow } from '../src/systems/story/title/flow';
 import type { ModalManager } from '../src/ui/modal';
 import { PageNode, installPageDom } from './ui-fixture';
@@ -23,6 +27,34 @@ describe('dev start flags', () => {
     expect(kapitelJump(p('kapitel=6'))).toBeNull();
     expect(kapitelJump(p('kapitel=2.5'))).toBeNull();
     expect(kapitelJump(p(''))).toBeNull();
+  });
+
+  it('starts Chapter 2 with the tour staff equipped and the page in Ausrüstung', () => {
+    const state = new GameStateStore(createInitialState());
+    const progression = state.slice('progression', createProgressionSlice);
+    const core = new ProgressionCore(() => progression, {
+      emit: vi.fn(), item: itemDef, statOptions: () => ({}), setMembers: () => [], setLevelFlag: vi.fn(),
+    });
+    const goto = vi.fn();
+    const hooks = {
+      ctx: { state },
+      story: { goto },
+      skills: { grant: vi.fn() },
+      progression: { grant: (item, count, quiet) => core.grantItem(item, count, { quiet }), level: vi.fn() },
+      quests: { ids: () => [] },
+    } satisfies {
+      ctx: Pick<KqHooks['ctx'], 'state'>;
+      story: Pick<NonNullable<KqHooks['story']>, 'goto'>;
+      skills: Pick<NonNullable<KqHooks['skills']>, 'grant'>;
+      progression: Pick<NonNullable<KqHooks['progression']>, 'grant' | 'level'>;
+      quests: Pick<NonNullable<KqHooks['quests']>, 'ids'>;
+    };
+    startAtChapter(hooks as unknown as KqHooks, kapitelJump(p('kapitel=2'))!);
+    expect(goto).toHaveBeenCalledExactlyOnceWith('k1', 'k1_0');
+    expect(state.state.flags['story.compass']).toBe(true);
+    expect(state.state.inventory.items).toEqual(['item.bussole']);
+    expect(progression.equipped.weapon).toBe('item.stab.esche');
+    expect(progression.inventory).toMatchObject({ 'item.stab.esche': 1, 'item.p.seite': 1, 'item.balsam': 4, 'item.lampenoel': 1 });
   });
 
   it('reads ?party=museum|burn|keep only', () => {

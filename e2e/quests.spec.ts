@@ -430,6 +430,17 @@ test('quests: save and load keep the task and its count; reset withdraws the wor
   expect(errors).toEqual([]);
 });
 
+test('Chapter 2 shortcut equips Marlene’s staff and lists the Bussole page in Ausrüstung', async ({ page }) => {
+  await page.goto('./?notitle&nosave&fresh&manual&kapitel=2');
+  await waitForHooks(page, ['story', 'progression']);
+  await expect.poll(() => page.evaluate(() => window.kq!.story!.state().chapter)).toBe('k1');
+  const progression = await page.evaluate(() => window.kq!.progression!.state());
+  expect(progression.equipped.weapon).toBe('item.stab.esche');
+  expect(progression.inventory['item.p.seite']).toBe(1);
+  await page.evaluate(() => window.kq!.press('KeyI', 2));
+  await expect(page.getByTestId('gear-lore-item.p.seite')).toBeVisible();
+});
+
 // TASK-083: the chapter 4 and 5 openers ask for a walk and then a Q shift. Their places are tagged
 // with the destination era; the marker must still show in the present, before the shift.
 for (const [kapitel, quest, objective, before] of [
