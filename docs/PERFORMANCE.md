@@ -587,7 +587,12 @@ change and historical redraw at 667 × 375 with touch emulation and low graphics
 `node --import tsx scripts/bench-minimap.ts` for a separate Node CPU benchmark with a stub context.
 In the review checkout, that benchmark measured 7.988 ms to allocate and paint the 1,424,375-cell
 terrain buffer and 0.010 ms per warmed present-day redraw. It excludes canvas upload and compositing.
-The browser timings are pending because the sandbox blocked the preview server.
+A local headless run on 2026-11-28 (Apple Silicon, Chromium with ANGLE on SwiftShader, all six minimap
+tests passed) logged 100 Canvas 2D calls and 0.040 ms of submission per warmed redraw at the tour car
+park, about 0.4 ms per second at 10 Hz. At 667 × 375 touch, the cold era change took 18.700 ms, and the
+first historical frame took 3061.6 ms in software rendering, of which the minimap's Canvas 2D submission was
+0.200 ms. The rest of that frame is 3D work after the era change, not minimap cost.
+
 ### 3.8 Fixed-step and render hot paths (TASK-033, 2026-11-26)
 
 `src/core/loop.ts` drives a 60 Hz simulation and a separately paced render callback. In
