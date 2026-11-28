@@ -119,7 +119,8 @@ describe('the opening beat timeline waits for the chapter card', () => {
     expect(k1.some((x) => ['say', 'sound', 'objective', 'quest', 'toast', 'prompt'].includes(x.a.do))).toBe(false);
     const arrival = file.beats[0]!.on!.find((r) => r.id === 'k1_0.damals')!;
     expect(arrival.when).toEqual({ era: '1789' });
-    expect(arrival.do.map((a) => (a.do === 'say' ? a.id : a.do))).toEqual(['laub.k1.brunnenstube', 'laub.k1.fremde', 'flag']);
+    // the place, then the first objective while he says what is needed, then the hand-on
+    expect(arrival.do.map((a) => (a.do === 'say' ? a.id : a.do))).toEqual(['laub.k1.brunnenstube', 'objective', 'laub.k1.fremde', 'flag']);
     expect(arrival.do.filter((a) => a.do === 'say').every((a) => a.wait === true)).toBe(true);
     expect(file.beats[0]!.complete).toEqual({ all: [{ era: '1789' }, { flag: 'k1.angekommen' }] });
   });

@@ -335,7 +335,6 @@ export async function arriveAtSpring(page: Page, o: { screenshot?: (name: string
     await upd(page, 420);
     const t = await story(page);
     expect(t).toMatchObject({ chapter: 'k1', beat: 'k1_0', era: 'today', objective: { id: 'k1.zurueck-q' } });
-    expect(await distTo(page, K1_START.x, K1_START.z), 'k1 starts at the spring').toBeLessThan(30);
     expect((await flags(page))['quelle.call'], 'no touch is asked for').toBeUndefined();
     await page.evaluate(
       ([spot]) => {

@@ -1125,6 +1125,13 @@
               "text": "Sommer 1789. Kies, Hunde, irgendwo eine Geige. Und mittendrin Sie. In Orange."
             },
             {
+              "do": "objective",
+              "id": "k1.rock",
+              "text": "Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach",
+              "x": 1001.5,
+              "z": -876.5
+            },
+            {
               "do": "say",
               "id": "laub.k1.fremde",
               "speaker": "laub",
@@ -1289,14 +1296,13 @@
         {
           "do": "quest",
           "op": "offer",
-          "id": "q.k1.kleider",
+          "id": "q.k1.ankunft",
           "onResume": true
         },
         {
           "do": "quest",
           "op": "offer",
-          "id": "q.k1.ankunft",
-          "delay": 0.6,
+          "id": "q.k1.kleider",
           "onResume": true
         }
       ],

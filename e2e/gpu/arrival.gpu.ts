@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
-import { QUELLE } from '../../src/systems/quelle/layout';
+import { QUELLE, toWorld, touchLocal } from '../../src/systems/quelle/layout';
 import { HOME } from '../../src/systems/story/hub/home';
 
 /**
@@ -21,7 +21,9 @@ test('gpu: the touch, the arrival in 1789 and the first lines of „Der Hof“',
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(`./?${query}`);
   await page.waitForFunction(() => !!window.kq?.story && !!window.kq.quelle && !!window.kq.fx, null, { timeout: 180_000 });
-  const spot = { ...HOME.spawn, wx: QUELLE.x, wz: QUELLE.z };
+  // the hand reaches the water at the layout's touch point; the story's objective marks where to stand
+  const [wx, wz] = toWorld(...touchLocal('today'));
+  const spot = { ...HOME.spawn, wx, wz };
   await page.evaluate((spot) => {
     const k = window.kq!;
     k.ctx.state.mutable.flags['barks.quiet'] = true;
@@ -34,9 +36,12 @@ test('gpu: the touch, the arrival in 1789 and the first lines of „Der Hof“',
     const k = window.kq!;
     if (!k.state().flags['quelle.call']) return false;
     if (!k.quelle!.info().prompt) {
-      // in front of the trough, facing the water
-      k.teleport(spot.x, spot.z, spot.yaw, -10);
-      k.ctx.player.yaw = Math.atan2(-(spot.wx - spot.x), -(spot.wz - spot.z));
+      // in front of the trough (the objective's marker), facing the water
+      const o = k.story!.state().objective;
+      const x = o?.x ?? spot.x;
+      const z = o?.z ?? spot.z;
+      k.teleport(x, z, spot.yaw, -10);
+      k.ctx.player.yaw = Math.atan2(-(spot.wx - x), -(spot.wz - z));
     }
     return k.quelle!.info().prompt;
   }, spot, { timeout: 150_000, polling: 500 });
@@ -80,4 +85,64 @@ test('gpu: the touch, the arrival in 1789 and the first lines of „Der Hof“',
   expect(end).toMatchObject({ chapter: 'k1', era: '1789' });
   expect((log as { fade: string | null }[]).some((f) => f.fade === '1')).toBe(false);
   expect((log as { era: string; t: number }[]).filter((f) => f.t > 8).every((f) => f.era === '1789')).toBe(true);
+});
+
+/**
+ * Stills of the way on from the arrival, for a look after the spring moves (TASK-087): the 1789
+ * fountain from the trail, the first objective seen from the spring, the Bleiche with the marker on
+ * the coat, and the walk up towards the gate. `?manual`, placed with the debug hooks.
+ * Out: test-results/gpu/arrival-weg-<n>-<name>.png.
+ */
+test('gpu: from the spring in 1789 to the Bleiche and towards the gate', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('./?notitle&nosave&fresh&manual&q=high');
+  await page.waitForFunction(() => !!window.kq?.story && !!window.kq.quelle && !!window.kq.fx && !!window.kq.npc, null, { timeout: 180_000 });
+  await page.addStyleTag({ content: '.kq-bullet-time { display: none !important; }' });
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.ctx.state.mutable.flags['barks.quiet'] = true;
+    k.story!.start('Mara');
+    k.skills!.grant('relief', 3, true);
+    k.skills!.grant('kartograf', 1, true);
+    k.story!.goto('k1');
+    k.setEra('1789');
+    for (let i = 0; i < 40 && k.story!.state().beat !== 'k1_0b'; i++) {
+      k.story!.flush();
+      k.step(30);
+    }
+    k.story!.flush();
+    k.story!.finishTyping();
+    k.ctx.ui.modals.closeAll();
+    k.step(120);
+  });
+  expect(await page.evaluate(() => window.kq!.story!.state())).toMatchObject({ chapter: 'k1', beat: 'k1_0b', era: '1789', objective: { id: 'k1.rock' } });
+  const objective = await page.evaluate(() => window.kq!.story!.state().objective!);
+  const toward = (x: number, z: number, tx: number, tz: number) => (Math.atan2(tx - x, -(tz - z)) * 180) / Math.PI;
+  const back = { x: HOME.spawn.x + (HOME.spawn.x - QUELLE.x) * 4, z: HOME.spawn.z + (HOME.spawn.z - QUELLE.z) * 4 };
+  const views: { name: string; x: number; z: number; yaw: number; pitch: number }[] = [
+    // the fountain, seen from a few steps before the trough stand
+    { name: '1-brunnenstube', ...back, yaw: toward(back.x, back.z, QUELLE.x, QUELLE.z), pitch: -4 },
+    // standing at the trough stand, turned to the first objective
+    { name: '2-ziel-von-der-quelle', x: HOME.spawn.x, z: HOME.spawn.z, yaw: toward(HOME.spawn.x, HOME.spawn.z, objective.x!, objective.z!), pitch: -3 },
+    // half way down the trail
+    { name: '3-weg-zur-bleiche', x: 1035.7, z: -855.1, yaw: toward(1035.7, -855.1, objective.x!, objective.z!), pitch: -4 },
+    // before the green: Liese, the lines, the marker on the coat
+    { name: '4-bleiche', x: 1013.9, z: -867.5, yaw: toward(1013.9, -867.5, objective.x!, objective.z!), pitch: -5 },
+    // the walk up: from the trail west of the Orangerie towards the gate
+    { name: '5-zum-gitter', x: 1150, z: -920, yaw: toward(1150, -920, 1191, -1113), pitch: 2 },
+    { name: '6-vor-dem-gitter', x: 1172, z: -1085, yaw: toward(1172, -1085, 1191, -1113), pitch: 0 },
+  ];
+  for (const v of views) {
+    await page.evaluate((v) => {
+      const k = window.kq!;
+      k.teleport(v.x, v.z, v.yaw, v.pitch);
+      k.step(30);
+    }, v);
+    await page.waitForTimeout(600);
+    await page.evaluate(() => window.kq!.screenshotReady());
+    await page.screenshot({ path: `${OUT}/arrival-weg-${v.name}.png` });
+  }
+  // nobody stands at the spring
+  const nearest = await page.evaluate((s) => Math.min(...window.kq!.npc!.list().map((n) => Math.hypot(n.x - s.x, n.z - s.z))), HOME.spawn);
+  expect(nearest).toBeGreaterThan(40);
 });

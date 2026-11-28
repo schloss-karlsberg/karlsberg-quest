@@ -686,12 +686,14 @@ describe('story files', () => {
     runs.length = 0;
     step({ era: '1789', ...SPRING, flags: { 'k1.vorspiel': true } });
     expect(slice.beat).toBe('k1_0');
-    expect(all().map((a) => (a.do === 'say' ? a.id : a.do))).toEqual(['laub.k1.brunnenstube', 'laub.k1.fremde', 'flag']);
+    expect(all().map((a) => (a.do === 'say' ? a.id : a.do))).toEqual(['laub.k1.brunnenstube', 'objective', 'laub.k1.fremde', 'flag']);
+    expect(all().find((a) => a.do === 'objective')).toMatchObject({ id: 'k1.rock', text: 'Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach' });
     expect(all().at(-1)).toEqual({ do: 'flag', set: { 'k1.angekommen': true } });
     step({ era: '1789', ...SPRING, flags: { 'k1.vorspiel': true, 'k1.angekommen': true } });
     expect(slice.beat).toBe('k1_0b');
     const k0bTalk = k1.beats.find((b) => b.id === 'k1_0b')!.enter!.filter((a) => a.do === 'say' || a.do === 'quest').map((a) => a.id);
-    expect(k0bTalk).toEqual(['q.k1.kleider', 'q.k1.ankunft']);
+    // the way in first, the coat last: the newest quest leads the tracker, and the coat is the first thing to do
+    expect(k0bTalk).toEqual(['q.k1.ankunft', 'q.k1.kleider']);
     // the prelude's people stand from the first tick of the chapter (the Bleiche is a 12 s run away)
     const early = k1.beats[0]!.enter!.filter((a): a is NpcAction => a.do === 'npc' && 'npc' in a).map((a) => a.npc);
     expect(early).toEqual(expect.arrayContaining(['liese', 'hofgaertner', 'gardist-tor', 'gardist', 'lakai']));
