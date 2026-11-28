@@ -176,4 +176,8 @@ the new feedback is captions, the card and one toast.
 - Not done, by decision: no new spoken lines (voice clips); the coat stays grey; the 1× lens still
   shows the pair small. Follow-up worth a task: the throw preview's ring does not account for
   rising ground (the nut lands short of the ring on a slope).
+- 2026-11-28: gates green on the final state (`pnpm typecheck`, `pnpm test`: 246 files, 2770
+  passed, `pnpm validate`: 0 errors, `pnpm build`). Local e2e (SwiftShader), one worker:
+  `e2e/tour-slice.spec.ts` 3 passed, `e2e/animals.spec.ts` 4 passed, `e2e/photo.spec.ts` 8 passed
+  (run one commit before the caption gating and the 260 s fallback; the hosted run covers the head).
 
