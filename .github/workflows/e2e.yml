@@ -3,7 +3,10 @@
 # Pull request: the specs its changed paths can affect, plus smoke (scripts/ci/e2e-areas.ts). Shared
 #   code runs the full suite; docs, task files and unit tests run nothing. The `full-e2e` label
 #   forces the full suite.
-# Merge queue, push to main, manual run without `specs`: the full suite.
+# Merge queue (`merge_group`): the full suite on the merge result, once for every queued pull
+#   request together with the ones ahead of it. `main` only moves to a commit that passed it.
+# Push to main, manual run without `specs`: the full suite. A push whose commit already passed in
+#   the merge queue does not repeat it.
 #
 # The job "End-to-end tests" always reports, also when no spec had to run and as a failure when the
 # run was cancelled, so it is the one check the merge bar (or a ruleset) needs to name.
@@ -127,9 +130,11 @@ jobs:
         env:
           MODE: ${{ steps.select.outputs.mode }}
           KQ_E2E_SPECS: ${{ steps.select.outputs.specs }}
-          # The account runs 20 hosted jobs at once. The post-merge run on main takes fewer
-          # runners than a run someone is waiting for.
-          KQ_E2E_MAX_SHARDS: ${{ github.event_name == 'push' && '8' || '12' }}
+          # The account runs 20 hosted jobs at once. Eight shards take as long as twelve, because
+          # the campaign alone sets the wall time. A pull request gets twelve for shorter shards
+          # that fail sooner; runs on main and in the merge queue get eight, so that two queue
+          # entries can run side by side.
+          KQ_E2E_MAX_SHARDS: ${{ (github.event_name == 'push' || github.event_name == 'merge_group') && '8' || '12' }}
           # A selected run gets as many runners as it has work for.
           KQ_E2E_SHARD_MINUTES: ${{ steps.select.outputs.mode == 'selected' && '8' || '' }}
         run: |
@@ -191,6 +196,16 @@ jobs:
             echo "KQ_SUPERSEDED=1" >> "$GITHUB_ENV"
             exit 1
           fi
+      # The merge queue drops a group when an entry ahead of it fails or leaves, and builds a new
+      # one. Its branch is gone then, and nobody waits for this run.
+      - name: Stop if the merge queue dropped this group
+        if: github.event_name == 'merge_group'
+        run: |
+          if refs=$(git ls-remote "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "$GITHUB_REF" 2> /dev/null) && [[ -z "$refs" ]]; then
+            echo "::error::The merge queue dropped this group ($GITHUB_REF). This shard does not run."
+            echo "KQ_SUPERSEDED=1" >> "$GITHUB_ENV"
+            exit 1
+          fi
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
@@ -238,6 +253,16 @@ jobs:
                 head=$(git ls-remote origin "refs/pull/$PR/head" 2> /dev/null | cut -f1) || head=
                 if [[ -n "$head" && "$head" != "$PR_HEAD" ]]; then
                   echo "::error::A newer push ($head) replaced this commit. Stopping this shard."
+                  echo "KQ_SUPERSEDED=1" >> "$GITHUB_ENV"
+                  kill -TERM $$
+                  exit 0
+                fi
+              fi
+              # The same for a group that the merge queue dropped. An answer without the branch
+              # counts; a failed request does not.
+              if [[ "$GITHUB_EVENT_NAME" == merge_group && $((tick % 3)) -eq 2 ]]; then
+                if refs=$(git ls-remote origin "$GITHUB_REF" 2> /dev/null) && [[ -z "$refs" ]]; then
+                  echo "::error::The merge queue dropped this group ($GITHUB_REF). Stopping this shard."
                   echo "KQ_SUPERSEDED=1" >> "$GITHUB_ENV"
                   kill -TERM $$
                   exit 0
