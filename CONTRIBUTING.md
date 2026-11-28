@@ -106,20 +106,22 @@ The full suite still runs before or right after every merge:
 
 - **On every push to `main`**, on 8 runners. Runs on `main` are never cancelled. One runs and one
   waits, and the waiting run covers every merge that arrived in the meantime.
-- **In the merge queue** (`merge_group`), once for a batch of pull requests, when the repository
-  uses one.
+- **In the merge queue** (`merge_group`), when the repository uses one: once for every pull
+  request that enters the queue, together with the ones ahead of it. GitHub does not combine the
+  builds of a group, so a queue does not save runs.
 - **By hand**: `gh workflow run e2e.yml --ref <branch>` without `specs`.
 
 A push to `main` does not repeat the suite when the same commit already passed it in the merge
-queue or in a manual full run. To merge a batch without a merge queue, merge the pull requests
-into one branch (`integrate/<name>`), run the full suite on it by hand, and fast-forward `main` to
-that commit.
+queue or in a manual full run. That makes a batch cheap: merge several green pull requests into
+one branch (`integrate/<name>`), run the full suite once on it
+(`gh workflow run e2e.yml --ref integrate/<name>`), and fast-forward `main` to that commit. The
+suite then ran once for the whole batch, before `main` moved.
 
-When the full suite must pass before every merge anyway (a merge queue with "End-to-end tests" as
-a required check), the repository variable `E2E_SHARED_CODE=quick` makes a pull request that
-changes shared code run a cross-section of the game (`QUICK_SPECS` in `scripts/ci/e2e-areas.ts`)
-and leaves the full suite to the queue. Without the variable, shared code runs the full suite on
-the pull request.
+When the full suite passes before every merge in this way (batch branches, or a merge queue with
+"End-to-end tests" as a required check), the repository variable `E2E_SHARED_CODE=quick` makes a
+pull request that changes shared code run a cross-section of the game (`QUICK_SPECS` in
+`scripts/ci/e2e-areas.ts`) and leaves the full suite to the batch. Without the variable, shared
+code runs the full suite on the pull request.
 
 #### When main is red
 

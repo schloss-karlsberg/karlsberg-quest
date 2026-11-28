@@ -32,7 +32,8 @@ export const FULL_LABEL = 'full-e2e';
 /**
  * A cross-section of the game for pull requests that change shared code. Only used when the
  * repository variable E2E_SHARED_CODE is `quick`, which is meant for a repository where the full
- * suite must pass before every merge anyway (a merge queue). The default is the full suite.
+ * suite passes before every merge anyway (batch branches or a merge queue; CONTRIBUTING.md). The
+ * default is the full suite.
  */
 export const QUICK_SPECS: readonly string[] = [
   'smoke', 'tour-slice', 'chapter-k1', 'chapter-k3', 'story', 'quests', 'combat', 'photo', 'skills', 'minimap', 'world',

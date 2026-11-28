@@ -4,7 +4,7 @@ aliases:
 - TASK-094
 title: 'Fast merge signal: gates on every PR, e2e selected by changed paths'
 slug: fast-merge-signal
-status: in-progress
+status: review
 priority: 1
 owner: ''
 projects: []
@@ -100,7 +100,8 @@ _Status: approved 2026-11-28_
 
 **Approach:** Two levels. The pull request gets a fast signal (gates in a minute, then only the
 specs its paths can affect). The full suite runs once per merge or per batch: on every push to
-`main`, in the merge queue when the owner turns one on, and on demand.
+`main`, on a batch branch before `main` moves, in a merge queue if the owner turns one on, and on
+demand.
 
 **Files to touch:** `.github/workflows/e2e.yml`, new `.github/workflows/gates.yml`,
 new `scripts/ci/` (`e2e-areas.ts` rules, `select-e2e.ts`, `e2e-minutes.ts`, `e2e-timings.ts`),
@@ -126,8 +127,8 @@ request's own hosted run.
 (queue, batch branch or push to `main`) and not on the pull request. The rules are a first
 version; widen a rule whenever a full run catches what a selected run missed.
 
-**Open questions (owner):** turn on a merge queue; make `Gates` and `End-to-end tests` required.
-The pull request lists the exact settings.
+**Open questions (owner):** make `Gates` and `End-to-end tests` required; whether to use a merge
+queue. The pull request lists the exact settings.
 
 ## Design
 
@@ -154,7 +155,14 @@ The pull request lists the exact settings.
   `main`) fit the pool of 20.
 - `E2E_SHARED_CODE=quick` (repository variable, unset by default) replaces the full suite on a
   pull request that changes shared code with a cross-section of 11 specs. It is meant for a
-  repository where the full suite must pass before every merge (merge queue).
+  repository where the full suite passes before every merge (batch branches or a merge queue).
+- **A merge queue does not batch.** GitHub's documentation says "Merge limits do not combine
+  merge_group builds": every pull request that enters the queue gets its own `merge_group` run,
+  on a branch that also holds the pull requests ahead of it. A queue therefore costs one full run
+  (about 330 runner-minutes) per pull request. The workflow supports it, but the cheap batch is
+  the integrator's batch branch: merge several green pull requests into `integrate/<name>`, run
+  the full suite once by hand, fast-forward `main`. The push run on `main` finds that run and
+  does not repeat the suite.
 
 ## Dry run (selection as merged in this pull request, minutes from the estimate table)
 
@@ -185,11 +193,11 @@ plus 2 min for planning, set-up and the result job, with free runners.
 2 run nothing, 7 run a selection, 9 run the full suite: 3,748 runner-minutes for one push each,
 against 5,947 today (37 % less). With `E2E_SHARED_CODE=quick` only #128 stays full (it changes a
 helper that every spec imports) and the total is 2,539 runner-minutes (57 % less); the full suite
-then runs once per merge-queue batch.
+then runs once per batch branch.
 
 ## Progress
 
-- Branch `ci/task-094-fast-merge-signal`.
+- Branch `ci/task-094-fast-merge-signal`. PR: https://github.com/schloss-karlsberg/karlsberg-quest/pull/143
 - 2026-11-28: measured, implemented, documented. Four gates green
   (`Tests  2562 passed | 17 todo`, content valid with 28 warnings). Workflow YAML parsed and every
   `run` step passed `bash -n`. `actionlint` is not installed here. The select and plan steps were

@@ -94,7 +94,7 @@ jobs:
         env:
           KQ_E2E_SPECS: ${{ inputs.specs }}
           # Unset: shared code runs the full suite on the pull request. `quick`: a cross-section,
-          # for when the full suite must pass before every merge anyway (CONTRIBUTING.md).
+          # for when the full suite passes before every merge anyway (CONTRIBUTING.md).
           KQ_E2E_SHARED_CODE: ${{ vars.E2E_SHARED_CODE }}
         run: node scripts/ci/select-e2e.ts
       # Also when no spec runs: setup-node's cache step fails after the job if the store is missing.
