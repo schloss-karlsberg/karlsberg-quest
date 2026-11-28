@@ -17,7 +17,7 @@ import { GROUND } from '../data/types';
 import { ATMOS_GLSL, SEE_FRAG_GLSL, SEE_GLSL, atmosphere } from './atmosphere';
 import type { Heightfield } from './heightfield';
 import { FOLIAGE_GLSL } from './vegetation/foliage';
-import { CAST_MAX, type ModelTrees, SHADOW_REACH, castGap, pickVariant } from './vegetation/trees';
+import { CAST_MAX, type ModelTrees, SHADOW_REACH, castGap, pickVariant, shadowLength } from './vegetation/trees';
 import { ViewCone } from './viewCone';
 
 /**
@@ -73,6 +73,45 @@ export function tileInReach(tx: number, tz: number, refX: number, refZ: number, 
   const dz = Math.max(tz * TILE - refZ, 0, refZ - (tz + 1) * TILE);
   const r = castMax + CAST_MAX;
   return dx * dx + dz * dz <= r * r;
+}
+
+/** Everything this near the camera (m, horizontal) stays in the lists whatever the view (it turns fast). */
+export const KEEP_NEAR = 30;
+/** The view sector's margin past the horizontal half-FOV (rad, 40°) and the turn that rebuilds the lists (rad, 20°). */
+export const SECTOR_MARGIN = 0.7;
+export const SECTOR_TURN = 0.35;
+/** The lists are rebuilt after this much camera travel (m). */
+export const REBUILD_MOVE = 8;
+/** Spacing (m) of the points a shadow is tested at (`shadowInSector`). */
+const SHADOW_SAMPLE = 8;
+
+/**
+ * Can the shadow of a tree at (x, z) fall where the picture can show it before the next rebuild
+ * (pure; exported for tests)? The shadow runs `len` m from the foot along the unit direction
+ * (ax, az), away from the sun. The picture shows the sector of half angle `sector` (rad) around
+ * the unit view direction (fx, fz) from the camera; `margin` (m) widens it: a crown's half width
+ * and the camera's travel until the lists are rebuilt. (The sector is the lists' own, 20° wider
+ * than the view can turn to before they are rebuilt.)
+ *
+ * A tree behind the camera whose shadow points further back shades nothing the picture shows, so
+ * it need not be drawn into the shadow map; one whose shadow comes forward must (TASK-088).
+ * Whatever stands on the ground in view (a trunk, the character, a wall) is shaded only by trees
+ * whose shadow line passes under it, so the test on the ground holds for those too.
+ */
+export function shadowInSector(x: number, z: number, len: number, ax: number, az: number, camX: number, camZ: number, fx: number, fz: number, sector: number, margin: number): boolean {
+  const n = Math.max(1, Math.ceil(len / SHADOW_SAMPLE));
+  // (half the spacing: a stretch of shadow between two points cannot slip through)
+  const m = margin + len / n / 2;
+  for (let i = 0; i <= n; i++) {
+    const t = (len * i) / n;
+    const vx = x + ax * t - camX;
+    const vz = z + az * t - camZ;
+    const d = Math.hypot(vx, vz);
+    if (d <= m) return true;
+    const off = Math.acos(Math.min(1, Math.max(-1, (vx * fx + vz * fz) / d))) - sector;
+    if (off <= 0 || d * Math.sin(Math.min(off, Math.PI / 2)) <= m) return true;
+  }
+  return false;
 }
 
 /** Bounding sphere of every tile's trees, base to crown top (cx, cy, cz, r; pure, exported for tests). */
@@ -982,10 +1021,11 @@ export class Forest {
    * flying, spirit view); on foot whole 64 m tiles outside the 3D view cone (frustum corner + 40°)
    * are left out instead, rebuilt when the view turned 20° (`forestCullMode`).
    *
-   * That cut is for the picture only. With sun shadows on (`casting`), every tree in reach of
-   * the shadow box stays a caster wherever the view points (TASK-088: the casters used to follow
-   * the sector, so each rebuild in a turn switched the shadows of the trees behind the camera on
-   * or off and the ground in view jumped lighter or darker).
+   * That cut is for the picture only. With sun shadows on (`casting`), a tree the picture leaves
+   * out stays a caster while its shadow can fall into the shadow box and into the picture
+   * (`castGap`, `shadowInSector`). TASK-088: the casters used to follow the sector, so each
+   * rebuild in a turn switched the shadows of the trees behind the camera on or off and the
+   * ground in view jumped lighter or darker.
    */
   update(camera: PerspectiveCamera, agl = 0): void {
     const p = camera.position;
@@ -995,12 +1035,12 @@ export class Forest {
     const yaw = Math.atan2(this.dir.x, -this.dir.z);
     let dYaw = Math.abs(yaw - this.lastYaw);
     if (dYaw > Math.PI) dYaw = 2 * Math.PI - dYaw;
-    const turned = mode === 'sector' ? dYaw > 0.35 : mode === 'cone' && this.cone.turned(camera, 0.35);
+    const turned = mode === 'sector' ? dYaw > SECTOR_TURN : mode === 'cone' && this.cone.turned(camera, SECTOR_TURN);
     const casting = this.casting();
     const sun = atmosphere.uSunDir.value;
     // (2.5°: the shadow of a 30 m tree ends 4 m from where the lists expect it)
     const sunMoved = casting && this.castSun.dot(sun) < 0.999;
-    if (!this.dirty && !turned && !sunMoved && down === this.lastDown && mode === this.lastMode && camera.fov === this.lastFov && casting === this.lastCasting && Math.hypot(p.x - this.lastX, p.z - this.lastZ) < 8) return;
+    if (!this.dirty && !turned && !sunMoved && down === this.lastDown && mode === this.lastMode && camera.fov === this.lastFov && casting === this.lastCasting && Math.hypot(p.x - this.lastX, p.z - this.lastZ) < REBUILD_MOVE) return;
     this.dirty = false;
     this.lastCasting = casting;
     this.castSun.copy(sun);
@@ -1017,7 +1057,7 @@ export class Forest {
     const fx = this.dir.x / hl;
     const fz = this.dir.z / hl;
     const halfH = Math.atan(Math.tan((camera.fov * Math.PI) / 360) * camera.aspect);
-    const sector = halfH + 0.7;
+    const sector = halfH + SECTOR_MARGIN;
     const cosLimit = this.cull && !down && sector < Math.PI ? Math.cos(sector) : -2;
     const ls = this.lodScale;
     if (this.counts.length !== this.batches.length) this.counts = new Array<number>(this.batches.length).fill(0);
@@ -1037,6 +1077,12 @@ export class Forest {
     const refZ = p.z + fz * lead;
     const castMax = this.shadowRange + SHADOW_REACH + 24;
     models?.begin(refX, refZ, castMax, sun);
+    // the way the shadows point, and how far a shadow may miss the picture's sector: a crown's
+    // half width plus the way the camera goes before the next rebuild
+    const sunL = Math.hypot(sun.x, sun.z) || 1;
+    const awayX = -sun.x / sunL;
+    const awayZ = -sun.z / sunL;
+    const miss = SHADOW_REACH + REBUILD_MOVE;
     const t0x = Math.floor((p.x - far) / TILE);
     const t1x = Math.floor((p.x + far) / TILE);
     const t0z = Math.floor((p.z - far) / TILE);
@@ -1058,10 +1104,12 @@ export class Forest {
           const d = Math.hypot(dx, dz);
           if (d > far) continue;
           // out of view: left out of the picture, but a caster while its shadow can fall into it
-          const unseen = hidden || (d > 30 && dx * fx + dz * fz < cosLimit * d);
+          const unseen = hidden || (d > KEEP_NEAR && dx * fx + dz * fz < cosLimit * d);
           if (unseen) {
             if (!hidden) culled++;
             if (!casting || castGap(arr[k]!, arr[k + 2]!, arr[k + 3]!, refX, refZ, sun.x, sun.y, sun.z) > castMax) continue;
+            // (a hidden tile is out of the 3D view cone, not of a sector: its trees in reach all cast)
+            if (!hidden && !shadowInSector(arr[k]!, arr[k + 2]!, shadowLength(arr[k + 3]!, sun.y), awayX, awayZ, p.x, p.z, fx, fz, sector, miss)) continue;
           }
           if (this.activeClearings.length && this.inClearing(arr[k]!, arr[k + 2]!)) continue;
           const kind = Math.min(KINDS - 1, Math.max(0, Math.round(arr[k + 5]!)));
