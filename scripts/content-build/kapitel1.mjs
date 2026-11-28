@@ -331,7 +331,7 @@ const dialogue = [
   say('lakai.k1.01', 'lakai', 'Ich trag nur. Fragen Sie wen, der was weiß.', talk('lakai', 'greet'), { once: false }),
   // Laub
   // the disguise opening (k1_0b / k1_0c): spoken by the story (inline say actions with these ids)
-  say('laub.k1.brunnenstube', 'laub', 'Sommer 1789. Kies, Hunde, irgendwo eine Geige. Und mittendrin Sie. In Orange.', beat('1.0b'), { once: true }),
+  say('laub.k1.brunnenstube', 'laub', 'Sommer 1789. Kies, Hunde, irgendwo eine Geige. Und mittendrin Sie. In Rot.', beat('1.0b'), { once: true }),
   say('laub.k1.fremde', 'laub', 'Der Herzog lässt keine Fremden auf den Berg. Hundert Gardisten an den Türen, schreibt man. Wir brauchen zwei Dinge: einen Rock, der nicht leuchtet, und ein Papier, das jemand anders geschrieben hat. Unten an der Bleiche hängt Wäsche.', beat('1.0b'), { once: true, src: [P('Einl. S. XXXIII (Stollreither: 100 Gardisten)')] }),
   say('laub.k1.bleiche', 'laub', 'Die Bleiche. Die Wäscherin schaut zum Weg, nicht auf die Leine. Hinten herum, hinter der zweiten Leine, sieht sie Sie nicht. Oder Sie fragen sie. Fragen soll auch eine Methode sein.', beat('1.0b-bleiche'), { once: true }),
   say('laub.k1.rock.genommen', 'laub', 'Genommen. Im Dienst der Wissenschaft. Ich trage es ein, unter „geliehen, ohne zu fragen“.', beat('1.0b-rock'), { once: true }),
@@ -480,10 +480,10 @@ const k1Quests = {
     {
       id: 'q.k1.kleider', kind: 'main', era: E,
       title_de: 'Kleider machen Leute',
-      summary_de: 'In Orange kommt niemand an den Hof. Unten am Karlsbergbach bleicht die Wäscherin Liese die Wäsche des Hofes, und auf ihrer hinteren Leine hängt der Rock eines kranken Lakaien. Man kann ihn nehmen, solange sie zum Weg schaut. Oder man fragt.',
+      summary_de: 'In Rot kommt niemand an den Hof. Unten am Karlsbergbach bleicht die Wäscherin Liese die Wäsche des Hofes, und auf ihrer hinteren Leine hängt der Rock eines kranken Lakaien. Man kann ihn nehmen, solange sie zum Weg schaut. Oder man fragt.',
       giver: { voice: 'laub' }, turnin: 'auto',
       offer: [ln('laub', 'Ein Rock, der nicht leuchtet. Unten an der Bleiche hängt einer. Fragen oder nehmen, das überlasse ich Ihnen. Ich bin nur eine Stimme.')],
-      turnin_lines: [ln('laub', 'Dunkelblau. Das Orange ist darunter, aber das weiß nur ich.')],
+      turnin_lines: [ln('laub', 'Dunkelblau. Die rote Jacke ist darunter, aber das weiß nur ich.')],
       history: [ln('laub', 'Fußnote: Wie man sich bei Hof zu kleiden hatte und wie die Wache am Gitter prüfte, steht nirgends. Liese, Kaspar und sein Rock sind erfunden. Die Wäsche, die irgendwer für den Hof gebleicht hat, nicht.', { fact: 'cx.46' })],
       objectives: [
         // set by the story (k1_0b): the coat taken from the line (clue.k1.rock) or Liese's favour done

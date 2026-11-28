@@ -16,7 +16,7 @@ import type { QuestDef } from '../src/rpg/types';
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const read = <T>(f: string): T => JSON.parse(readFileSync(`${ROOT}/${f}`, 'utf8')) as T;
 const quests = read<{ quests: QuestDef[] }>('content/quests/01-kapitel-1.quests.json').quests;
-const pack = read<{ clues: { id: string; where: { x: number; z: number; radius: number }; requires?: { clues?: string[] } }[]; dialogue: { id: string; speaker: string }[] }>('content/packs/kapitel-1.pack.json');
+const pack = read<{ clues: { id: string; where: { x: number; z: number; radius: number }; requires?: { clues?: string[] } }[]; dialogue: { id: string; speaker: string; text_de: string }[] }>('content/packs/kapitel-1.pack.json');
 const codex = read<{ facts: { id: string; tags: string[]; contested_de?: string; fiction: boolean; text_de: string }[] }>('content/packs/codex.pack.json').facts;
 const q = (id: string) => quests.find((x) => x.id === id)!;
 const clue = (id: string) => pack.clues.find((c) => c.id === id)!;
@@ -97,6 +97,15 @@ describe('k1 disguise: places', () => {
 });
 
 describe('k1 disguise: lines and codex', () => {
+  it('describes the default red jacket in Laub’s arrival and the coat quest', () => {
+    const file = read<StoryFile>('content/story/01-kapitel-1.story.json');
+    const lines = file.beats[0]?.on?.flatMap((r) => r.do);
+    const arrival = lines?.find((a) => a.do === 'say' && a.id === 'laub.k1.brunnenstube');
+    expect(arrival).toMatchObject({ text: expect.stringContaining('Und mittendrin Sie. In Rot.') });
+    expect(pack.dialogue.find((line) => line.id === 'laub.k1.brunnenstube')?.text_de).toBe(arrival?.do === 'say' ? arrival.text : undefined);
+    expect(q('q.k1.kleider').summary_de).toContain('In Rot kommt niemand an den Hof.');
+  });
+
   it('the court lines override the system placeholders (court-k1 loads after court/strings)', () => {
     expect(t('court.inspect.ok')).toBe(COURT_K1_DE['court.inspect.ok']);
     expect(t('court.inspect.ok')).toContain('Hofrat Amsel');

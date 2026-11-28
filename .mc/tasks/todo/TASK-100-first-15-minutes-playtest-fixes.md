@@ -34,7 +34,7 @@ Address the fresh-game playtest on main at db8b1b8d, through the first visit to 
 - [x] F5 and F10. Switch goals at the first shift and share the group target between HUD indicators.
 - [x] F8 and F9. Pace clink captions and show the full goal as it wraps.
 - [x] F12. Deliver the throw hint with the first pickup.
-- [ ] F7 and F11. Check the scripted compass grant and recorded dialogue before changing either.
+- [x] F7 and F11. Check the scripted compass grant and recorded dialogue before changing either.
 - [ ] Run the four gates and push the branch for review. Update the affected browser specs for CI.
 
 ## Progress
@@ -47,3 +47,5 @@ Address the fresh-game playtest on main at db8b1b8d, through the first visit to 
 - F8. The glass sound keeps its cue cadence. The first caption is immediate when the sound plays, and later captions are at least 30 seconds apart.
 - F9. Removed the objective text wipe that clipped the line. The tour spec checks the first arrival frame and wrapping in the HUD column.
 - F12. The first non-debug chestnut pickup shows the one-time help in the HUD alongside the controls. The unit test exercises desktop and touch with the cut tip and dialogue already active.
+- F7. The proximity handover at the trough is deliberate per the tour design. The optional E route and both grants still use the existing tour beat.
+- F11. Laub's arrival line and the coat quest refer to the default red jacket. The arrival line has no entry in the voice manifest. Regenerated the chapter pack and quest files.

@@ -1651,7 +1651,7 @@
     {
       "id": "laub.k1.brunnenstube",
       "speaker": "laub",
-      "text_de": "Sommer 1789. Kies, Hunde, irgendwo eine Geige. Und mittendrin Sie. In Orange.",
+      "text_de": "Sommer 1789. Kies, Hunde, irgendwo eine Geige. Und mittendrin Sie. In Rot.",
       "trigger": {
         "event": "story:beat",
         "chapter": "k1",

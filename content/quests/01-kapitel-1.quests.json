@@ -182,7 +182,7 @@
       "kind": "main",
       "era": "1789",
       "title_de": "Kleider machen Leute",
-      "summary_de": "In Orange kommt niemand an den Hof. Unten am Karlsbergbach bleicht die Wäscherin Liese die Wäsche des Hofes, und auf ihrer hinteren Leine hängt der Rock eines kranken Lakaien. Man kann ihn nehmen, solange sie zum Weg schaut. Oder man fragt.",
+      "summary_de": "In Rot kommt niemand an den Hof. Unten am Karlsbergbach bleicht die Wäscherin Liese die Wäsche des Hofes, und auf ihrer hinteren Leine hängt der Rock eines kranken Lakaien. Man kann ihn nehmen, solange sie zum Weg schaut. Oder man fragt.",
       "giver": {
         "voice": "laub"
       },
@@ -196,7 +196,7 @@
       "turnin_lines": [
         {
           "speaker": "laub",
-          "text": "Dunkelblau. Das Orange ist darunter, aber das weiß nur ich."
+          "text": "Dunkelblau. Die rote Jacke ist darunter, aber das weiß nur ich."
         }
       ],
       "history": [
