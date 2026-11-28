@@ -4,7 +4,7 @@ aliases:
 - TASK-080
 title: Tour deer are hard to see from the sneak path
 slug: tour-deer-hard-to-see
-status: in-progress
+status: review
 priority: 3
 owner: ''
 projects: []
@@ -109,7 +109,7 @@ on main: `world:noise` (look toward it) and the `combat:pelt` receipt (a hit, fl
 - [x] 6. Tour content: flight feedback, the hit, chestnuts at the stop, the hint; `pnpm validate`.
 - [x] 7. After captures at the same views; look at them; tune.
 - [x] 8. e2e expectations (`photo.spec.ts`, `tour-slice.spec.ts`); docs.
-- [ ] 9. Four gates, self-review, pull request, checks.
+- [x] 9. Four gates, self-review, pull request, checks.
 
 **Test plan:** unit: `tests/photo.test.ts` (hidden deer → not good, never „Perfekt!“; clear deer →
 good), `tests/photo-visibility.test.ts` (pixel counting, tips), `tests/animals-deer.test.ts`
@@ -180,4 +180,4 @@ the new feedback is captions, the card and one toast.
   passed, `pnpm validate`: 0 errors, `pnpm build`). Local e2e (SwiftShader), one worker:
   `e2e/tour-slice.spec.ts` 3 passed, `e2e/animals.spec.ts` 4 passed, `e2e/photo.spec.ts` 8 passed
   (run one commit before the caption gating and the 260 s fallback; the hosted run covers the head).
-
+- PR: https://github.com/schloss-karlsberg/karlsberg-quest/pull/152
