@@ -156,6 +156,41 @@ describe('the Chapter 2 lantern on Continue', () => {
     }
   });
 
+  it('keeps the saved night meter on a cold Continue and starts a fresh one on the next visit', async () => {
+    const { ctx, element, era, events, save, state, step, lamp } = setup();
+    await initStory(ctx, element);
+    era.set('1789');
+    state.mutable.flags['k1.b'] = true;
+    state.mutable.systems.story = {
+      ...createStorySlice(), active: true, chapter: 'k1', beat: 'k1_7',
+      meters: { oil: { id: 'oil', value: 0.4, done: false, seconds: 420, full: 'return', era: '1789' } },
+    };
+    lamp.setSeconds(420);
+    lamp.setOil(0.6);
+    events.emit('lantern:request', { lit: true });
+    expect(save.save('night')).toBe(true);
+    era.set('today');
+
+    expect(save.load('night')).toBe(true);
+    events.emit('game:start', { resumed: true });
+    const dt = 1 / 60;
+    step(dt);
+    story.update(dt);
+    expect(lamp.state().oil).toBeCloseTo(0.6 - dt / 420, 8);
+    expect(state.state.systems.story?.meters.oil).toMatchObject({ value: 0.4, done: false, seconds: 420 });
+    step(5);
+    story.update(dt);
+    expect(state.state.systems.story?.meters.oil?.value).toBeCloseTo(0.4 + (dt + 5) / 420, 8);
+
+    era.set('today');
+    story.update(dt);
+    expect(state.state.systems.story?.meters.oil).toBeUndefined();
+    era.set('1789');
+    story.update(dt);
+    expect(state.state.systems.story?.meters.oil).toMatchObject({ value: 0, seconds: 420 });
+    expect(lamp.state().oil).toBe(1);
+  });
+
   it.each([false, true])('retries the delayed and queued lantern tip on Continue (touch: %s)', async (touch) => {
     const { ctx, element, era, events, save, state } = setup();
     ctx.input.touchMode = touch;

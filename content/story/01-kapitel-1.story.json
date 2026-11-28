@@ -50,16 +50,19 @@
             "not": {
               "flag": "k1.vorspiel"
             }
+          },
+          {
+            "not": {
+              "meter": {
+                "id": "oil",
+                "gte": 0
+              }
+            }
           }
         ]
       },
       "repeat": true,
       "do": [
-        {
-          "do": "meter",
-          "id": "oil",
-          "active": false
-        },
         {
           "do": "meter",
           "id": "oil",
