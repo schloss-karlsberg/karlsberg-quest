@@ -308,6 +308,23 @@ describe('the first time travel in the story runtime (TASK-089)', () => {
     expect(game.state.state.systems.story?.said).toEqual(expect.arrayContaining(['player.q.wo', 'laub.t.1789', 'laub.t.seite', 'laub.k1.brunnenstube', 'laub.k1.fremde']));
   });
 
+  it('queues Laub’s Bleiche brief on the approach even during the spring arrival beat', async () => {
+    const initial = createInitialState();
+    initial.era = '1789';
+    initial.systems.story = { ...createStorySlice(), active: true, chapter: 'k1', beat: 'k1_0', unlocked: ['tour', 'k1'] };
+    const game = await boot(initial);
+    game.events.emit('game:start', { resumed: true });
+    game.player.teleport(1038, -854);
+    game.tick();
+    expect(game.state.state.systems.story?.said).not.toContain('laub.k1.bleiche');
+
+    game.player.teleport(1023, -864);
+    game.tick();
+    expect(beat(game)).toBe('k1/k1_0');
+    expect(game.state.state.systems.story?.said).toContain('laub.k1.bleiche');
+    expect(game.state.state.flags['disguise.coat']).toBeUndefined();
+  });
+
   it('continues a save that waited for the second touch: 1789 at the spring, the prelude, no touch', async () => {
     const old = createInitialState();
     old.era = 'today';

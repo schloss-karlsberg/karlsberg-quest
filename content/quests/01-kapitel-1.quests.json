@@ -210,11 +210,11 @@
         {
           "id": "rock",
           "type": "manual",
-          "text_de": "Ein Rock, der nicht leuchtet: Kaspars Rock auf Lieses Bleiche",
+          "text_de": "Ein Rock, der nicht leuchtet: Kaspars Rock hinter der zweiten Leine",
           "where": {
-            "x": 1001.5,
-            "z": -876.5,
-            "r": 12,
+            "x": 1001.08,
+            "z": -880.9,
+            "r": 1.4,
             "era": "1789"
           },
           "hint_de": "Die Bleiche liegt unten am Bach, westlich der Quelle. Hinter der zweiten Leine stehen und E drücken, solange Liese zum Weg schaut. Oder mit ihr reden."

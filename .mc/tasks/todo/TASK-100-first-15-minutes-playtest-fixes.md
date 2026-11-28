@@ -30,7 +30,7 @@ Address the fresh-game playtest on main at db8b1b8d, through the first visit to 
 ## Acceptance criteria and plan
 
 - [x] F2. Open passages between car-park visitors, with multi-direction collision regressions.
-- [ ] F3. Align the coat marker with a working interaction spot and brief the player on approach.
+- [x] F3. Align the coat marker with a working interaction spot and brief the player on approach.
 - [ ] F5 and F10. Switch goals at the first shift and share the group target between HUD indicators.
 - [ ] F8 and F9. Pace clink captions and show the full goal as it wraps.
 - [ ] F12. Deliver the throw hint with the first pickup.
@@ -41,3 +41,4 @@ Address the fresh-game playtest on main at db8b1b8d, through the first visit to 
 
 - Branch `fix/first-15-minutes`.
 - F2. Spaced the gathered arcs for player clearance. The car-park regression reproduced the stall on the baseline and now passes from 16 headings, including starts inside the ring.
+- F3. The story and quest point to the existing reach spot behind the second line. The brief starts within 30 m, including during the spring arrival beat. The disguise spec checks the approach and takes the coat from its marked spot.

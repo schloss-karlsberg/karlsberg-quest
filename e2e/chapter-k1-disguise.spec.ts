@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { COAT_REACH } from '../src/systems/bleiche/layout';
 import { ciScale } from './helpers/ci';
 import { trackErrors } from './helpers/common';
 import { fight, qn, qs, untilQuest } from './helpers/prolog';
@@ -47,6 +48,15 @@ test('k1 disguise: orange is refused at the gitter; coat taken unseen, letter, M
   const errors = trackErrors(page);
   await startInSummer(page);
   await recordSubs(page);
+  expect((await story(page)).objective).toMatchObject({ id: 'k1.rock', x: COAT_REACH.x, z: COAT_REACH.z });
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.teleport(1023, -864, 0, 0);
+    k.step(6);
+  });
+  for (let i = 0; i < 10 && !(await page.evaluate(() => window.kq!.story!.shown().includes('laub.k1.bleiche'))); i++) await upd(page, 60);
+  expect(await page.evaluate(() => window.kq!.story!.shown())).toContain('laub.k1.bleiche');
+  await page.evaluate(() => window.kq!.teleport(1059.3, -833.1, 204, 0));
   const npcs = await page.evaluate(() => window.kq!.npc!.list().map((n) => n.npc));
   for (const id of ['liese', 'hofgaertner', 'gardist-tor', 'gardist', 'lakai']) expect(npcs).toContain(id);
   // in the hi-vis vest at the gate: the Gardist sees the costume and escorts you to the forecourt

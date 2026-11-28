@@ -487,7 +487,7 @@ const k1Quests = {
       history: [ln('laub', 'Fußnote: Wie man sich bei Hof zu kleiden hatte und wie die Wache am Gitter prüfte, steht nirgends. Liese, Kaspar und sein Rock sind erfunden. Die Wäsche, die irgendwer für den Hof gebleicht hat, nicht.', { fact: 'cx.46' })],
       objectives: [
         // set by the story (k1_0b): the coat taken from the line (clue.k1.rock) or Liese's favour done
-        { id: 'rock', type: 'manual', text_de: 'Ein Rock, der nicht leuchtet: Kaspars Rock auf Lieses Bleiche', where: place(...DZ.bleiche, 12),
+        { id: 'rock', type: 'manual', text_de: 'Ein Rock, der nicht leuchtet: Kaspars Rock hinter der zweiten Leine', where: place(...DZ.coatReach, 1.4),
           hint_de: 'Die Bleiche liegt unten am Bach, westlich der Quelle. Hinter der zweiten Leine stehen und E drücken, solange Liese zum Weg schaut. Oder mit ihr reden.' },
         { id: 'bitte', type: 'talk', npc: 'liese', topic: 'rock', optional: true, noMarker: true, text_de: 'Oder: Liese nach dem Rock fragen' },
         {

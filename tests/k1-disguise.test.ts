@@ -6,10 +6,11 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { COAT_REACH, LIESE } from '../src/systems/bleiche/layout';
+import { BLEICHE, COAT_REACH, LIESE } from '../src/systems/bleiche/layout';
 import { ZONES, inZoneGround } from '../src/systems/court/zones';
 import { t } from '../src/i18n';
 import { COURT_K1_DE } from '../src/systems/court-k1';
+import type { StoryFile } from '../src/systems/story/types';
 import type { QuestDef } from '../src/rpg/types';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -25,7 +26,7 @@ describe('k1 disguise: quests', () => {
     const k = q('q.k1.kleider');
     expect(k).toMatchObject({ kind: 'main', era: '1789', giver: { voice: 'laub' }, turnin: 'auto' });
     const ob = Object.fromEntries(k.objectives.map((o) => [o.id, o]));
-    expect(ob.rock).toMatchObject({ type: 'manual' });
+    expect(ob.rock).toMatchObject({ type: 'manual', where: { x: COAT_REACH.x, z: COAT_REACH.z } });
     expect(ob.rock!.optional).toBeUndefined();
     expect(ob.bitte).toMatchObject({ type: 'talk', npc: 'liese', topic: 'rock', optional: true });
     expect(ob.zettel).toMatchObject({ type: 'kill', enemy: 'mahnbrief', count: 3, optional: true, after: ['bitte'] });
@@ -68,6 +69,19 @@ describe('k1 disguise: places', () => {
     expect(inZoneGround(orangerie, hg.where.x, hg.where.z)).toBe(true);
     // the Bleiche is no court zone
     for (const z of ZONES) expect(inZoneGround(z, LIESE.x, LIESE.z)).toBe(false);
+  });
+
+  it('points to the coat interaction spot and briefs the player on the approach', () => {
+    const file = read<StoryFile>('content/story/01-kapitel-1.story.json');
+    for (const id of ['k1_0', 'k1_0b']) {
+      const goal = file.beats.find((b) => b.id === id)?.on?.flatMap((r) => r.do).find((a) => a.do === 'objective' && a.id === 'k1.rock');
+      expect(goal).toMatchObject({ x: COAT_REACH.x, z: COAT_REACH.z });
+    }
+    const brief = file.on?.find((r) => r.id === 'k1_0b.bleiche');
+    expect(brief?.when).toMatchObject({ all: expect.arrayContaining([
+      { enter: { x: BLEICHE.x, z: BLEICHE.z, r: 30, era: '1789' } },
+    ]) });
+    expect(brief?.do).toContainEqual(expect.objectContaining({ do: 'say', id: 'laub.k1.bleiche' }));
   });
 
   it('the guard’s echo plays only inside the gitter (never over the Musterung outside)', () => {

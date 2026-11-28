@@ -15,6 +15,38 @@
   "continues": true,
   "on": [
     {
+      "id": "k1_0b.bleiche",
+      "when": {
+        "all": [
+          {
+            "flag": "k1.vorspiel"
+          },
+          {
+            "enter": {
+              "x": 1001.5,
+              "z": -876.5,
+              "r": 30,
+              "era": "1789"
+            }
+          },
+          {
+            "not": {
+              "flag": "disguise.coat"
+            }
+          }
+        ]
+      },
+      "do": [
+        {
+          "do": "say",
+          "id": "laub.k1.bleiche",
+          "speaker": "laub",
+          "text": "Die Bleiche. Die Wäscherin schaut zum Weg, nicht auf die Leine. Hinten herum, hinter der zweiten Leine, sieht sie Sie nicht. Oder Sie fragen sie. Fragen soll auch eine Methode sein."
+        }
+      ],
+      "sameEra": true
+    },
+    {
       "id": "oel-a",
       "when": {
         "all": [
@@ -1128,8 +1160,8 @@
               "do": "objective",
               "id": "k1.rock",
               "text": "Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach",
-              "x": 1001.5,
-              "z": -876.5
+              "x": 1001.08,
+              "z": -880.9
             },
             {
               "do": "say",
@@ -1356,8 +1388,8 @@
               "do": "objective",
               "id": "k1.rock",
               "text": "Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach",
-              "x": 1001.5,
-              "z": -876.5
+              "x": 1001.08,
+              "z": -880.9
             }
           ]
         },
@@ -1392,34 +1424,6 @@
               "text": "Papier und Siegel: zum Hofgärtner vor der Orangerie (langsam, Stab weg)",
               "x": 1221,
               "z": -993
-            }
-          ]
-        },
-        {
-          "id": "k1_0b.bleiche",
-          "when": {
-            "all": [
-              {
-                "enter": {
-                  "x": 1001.5,
-                  "z": -876.5,
-                  "r": 18,
-                  "era": "1789"
-                }
-              },
-              {
-                "not": {
-                  "flag": "disguise.coat"
-                }
-              }
-            ]
-          },
-          "do": [
-            {
-              "do": "say",
-              "id": "laub.k1.bleiche",
-              "speaker": "laub",
-              "text": "Die Bleiche. Die Wäscherin schaut zum Weg, nicht auf die Leine. Hinten herum, hinter der zweiten Leine, sieht sie Sie nicht. Oder Sie fragen sie. Fragen soll auch eine Methode sein."
             }
           ]
         },
