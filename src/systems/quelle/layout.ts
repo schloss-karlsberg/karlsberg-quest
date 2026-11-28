@@ -292,6 +292,40 @@ export function yawToWater(px: number, pz: number, era: Era): number {
 }
 
 /**
+ * The Corps de logis on the hill (its centre, bible 1262.7 / −1126.3; the fire's centre in
+ * src/systems/fx/fire/schedule.ts): what the first look at 1789 turns to.
+ */
+export const PALACE_SIGHT = { x: 1262.7, z: -1126.3 } as const;
+
+/**
+ * Yaw (three.js) that faces the palace from x/z. The touch of the spring is the journey (TASK-089):
+ * while the shift covers the screen the player turns from the water to the hill, so the palace
+ * stands on the horizon in the first frame of 1789, whichever flank of the gorge the spring is on.
+ */
+export function yawToPalace(px: number, pz: number): number {
+  return Math.atan2(-(PALACE_SIGHT.x - px), -(PALACE_SIGHT.z - pz));
+}
+
+/** The look's pitch on arrival (radians, up): the palace stands about 9° above the spring. */
+export const ARRIVAL_PITCH = 0.05;
+
+/**
+ * Steps (m) the arrival takes from the water towards the palace. At the trough the fountain and
+ * the flank stand right behind a player who has turned to the hill: the over-the-shoulder camera
+ * is squeezed and craned up over them and looks down on the player's head (real-GPU frames,
+ * TASK-089). Six metres out, on the trail, the boom is free and the horizon is in the picture.
+ */
+export const ARRIVAL_STEP = 6;
+
+/** Where the player stands and looks when 1789 shows: a few steps from the water, facing the palace. */
+export function arrivalSpot(px: number, pz: number): { x: number; z: number; yaw: number } {
+  const d = Math.hypot(PALACE_SIGHT.x - px, PALACE_SIGHT.z - pz) || 1;
+  const x = px + ((PALACE_SIGHT.x - px) / d) * ARRIVAL_STEP;
+  const z = pz + ((PALACE_SIGHT.z - pz) / d) * ARRIVAL_STEP;
+  return { x, z, yaw: yawToPalace(x, z) };
+}
+
+/**
  * The Karlsbergbach below the spring: OSM line (paths.json, "Karlsbergbach") from the overflow
  * down the ravine and out past the Bleiche's meadow towards the Weiher. The first two points are
  * the runnel from the trough's low end (its right, down the ravine).

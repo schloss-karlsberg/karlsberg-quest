@@ -29,7 +29,7 @@ import type { Era } from '../../core/era';
 import { defineSystem } from '../../core/systems';
 import { cameraHints } from '../../player/camera';
 import { addStrings } from '../../i18n';
-import { brookLine, canFind, canTouch, clearings, lookFor, outlet, overflow, QUELLE, toWorld, touchLocal, TOUR_REACH, TRAIL, trailLine, waterSpec, yawToWater, type WaterSpec } from './layout';
+import { ARRIVAL_PITCH, arrivalSpot, brookLine, canFind, canTouch, clearings, lookFor, outlet, overflow, QUELLE, toWorld, touchLocal, TOUR_REACH, TRAIL, trailLine, waterSpec, yawToWater, type WaterSpec } from './layout';
 import { inTourQuelle } from './tour';
 import { springSound, type SpringSound } from './sound';
 import { applyLook, brookMesh, glowSprite, motes, poolMesh, streamMesh, trailMesh, waterUniforms, type Motes } from './water';
@@ -103,6 +103,8 @@ interface Scene {
   touched: boolean;
   touchedAt: number;
   shifting: boolean;
+  /** The shift's midpoint has passed: the player faces the palace, the camera no longer leans over the water. */
+  arrived: boolean;
 }
 
 let group: Group | null = null;
@@ -235,6 +237,7 @@ function startScene(ctx: GameContext): void {
     touched: false,
     touchedAt: 0,
     shifting: false,
+    arrived: false,
   };
   after = null;
   pl.frozen = true;
@@ -371,8 +374,20 @@ export default defineSystem({
         if (scene?.touched) scene.shifting = true;
       }),
       ctx.events.on('shift:midpoint', () => {
+        if (!scene?.shifting) return;
         // the new era: its water starts still and thaws (the story keeps the player held until done)
-        if (scene?.shifting) after = 0;
+        after = 0;
+        // the journey into 1789: the screen is covered now, so the few steps from the water and the
+        // turn to the hill are a cut. When the land shows, the palace stands on the horizon (the
+        // arrival's first frame) and the camera has room behind the player
+        if (ctx.era.current === '1789' && !scene.arrived) {
+          const pl = ctx.player;
+          const to = arrivalSpot(pl.position.x, pl.position.z);
+          scene.arrived = true;
+          scene.yaw0 = scene.yaw1 = to.yaw;
+          pl.teleport(to.x, to.z, to.yaw);
+          pl.pitch = ARRIVAL_PITCH;
+        }
       }),
       ctx.events.on('shift:done', () => {
         if (scene?.shifting) {
@@ -435,7 +450,7 @@ export default defineSystem({
       sound.trickle(v, out.x, out.y, out.z);
     } else sound?.trickle(0, QUELLE.x, 0, QUELLE.z);
     // the camera leans in over the shoulder while the hand is in the water
-    if (scene && spec && ctx.player.thirdPerson) {
+    if (scene && !scene.arrived && spec && ctx.player.thirdPerson) {
       cameraHints.focus = { x: spec.x, y: spec.y + 0.35, z: spec.z };
       focusSet = true;
     } else if (focusSet) {

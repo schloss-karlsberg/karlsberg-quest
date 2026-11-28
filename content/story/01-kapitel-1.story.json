@@ -946,7 +946,8 @@
             "quelle.call": null,
             "k1.vorspiel": true,
             "npc.owns.clue.k1.papier": true,
-            "k1.angekommen": null
+            "k1.angekommen": null,
+            "k1.karte": null
           }
         },
         {
@@ -1086,6 +1087,13 @@
           "data": {
             "set": "k1"
           }
+        },
+        {
+          "do": "flag",
+          "set": {
+            "k1.karte": true
+          },
+          "delay": 0.2
         }
       ],
       "complete": {
@@ -1095,6 +1103,9 @@
           },
           {
             "flag": "k1.angekommen"
+          },
+          {
+            "flag": "k1.karte"
           }
         ]
       },

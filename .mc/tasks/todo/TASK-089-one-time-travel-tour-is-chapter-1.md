@@ -356,6 +356,16 @@ objective, Pause → Kapitel.
 - Slice 3 (`feat/task-089-first-stay`): no oil meter in the day part (`oel-tag` stops an old save's
   meter, `lauf-zurueck` moved to the night), and the coat: marker on the coat, „Rock nehmen“
   (`prompt_de` on clues), Liese sees an upright walk between her lines (`k1.rock.frei`).
+- 2026-11-28, second real-GPU look (moved spring) and the coordinator's two points, on the slice 3
+  branch: (1) the arrival faced the fountain and the wooded flank; the spring's scene now puts
+  the player six metres from the water and turns them to the palace at the shift's midpoint
+  (`arrivalSpot`; turned in place the camera craned over the flank and looked down). (2) A still showed a quest banner
+  across the chapter card. That frame came from my capture script, which called `story.flush()`
+  under the card; no way into the chapter did that. One real gap was next to it: on a replay with
+  Laub's lines already said, a quick Q could hand on while the card still showed. `k1_0` now also
+  waits for `k1.karte` (set by a card-gated entry action), and the capture script steps instead of
+  flushing. Also from that look: the arrival quest is offered before the coat quest so the coat
+  leads the tracker, and the coat objective is set with Laub's second line.
 - Voice: the raw take of `laub.t.1789` (`.voice-raw/raw-service/laub.t.1789.wav`, sha256 as in the
   manifest) is silent below −50 dB from 7.51 s to 8.01 s, between „Atmen Sie.“ and the last
   sentence. Cut at 7.70 s with an 80 ms fade-out and run through `processClip`
