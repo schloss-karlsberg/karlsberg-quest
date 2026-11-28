@@ -169,6 +169,8 @@ export function segmentDistance(ax: number, az: number, bx: number, bz: number, 
 export const HITSTOP = { light: 0.06, heavy: 0.11, player: 0.08 } as const;
 export const SHAKE = { light: 0.03, heavy: 0.12, player: 0.15 } as const;
 /** Knockback distance (m) on enemies; the player is pushed 1.2 m. */
+export const KNOCK = { light: 0.4, finisher: 1.2, heavy: 2.6, player: 1.2 } as const;
+
 /**
  * A thrown chestnut (src/systems/forage, `CombatSim.pelt`): a third of a first Hieb, never the
  * last blow. `glance`: what armour, elites and bosses take. Bodies of at most `staggerHp` base
@@ -199,8 +201,6 @@ export function segmentHitsBody(ax: number, ay: number, az: number, bx: number, 
   const y = ay + (by - ay) * t;
   return y < cy - 0.15 || y > cy + top + 0.15 ? null : t;
 }
-
-export const KNOCK = { light: 0.4, finisher: 1.2, heavy: 2.6, player: 1.2 } as const;
 
 /** Enemy AI (§4.4). */
 export const AI = {
