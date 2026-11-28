@@ -203,7 +203,8 @@ timing; dodge roll, hit, death, interact and wave as full-body or upper-body act
 is a pose over whatever clip plays (`CROUCH` in `src/player/avatar.ts`): the hips sink and each
 knee bends as far as it takes to keep the foot where the clip put it (two-bone IK, `legBend.ts`),
 with a lean at the waist and the head up, so idle and walk keep their foot plants (the CC0
-surveyor, whose feet are not on its leg chain, leans and sinks); prone lays the body forward. The body turns smoothly toward travel (or the target in a fight). Low tier
+surveyor, whose feet are not on its leg chain, leans and sinks). With the staff in hand the lean
+is smaller, so the staff's shoe stays out of the ground. Prone lays the body forward. The body turns smoothly toward travel (or the target in a fight). Low tier
 loads the same model (0.6 MB). `kq.avatar.state()` / `setMode()` for tests.
 
 ### 4.3 Feel ("juice")

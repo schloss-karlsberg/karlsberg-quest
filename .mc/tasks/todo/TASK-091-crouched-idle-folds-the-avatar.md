@@ -39,8 +39,10 @@ when its blended value changed, and never a bone without a track. In the packed 
 the `spine_01` rotation track holds still (two equal STEP keys in Idle, Walk and the others), so
 the crouch's 0.42 rad lean (`src/player/avatar.ts`) was added again every drawn frame: the torso
 spun round the waist, about four turns a second at 60 fps. Measured before the fix: head height
-over the feet between 0.27 m and 1.31 m in crouched idle, in real time and in `?manual`. The
-people stand-ins and the enemy rigs already put their own turns back each frame; the avatar and
+over the feet between 0.27 m and 1.31 m in crouched idle, in real time and in `?manual`. After
+walking it starts a few seconds late: while the idle and walk weights still settle, the blended
+value changes and the mixer keeps writing the bone. The CC0 surveyor folded at once (`Abdomen`
+has no track in its idle). The people stand-ins and the enemy rigs already put their own turns back each frame; the avatar and
 the NPC head look (`src/systems/npc/rigged.ts`, `Neck` has no track in `Idle_Neutral`) did not.
 
 The old crouch also only leaned the body and sank the whole model 0.2 m, so the boots stood in
@@ -55,6 +57,8 @@ the ground.
       the lean at the waist and the head lifted. Idle and walk keep their foot plants and the
       clip's own hip bob. The CC0 surveyor (`?avatar=surveyor`) has its feet as baked IK targets
       outside the leg chain: it keeps lean and sink.
+- [x] With the staff in hand (a fight) the crouch keeps 0.35 of the lean (`CROUCH.guard`): at the
+      full lean the staff's shoe was 0.14 m in the ground (0.11 m on main).
 - [x] Unit tests: `tests/rig-bones.test.ts` (a turn on a bone with a still track or no track is one
       turn after 240 frames and after frames with dt 0), `tests/leg-bend.test.ts` (the IK maths),
       `tests/avatar-crouch.test.ts` (the real player GLBs in node: head over hips, pose stable over
@@ -74,3 +78,10 @@ the ground.
 
 - 2026-11-28: reproduced on a real GPU (ANGLE Metal) in real time and in `?manual`; cause found
   and fixed; tests added; gates green.
+- 2026-11-28: real-GPU review (ANGLE Metal, 1280×720, `?manual`, build + preview), before from main
+  and after: stand, going down, crouch idle (side and back), three walk phases, getting up, in the
+  default outfit today and the court costume in 1789; the staff in hand in a fight; the surveyor.
+  Measured after: head 1.24 m and hips 0.69 m over the feet in crouched idle (standing 1.56 /
+  0.93), ankles at their standing height (0.10 m), head height within 5 mm over 4 s of real time.
+  Crouch walk in node: hip bob 5.4 cm (standing walk 5.6 cm), no foot below its standing height.
+  The surveyor leans without folding; its feet stand 0.2 m in the ground as before (fallback).

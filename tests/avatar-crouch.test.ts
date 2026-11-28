@@ -5,7 +5,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { type Object3D, PerspectiveCamera, Scene, Vector3 } from 'three';
+import { type Mesh, type Object3D, PerspectiveCamera, Scene, Vector3 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -165,6 +165,39 @@ describe('avatar crouch on the mpfb model: the legs', () => {
       // the hips stay low and level: the walk clip's own bob, no bounce from the bent legs
       expect(hipsHigh).toBeLessThan(stand.hips - 0.1);
       expect(hipsHigh - hipsLow).toBeLessThan(0.08);
+    } finally {
+      avatar.dispose();
+    }
+  });
+});
+
+describe('avatar crouch on the mpfb model: the staff in hand', () => {
+  it('the crouched guard keeps the staff out of the ground, standing still and stepping back', async () => {
+    const { avatar, player, input, play } = await fixture('mpfb');
+    try {
+      Object.assign(actionPose, { armed: true, inCombat: true, hidden: false, target: { x: 0, z: -10 } });
+      play(90);
+      expect(avatar.debug.clip).toBe('Idle_Sword');
+      const v = new Vector3();
+      /** Height of the lower end of the staff above the ground (m). */
+      const shoe = () => {
+        const staff = avatar.root.getObjectByName('player-staff') as Mesh;
+        staff.geometry.computeBoundingBox();
+        const b = staff.geometry.boundingBox!;
+        const ends = [b.min.z, b.max.z].map((z) => staff.localToWorld(v.set(0, 0, z)).y - player.position.y);
+        return Math.min(...ends);
+      };
+      expect(shoe()).toBeGreaterThan(0.4);
+      player.setStance('crouch');
+      play(120);
+      expect(shoe()).toBeGreaterThan(0.05);
+      input.press('back', true);
+      let low = Infinity;
+      for (let i = 0; i < 120; i++) {
+        play(1);
+        low = Math.min(low, shoe());
+      }
+      expect(low).toBeGreaterThan(0.05);
     } finally {
       avatar.dispose();
     }

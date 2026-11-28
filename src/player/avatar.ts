@@ -146,13 +146,15 @@ const _turns = legTurns();
  * scaled by the eased stance: the hips sink by `drop` of the leg length and each knee bends
  * forward as far as it takes to keep the foot where the clip put it (`bendLeg`, legBend.ts), so
  * foot plants, step height and stride stay the clip's; the trunk leans forward at the waist by
- * `lean` rad and the head lifts by `head` rad so the eyes stay on the way ahead.
+ * `lean` rad and the head lifts by `head` rad so the eyes stay on the way ahead. With the staff in
+ * hand (a fight, a swing) only `guard` of the lean and the head lift is left: the staff is held
+ * level in front of the body, and the full lean would dig its shoe 0.14 m into the ground.
  *
  * The knees need a leg chain that ends in the foot (the MPFB player: thigh → calf → foot). On the
  * CC0 surveyor (`?avatar=surveyor`) the feet are baked IK targets under the root, not on the legs:
  * it keeps the lean and sinks by `sink` m instead.
  */
-export const CROUCH = { drop: 0.28, lean: 0.42, head: 0.24, sink: 0.2 } as const;
+export const CROUCH = { drop: 0.28, lean: 0.42, head: 0.24, guard: 0.35, sink: 0.2 } as const;
 
 /** One leg for the crouch, and its length hip → knee → ankle (m, as scaled). */
 interface Leg {
@@ -198,6 +200,8 @@ export class Avatar {
   private wasShown = false;
   private spin = 0;
   private crouch = 0;
+  /** 0..1 the staff in hand (eased): a crouched guard stands more upright (`CROUCH.guard`). */
+  private guard = 0;
   private prone = 0;
   private readonly staffHand = new Group();
   private readonly staffBack = new Group();
@@ -834,6 +838,8 @@ export class Avatar {
     if (!A.frozen) this.phase += (Math.max(sp, 0) / stride) * dt;
     // crouch / prone: slower, lower
     this.crouch += ((pl.stance === 'crouch' && !A.dead ? 1 : 0) - this.crouch) * Math.min(1, dt * 8);
+    const inHand = A.armed && (fight || !!A.swing || !!A.skill || A.charge !== null);
+    this.guard += ((inHand ? 1 : 0) - this.guard) * Math.min(1, dt * 8);
     this.prone += ((pl.stance === 'prone' ? 1 : 0) - this.prone) * Math.min(1, dt * 6);
     // ---- action layer
     const set = (n: string, up: number, full: number, t01: number) => {
@@ -959,7 +965,6 @@ export class Avatar {
     this.debug.armed = A.armed;
     if (A.armed) {
       this.setStage(A.stage);
-      const inHand = fight || !!A.swing || !!A.skill || A.charge !== null;
       const parent = inHand ? this.staffHand : this.staffBack;
       if (this.staff && this.staff.parent !== parent) parent.add(this.staff);
       if (this.staff) this.staff.visible = !A.lowered || !inHand;
@@ -1001,8 +1006,9 @@ export class Avatar {
    * bone that holds still in the clips (the MPFB player's spine_01; TASK-091).
    */
   private crouchPose(rig: Rig, k: number, fx: number, fz: number): void {
-    rig.turnBone(this.crouchBone, 0, CROUCH.lean * k);
-    rig.turnBone(this.crouchHead, 0, -CROUCH.head * k);
+    const upright = 1 - (1 - CROUCH.guard) * this.guard;
+    rig.turnBone(this.crouchBone, 0, CROUCH.lean * k * upright);
+    rig.turnBone(this.crouchHead, 0, -CROUCH.head * k * upright);
     const legs = this.legs;
     if (!legs.length) {
       rig.holder.position.y -= CROUCH.sink * k;
