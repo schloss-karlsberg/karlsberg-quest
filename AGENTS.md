@@ -47,6 +47,9 @@ CI runs e2e in up to 16 SwiftShader shards with a 640×360 default viewport. Run
   builders, then `node scripts/content-build/build.mjs` and `pnpm validate`. The tour
   (`00-tour.story.json`, `tour.pack.json`), the party pack and the `99-test` files have no builder
   and are edited directly; grep `scripts/content-build/` when unsure.
+- **Chapter numbers:** the player sees „Kapitel 1“ (the tour) to „Kapitel 5“; the ids in content,
+  saves and code are `tour`, `k1` … `k4` (so `k1` „Der Hof“ is the player's chapter 2). Table in
+  `content/story/README.md`.
 - **Gameplay** is action-RPG: quest givers, collect and kill objectives, exploration. No quizzes or word puzzles.
 - **Keep touch / mobile and reduced motion working** (`src/ui/touch.ts`, the `reducedMotion` setting).
 - Facts need a source; invented parts are labelled FIKTION. No brand names (see CONTRIBUTING.md).

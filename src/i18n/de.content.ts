@@ -28,7 +28,7 @@ export const deContent: Record<string, string> = {
   'ui.keys.shift': 'Zeitsprung am Ankerpunkt. [Q] gedrückt halten, um zur Quelle zurückzukehren, sobald die Meute dich aus den Augen verloren hat.',
   'ui.keys.lantern': 'Laterne an / aus. Licht hilft beim Lesen, aber es lockt die Meute.',
   'ui.keys.inventory': 'Ausrüstung & Talente öffnen',
-  'ui.keys.measure': 'Messen: Strecke und Höhenprofil (ab Kapitel 2)',
+  'ui.keys.measure': 'Messen: Strecke und Höhenprofil (ab Kapitel 3)',
   'ui.keys.pause': 'Pause: Aufgaben, Codex, Sammlungen, Ausrüstung & Talente, Karte, Album und Kapitel',
   'ui.keys.pause.key': '[Esc]',
 
