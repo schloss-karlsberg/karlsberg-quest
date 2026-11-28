@@ -724,6 +724,12 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
     };
   }, laubIntro);
   expect(entrySave).toEqual({ beat: 't17', spoken: [], unlocked: false, loaded: true });
+  // the touch does ask for the view: turn round to the water (after the reload, before the autosave)
+  await page.evaluate(({ x, z, yaw }) => {
+    const k = window.kq!;
+    k.teleport(x, z, yaw, -10);
+    k.step(2);
+  }, { x, z, yaw: yaw - 180 });
   expect(await page.evaluate(() => window.kq!.quelle!.info().prompt)).toBe(false);
   const uphill = await page.evaluate(() => {
     const k = window.kq!;
