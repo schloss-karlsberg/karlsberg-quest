@@ -79,7 +79,7 @@ unfinished group regain their strength).
 ## 3. Controls
 
 The guided tour uses movement, conversation, sneaking and the phone camera. Marlene lends the
-player the Messstab at the Weiher. Combat starts in Chapter 1; in the tour the Messstab already
+player the Messstab at the Weiher. Combat starts in Chapter 2; in the tour the Messstab already
 cuts ferns and grass, and chestnuts can be thrown from the first one picked up (§7.1).
 
 | Verb | Desktop (default, remappable) | Notes |
@@ -980,7 +980,7 @@ history and unpaid rewards in `src/core/legacy-prologue-quests.ts` for old saves
 | `q.p.trichter` "Nicht anfassen" | side | Marlene (after `q.p.bussole`) | find the bomb crater, **do not touch**, report it on the radio (story reaction `trichter-melden`) | — | 40 XP | rm.06 Bombentrichter, cx.35 |
 | `q.p.irrlichter` "Lichter am Weiher" | side | Laub (after `q.p.punktwolke`) | bann **3 Irrlichter** over the Karlsbergweiher (820/−869) | irrlicht ×3 | 50 XP, Lampenöl ×2 | rm.08 |
 
-### 11.1 Kapitel 1 "Der Hof" (1789, day → dusk → night) — tier 1, levels 3–6
+### 11.1 "Der Hof" (Chapter 2, 1789, day → dusk → night) — tier 1, levels 3–6
 
 As built (`content/quests/01-kapitel-1.quests.json`, `scripts/content-build/kapitel1.mjs`); ends at level 6.
 
@@ -995,8 +995,8 @@ constant `HOME.spawn`): a replay from Pause → Kapitel or a debug jump starts t
 `k1_0.heute` makes the spring the Q anchor. `k1_0b` „Die
 Brunnenstube, Sommer“ (the coat quest and the arrival quest, offered after Laub's lines) is the walk up on foot by the trail west of the Orangerie to the
 Ehrenhof gate (1200/−1116, r 14). Since TASK-089 the day part has no oil meter. Loading removes an obsolete
-daytime meter before Hunt's first update. The night in the Karlslust starts its own oil meter
-(`oel-b`) and shows the lantern and return tip (`lauf-zurueck`). Flag `k1.vorspiel` kept the oil meter and the return tip off until
+daytime meter before Hunt's first update. The night in the Karlslust starts an oil meter
+(`oel-b`) if there is none, keeps the saved meter on Continue and shows the lantern and return tip (`lauf-zurueck`). Flag `k1.vorspiel` kept the oil meter and the return tip off until
 `k1_1` clears it. Caught or back in today on the way: you wake at the spring, and Q there (anchor
 1058.5/−831 r 10) takes you back. **Anchor rule:** Q never anchors inside the Ehrenhof before the
 flag `court.admitted`; `k1_1` sets it (also `k1_2`/`k1_3`, so older saves keep their anchor), and the
@@ -1187,7 +1187,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
-| Present-day survey tripods appeared in historical eras (TASK-089, owner decision 2026-11-28) | Travel streams and activates the eleven tripods only in the present. Era changes discard their meshes and close their discovery banners. If the first map tip has yet to appear, the save keeps its discovery point so the tip can show on returning to the present. Known map destinations remain usable under the existing travel rules. `tests/travel-era.test.ts` covers every playable past era. |
+| Present-day survey tripods appeared in historical eras (TASK-089, owner decision 2026-11-28) | Travel streams and activates the eleven tripods only in the present. Era changes discard their meshes and close their discovery banners. The first map tip records completion after its banner has had a chance to paint and names the active map control. A pending tip stays in the save and can appear on returning to the present. Known map destinations remain usable under the existing travel rules. `tests/travel-era.test.ts` covers every playable past era. |
 | After the spring moved to the south-west flank the arrival in 1789 faced the fountain and a wooded slope, the palace behind the player (TASK-089, 2026-11-28) | At the shift's midpoint (screen covered), after touching the water or continuing a present-day `tour/t18` save, the spring puts the player six metres from the water on the line to the Corps de logis and turns them to it (`arrivalSpot`, `PALACE_SIGHT` = the fire's centre, `ARRIVAL_PITCH`), and lets the camera go from the water. The steps are needed: turned in place at the trough, the over-the-shoulder boom was squeezed against the fountain and craned over the flank, looking down on the player's head. Computed, so it follows the spring to either flank. `tests/quelle-arrival.test.ts`; real-GPU frames from `e2e/gpu/arrival.gpu.ts`. |
 | A quest banner on the chapter card of „Der Hof“ (seen in a capture that ran the timeline under the card) | `k1_0` also waits for `k1.karte`, which only its entry list sets in an action the card holds back; so `k1_0b` and its two offers never start while the card shows, also on a replay where Laub's lines are already said. A beat jumped to directly is the opening beat and its offers are gated as before. `tests/story-card-hold.test.ts`. |
 | The coat at the Bleiche: marker 4 m off, „E Untersuchen“, and walking in upright had no consequence (playtest 2026-11-28, TASK-089) | The story objective and the quest step point at the coat (`COAT_XZ`). A clue can name its prompt (`prompt_de`: „Rock nehmen“). `k1_0b.liese-sieht`: upright inside the front of the green (3.6 m round the lines before her) clears `k1.rock.frei`, which the coat's clue requires; Liese calls out and the objective says to back off. `k1_0b.liese-ruhig` frees it once the player is 14 m away. Crouched, round behind line B, or after asking her, nothing happens. `tests/k1-disguise.test.ts`. |
