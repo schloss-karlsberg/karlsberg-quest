@@ -136,6 +136,49 @@ test(`tour arrival at the Quelle (${GRAPHICS})`, async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test(`the tour group at its stop (${GRAPHICS})`, async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto(`./?notitle&nosave&fresh&manual&q=${GRAPHICS}&cam=${CAM}`);
+  await page.waitForFunction(() => window.kq?.ctx.input.enabled && !window.kq.ctx.loop.paused, null, { timeout: 120_000 });
+  await page.addStyleTag({ content: '.kq-bullet-time,.kq-click-to-play{display:none!important}' });
+  mkdirSync(OUT, { recursive: true });
+  const views = [
+    { id: 'arriving', ...local(10.5, 7.8, 0.5, 2.6, -7) },
+    { id: 'from-the-trough', ...local(0.3, 2.3, -1.5, 7, -4) },
+    { id: 'from-the-hairpin', ...local(-7.5, 3.1, 0.5, 3, -9) },
+  ];
+  const log: unknown[] = [];
+  for (const [i, view] of views.entries()) {
+    const state = await page.evaluate(
+      async ({ view, first }) => {
+        const k = window.kq!;
+        await k.avatar?.ready();
+        k.teleport(view.x, view.z, view.yaw, view.pitch);
+        if (first) {
+          // guide and 14 members, put at the stop and gathered in its staged slots
+          k.walk!.demo({ to: 'quelle' });
+          k.step(10);
+          k.walk!.snap('fuehrung', 'quelle');
+          k.walk!.request({ op: 'gather', group: 'fuehrung', around: 'imhoff' });
+        }
+        k.step(240);
+        await k.screenshotReady();
+        return { people: k.walk!.list().map((n) => ({ npc: n.npc, x: n.x, z: n.z })), groups: k.walk!.groups() };
+      },
+      { view, first: i === 0 },
+    );
+    log.push({ view, ...state });
+    await page.waitForTimeout(800);
+    await page.evaluate(async () => {
+      window.kq!.step(1);
+      await window.kq!.screenshotReady();
+    });
+    await page.screenshot({ path: `${OUT}/${GRAPHICS}-group-${view.id}.png` });
+  }
+  writeFileSync(`${OUT}/${GRAPHICS}-group.json`, JSON.stringify(log, null, 2));
+  expect(errors).toEqual([]);
+});
+
 test(`title backdrop (${GRAPHICS})`, async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto(`./?nosave&fresh&q=${GRAPHICS}&cam=third&x=1059.3&z=-833.1`);

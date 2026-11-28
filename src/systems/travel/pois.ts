@@ -6,6 +6,7 @@
  * coordinates); pure, unit-tested in tests/travel.test.ts (spacing, keeping clear of the story's
  * places, every Fundstück used once).
  */
+import { QUELLE } from '../quelle/layout';
 import { LORE } from './lore';
 
 export type PoiKind = 'cache' | 'lore' | 'shrine';
@@ -90,7 +91,7 @@ export const KEEP_CLEAR: readonly (readonly [number, number] | readonly [number,
   [1811, 363], [1815, 290], [1826, 394], [1460, -260], [1560, -470], [1526, -557], [1235, -1084], [1269, -1110], [1222, -1135], [1188, -1070],
   [1050, -1000], [1237, -1066], [1320, -940], [1250, -915], [790, -905], [1285, -1150], [1300, -1170], [1232, -1165], [1302, -1262], [1268, -1470],
   [1232, -1572], [1150, -1700], [1420, -1440], [1300, -1520], [1300, -1472], [1240, -1494], [1200, -1530],
-  [1058.5, -831], // the Karlsbergquelle (src/systems/quelle/layout.ts)
+  [QUELLE.x, QUELLE.z], // the Karlsbergquelle (src/systems/quelle/layout.ts)
   [1001.5, -876.5, '1789'], // the Bleiche by the brook, 1789 only (Unauffällig: Liese, the coat; src/systems/bleiche/layout.ts)
 ];
 

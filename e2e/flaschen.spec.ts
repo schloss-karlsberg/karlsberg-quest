@@ -16,30 +16,30 @@ import { FLASCHENGRUEN } from '../src/player/cosmetics';
  * spots are hidden from the main path on purpose: these views are the "found it" angle).
  */
 const VIEW: Record<string, { from: number; d: number }> = {
-  'fl.heute.quelle': { from: 200, d: 2.6 },
+  'fl.heute.quelle': { from: 350, d: 2.6 },
   'fl.heute.eiskeller': { from: 0, d: 2.4 },
   'fl.heute.gipfel': { from: 180, d: 1.2 },
   'fl.heute.grenzstein': { from: 180, d: 2.4 },
   'fl.heute.westblick': { from: 290, d: 2.4 },
   'fl.heute.tschifflik': { from: 270, d: 2.4 },
-  'fl.1789.quelle': { from: 234, d: 2.4 },
+  'fl.1789.quelle': { from: 24, d: 2.4 },
   'fl.1789.orangerie': { from: 110, d: 2.4 },
   'fl.1789.gitter': { from: 270, d: 2.8 },
   'fl.1789.bauplatz': { from: 180, d: 2.6 },
   'fl.1789.rund': { from: 90, d: 2.6 },
   'fl.1789.allee': { from: 90, d: 3.2 },
-  'fl.179302.quelle': { from: 234, d: 3.0 },
+  'fl.179302.quelle': { from: 24, d: 3.0 },
   'fl.179302.torhaus': { from: 200, d: 2.4 },
   'fl.179302.allee': { from: 90, d: 3.2 },
   'fl.179302.wachhaus': { from: 270, d: 2.4 },
   'fl.179307.gaertnerei': { from: 90, d: 2.0 },
   'fl.179307.zwinger': { from: 270, d: 2.4 },
-  'fl.179307.quelle': { from: 234, d: 2.8 },
+  'fl.179307.quelle': { from: 24, d: 2.8 },
   'fl.1796.baumagazin': { from: 270, d: 2.4 },
   'fl.1796.taleingang': { from: 270, d: 2.2 },
   'fl.1796.steinplatz': { from: 0, d: 2.6 },
   'fl.1796.westblick': { from: 270, d: 2.4 },
-  'fl.1796.quelle': { from: 200, d: 2.2 },
+  'fl.1796.quelle': { from: 350, d: 2.2 },
 };
 
 async function boot(page: Page): Promise<void> {
