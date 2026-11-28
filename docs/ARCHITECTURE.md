@@ -178,7 +178,7 @@ order) → player state written to `GameState` → `input.endStep()`. The fixed 
 wall clock on every animation frame, whatever the render rate (the cap never changes what the
 simulation does). The **render pacing** then decides whether this animation frame is drawn →
 `render(frameDt, alpha)` (`frameDt` = time since the previous drawn frame): camera interpolation
-→ `systems.frame` → `world.frame` (LOD, trees, transitions, shared uniforms) → audio listener →
+→ `systems.frame` → `world.frame` (LOD, trees, transitions, shared uniforms; over the shoulder boot passes the character's place as `stand`, where the haze under the trees `uUnderCanopy` is taken, so a turn on the spot does not change it) → audio listener →
 HUD compass → sun shadow map (may be re-used, §1 `shadows.ts`) → water reflection → post FX
 render. `ctx.perf.begin()/end()` wrap the render (CPU ms, draw calls and triangles of the whole
 frame incl. post; `systems.stats()` times every system's `update` and `frame`), then
@@ -570,9 +570,16 @@ autumn today, bare frosted twigs and snow 1793-02, sparse 1796 (`leafDensity`, `
 Culling (`forestCullMode`): a level view drops trees outside the horizontal sector (half-FOV + 40°,
 all within 30 m); looking steeply down keeps the full ring only more than 20 m above the ground
 (`update(camera, agl)`: flying, spirit view), on foot whole 64 m tiles outside the 3D view cone
-(`src/world/viewCone.ts`: frustum corner + 40°) are dropped.
+(`src/world/viewCone.ts`: frustum corner + 40°) are dropped. The cut is for the picture only: with
+sun shadows on (`forest.casting`), a tree the view leaves out stays a shadow caster while its
+shadow can fall into the shadow box (`castGap`) and into the picture (`shadowInSector`: a point
+of the shadow, foot to tip, within a crown and the camera's 8 m of travel of the lists' sector).
+It goes to `models.cast` instead of `models.push`; the procedural fallback keeps it in its
+batches. A tree behind the camera whose shadow points further back is still left out, so looking
+into the sun costs what it did; no shadow the picture can show depends on where the view points
+(TASK-088, `tests/forest-casters.test.ts`).
 
-Model trees (`src/world/vegetation/trees.ts`, docs/ART-DIRECTION.md §5.2): on medium / high `world.nature` loads `nature2.trees` and hands a `ModelTrees` to `forest.setModels`; the forest keeps placement, culling and LOD rings and pushes each tree to the model batches (lod0 / lod1 per variant, one InstancedBufferGeometry each) or the impostor batch (atlas baked once at load by rendering every variant from 8 azimuths into an MSAA target). All share the `atmosphere` uniforms; `uShadowPass` (set by `render/shadows.ts`) lets every vegetation shader skip lighting in the depth pass, and trees outside the shadow box collapse there. Rings (× k = preset · tree height): lod0 → lod1 at `TREE_N0` 30, lod1 → impostor at `TREE_N1` 72 (78 before tri phase B), ±5 dithered. Shadow casters (tri phase B, docs/PERFORMANCE.md §3.5): the depth pass does not draw the main batches; through `shadows.onPass` → `forest.shadowPass` → `ModelTrees.shadowPass` it draws per-variant `ShadowList`s with the lod1 geometry (lod0 trees included) and an impostor list, filled at each forest rebuild and sorted by the distance from the expected shadow focus (camera + 0.35 · box ahead); a pass draws the leading casters within box + `SHADOW_REACH` 30 m + the focus drift (`castCount`), the same limit the shaders apply, and a drift past 20 m forces a rebuild. The low tier never fetches the models.
+Model trees (`src/world/vegetation/trees.ts`, docs/ART-DIRECTION.md §5.2): on medium / high `world.nature` loads `nature2.trees` and hands a `ModelTrees` to `forest.setModels`; the forest keeps placement, culling and LOD rings and pushes each tree to the model batches (lod0 / lod1 per variant, one InstancedBufferGeometry each) or the impostor batch (atlas baked once at load by rendering every variant from 8 azimuths into an MSAA target). All share the `atmosphere` uniforms; `uShadowPass` (set by `render/shadows.ts`) lets every vegetation shader skip lighting in the depth pass, and trees whose shadow cannot fall into the shadow box collapse there (`kqCastGap`). Rings (× k = preset · tree height): lod0 → lod1 at `TREE_N0` 30, lod1 → impostor at `TREE_N1` 72 (78 before tri phase B), ±5 dithered. Shadow casters (tri phase B, docs/PERFORMANCE.md §3.5): the depth pass does not draw the main batches; through `shadows.onPass` → `forest.shadowPass` → `ModelTrees.shadowPass` it draws per-variant `ShadowList`s with the lod1 geometry (lod0 trees included) and an impostor list (the casters' own ring: impostors from `CAST_N1` 60 · k, where the picture switches at 72), filled at each forest rebuild and sorted by `castGap`: how far the tree's shadow (its foot to its tip, `height / tan(sun elevation)` × `CAST_STRETCH` 1.15 away from the sun, at most `CAST_MAX` 100 m) ends from the expected shadow focus (camera + 0.35 · box ahead). A pass draws the leading casters whose gap is within the box's radius + `SHADOW_REACH` 12 m (a crown's half width) + the focus drift (`castCount`); the vertex shaders apply the same rule to the pass's own box (`uShadowCenter`, set before the pass), so the shadows in the picture are a function of where the box is and of the sun, and a drift past 20 m or a sun that moved 2.5° forces a rebuild. Until TASK-088 the rule was a disc of box + 30 m, which under the day eras' 19–20° sun dropped trees whose 60–90 m shadows were already well inside the box. The low tier never fetches the models.
 
 Nature layers (`src/world/vegetation/`, docs/ART-DIRECTION.md §5.1): `world.nature` (`Nature`) owns
 `cover` (`GroundCover`: instanced grass / flowers / reeds, 8 m tiles; only what lies in the 3D view
@@ -610,7 +617,7 @@ Cost knobs (set by `ctx.quality` from the preset): `terrain.lodScale` scales the
 (200 / 450 / 1000 m at 1); `forest.setDistances(near, far)` sets the far ring and scales the near / mid LOD rings by
 `near / 170` (`forest.lodScale`: Hoch 60 / 180 m, Mittel ≈ 49 / 148 m, Niedrig ≈ 39 / 116 m).
 The forest culls instanced trees by sector (outside the horizontal FOV + margin, all trees within
-30 m kept, off while looking steeply down), rebuilt after 8 m of movement or a 20° turn;
+30 m kept, off while looking steeply down; shadow casters are exempt), rebuilt after 8 m of movement or a 20° turn;
 `forest.cull = false` disables it (`kq.baseline()`).
 
 ## 9. Data (`public/data`, 12.3 MiB, `pnpm prepare-data`)

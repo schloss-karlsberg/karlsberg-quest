@@ -190,6 +190,8 @@ export class SunShadows {
     }
     a.uShadowParams.value.x = 0;
     a.uShadowMap.value = NO_SHADOW_TEX;
+    // the box of this pass, before it: casters cut themselves to it (trees.ts `kqCastGap`)
+    a.uShadowCenter.value.set(focus.x, focus.y, focus.z, r * 0.98);
     const prev = renderer.getRenderTarget();
     renderer.setRenderTarget(this.target);
     renderer.clear(true, true, false);
@@ -204,7 +206,6 @@ export class SunShadows {
     a.uShadowMap.value = this.target.depthTexture!;
     a.uShadowMatrix.value.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
     a.uShadowParams.value.set(1, 1 / this.size, this.taps, this.strength);
-    a.uShadowCenter.value.set(focus.x, focus.y, focus.z, r * 0.98);
   }
 
   /**

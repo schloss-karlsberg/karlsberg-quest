@@ -10,7 +10,7 @@ import { GROUND_LAYERS, GROUND_TILE_M, BARK_LAYERS } from '../src/world/vegetati
 import { PROP_KINDS } from '../src/world/vegetation/props';
 import NATURE1 from '../src/assets/manifests/nature';
 import NATURE2 from '../src/assets/manifests/nature2';
-import { FAMILY_CROWN, SHADOW_REACH, TREE_BAND, TREE_N0, TREE_N1, TREE_VARIANTS, castCount, pickVariant, shadowLevel, treeLevels, treeScaleY } from '../src/world/vegetation/trees';
+import { CAST_N1, FAMILY_CROWN, SHADOW_REACH, TREE_BAND, TREE_N0, TREE_N1, TREE_VARIANTS, castCount, pickVariant, shadowLevel, treeLevels, treeScaleY } from '../src/world/vegetation/trees';
 
 const NATURE_ASSETS = [...NATURE1, ...NATURE2];
 
@@ -301,12 +301,20 @@ describe('model trees (nature round 2)', () => {
     expect(out[0]).toBe(1);
   });
 
-  it('shadow casters: lod0 casts as lod1, the CPU cut matches the shader reach', () => {
+  it('shadow casters: lod0 casts as lod1, the lists are cut by a sorted reach', () => {
     expect(shadowLevel(0)).toBe(1);
     expect(shadowLevel(1)).toBe(1);
     expect(shadowLevel(2)).toBe(2);
-    // the vertex shaders drop casters past uShadowCenter.w + 30.0
-    expect(SHADOW_REACH).toBe(30);
+    // a crown's half width past the box (the reach itself: tests/forest-casters.test.ts)
+    expect(SHADOW_REACH).toBe(12);
+    // the casters turn into impostors nearer than the picture's trees, and never nearer than lod0 ends
+    expect(CAST_N1).toBeLessThan(TREE_N1);
+    expect(CAST_N1 - TREE_BAND).toBeGreaterThan(TREE_N0 + TREE_BAND);
+    const lv: number[] = [];
+    treeLevels(62, 1, lv, CAST_N1);
+    expect(lv.filter((_, i) => i % 3 === 0)).toEqual([1, 2]); // cross-fading
+    treeLevels(62, 1, lv);
+    expect(lv[0]).toBe(1); // … while the picture still shows the lod1 tree
     const d = new Float32Array([1, 5, 5, 9, 40, 120, 0]);
     expect(castCount(d, 6, 0.5)).toBe(0);
     expect(castCount(d, 6, 5)).toBe(3);

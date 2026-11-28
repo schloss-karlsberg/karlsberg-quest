@@ -21,6 +21,14 @@ import type { GraphicsLevel } from '../core/save';
 export type ScanMode = 0 | 1 | 2 | 3;
 
 /**
+ * Haze between the trunks (`uUnderCanopy`, 0..1; pure, tested): from the tree cover (0..1) where
+ * the viewer stands, gone when the lens is high above the ground (`agl` m: flying, the spirit view).
+ */
+export function canopyHaze(cover: number, agl: number): number {
+  return (0.45 + 0.55 * cover) * (1 - Math.min(1, Math.max(0, (agl - 8) / 14)));
+}
+
+/**
  * The outdoor world: terrain (2025 / 1789 datasets), sky, forest, 1789 palace, footprint
  * collision and the era look. Owns no gameplay; systems talk to it through this API.
  */
@@ -106,6 +114,7 @@ export class World {
     scene.add(this.sky.mesh, this.terrain.object, this.forest.object, this.palace.object);
     // the model trees cast with their lod1 geometry, cut to the shadow box's reach (forest.ts)
     this.shadows.onPass.add((on, focus, range) => this.forest.shadowPass(on, focus, range));
+    this.forest.casting = () => this.shadows.enabled;
 
     const src = {
       height: (x: number, z: number) => this.hf.heightAt(x, z),
@@ -390,11 +399,17 @@ export class World {
     return this.mapTarget;
   }
 
-  /** Per-frame visual update (LOD, trees, transitions, shared uniforms). */
-  frame(camera: PerspectiveCamera, dt: number, time: number): void {
+  /**
+   * Per-frame visual update (LOD, trees, transitions, shared uniforms). `stand` is where the
+   * viewer stands when the camera circles someone (boot: the character, over the shoulder); the
+   * haze under the canopy is taken there, not under the lens. The lens swings 7 m through the
+   * tree cover in a turn on the spot, and the whole picture's haze went with it (TASK-088).
+   */
+  frame(camera: PerspectiveCamera, dt: number, time: number, stand?: { x: number; z: number } | null): void {
     atmosphere.uCamPos.value.copy(camera.position);
     const agl = camera.position.y - this.heightAt(camera.position.x, camera.position.z);
-    const under = (0.45 + 0.55 * this.coverAt(camera.position.x, camera.position.z)) * (1 - Math.min(1, Math.max(0, (agl - 8) / 14)));
+    const at = stand ?? camera.position;
+    const under = canopyHaze(this.coverAt(at.x, at.z), agl);
     atmosphere.uUnderCanopy.value += (under - atmosphere.uUnderCanopy.value) * Math.min(1, dt * 2);
     atmosphere.uTime.value = time;
     const u = this.terrain.uniforms;
