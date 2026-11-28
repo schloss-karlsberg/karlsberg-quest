@@ -141,6 +141,17 @@ function voiceManifestFallback(): Plugin {
   };
 }
 
+/**
+ * Paths the dev server must not watch. Agents create git worktrees under .claude/worktrees (each a full repo copy
+ * with its own index.html and tsconfig.json), and tools write task files, test reports and voice output next to the
+ * sources; any of these used to trigger a full page reload of the running game. The globs are anchored at this
+ * checkout's root, not `**\/.claude/**`: a dev server started inside a worktree lives under .claude/ itself and
+ * would otherwise ignore all of its own sources.
+ */
+export const WATCH_IGNORED = ['.claude', '.agents', '.mc', 'dist', 'test-results', 'playwright-report', '.voice-raw'].map(
+  (dir) => `${resolve(root, dir).replaceAll('\\', '/')}/**`,
+);
+
 export default defineConfig({
   // Relative base so the build works under any GitHub Pages sub-path.
   base: './',
@@ -157,7 +168,7 @@ export default defineConfig({
     // bundle output apart from the art assets (public/assets → dist/assets)
     assetsDir: 'app',
   },
-  server: { port: 5280 },
+  server: { port: 5280, watch: { ignored: WATCH_IGNORED } },
   test: {
     include: ['tests/**/*.test.ts'],
     environment: 'node',
