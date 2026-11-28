@@ -283,6 +283,7 @@ class Travel {
   // ---- survey points -----------------------------------------------------------------------
 
   activate(id: string, quiet = false): void {
+    if (this.ctx.era.current !== 'today') return;
     const p = pointById(id);
     if (!p || this.slice.activated.includes(id)) return;
     this.slice.activated.push(id);
@@ -305,6 +306,7 @@ class Travel {
 
   private syncTripods(): void {
     const ctx = this.ctx;
+    if (ctx.era.current !== 'today') return;
     const p = ctx.player.position;
     const known = new Set(this.known().map((k) => k.id));
     for (const sp of SURVEY_POINTS) {
@@ -313,7 +315,7 @@ class Travel {
       // a found point's beam is a landmark: keep it within 1.4 km
       const range = known.has(sp.id) ? 1400 : 260;
       if (!t && d < range) {
-        const y = ctx.world.heightfields[ctx.era.current === 'today' ? '2025' : '1789'].heightAt(sp.x, sp.z);
+        const y = ctx.world.heightfields['2025'].heightAt(sp.x, sp.z);
         t = buildTripod(sp.x, y - 0.03, sp.z, SURVEY_POINTS.indexOf(sp) + TRIPOD_SEED_BASE);
         t.lit = known.has(sp.id) ? 1 : 0;
         this.tripods.set(sp.id, t);
@@ -971,6 +973,8 @@ class Travel {
       this.goalStory = typeof x === 'number' && typeof z === 'number' ? { x, z } : null;
     });
     ev.on('era:change', () => {
+      this.pendingActivations.length = 0;
+      if (this.cardBanner) this.hideCard();
       this.wayBlocked = false;
       this.setWayMarker(null);
       this.dropAllVisuals();
@@ -1084,7 +1088,8 @@ export default defineSystem({
   init(ctx) {
     injectTravelCss();
     travel = new Travel(ctx);
-    registerEraMaterials('travel.poi', '*', () => [buildTripod(0, 0, 0, TRIPOD_SEED_BASE).group, buildShrine(0, 0, 0, 0, 1).group]);
+    registerEraMaterials('travel.tripod', 'today', () => buildTripod(0, 0, 0, TRIPOD_SEED_BASE).group);
+    registerEraMaterials('travel.poi', '*', () => buildShrine(0, 0, 0, 0, 1).group);
     travel.wire();
     hooks = travel.hooks();
     travel.registerPages();

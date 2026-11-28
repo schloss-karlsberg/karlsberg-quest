@@ -6,10 +6,10 @@
  */
 import { PARTY_VARIANTS, type PartyVariant } from '../party/types';
 
-/** `?kapitel=N`: the chapter a new game jumps to, or null. */
+/** `?kapitel=N`: resolve the displayed chapter number to a K1–K4 index, or null. */
 export function kapitelJump(params: URLSearchParams): number | null {
   const n = Number(params.get('kapitel'));
-  return Number.isInteger(n) && n >= 2 && n <= 4 ? n : null;
+  return Number.isInteger(n) && n >= 2 && n <= 5 ? n - 1 : null;
 }
 
 /** `?party=museum|burn|keep`: the party variant to boot into, or null. */

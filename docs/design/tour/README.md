@@ -51,6 +51,8 @@ i just want to travel once and stay there. if i travel, tutorials (chapter 1 fin
 begins (outside the castle)." The scope below was set by the coordinator while the owner's answers
 are pending; PRD D-012.
 
+- **Chapter numbers.** The tour is chapter 1, „Der Hof“ is chapter 2, and the remaining chapters
+  are numbered 3–5. The testing aid `?kapitel=2…5` follows those numbers.
 - **One touch.** `t17` ends on the touch, `t18` is the arrival: the shift, `player.q.wo`,
   `laub.t.1789` (without „Für heute genügt ein Blick.“) and `laub.t.seite`, with the player free to
   move as soon as the shift is done. No fade, no return, no second touch. The hand-over grants are
@@ -71,6 +73,9 @@ are pending; PRD D-012.
   eviction, so the first return is the story's own („Gehen wir erst nach Hause“ after the Zwinger).
   Holding Q and waking at the Quelle after a defeat work as before. Not built: a chapter or a game
   without the present (wake in the past, no Q home); see TASK-089, follow-ups.
+- **Survey tripods (owner, 2026-11-28).** The eleven tripods, their beams and walk-up discovery
+  belong to the present. Known survey points still serve as map destinations. Story and quest
+  markers in the past come from their own objectives.
 
 ## Decisions (owner, 2026-11-20)
 

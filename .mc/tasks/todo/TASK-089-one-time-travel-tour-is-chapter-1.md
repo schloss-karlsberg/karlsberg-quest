@@ -41,11 +41,12 @@ spring below the palace, and chapter 2 „Der Hof“ begins there, outside the g
 
 - [ ] A new game has exactly one „Wasser berühren“ before the court: touch at `tour/t17`, arrive in
       1789, keep control, no fade to black, no return to the present, no second touch.
-- [ ] The chapter card after the jump reads „Der Hof“ / „Kapitel 2 · Sommer 1789“ and shows in 1789
+- [x] The chapter card after the jump reads „Der Hof“ / „Kapitel 2 · Sommer 1789“ and shows in 1789
       at the Brunnenstube; the first objective is the coat at the Bleiche („Ein Rock, der nicht
       leuchtet …“).
-- [ ] Chapter labels for the player: Kapitel 1 „Die Führung“, 2 „Der Hof“, 3 „Die Flucht“,
+- [x] Chapter labels for the player: Kapitel 1 „Die Führung“, 2 „Der Hof“, 3 „Die Flucht“,
       4 „Die Nacht“, 5 „Der Steinbruch“; no „Prolog“ on a card or in Pause → Kapitel.
+- [x] Laub's eleven survey tripods and walk-up discoveries appear only in the present.
 - [ ] No tutorial is taught twice or lost (table in „Target flow“).
 - [ ] Old saves at every point of the old flow load and can finish the game: `tour/t1…t18`,
       `k1/k1_0` (present, waiting for the second touch), `k1/k1_0b…`, legacy `prolog` saves. Unit
@@ -252,10 +253,9 @@ _Status: approved 2026-11-28_ (by the coordinator; the owner's answers are pendi
 | F8 the coat: marker, prompt, the sneak | slice 3 |
 | F13 / F14 the trough prompt, the Bussole picks itself up | TASK-081 (tour `t16`), not here |
 
-**Approach:** Four PRs. The first makes the jump one-way with content edits and one save
-migration, no engine change. The second renames the chapters for the player and moves the testing
-aids and docs along. The third lets the first stay run until the story goes home (no oil eviction
-in the day part of „Der Hof“). The fourth is the one re-recorded voice line.
+**Approach:** Slice 1 made the jump one-way with content edits and a save migration. Slices 2 and 3
+share a branch based on `integrate/all` and implement the owner's present-only tripod decision.
+The edited voice line shipped with slice 1.
 
 **Files to touch:** see „Blast radius“.
 
@@ -276,13 +276,13 @@ PR 1 — `feat(story): the first time travel is one-way`
       `quelle`, `smoke` locally one at a time, the rest and the campaign in CI.
 - [ ] 7. Docs for the flow (PRD row and §4.2, tour README decision, bibles, ACTION-RPG §14).
 
-PR 2 — `feat(ui): the tour is chapter 1, „Der Hof“ chapter 2`
-- [ ] 8. `sub_de` of the five chapters; `ui.keys.measure`; grep player text for chapter numbers.
-- [ ] 9. `?kapitel=2…5` in `src/boot.ts`; `e2e/quests.spec.ts`; CONTRIBUTING, RELEASE,
-      NEXT-SESSION, AGENTS.md mapping; note in TASK-086.
+Slice 2 — `feat(ui): the tour is chapter 1, „Der Hof“ chapter 2`
+- [x] 8. `sub_de` of the five chapters; `ui.keys.measure`; grep player text for chapter numbers.
+- [x] 9. `?kapitel=2…5` in `src/boot.ts`; `e2e/quests.spec.ts`; CONTRIBUTING, RELEASE,
+      NEXT-SESSION and the AGENTS.md mapping.
 
-PR 3 — `feat(story): the first stay lasts until the story goes home` (owner decision 1)
-- [ ] 10. K1 `oel-a` off for the day part (as K4 runs without an oil meter); `lauf-zurueck` toast
+Slice 3 — `feat(story): the first stay lasts until the story goes home` (owner decision 1)
+- [x] 10. K1 `oel-a` off for the day part (as K4 runs without an oil meter); `lauf-zurueck` toast
       reworded; check lantern / Bannlicht supply without the meter; `chapter-k1`, `campaign`,
       `story.test.ts` assertions on the oil meter.
 
@@ -351,8 +351,9 @@ objective, Pause → Kapitel.
   today's `k1_0` waiting in the present for Q (chapter chosen from Pause → Kapitel) loads as
   written, because there the player decides when to cross.
 - Slice 2 (`feat/task-089-chapter-numbers`): the five chapter cards, `ui.keys.measure`, a unit test for
-  the labels, the id table in `content/story/README.md` and AGENTS.md. `?kapitel=2…5` waits for
-  TASK-086's PR (#133), which moves the flag into `src/systems/story/devstart.ts`.
+  the labels, and the id table in `content/story/README.md` and AGENTS.md. `?kapitel=2…5` maps displayed
+  numbers to internal ids via `src/systems/story/devstart.ts`, including „Der Hof“ with the tour's
+  starter supplies.
 - Slice 3 (`feat/task-089-first-stay`): no oil meter in the day part (`oel-tag` stops an old save's
   meter, `lauf-zurueck` moved to the night), and the coat: marker on the coat, „Rock nehmen“
   (`prompt_de` on clues), Liese sees an upright walk between her lines (`k1.rock.frei`).
@@ -366,11 +367,19 @@ objective, Pause → Kapitel.
   waits for `k1.karte` (set by a card-gated entry action), and the capture script steps instead of
   flushing. Also from that look: the arrival quest is offered before the coat quest so the coat
   leads the tracker, and the coat objective is set with Laub's second line.
-- Voice: the raw take of `laub.t.1789` (`.voice-raw/raw-service/laub.t.1789.wav`, sha256 as in the
-  manifest) is silent below −50 dB from 7.51 s to 8.01 s, between „Atmen Sie.“ and the last
-  sentence. Cut at 7.70 s with an 80 ms fade-out and run through `processClip`
+- Voice: the raw take of `laub.t.1789` (sha256 as in the manifest) is silent below −50 dB from 7.51 s to
+  8.01 s between „Atmen Sie.“ and the last sentence. Cut at 7.70 s with an 80 ms fade-out and run through `processClip`
   (`scripts/voice/audio.ts`, same pause cap) like every clip: 7147 ms, −17.9 LUFS, −1.5 dBTP; the
   uncut take through the same chain gives the committed 8760 ms. Manifest entry: new files, text and
   speech hash of the shortened line, `chars` 94, `durationMs`, an `edit` note; voice id, model,
   licence and attribution unchanged. `pnpm voice:plan` lists the line as up to date. Checked by
   level analysis, not by ear.
+- 2026-11-28: integrated slices 2 and 3 on `feat/task-089-stay-numbers-tripods` using
+  `9e85e709`, `013361a7` and `b9250b7b`. Rebuilt the generated quest and pack outputs.
+- Owner decision of 2026-11-28: stream and discover Laub's eleven tripods only in the present.
+  The map keeps known destinations. No historical story or quest objective requires a tripod.
+  The 1796 Westblick bottle uses the point's coordinates as a reference and has its own placement
+  and interaction. `tests/travel-era.test.ts` checks past eras and the return to today.
+- Verification on Node 24: all four local gates passed. Unit tests reported 2,744 passed, 17 todo
+  and 0 failed across 247 files. Validation reported 0 errors and 28 warnings. Playwright coverage
+  for the chapter cards, spring arrival, daytime lantern, chapter jumps and survey points awaits CI.

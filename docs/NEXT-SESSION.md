@@ -251,7 +251,7 @@ collectibles, is in §5). The spring is called "Karlsbergquelle".
   | `?manual` | Bullet-time stepping |
   | `?era=1789` | Start in that era |
   | `?x=1214&z=-1172&yaw=180` | Start at the 1789 Ehrenhof |
-  | `?kapitel=2\|3\|4` | A new game starts at that chapter, with skills and level |
+  | `?kapitel=2\|3\|4\|5` | A new game starts at that chapter, with skills and level |
   | `?q=low\|med\|high` | Quality tier |
   | `?cam=first\|third` | Camera mode |
   | `?debug` | Stats and validation |

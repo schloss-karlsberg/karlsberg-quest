@@ -17,10 +17,10 @@ vi.mock('../src/ui/dom', async (importOriginal) => ({
 describe('dev start flags', () => {
   const p = (q: string) => new URLSearchParams(q);
 
-  it('reads ?kapitel=2|3|4 only', () => {
-    expect(kapitelJump(p('kapitel=3'))).toBe(3);
+  it('maps displayed chapters 2–5 to the internal K1–K4 indices', () => {
+    expect([2, 3, 4, 5].map((n) => kapitelJump(p(`kapitel=${n}`)))).toEqual([1, 2, 3, 4]);
     expect(kapitelJump(p('kapitel=1'))).toBeNull();
-    expect(kapitelJump(p('kapitel=5'))).toBeNull();
+    expect(kapitelJump(p('kapitel=6'))).toBeNull();
     expect(kapitelJump(p('kapitel=2.5'))).toBeNull();
     expect(kapitelJump(p(''))).toBeNull();
   });

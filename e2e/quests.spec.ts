@@ -430,17 +430,17 @@ test('quests: save and load keep the task and its count; reset withdraws the wor
   expect(errors).toEqual([]);
 });
 
-// TASK-083: the chapter 3 and 4 openers ask for a walk and then a Q shift. Their places are tagged
+// TASK-083: the chapter 4 and 5 openers ask for a walk and then a Q shift. Their places are tagged
 // with the destination era; the marker must still show in the present, before the shift.
 for (const [kapitel, quest, objective, before] of [
-  [3, 'q.k3.nachmittag', 'ehrenhof', null],
-  [4, 'q.k4.zettel', 'tal', 'zettel'],
+  [4, 'q.k3.nachmittag', 'ehrenhof', null],
+  [5, 'q.k4.zettel', 'tal', 'zettel'],
 ] as const) {
   test(`chapter ${kapitel} opener: the "there: Q" place has its marker in the present`, async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto(`./?notitle&nosave&fresh&manual&kapitel=${kapitel}`);
     await waitForHooks(page, ['story', 'quests']);
-    // The opener starts its quest on game time: the chapter card, then a delayed cue (chapter 4:
+    // The opener starts its quest on game time: the chapter card, then a delayed cue (chapter 5:
     // about 10 s). Real time runs at most 8 fixed updates a frame, so a slow software renderer
     // stretched that past a minute. Step a fixed budget of 40 s instead.
     const state = await page.evaluate((q) => {

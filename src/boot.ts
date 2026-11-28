@@ -796,7 +796,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     ready: () => Promise.all([palaceReady, surfaceReady]),
   });
 
-  // Playtesting a later chapter: ?kapitel=2|3|4 turns a NEW game into a start at that chapter,
+  // Playtesting a later chapter: ?kapitel=2|3|4|5 turns a NEW game into a start at that chapter,
   // with what the earlier chapters would have left behind (survey skills, a fitting level).
   const kapitel = kapitelJump(params);
   if (kapitel !== null) {
@@ -865,14 +865,24 @@ export function startPlay({ events, ui, input }: Pick<GameContext, 'events' | 'u
   if (ui.modals.count === 0) input.requestLock();
 }
 
-/** `?kapitel=N`: jump a freshly started game to chapter N (see boot). */
+/** Start a fresh game at the given K1–K4 index, resolved by kapitelJump. */
 function startAtChapter(n: number): void {
   const k = window.kq;
   if (!k?.story || !k.skills || !k.progression || !k.quests) return;
-  const skills: [string, number][] = [['relief', 2], ['kartograf', 2]];
+  const skills: [string, number][] = n === 1 ? [['relief', 3], ['kartograf', 1]] : [['relief', 2], ['kartograf', 2]];
   if (n >= 2) skills.push(['baumeister', 1], ['spurenleser', 1]);
   for (const [id, tier] of skills) k.skills.grant(id, tier, true);
   k.progression.level(n * 2 + 1);
+  if (n === 1) {
+    k.ctx.state.update((s) => {
+      s.flags['story.compass'] = true;
+      for (const item of ['item.bussole', 'item.p.seite']) {
+        if (!s.inventory.items.includes(item)) s.inventory.items.push(item);
+      }
+    }, 'story');
+    k.progression.grant('item.balsam', 4, true);
+    k.progression.grant('item.lampenoel', 1, true);
+  }
   const earlier = new RegExp(`^q\\.(p|${Array.from({ length: n - 1 }, (_, i) => `k${i + 1}`).join('|')})\\.`);
   for (const id of k.quests.ids()) if (earlier.test(id) && k.quests.state().quests[id]?.state !== 'done') k.quests.reset(id);
   k.story.goto(`k${n}`, `k${n}_0`);
