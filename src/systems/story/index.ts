@@ -25,7 +25,7 @@ import { VoiceClips, type VoiceClipStats } from './dialogue/voiceClips';
 import { sayLineIds } from './dialogue/voiceManifest';
 import { DialoguePresenter, holdSeconds, substituteName } from './dialogue/presenter';
 import { speakerMeta } from './dialogue/speakers';
-import { DEFAULT_VISITOR_NAME, type MeterState, StoryEngine, type StoryEnv, type StorySlice, createStorySlice, evaluate, runTeleport, runsOnResume, staysAtHandover, waitsForChapterCard } from './engine';
+import { DEFAULT_VISITOR_NAME, type MeterState, StoryEngine, type StoryEnv, type StorySlice, createStorySlice, evaluate, runTeleport, runsOnResume, staysAtHandover, waitsForChapterCard, whereOf } from './engine';
 import { composeEpilogue, type Epilogue } from './endings/epilogue';
 import { endingScenes } from './endings/scenes';
 import { EndingStage } from './endings/stage';
@@ -347,6 +347,18 @@ class StoryRuntime {
         this.gatePending = false;
         // the beat's spoken lines: fetch and decode their clips now (never waits)
         this.clips?.preload(sayLineIds(b).map((id) => ({ id })));
+        if (ch === 'k1' && b.id === 'k1_0b') {
+          const watch = b.on?.find((r) => r.id === 'k1_0b.liese-sieht');
+          const circle = watch && whereOf(watch.when);
+          const { x, z } = ctx.player.position;
+          // Only the player already in Liese's circle gets the opening grace.
+          const inside = !!circle && ctx.era.current === '1789' && Math.hypot(x - circle.x, z - circle.z) <= circle.r;
+          ctx.state.mutable.flags['k1.rock.grace'] = inside;
+          // Beat reactions start on the following tick. Set the arrival marker now, with the pickup.
+          const arrival = b.on?.find((r) => r.id === 'k1_0b.damals');
+          const goal = arrival?.do.find((a) => a.do === 'objective');
+          if (arrival && goal && this.holds(arrival.when)) this.exec(goal);
+        }
         ctx.events.emit('story:beat', { chapter: ch, beat: b.id, ...(o.resume ? { resume: true as const } : {}) });
         if (!o.resume) this.pendingAutosave = true;
         this.clearPrompt();
@@ -697,8 +709,8 @@ class StoryRuntime {
     this.presenter.clear(handover);
     // a new chapter (a new day) starts on your feet, not still prone from the last chase
     if (ctx.player.stance !== 'stand') ctx.player.setStance('stand');
-    // The tour already points to the coat on arrival in 1789. Keep that goal through the title card.
-    if (!(handover && f.chapter === 'k1' && this.slice.objective?.id === 'k1.rock')) {
+    // Keep the listening goal through the title card.
+    if (!(handover && f.chapter === 'k1' && this.slice.objective?.id === 'k1.ankunft')) {
       this.slice.objective = null;
       this.objectives.set(null);
     }

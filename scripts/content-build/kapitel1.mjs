@@ -43,7 +43,7 @@ const clues = [
   // the disguise opening (k1_0b): the coat, the paper, the letter
   clue('clue.k1.rock', {
     title: 'Kaspars Rock', kind: 'object', at: DZ.coatReach, r: 1.4, era: E, chapter: ch, fiction: true,
-    // „Rock nehmen“, and only while Liese has not caught you at her lines (the story opens the Bleiche with `k1.rock.frei`)
+    // „Rock nehmen“, and only while Liese has not caught you at her lines (story k1_0b sets `k1.rock.frei`)
     prompt: 'Rock nehmen', req: { flags: ['k1.rock.frei'] },
     text: 'Auf der hinteren Leine, zwischen Laken und Hemden, hängt ein dunkelblauer Rock mit Messingknöpfen, an den Ärmeln etwas zu lang. Liese schaut zum Weg. Hinter der zweiten Leine sieht sie dich nicht. (Fiktion: Liese, Kaspar und sein Rock sind erfunden.)',
     facts: ['cx.46'],

@@ -71,6 +71,7 @@ async function boot(initial: GameState, { withFx = false, reducedMotion = false,
   const player = {
     position: { x: 1300, y: 0, z: -1490 },
     stance: 'stand',
+    setStance(stance: string) { this.stance = stance; },
     stats: { lanternLit: false, speed: 0 },
     teleport(x: number, z: number) { Object.assign(this.position, { x, z }); },
     writeState(target: { x: number; z: number }) { Object.assign(target, { x: this.position.x, z: this.position.z }); },
@@ -376,7 +377,8 @@ describe('the first time travel in the story runtime (TASK-089)', () => {
     const initial = createInitialState();
     initial.systems.story = { ...createStorySlice(), active: true, chapter: 'tour', beat: 't17', unlocked: ['tour'], objective: { id: 'tour', text: 'Am Trog das Wasser berühren' } };
     initial.flags = { 'quelle.call': true, 'quelle.guide': true, 'story.laub': true, 'story.compass': true, 'combat.disabled': true };
-    const game = await boot(initial);
+    const game = await boot(initial, { withChronik: true });
+    game.dialogue();
     quests.init(game.ctx);
     Object.assign(game.player.position, { x: HOME.spawn.x, z: HOME.spawn.z });
     const eras: string[] = [];
@@ -394,8 +396,8 @@ describe('the first time travel in the story runtime (TASK-089)', () => {
     game.tick();
     expect(beat(game)).toBe('tour/t18');
     expect(game.era.current).toBe('1789');
-    game.tick();
-    expect(game.state.state.systems.story?.objective).toMatchObject({ id: 'k1.rock' });
+    expect(game.state.state.systems.story?.objective).toEqual({ id: 'k1.ankunft', text: 'Laub zuhören' });
+    expect(window.kq!.chronik!.status('clue.k1.rock')).toBe('hidden');
     // free to walk on during Laub's lines: 80 m down the brook
     Object.assign(game.player.position, { x: HOME.spawn.x - 70, z: HOME.spawn.z - 40 });
     for (let i = 0; i < 160 && game.state.state.systems.story?.chapter === 'tour'; i++) game.tick(0.5);
@@ -403,7 +405,8 @@ describe('the first time travel in the story runtime (TASK-089)', () => {
     // the people of the chapter stand while the card is still up, the prelude's too
     game.tick(0.5);
     expect(beat(game)).toBe('k1/k1_0');
-    expect(game.state.state.systems.story?.objective).toMatchObject({ id: 'k1.rock' });
+    expect(game.state.state.systems.story?.objective).toEqual({ id: 'k1.ankunft', text: 'Laub zuhören' });
+    expect(window.kq!.chronik!.status('clue.k1.rock')).toBe('hidden');
     expect(Object.keys(placed(game)).sort()).toEqual(['diener', 'gaertner', 'gardist', 'gardist-tor', 'hanne', 'hofgaertner', 'jost', 'lakai', 'liese', 'soll']);
     // nothing is offered on the card: the quests wait for Laub's arrival lines
     expect(game.state.state.systems.quests?.quests['q.k1.kleider']?.state ?? 'hidden').toBe('hidden');
@@ -432,10 +435,11 @@ describe('the first time travel in the story runtime (TASK-089)', () => {
     expect(game.state.state.systems.story?.said).toEqual(expect.arrayContaining(['player.q.wo', 'laub.t.1789', 'laub.t.seite', 'laub.k1.brunnenstube', 'laub.k1.fremde']));
   });
 
-  it.each([false, true])('opens the Bleiche before a continuous sprint reaches the coat (reduced motion: %s)', async (reducedMotion) => {
+  it.each([false, true])('starts the Bleiche brief before a continuous run reaches the sheets (reduced motion: %s)', async (reducedMotion) => {
     const initial = createInitialState();
     initial.systems.story = { ...createStorySlice(), active: true, chapter: 'tour', beat: 't17', unlocked: ['tour'] };
     const game = await boot(initial, { withFx: true, reducedMotion, withChronik: true });
+    quests.init(game.ctx);
     Object.assign(game.player.position, { x: HOME.spawn.x, z: HOME.spawn.z });
     game.events.on('shift:request', ({ to }) => game.events.emit('shift:begin', { to, from: 'today' }));
     game.events.emit('game:start', { resumed: true });
@@ -478,107 +482,81 @@ describe('the first time travel in the story runtime (TASK-089)', () => {
     expect(p).toMatchObject({ x: COAT_REACH.x, z: COAT_REACH.z });
 
     expect(beat(game)).toBe('tour/t18');
+    expect(game.state.state.systems.story?.objective).toEqual({ id: 'k1.ankunft', text: 'Laub zuhören' });
+    expect(window.kq!.chronik!.target()).not.toBe('clue.k1.rock');
+    expect(game.prompt).not.toHaveBeenCalledWith('E', 'Rock nehmen', 'chronik');
+    game.pressInteract();
+    game.tick();
+    expect(game.state.state.inventory.clues).not.toContain('clue.k1.rock');
+
+    for (let i = 0; i < 200 && beat(game) !== 'k1/k1_0b'; i++) game.tick(0.25);
+    expect(beat(game)).toBe('k1/k1_0b');
+    expect(dialogue.shown().filter((id) => id === 'laub.k1.bleiche')).toHaveLength(1);
+    expect(game.state.state.systems.story?.objective).toMatchObject({ id: 'k1.rock', x: COAT_REACH.x, z: COAT_REACH.z });
+    expect(p).toMatchObject({ x: COAT_REACH.x, z: COAT_REACH.z });
     expect(window.kq!.chronik!.target()).toBe('clue.k1.rock');
     expect(game.prompt).toHaveBeenLastCalledWith('E', 'Rock nehmen', 'chronik');
 
-    // Continue upright through the front of the green. Liese reacts before the tour ends.
-    const warning = vi.fn();
-    game.events.on('dialogue:say', ({ id }) => { if (id === 'liese.k1.sieht') warning(); });
-    runTo(...toWorld(0.3, 2.2));
-    expect(beat(game)).toBe('tour/t18');
-    expect(game.state.state.flags['k1.rock.frei']).toBe(false);
-    expect(warning).toHaveBeenCalledTimes(1);
-    expect(game.state.state.systems.story?.objective?.text).toContain('Liese hat dich gesehen');
-    expect(window.kq!.chronik!.status('clue.k1.rock')).toBe('hidden');
-
-    for (let i = 0; i < 200 && beat(game) !== 'k1/k1_0b'; i++) game.tick(0.5);
-    expect(beat(game)).toBe('k1/k1_0b');
-    expect(dialogue.shown().filter((id) => id === 'laub.k1.bleiche')).toHaveLength(1);
-    expect(game.state.state.flags['k1.rock.frei']).toBe(false);
-    expect(game.state.state.systems.story?.objective?.text).toContain('Liese hat dich gesehen');
-    runTo(1035.7, -855.1);
-    expect(window.kq!.chronik!.status('clue.k1.rock')).toBe('available');
-  });
-
-  it.each(['pickup', 'chapter card'])('credits a coat taken during t18 after reloading from the %s', async (saveAt) => {
-    const initial = createInitialState();
-    initial.era = '1789';
-    initial.systems.story = { ...createStorySlice(), active: true, chapter: 'tour', beat: 't18', unlocked: ['tour'] };
-    const game = await boot(initial, { withChronik: true });
-    quests.init(game.ctx);
-    const quest = 'q.k1.kleider';
-    const questState = () => game.state.state.systems.quests?.quests[quest];
-    const hides = vi.fn();
-    game.events.on('story:cue', ({ id }) => { if (id === 'scenery:coat') hides(); });
-    const reward = vi.fn();
-    game.events.on('quest:completed', ({ id }) => { if (id === quest) reward(); });
-    game.events.emit('game:start', { resumed: true });
-    game.player.teleport(COAT_REACH.x, COAT_REACH.z);
-    game.tick(0.25);
-    expect(game.prompt).toHaveBeenLastCalledWith('E', 'Rock nehmen', 'chronik');
+    // Liese is watching from the opening tick. The reach spot is behind her circle.
+    expect(game.state.state.flags['k1.rock.frei']).toBe(true);
+    expect(game.state.state.flags['k1.rock.grace']).toBe(false);
     game.pressInteract();
     game.tick();
-    expect(beat(game)).toBe('tour/t18');
-    expect(game.state.state.flags).toMatchObject({ 'disguise.coat': true, 'flag.k1_kleid': 'genommen' });
-    expect(hides).toHaveBeenCalledTimes(1);
-    expect(questState()).toBeUndefined();
-
-    if (saveAt === 'pickup') {
-      // Chronik autosaves the clue inside the interaction, before the story has applied the disguise.
-      expect(rawAuto(game.storage).inventory.clues).toContain('clue.k1.rock');
-      expect(rawAuto(game.storage).flags['disguise.coat']).toBeUndefined();
-      expect(game.save.load()).toBe(true);
-    }
-
-    for (let i = 0; i < 160 && beat(game) === 'tour/t18'; i++) game.tick(0.5);
-    expect(beat(game)).toBe('k1/k1_0');
-    expect(game.state.state.systems.story?.objective?.id).not.toBe('k1.rock');
-    expect(questState()).toBeUndefined();
-    expect(rawAuto(game.storage).flags).toMatchObject({ 'disguise.coat': true, 'flag.k1_kleid': 'genommen' });
-    if (saveAt === 'chapter card') expect(game.save.load()).toBe(true);
-
-    for (let i = 0; i < 200 && questState()?.state !== 'done'; i++) game.tick(0.25);
-    game.tick();
-    expect(beat(game)).toBe('k1/k1_0b');
-    expect(questState()).toMatchObject({ state: 'done', counts: { rock: 1 } });
-    expect(reward).toHaveBeenCalledTimes(1);
-    expect(game.state.state.systems.quests?.quests['q.k1.brief']?.state).toBe('active');
-    expect(game.state.state.systems.story?.objective?.id).toBe('k1.papier');
-    expect(game.state.state.flags['flag.k1_kleid']).toBe('genommen');
-    const warning = vi.fn();
-    game.events.on('dialogue:say', ({ id }) => { if (id === 'liese.k1.sieht') warning(); });
-    game.player.teleport(...toWorld(0.3, 2.2));
-    game.tick();
-    expect(warning).not.toHaveBeenCalled();
+    expect(game.state.state.inventory.clues).toContain('clue.k1.rock');
+    expect(game.state.state.flags['disguise.coat']).toBe(true);
   });
 
-  it('credits asking Liese before the coat quest opens', async () => {
+  it.each(['stand', 'crouch'])('gives a player already inside Liese’s circle time to react (%s)', async (stance) => {
     const initial = createInitialState();
     initial.era = '1789';
-    initial.systems.story = { ...createStorySlice(), active: true, chapter: 'tour', beat: 't18', unlocked: ['tour'] };
-    const game = await boot(initial, { withChronik: true });
+    initial.systems.story = { ...createStorySlice(), active: true, chapter: 'k1', beat: 'k1_0', unlocked: ['tour', 'k1'] };
+    const game = await boot(initial);
+    quests.init(game.ctx);
+    game.player.teleport(...toWorld(0.3, 2.2));
+    game.player.setStance(stance);
+    const warning = vi.fn();
+    game.events.on('dialogue:say', ({ id }) => { if (id === 'liese.k1.sieht') warning(); });
+    game.events.emit('game:start', { resumed: true });
+
+    for (let i = 0; i < 200 && beat(game) !== 'k1/k1_0b'; i++) {
+      expect(game.state.state.flags['k1.rock.frei']).toBeUndefined();
+      game.tick(0.25);
+    }
+    expect(beat(game)).toBe('k1/k1_0b');
+    expect(warning).not.toHaveBeenCalled();
+    game.tick();
+    expect(warning).not.toHaveBeenCalled();
+    expect(game.state.state.flags['k1.rock.frei']).toBe(true);
+    game.tick(1.9);
+    expect(warning).not.toHaveBeenCalled();
+    game.tick(0.2);
+    expect(warning).toHaveBeenCalledTimes(stance === 'stand' ? 1 : 0);
+    expect(game.state.state.flags['k1.rock.frei']).toBe(stance === 'stand' ? undefined : true);
+  });
+
+  it.each([false, true])('loads a branch save with the coat clue already taken (disguise applied: %s)', async (worn) => {
+    const initial = createInitialState();
+    initial.era = '1789';
+    initial.systems.story = {
+      ...createStorySlice(), active: true, chapter: 'tour', beat: 't18', unlocked: ['tour'],
+      objective: { id: 'k1.rock', text: 'Ein Rock, der nicht leuchtet', ...COAT_REACH },
+    };
+    initial.inventory.clues.push('clue.k1.rock');
+    initial.flags['k1.rock.frei'] = true;
+    if (worn) Object.assign(initial.flags, { 'disguise.coat': true, 'flag.k1_kleid': 'genommen' });
+    const game = await boot(deserializeState(JSON.stringify(initial)));
     quests.init(game.ctx);
     game.events.emit('game:start', { resumed: true });
-    game.tick();
-    game.state.mutable.flags['talked.k1.liese.rock'] = true;
-    game.events.emit('npc:talk', { chapter: 'k1', npc: 'liese', topic: 'rock' });
-    game.player.teleport(...toWorld(0.3, 2.2));
-    game.tick();
-    expect(game.state.state.flags['k1.rock.frei']).toBe(true);
+    expect(game.state.state.systems.story?.objective).toEqual({ id: 'k1.ankunft', text: 'Laub zuhören' });
+    expect(game.state.state.flags['k1.rock.frei']).toBeUndefined();
 
     for (let i = 0; i < 200 && beat(game) !== 'k1/k1_0b'; i++) game.tick(0.5);
     game.tick();
-    const coatQuest = () => game.state.state.systems.quests?.quests['q.k1.kleider'];
-    expect(coatQuest()).toMatchObject({ state: 'active', counts: { bitte: 1 } });
-    for (let i = 0; i < 3; i++) {
-      game.events.emit('enemy:killed', {
-        id: `mahnbrief-${i}`, kind: 'mahnbrief', group: 'quest:q.k1.kleider:zettel',
-        x: 998, z: -886, era: '1789', boss: false, by: 'light',
-      });
-    }
     game.tick();
-    expect(coatQuest()).toMatchObject({ state: 'done', counts: { bitte: 1, zettel: 3, rock: 1 } });
-    expect(game.state.state.flags['flag.k1_kleid']).toBe('geliehen');
+    expect(beat(game)).toBe('k1/k1_0b');
+    expect(game.state.state.flags['flag.k1_kleid']).toBe('genommen');
+    expect(game.state.state.systems.quests?.quests['q.k1.kleider']).toMatchObject({ state: 'done', counts: { rock: 1 } });
+    expect(game.state.state.systems.quests?.quests['q.k1.brief']?.state).toBe('active');
   });
 
   it('queues Laub’s Bleiche brief on the approach even during the spring arrival beat', async () => {

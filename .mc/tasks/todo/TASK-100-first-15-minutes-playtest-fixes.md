@@ -41,8 +41,8 @@ Address the fresh-game playtest on main at db8b1b8d, through the first visit to 
 
 - Branch `fix/first-15-minutes`.
 - F2. Spaced the gathered arcs for player clearance. The car-park regression reproduced the stall on the baseline and now passes from 16 headings, including starts inside the ring. The authored Felsenpfad and Quelle slots also clear the player width.
-- F3. The story and quest point to the existing reach spot behind the second line. The brief starts within 30 m, including during the spring arrival beat. The disguise spec checks the approach and takes the coat from its marked spot.
-- F5. The coat objective replaces the trough on the first story tick in 1789 and stays in the HUD through the chapter handover. The runtime and tour spec check both moments.
+- F3. The story and quest point to the existing reach spot behind the second line. Laub opens the 1789 arrival with the brief. Chapter 2 has a 30 m fallback for arrivals that missed it. The disguise spec checks the approach and takes the coat from its marked spot.
+- F5. „Laub zuhören“ replaces the trough goal on arrival and stays in the HUD through the chapter card and dialogue. The runtime and tour spec check both moments.
 - F10. The story HUD reads the moving waypoint used by the group marker and uses its distance format. Unit and tour coverage check both indicators.
 - F8. The glass sound keeps its cue cadence. The first caption is immediate when the sound plays, and later captions are at least 30 seconds apart.
 - F9. Removed the objective text wipe that clipped the line. The tour spec checks the first arrival frame and wrapping in the HUD column.
@@ -56,6 +56,7 @@ Address the fresh-game playtest on main at db8b1b8d, through the first visit to 
 
 - Integrated the train's chapter numbering, Liese's coat rules, daytime oil fix, present-day tripods, throw cancellation and completing dialogue. Kept the reachable-side coat target.
 - F3. Made the Bleiche brief the first line of the 1789 arrival and kept the recorded exchange and Bussole-page line. The runtime test follows the trail at sprint speed and checks that the presenter starts the line before reaching the linen, with and without reduced motion. Chapter 2 retains the approach trigger for saves that missed the tour brief.
+- F3 and F5. The coat marker and Bussole bearing, „Rock nehmen“ and Liese’s watch all open in `k1_0b`. A player already inside the watch circle has two seconds of game time before detection can trigger. Saves from the early-pickup revision credit any coat already taken when the quest opens.
 - F10. Pointed the Bussole at the resolved route target and restricted world-marker rounding to the moving group. The door regression distinguishes the foot of the steps from the marker in the opening.
 - F12. Verified the pickup hint on desktop and touch while throw is muted, alongside the train’s held and buffered throw cancellation tests.
 - The tour and disguise browser expectations are covered by CI. Playwright was reserved for CI in this round.
@@ -63,3 +64,6 @@ Address the fresh-game playtest on main at db8b1b8d, through the first visit to 
 ## Follow-ups
 
 - F2. Test dog occupancy in the car-park passages and give settled dogs positions clear of those gaps. Dog positions follow Jost and use their own avoidance, so visitor slot spacing alone cannot reserve the passage.
+- Exercise the sprint from the jump with actual movement, collision and audio playback. The unit test drives position and checks when the dialogue presenter starts the brief.
+- Exercise saving and resuming the arrival just after the chapter card with the card mounted. The runtime fixture does not render a connected card.
+- Review Laub’s „In Rot“ and coat instruction when loading a branch save with the disguise already applied. The regular arrival plays those lines before coat pickup is available.

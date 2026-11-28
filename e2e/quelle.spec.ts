@@ -171,6 +171,7 @@ test('Karlsbergquelle: E at the trough, the still moment, the one shift to 1789,
     return Math.hypot(k.ctx.player.position.x - p0.x, k.ctx.player.position.z - p0.z);
   });
   expect(moved).toBeGreaterThan(0.3);
+  await expect(page.getByTestId('objective')).toContainText('Laub zuhören');
   // the arrival lines, then „Der Hof“ begins where the player stands: no way back, no second touch
   for (let i = 0; i < 80 && (await story(page)).beat !== 'k1_0b'; i++) await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
   expect(await story(page)).toMatchObject({ chapter: 'k1', beat: 'k1_0b', era: '1789' });

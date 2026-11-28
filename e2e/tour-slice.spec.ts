@@ -828,19 +828,22 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   }
   expect(era).toBe('1789');
   const arrivalGoal = await page.evaluate(() => {
-    const k = window.kq!;
-    k.step(1);
+    window.kq!.step(1);
     const objective = document.querySelector<HTMLElement>('[data-testid="objective"]')!;
     return {
       text: objective.textContent,
       clipPath: getComputedStyle(objective).clipPath,
-      beat: k.story!.state().beat,
-      coat: k.chronik!.status('clue.k1.rock'),
+      target: window.kq!.ctx.ui.hud.objectiveTarget,
+      coat: window.kq!.chronik!.status('clue.k1.rock'),
     };
   });
-  expect(arrivalGoal.text).toContain('Ein Rock, der nicht leuchtet');
-  expect(arrivalGoal).toMatchObject({ clipPath: 'none', beat: 't18', coat: 'available' });
-  await expectObjectiveFits(page, 'Ein Rock, der nicht leuchtet');
+  expect(arrivalGoal.text).toContain('Laub zuhören');
+  expect(arrivalGoal.text).not.toContain('das Wasser berühren');
+  expect(arrivalGoal.target).toBeNull();
+  expect(arrivalGoal.coat).toBe('hidden');
+  await expect(page.locator('.kq-prompt')).not.toContainText('Rock nehmen');
+  expect(arrivalGoal.clipPath).toBe('none');
+  await expectObjectiveFits(page, 'Laub zuhören');
   await page.evaluate(() => window.kq!.step(300));
   expect(await page.evaluate(() => window.kq!.walk!.stats().visible)).toBe(0);
   expect(await page.evaluate(() => window.kq!.animals!.stats().visible)).toBe(0);
@@ -867,7 +870,7 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   expect(s1.chapter).toBe('k1');
   expect(s1.beat).toBe('k1_0');
   expect(s1.era).toBe('1789');
-  expect(s1.objective).toMatchObject({ id: 'k1.rock' });
+  expect(s1.objective).toEqual({ id: 'k1.ankunft', text: 'Laub zuhören' });
   await expect(page.getByTestId('story-card')).toContainText('Kapitel 2 · Sommer 1789');
   expect(await page.evaluate(() => window.kq!.story!.shown())).toContain('laub.k1.bleiche');
   // the chapter card stands alone: no quest banner on it

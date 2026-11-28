@@ -416,67 +416,14 @@
       "id": "t18",
       "title_de": "Sommer 1789",
       "enter": [
+        { "do": "flag", "set": { "k1.rock.frei": null } },
+        { "do": "objective", "id": "k1.ankunft", "text": "Laub zuhören" },
         { "do": "shift", "to": "1789", "reason": "quelle", "onResume": true },
-        { "do": "npc", "op": "spawn", "npc": "liese", "x": 1004.85, "z": -870.3, "era": "1789", "chapter": "k1", "yaw": 120 },
         { "do": "say", "id": "laub.k1.bleiche", "speaker": "laub", "text": "Die Bleiche. Die Wäscherin schaut zum Weg, nicht auf die Leine. Hinten herum, hinter der zweiten Leine, sieht sie Sie nicht. Oder Sie fragen sie. Fragen soll auch eine Methode sein.", "delay": 3.5, "wait": true, "onResume": true },
         { "do": "say", "id": "player.q.wo", "speaker": "player", "text": "Wo sind die alle hin?", "delay": 0.2, "onResume": true },
         { "do": "say", "id": "laub.t.1789", "speaker": "laub", "text": "Nicht fort. Nur zweihundert Jahre weiter, je nachdem, wie man rechnet. Sommer 1789. Atmen Sie.", "delay": 0.6, "onResume": true },
         { "do": "say", "id": "laub.t.seite", "speaker": "laub", "text": "Und im Deckel der Bussole steckt ein Blatt. Unten steht meine Handschrift. Sie finden es später unter Ausrüstung.", "delay": 0.8, "onResume": true },
         { "do": "flag", "set": { "tour.ende": true }, "delay": 1.6, "onResume": true }
-      ],
-      "on": [
-        {
-          "id": "bleiche-nach-zeitsprung",
-          "when": { "all": [{ "era": "1789" }, { "not": { "flag": "disguise.coat" } }, { "not": { "flag": "k1.rock.frei", "eq": false } }] },
-          "do": [
-            { "do": "flag", "set": { "k1.rock.frei": true } },
-            { "do": "objective", "id": "k1.rock", "text": "Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach", "x": 1001.08, "z": -880.9 }
-          ]
-        },
-        {
-          "id": "bleiche.liese-sieht",
-          "when": { "all": [
-            {"enter": {"x": 1003.6, "z": -875.7, "r": 3.6, "era": "1789"}},
-            {"stance": "stand"},
-            {"flag": "k1.rock.frei"},
-            {"not": {"flag": "disguise.coat"}},
-            {"not": {"talked": {"npc": "liese", "topic": "rock", "chapter": "k1"}}}
-          ] },
-          "repeat": true,
-          "do": [
-            {"do": "flag", "set": {"k1.rock.frei": false}},
-            {"do": "objective", "id": "k1.rock", "text": "Liese hat dich gesehen. Erst weg von der Bleiche, dann geduckt oder außen herum hinter die zweite Leine. Oder frag sie", "x": 1001.08, "z": -880.9},
-            {"do": "say", "id": "liese.k1.sieht", "speaker": "liese", "variants": ["He! Finger von der Wäsche! Die ist für den Hof, nicht für Feuersalamander.", "Ich seh Ihn doch. Da vorn zwischen den Leinen hat Er nichts verloren."], "repeat": true}
-          ]
-        },
-        {
-          "id": "bleiche.liese-ruhig",
-          "when": { "all": [
-            {"era": "1789"},
-            {"flag": "k1.rock.frei", "eq": false},
-            {"not": {"flag": "disguise.coat"}},
-            {"leave": {"x": 1001.5, "z": -876.5, "r": 14}}
-          ] },
-          "repeat": true,
-          "do": [
-            {"do": "flag", "set": {"k1.rock.frei": true}},
-            {"do": "objective", "id": "k1.rock", "text": "Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach", "x": 1001.08, "z": -880.9}
-          ]
-        },
-        {
-          "id": "bleiche.rock-genommen",
-          "when": { "all": [
-            {"era": "1789"},
-            {"have": {"clue": "clue.k1.rock"}},
-            {"not": {"flag": "disguise.coat"}}
-          ] },
-          "do": [
-            {"do": "flag", "set": {"disguise.coat": true, "flag.k1_kleid": "genommen"}},
-            {"do": "cue", "id": "scenery:coat", "data": {"visible": false}},
-            {"do": "cue", "id": "court:take", "data": {"what": "rock"}},
-            {"do": "objective", "text": null}
-          ]
-        }
       ],
       "complete": { "all": [{ "flag": "tour.ende" }, { "era": "1789" }] },
       "exit": [

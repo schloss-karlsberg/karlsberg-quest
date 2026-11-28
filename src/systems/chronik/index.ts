@@ -503,6 +503,7 @@ export default defineSystem({
       }),
       ev.on('shift:begin', () => director?.finish(true)),
       ev.on('scan:mode', () => (refreshIn = 0)),
+      ev.on('story:beat', () => (refreshIn = 0)),
       ev.on('save:loaded', () => {
         markers?.clear();
         refreshIn = 0;

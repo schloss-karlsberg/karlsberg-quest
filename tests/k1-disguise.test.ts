@@ -74,12 +74,8 @@ describe('k1 disguise: places', () => {
     for (const z of ZONES) expect(inZoneGround(z, LIESE.x, LIESE.z)).toBe(false);
   });
 
-  it('points to the coat interaction spot and briefs the player on the approach', () => {
+  it('keeps the chapter’s fallback brief on the approach', () => {
     const file = read<StoryFile>('content/story/01-kapitel-1.story.json');
-    for (const id of ['k1_0', 'k1_0b']) {
-      const goal = file.beats.find((b) => b.id === id)?.on?.flatMap((r) => r.do).find((a) => a.do === 'objective' && a.id === 'k1.rock');
-      expect(goal).toMatchObject({ x: COAT_REACH.x, z: COAT_REACH.z });
-    }
     const brief = file.on?.find((r) => r.id === 'k1_0b.bleiche');
     expect(brief?.when).toMatchObject({ all: expect.arrayContaining([
       { enter: { x: BLEICHE.x, z: BLEICHE.z, r: 30, era: '1789' } },
@@ -139,16 +135,19 @@ describe('k1 disguise: lines and codex', () => {
 describe('k1 disguise: the coat is findable, promptable and the sneak has stakes (playtest 2026-11-28, F8)', () => {
   const k1 = read<StoryFile>('content/story/01-kapitel-1.story.json');
   const k0b = k1.beats.find((b) => b.id === 'k1_0b')!;
-  const sees = k1.on!.find((r) => r.id === 'bleiche.liese-sieht')!;
-  const calm = k1.on!.find((r) => r.id === 'bleiche.liese-ruhig')!;
-  const zone = (sees.when as { all: { enter?: { x: number; z: number; r: number } }[] }).all.find((c) => c.enter)!.enter!;
+  const sees = k0b.on!.find((r) => r.id === 'k1_0b.liese-sieht')!;
+  const calm = k0b.on!.find((r) => r.id === 'k1_0b.liese-ruhig')!;
+  const zone = (sees.when as { all: { enter?: { x: number; z: number; r: number } }[] }).all[0]!.enter!;
   const inZone = (x: number, z: number) => Math.hypot(x - zone.x, z - zone.z) < zone.r;
 
   it('the marker points behind the line and the prompt says „Rock nehmen“', () => {
     const tour = read<StoryFile>('content/story/00-tour.story.json');
-    const marks = [...tour.beats.find((b) => b.id === 't18')!.on!, ...k1.beats[0]!.on!, ...k0b.on!, sees, calm].flatMap((r) => r.do).filter((a): a is Extract<Action, { do: 'objective' }> => a.do === 'objective' && a.id === 'k1.rock');
-    // Arrival, the prelude and Liese's warning and recovery all point to the same interaction spot.
-    expect(marks).toHaveLength(7);
+    for (const arrival of [tour.beats.find((b) => b.id === 't18'), k1.beats[0]]) {
+      const actions = [...(arrival?.enter ?? []), ...(arrival?.on ?? []).flatMap((r) => r.do)];
+      expect(actions.some((a) => a.do === 'objective' && a.id === 'k1.rock')).toBe(false);
+    }
+    const marks = k0b.on!.flatMap((r) => r.do).filter((a): a is Extract<Action, { do: 'objective' }> => a.do === 'objective' && a.id === 'k1.rock');
+    expect(marks.length).toBe(3);
     for (const m of marks) expect(m, m.text ?? '').toMatchObject({ x: COAT_REACH.x, z: COAT_REACH.z });
     const where = q('q.k1.kleider').objectives.find((o) => o.id === 'rock')!.where!;
     expect(where).toMatchObject({ x: COAT_REACH.x, z: COAT_REACH.z });
@@ -162,8 +161,8 @@ describe('k1 disguise: the coat is findable, promptable and the sneak has stakes
     const e = { found: [], flags: {}, skills: {}, scanMode: 0, lanternLit: false };
     expect(clueStatus(c, e)).toBe('hidden');
     expect(clueStatus(c, { ...e, flags: { 'k1.rock.frei': true } })).toBe('available');
-    // The flag also makes this one Chapter 2 pickup available during the tour's arrival.
-    expect(clueStatus(c, { ...e, chapters: new Set(['tour']), flags: { 'k1.rock.frei': true } })).toBe('available');
+    // the beat frees it on entry and on every resume (flags repeat), so no save starts locked
+    expect(k0b.enter!.find((a) => a.do === 'flag')).toMatchObject({ set: { 'k1.rock.frei': true } });
   });
 
   it('her eyes are on the front of the green: the lines before her, not the way round behind line B', () => {
@@ -213,10 +212,10 @@ describe('k1 disguise: the coat is findable, promptable and the sneak has stakes
     const seen = at(zone.x, zone.z, 'stand');
     expect(seen.find((a) => a.do === 'say')).toMatchObject({ id: 'liese.k1.sieht', speaker: 'liese' });
     expect(seen.find((a) => a.do === 'objective')).toMatchObject({ id: 'k1.rock', text: expect.stringContaining('Liese hat dich gesehen') });
-    expect(flags['k1.rock.frei']).toBe(false);
+    expect(flags['k1.rock.frei']).toBeUndefined();
     // going round behind the line now does not help
     expect(at(COAT_REACH.x, COAT_REACH.z, 'crouch')).toEqual([]);
-    expect(flags['k1.rock.frei']).toBe(false);
+    expect(flags['k1.rock.frei']).toBeUndefined();
     // off the green: she turns back to the trail, the objective is the coat again
     const back = at(1035.7, -855.1, 'stand');
     expect(flags['k1.rock.frei']).toBe(true);

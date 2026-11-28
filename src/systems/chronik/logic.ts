@@ -98,15 +98,9 @@ export function requiredScan(c: ChronikClue): number {
   return c.requires?.scanMode ?? (c.kind === 'relief' ? 1 : 0);
 }
 
-export function clueChapterReached(c: Pick<Clue, 'id' | 'chapter'>, chapters: ClueEnv['chapters'], flags: ClueEnv['flags']): boolean {
-  // The Bleiche opens with the tour's arrival in 1789, before the chapter hand-off.
-  return !c.chapter || !chapters || chapters.has(c.chapter) ||
-    (c.id === 'clue.k1.rock' && chapters.has('tour') && flags['k1.rock.frei'] === true);
-}
-
 export function clueStatus(c: ChronikClue, env: ClueEnv): ClueStatus {
   if (has(env.found, c.id)) return 'found';
-  if (!clueChapterReached(c, env.chapters, env.flags)) return 'hidden';
+  if (c.chapter && env.chapters && !env.chapters.has(c.chapter)) return 'hidden';
   const r = c.requires;
   if (r?.clues?.some((id) => !has(env.found, id))) return 'hidden';
   if (r?.flags?.some((f) => !env.flags[f])) return 'hidden';
