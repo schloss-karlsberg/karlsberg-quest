@@ -1,0 +1,35 @@
+# The four gates (CONTRIBUTING.md "The four gates") on every pull request: the first signal a
+# reviewer gets, about a minute after a push. Also runs in the merge queue, so the check can be
+# required there. Pushes to main run the same commands in pages.yml before the deploy.
+name: Gates
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gates-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    name: Gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4 # version from package.json "packageManager"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm validate
+      - run: pnpm build
