@@ -581,13 +581,14 @@ lies for a second and is gone. Water swallows it.
 | A tree trunk, a palace wall, a person or a dog of the tour | It bounces off and drops. Nobody is hurt or alerted |
 | The ground | A noise (`world:noise`, loudness 0.7) |
 
-The noise is what animals and the pack hear. The tour's roe deer look up toward a chestnut
-that lands within about 13 m of them and keep watching the spot for 8 s (`animal:heard`, caption
-„[Die Ricke horcht auf]“): time to raise the phone for the photo with the doe's head up. Noises
-never make them bolt, however many. A chestnut that strikes a deer, or comes down within 0.9 m of
-one, bounces off and sends both running (`animal:fled` by `hit`, „[Die Rehe springen ab]“); they
-stop on open ground and graze again as after any flight. The first time the player stalks calm
-deer with a chestnut in the pack, one toast says so („Wirf eine Kastanie neben die Rehe …“).
+The noise is what animals and the pack hear. The tour's roe deer add it to their notice meter:
+a chestnut that lands within about 13 m of them makes them look toward it and keep watching the
+spot for 8 s (`animal:heard`, caption „[Die Ricke horcht auf]“), time to raise the phone for the
+photo with the doe's head up. Noises never fill the meter, however many (TASK-080). A chestnut
+that strikes a deer, or comes down within 0.9 m of one, bounces off and sends both running
+(`animal:fled` by `hit`, „[Die Rehe springen ab]“); they stop on open ground and graze again as
+after any flight. The first time the player stalks calm deer with a chestnut in the pack, one
+toast says so („Wirf eine Kastanie neben die Rehe …“).
 A pack on patrol that is calm or only suspicious sends its
 nearest hound within 14 m to the spot (`PackSim.noise`, `NOISE` in `hunt/sim.ts`) and listens for
 about ten seconds; the hound that went stays warier while that fades, so the next glimpse of the
