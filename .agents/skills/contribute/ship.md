@@ -52,7 +52,9 @@ Both render with SwiftShader (software). For the real-GPU look, `e2e/gpu/*.gpu.t
 
 ## Pull request
 
-1. `git push -u origin <branch>`
+1. `git push -u origin <branch>`. Related changes go into one PR, and at most about five agent PRs
+   are open at once: if more are open, help one of them merge (review it) before you open yours.
+   Not ready for review yet? Create the PR with `--draft`.
 2. `gh pr create --base main --title "<conventional summary>" --body-file <tmp file>`. The title is
    checked by `.github/workflows/pr-lint.yml`. Follow `.github/pull_request_template.md`:
    - **What and why:** summary, `Task: TASK-00X` (task IDs are not GitHub issues, so no "Fixes #"),
@@ -68,7 +70,7 @@ Both render with SwiftShader (software). For the real-GPU look, `e2e/gpu/*.gpu.t
      never absolute machine paths; give the full paths only to the contributor.
      Don't drive their browser or desktop to upload them.
    - Risks and notes.
-3. Wait for the two checks of the merge bar: `gh pr checks <number> --watch`.
+3. Wait for the two required checks: `gh pr checks <number> --watch`.
    - **Gates** (the four gates) reports in about a minute.
    - **End-to-end tests** runs the specs the changed paths can affect: nothing for docs, task files
      and unit tests (green at once), a few specs plus smoke for a feature system (5–20 min), the
@@ -82,7 +84,16 @@ Both render with SwiftShader (software). For the real-GPU look, `e2e/gpu/*.gpu.t
      `gh run rerun <run-id> --failed` repeats only the failed shards. Say so in the PR.
    - Unsure whether the selected specs are enough? Label the PR `full-e2e` and push, or run
      `gh workflow run e2e.yml --ref <branch>`.
-   - Don't merge the PR yourself; a maintainer merges it once both checks are green.
+4. Review and merge (CONTRIBUTING.md "How a pull request merges").
+   - The PR is ready when both checks are green and a reviewer other than its author has passed
+     it. An outside contributor's PR is reviewed and approved by a maintainer on GitHub. An agent's
+     PR gets an independent review as a PR comment ending with a verdict, from another agent
+     session or Codex, never from the session that wrote the change.
+   - The reviewer queues it: `gh pr merge <number> --auto --merge`. Never queue or merge your own
+     change, never `--admin`, never push to `main`. The merge queue runs the full suite on the
+     merge result (about 50 min) and moves `main`.
+   - Out of the queue with a failure? Don't re-run that run. Read it, fix the PR and have it
+     queued again.
 
 ## Close out
 

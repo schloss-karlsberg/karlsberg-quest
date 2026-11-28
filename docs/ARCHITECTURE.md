@@ -750,7 +750,7 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   (`int-r2-*.png`). Unit rules of the integration: `tests/integration-round2.test.ts`.
   `KQ_E2E_PORT` picks the preview port (default 5281, or 5281 + k inside `scripts/dev/heavy.sh` slot k; an existing server on it is reused).
 - Hosted e2e (`.github/workflows/e2e.yml`) builds `dist/` once and shares it with up to 12 Linux
-  jobs (8 for the run after a merge). Each runs one Chromium worker with SwiftShader, whose Niedrig
+  jobs (8 in the merge queue and on `main`). Each runs one Chromium worker with SwiftShader, whose Niedrig
   preset uses pixel ratio 1, shorter LOD distances and no shadows. `playwright.config.ts` defaults
   to a 640×360 viewport on CI. A spec can set its own viewport or tier for layout and rendering checks.
   `scripts/ci/select-e2e.ts` decides what a run needs. A pull request runs the specs that its
