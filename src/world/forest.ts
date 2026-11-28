@@ -62,6 +62,24 @@ export function forestCullMode(cull: boolean, dirY: number, agl: number): 'full'
   return agl > FULL_RING_AGL ? 'full' : 'cone';
 }
 
+/**
+ * May a tree at (x, z) cast into the sun shadow box (pure; exported for tests)? (refX, refZ) is
+ * where the box's focus is expected, `castMax` the radius around it that the shadow pass draws
+ * from at all. The view plays no part: a tree behind the camera shades the ground in front of it.
+ */
+export function casterInReach(x: number, z: number, refX: number, refZ: number, castMax: number): boolean {
+  const dx = x - refX;
+  const dz = z - refZ;
+  return dx * dx + dz * dz <= castMax * castMax;
+}
+
+/** Can the 64 m tile (tx, tz) hold such a caster (pure; exported for tests)? */
+export function tileInReach(tx: number, tz: number, refX: number, refZ: number, castMax: number): boolean {
+  const dx = Math.max(tx * TILE - refX, 0, refX - (tx + 1) * TILE);
+  const dz = Math.max(tz * TILE - refZ, 0, refZ - (tz + 1) * TILE);
+  return dx * dx + dz * dz <= castMax * castMax;
+}
+
 /** Bounding sphere of every tile's trees, base to crown top (cx, cy, cz, r; pure, exported for tests). */
 export function tileSpheres(tiles: Map<string, Float32Array>): Map<string, Float32Array> {
   const out = new Map<string, Float32Array>();
@@ -896,6 +914,13 @@ export class Forest {
 
   /** Half extent of the sun shadow box (m; the last pass's), for the model trees' caster lists. */
   private shadowRange = 75;
+  /**
+   * Are sun shadows on (World: the shadow map exists, medium / high)? Then the trees the view
+   * leaves out still cast into it: the low sun throws a crown's shadow 60 m and more, from behind
+   * the camera right across the picture.
+   */
+  casting: () => boolean = () => false;
+  private lastCasting = false;
 
   /** Shadow pass hook (render/shadows.ts `onPass`): the model trees draw their caster lists. */
   shadowPass(on: boolean, focus: Vector3, range: number): void {
@@ -959,6 +984,11 @@ export class Forest {
    * Looking steeply down keeps the full ring only from high above the ground (`agl` > 20 m:
    * flying, spirit view); on foot whole 64 m tiles outside the 3D view cone (frustum corner + 40°)
    * are left out instead, rebuilt when the view turned 20° (`forestCullMode`).
+   *
+   * That cut is for the picture only. With sun shadows on (`casting`), every tree in reach of
+   * the shadow box stays a caster wherever the view points (TASK-088: the casters used to follow
+   * the sector, so each rebuild in a turn switched the shadows of the trees behind the camera on
+   * or off and the ground in view jumped lighter or darker).
    */
   update(camera: PerspectiveCamera, agl = 0): void {
     const p = camera.position;
@@ -969,8 +999,10 @@ export class Forest {
     let dYaw = Math.abs(yaw - this.lastYaw);
     if (dYaw > Math.PI) dYaw = 2 * Math.PI - dYaw;
     const turned = mode === 'sector' ? dYaw > 0.35 : mode === 'cone' && this.cone.turned(camera, 0.35);
-    if (!this.dirty && !turned && down === this.lastDown && mode === this.lastMode && camera.fov === this.lastFov && Math.hypot(p.x - this.lastX, p.z - this.lastZ) < 8) return;
+    const casting = this.casting();
+    if (!this.dirty && !turned && down === this.lastDown && mode === this.lastMode && camera.fov === this.lastFov && casting === this.lastCasting && Math.hypot(p.x - this.lastX, p.z - this.lastZ) < 8) return;
     this.dirty = false;
+    this.lastCasting = casting;
     this.lastX = p.x;
     this.lastZ = p.z;
     this.lastYaw = yaw;
@@ -999,7 +1031,10 @@ export class Forest {
     // the shadow lists are sorted from where the shadow focus will be (boot.ts: ahead of the camera
     // by 0.35 × the box's half extent); trees past the box + reach + 24 m of drift never cast
     const lead = this.shadowRange * 0.35;
-    models?.begin(p.x + fx * lead, p.z + fz * lead, this.shadowRange + SHADOW_REACH + 24);
+    const refX = p.x + fx * lead;
+    const refZ = p.z + fz * lead;
+    const castMax = this.shadowRange + SHADOW_REACH + 24;
+    models?.begin(refX, refZ, castMax);
     const t0x = Math.floor((p.x - far) / TILE);
     const t1x = Math.floor((p.x + far) / TILE);
     const t0z = Math.floor((p.z - far) / TILE);
@@ -1009,18 +1044,22 @@ export class Forest {
         const arr = this.tiles.get(`${tx}_${tz}`);
         if (!arr) continue;
         const sp = cone ? this.spheres.get(`${tx}_${tz}`) : undefined;
-        if (sp && !this.cone.keeps(sp[0]!, sp[1]!, sp[2]!, sp[3]!, 30 + TILE * 0.71)) {
+        // a tile outside the view cone: none of its trees show, the ones in reach still cast
+        const hidden = sp !== undefined && !this.cone.keeps(sp[0]!, sp[1]!, sp[2]!, sp[3]!, 30 + TILE * 0.71);
+        if (hidden) {
           culled += arr.length / F;
-          continue;
+          if (!casting || !tileInReach(tx, tz, refX, refZ, castMax)) continue;
         }
         for (let k = 0; k < arr.length; k += F) {
           const dx = arr[k]! - p.x;
           const dz = arr[k + 2]! - p.z;
           const d = Math.hypot(dx, dz);
           if (d > far) continue;
-          if (d > 30 && dx * fx + dz * fz < cosLimit * d) {
-            culled++;
-            continue;
+          // out of view: left out of the picture, but a caster while its shadow can fall into it
+          const unseen = hidden || (d > 30 && dx * fx + dz * fz < cosLimit * d);
+          if (unseen) {
+            if (!hidden) culled++;
+            if (!casting || !casterInReach(arr[k]!, arr[k + 2]!, refX, refZ, castMax)) continue;
           }
           if (this.activeClearings.length && this.inClearing(arr[k]!, arr[k + 2]!)) continue;
           const kind = Math.min(KINDS - 1, Math.max(0, Math.round(arr[k + 5]!)));
@@ -1029,9 +1068,11 @@ export class Forest {
           if (models) {
             const v = arr[k + 6]!;
             const variant = pickVariant(kind, (v * 7919.31) % 1, (v * 1237.77) % 1, winter, snagRate);
-            models.push(arr[k]!, arr[k + 1]! - 0.3, arr[k + 2]!, arr[k + 3]!, arr[k + 4]!, v, variant, d, hk);
+            if (unseen) models.cast(arr[k]!, arr[k + 1]! - 0.3, arr[k + 2]!, arr[k + 3]!, arr[k + 4]!, v, variant, d, hk);
+            else models.push(arr[k]!, arr[k + 1]! - 0.3, arr[k + 2]!, arr[k + 3]!, arr[k + 4]!, v, variant, d, hk);
             continue;
           }
+          // (the procedural forest casts with the batches it shows: an unseen caster stays in them)
           const lod = d < NEAR_DIST * hk ? 0 : d < MID_DIST * hk ? 1 : 2;
           const bi = lod * KINDS + kind;
           const b = this.batches[bi]!;

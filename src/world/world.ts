@@ -106,6 +106,7 @@ export class World {
     scene.add(this.sky.mesh, this.terrain.object, this.forest.object, this.palace.object);
     // the model trees cast with their lod1 geometry, cut to the shadow box's reach (forest.ts)
     this.shadows.onPass.add((on, focus, range) => this.forest.shadowPass(on, focus, range));
+    this.forest.casting = () => this.shadows.enabled;
 
     const src = {
       height: (x: number, z: number) => this.hf.heightAt(x, z),

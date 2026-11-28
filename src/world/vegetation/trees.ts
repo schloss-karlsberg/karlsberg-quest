@@ -1058,6 +1058,22 @@ export class ModelTrees {
       if (!b || b.n >= b.max) continue;
       writeInst(b, b.n++, x, y, z, h, rot, vr, lv[j * 3 + 1]!, lv[j * 3 + 2]!);
     }
+    this.addCaster(n, x, y, z, h, rot, vr, variant);
+  }
+
+  /**
+   * A tree the view leaves out (outside the sector or cone the lists are built for): no instance
+   * in the picture, but a shadow caster like any other. The sun stands low, so a tree behind the
+   * camera shades the ground in front of it.
+   */
+  cast(x: number, y: number, z: number, h: number, rot: number, v: number, variant: number, d: number, k: number): void {
+    const n = treeLevels(d, k, this.lv, this.impAt);
+    this.addCaster(n, x, y, z, h, rot, variant + Math.min(0.999, v), variant);
+  }
+
+  /** The shadow-pass instances of a tree whose `n` main levels are in `lv`. */
+  private addCaster(n: number, x: number, y: number, z: number, h: number, rot: number, vr: number, variant: number): void {
+    const lv = this.lv;
     // shadow casters: lod0 as lod1 (a tree fading lod0 → lod1 is one full lod1 caster)
     const ds = Math.hypot(x - this.refX, z - this.refZ);
     if (ds > this.castMax) return;
