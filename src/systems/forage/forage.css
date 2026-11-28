@@ -6,3 +6,15 @@
 html[data-kq-touch] .kqf-nut {
   display: none;
 }
+
+.kqf-throw-hint {
+  align-self: start;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: rgba(12, 9, 6, 0.82);
+  color: #f1e6cc;
+  font-size: 13px;
+  line-height: 1.25;
+}

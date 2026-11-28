@@ -153,6 +153,14 @@ test.describe('landscape phone', () => {
       }
     });
     await expectObjectiveFits(page, 'Gerold Imhoff zuhören');
+    await page.evaluate(() => {
+      const k = window.kq!;
+      k.ctx.events.emit('item:grant', { item: 'item.kastanie', count: 1, reason: 'loot' });
+      k.step(1);
+    });
+    await expect(page.getByTestId('first-throw-hint')).toBeVisible();
+    await expect(page.getByTestId('first-throw-hint')).toContainText('Tippe auf die Kastanie');
+
   });
 });
 

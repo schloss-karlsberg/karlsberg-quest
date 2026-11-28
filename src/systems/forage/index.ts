@@ -89,10 +89,10 @@ const ARC_N = 20;
 /** Niedrig: stand-in clumps are rebuilt after this many metres. */
 const BRUSH_STEP = 4;
 const BRUSH_R = 20;
-/** Seconds of quiet (no line spoken, no modal) before a hint shows, and between two hints. */
+/** Seconds of quiet before the staff hint, and the longest wait for a pause in speech. */
 const HINT_QUIET = 2.5;
-const HINT_GAP = 25;
 const HINT_WAIT = 12;
+const THROW_HINT_SECONDS = 7;
 /** A tap this long before the cooldown ends still throws (s). */
 const THROW_BUFFER = 0.4;
 
@@ -110,8 +110,8 @@ class Forage {
   private speaking = false;
   private quiet = 0;
   private hintWait = 0;
-  private lastHint = -99;
-  private readonly hints: ('throw' | 'cut')[] = [];
+  private cutHintPending = false;
+  private throwHintUntil = 0;
   private refusedAt = -99;
   // Niedrig stand-ins
   private readonly brush = new Float32Array(BRUSH_MAX * 6);
@@ -122,6 +122,7 @@ class Forage {
   private brushT = 0;
   // HUD chip
   private readonly chip: HTMLElement;
+  private readonly throwHint: HTMLElement;
   private readonly chipKey: HTMLElement;
   private readonly chipCount: HTMLElement;
   // scratch
@@ -141,6 +142,8 @@ class Forage {
       h('span.kqp-q-icon', svg(iconFor(NUT))),
       h('span.kqp-q-text', [h('span.kqp-q-name', t('forage.hud.name')), this.chipCount]),
     ]);
+    this.throwHint = h('div.kqf-throw-hint', { 'data-testid': 'first-throw-hint', role: 'status', hidden: true });
+    ctx.ui.hud.dock('vitals', this.throwHint, 44);
     ctx.ui.hud.dock('vitals', this.chip, 45);
     this.wire();
     this.syncCount(true);
@@ -160,7 +163,11 @@ class Forage {
       this.nuts.length = 0;
       this.holding = false;
       this.cooldown = 0;
-      this.hints.length = 0;
+      this.cutHintPending = false;
+      this.quiet = 0;
+      this.hintWait = 0;
+      this.throwHintUntil = 0;
+      this.throwHint.hidden = true;
       plantCuts.clear();
       this.visuals.clear();
       this.brushVersion = -1;
@@ -182,10 +189,10 @@ class Forage {
       ev.on('item:pickup', ({ item, reason }) => {
         if (item !== NUT) return;
         this.syncCount();
-        if (reason !== 'debug') this.wantHint('throw');
+        if (reason !== 'debug') this.showThrowHint();
       }),
       ev.on('equip:change', ({ slot, item }) => {
-        if (slot === 'weapon' && item) this.wantHint('cut');
+        if (slot === 'weapon' && item && !this.slice.hints.includes('cut')) this.cutHintPending = true;
       }),
       ev.on('combat:arc', (a) => this.mow(a.x, a.z, a.yaw, a.reach, a.arcDeg, a.heavy)),
       ev.on('npc:conversation', ({ open }) => (this.talking = open)),
@@ -205,7 +212,10 @@ class Forage {
   }
 
   private syncKey(): void {
-    this.chipKey.textContent = actionLabel(this.ctx.input, 'throw');
+    const input = this.ctx.input;
+    const key = actionLabel(input, 'throw');
+    this.chipKey.textContent = key;
+    if (!this.throwHint.hidden) this.throwHint.textContent = input.touchMode ? t('forage.hint.throw.touch') : t('forage.hint.throw', { key });
   }
 
   private syncCount(force = false): void {
@@ -220,32 +230,30 @@ class Forage {
 
   // ---- hints --------------------------------------------------------------------------------
 
-  private wantHint(id: 'throw' | 'cut'): void {
-    if (this.slice.hints.includes(id) || this.hints.includes(id)) return;
-    this.hints.push(id);
+  private showThrowHint(): void {
+    if (this.slice.hints.includes('throw') || this.inPack() <= 0) return;
+    this.throwHintUntil = this.time + THROW_HINT_SECONDS;
+    this.throwHint.hidden = false;
+    this.syncKey();
+    this.slice.hints.push('throw');
+    this.ctx.save.autosave('forage-hint');
   }
 
   private tickHints(dt: number): void {
-    if (!this.hints.length) return;
+    if (!this.throwHint.hidden && (this.time >= this.throwHintUntil || this.inPack() <= 0)) this.throwHint.hidden = true;
+    if (!this.cutHintPending) return;
     const { ctx } = this;
     if (ctx.ui.modals.count > 0 || ctx.player.frozen || this.talking) {
       this.quiet = 0;
       return;
     }
-    // between two lines if there is a gap; in the tour somebody talks most of the time, so after
-    // `HINT_WAIT` s the toast comes anyway (the notice queue keeps it clear of cards)
+    // Let the staff hint wait for a gap in the tour, up to HINT_WAIT seconds.
     this.quiet = this.speaking ? 0 : this.quiet + dt;
     this.hintWait += dt;
-    if (this.time - this.lastHint < HINT_GAP || (this.quiet < HINT_QUIET && this.hintWait < HINT_WAIT)) return;
-    this.hintWait = 0;
-    const id = this.hints.shift()!;
-    // nothing left to say: the chestnuts are gone again, or the staff was put away
-    if (id === 'throw' && this.inPack() <= 0) return;
-    this.lastHint = this.time;
-    this.slice.hints.push(id);
-    const touch = ctx.input.touchMode;
-    const text = id === 'cut' ? t('forage.hint.cut') : touch ? t('forage.hint.throw.touch') : t('forage.hint.throw', { key: actionLabel(ctx.input, 'throw') });
-    ctx.ui.toast(text, 7000);
+    if (this.quiet < HINT_QUIET && this.hintWait < HINT_WAIT) return;
+    this.cutHintPending = false;
+    this.slice.hints.push('cut');
+    ctx.ui.toast(t('forage.hint.cut'), 7000);
     ctx.save.autosave('forage-hint');
   }
 
@@ -666,6 +674,7 @@ class Forage {
   dispose(): void {
     for (const off of this.offs) off();
     this.chip.remove();
+    this.throwHint.remove();
     plantCuts.clear();
     this.visuals.dispose();
   }

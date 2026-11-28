@@ -4,6 +4,8 @@ import type { GameContext } from '../src/core/context';
 import { EventBus } from '../src/core/events';
 import { MemoryStorage, SaveManager, SettingsStore } from '../src/core/save';
 import { GameStateStore, createInitialState } from '../src/core/state';
+import forage from '../src/systems/forage';
+import { createProgressionSlice } from '../src/systems/progression/logic';
 import quests from '../src/systems/quests';
 import { ObjectiveView } from '../src/systems/story/objectives';
 import { createStorySlice } from '../src/systems/story/engine';
@@ -220,4 +222,46 @@ it.each([true, false])('uses the touch HUD on a 667 × 375 viewport with a coars
   expect(input.touchMode).toBe(coarse);
   expect(root.attributes.has('data-kq-touch')).toBe(coarse);
   expect(root.attributes.has('data-kq-rotate')).toBe(false);
+});
+
+it.each([false, true])('shows the throw hint on the first pickup during a cut tip and dialogue (touch: %s)', (touchMode) => {
+  const events = new EventBus();
+  const state = new GameStateStore(createInitialState());
+  const progression = state.mutable.systems.progression = createProgressionSlice();
+  const autosave = vi.fn();
+  const hud = new Hud();
+  const toast = vi.fn();
+  const ctx = {
+    events, state, save: { autosave }, scene: new Scene(),
+    input: { touchMode, bindings: { throw: ['KeyF'] }, wasPressed: () => false },
+    ui: { hud, toast, modals: { count: 0 } }, player: {},
+    quality: { level: 'high', listeners: [] }, world: { nature: {} },
+    settings: { state: { reducedMotion: false } },
+  } as unknown as GameContext;
+  forage.init(ctx);
+  try {
+    const hint = (hud.el as unknown as ElementStub).find((el) => el.attributes.get('data-testid') === 'first-throw-hint')!;
+    const pickup = (total: number) => {
+      progression.inventory['item.kastanie'] = total;
+      events.emit('item:pickup', { item: 'item.kastanie', count: 1, total, reason: 'loot' });
+    };
+    events.emit('equip:change', { slot: 'weapon', item: 'item.stab.esche' });
+    for (let i = 0; i < 151; i++) forage.update(1 / 60);
+    expect(toast).toHaveBeenCalledWith(expect.stringContaining('Mit dem Stab'), 7000);
+    events.emit('dialogue:active', { speaker: 'imhoff' });
+    expect(hint.attributes.has('hidden')).toBe(true);
+    pickup(1);
+    expect(hint).toMatchObject({
+      hidden: false,
+      textContent: expect.stringContaining(touchMode ? 'Tippe auf die Kastanie' : 'F drücken'),
+    });
+    expect(state.state.systems.forage?.hints).toEqual(['cut', 'throw']);
+    for (let i = 0; i < 421; i++) forage.update(1 / 60);
+    expect(hint).toHaveProperty('hidden', true);
+    pickup(2);
+    expect(hint).toHaveProperty('hidden', true);
+    expect(autosave).toHaveBeenCalledTimes(2);
+  } finally {
+    forage.dispose();
+  }
 });
