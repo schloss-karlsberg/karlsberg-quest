@@ -156,3 +156,39 @@ export function stepFind(s: FindState, i: FindInput, cfg: FindConfig = FIND): Fi
 export function rejoinArc(guideS: number, tail: number, cfg: FindConfig = FIND): number {
   return Math.max(0, guideS - Math.min(cfg.maxTail, Math.max(0, tail)) - cfg.behind);
 }
+
+/** Where „Der Gruppe folgen“ leads (playtest 2026-11-28: the marker at the next stop led over a bank). */
+export const LEAD = {
+  /** A story objective this close (m) to the stop the guide walks to is the follow objective. */
+  stopMatch: 8,
+  /** The marker sits at most this far (m) along the route ahead of the player. */
+  lookahead: 20,
+  /** Farther than this (m) off the route, the marker first leads back onto it. */
+  offRoute: 10,
+} as const;
+
+/** A route for the lead: the nearest point on it, a point at an arc length. */
+export interface LeadLine {
+  project(x: number, z: number): { s: number; dist: number };
+  pointAt(s: number): { x: number; z: number };
+}
+
+/**
+ * The marker point that leads the player to the group along its route (walkable by construction,
+ * the guide walks it): `guideS` is the guide's arc length, `tail` how far (m) the last member walks
+ * behind him. Behind the group, the marker rides the route up to `lookahead` m ahead of the player,
+ * never past the tail; off the route it first leads to the route's nearest point; with the group
+ * it sits on the guide. A player ahead of the guide gets null (the stop itself leads).
+ */
+export function groupLeadPoint(line: LeadLine, guideS: number, tail: number, player: { x: number; z: number }, cfg: typeof LEAD = LEAD): { x: number; z: number } | null {
+  const pr = line.project(player.x, player.z);
+  if (pr.s > guideS + 1) return null;
+  const tailS = Math.max(0, guideS - Math.max(0, tail));
+  if (pr.dist > cfg.offRoute) {
+    const p = line.pointAt(Math.min(pr.s, guideS));
+    return { x: p.x, z: p.z };
+  }
+  const s = pr.s >= tailS ? guideS : Math.min(tailS, pr.s + cfg.lookahead);
+  const p = line.pointAt(s);
+  return { x: p.x, z: p.z };
+}

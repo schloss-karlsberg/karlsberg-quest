@@ -9,6 +9,8 @@ export interface CrowdCircle {
 export interface TourCrowd {
   visitors?: () => readonly CrowdCircle[];
   dogs?: () => readonly CrowdCircle[];
+  /** The tour walk: where the marker of a story objective at (x, z) leads instead (the group it follows), or null. */
+  lead?: (x: number, z: number) => { x: number; z: number } | null;
 }
 
 export const VISITOR_RADIUS = 0.32;
