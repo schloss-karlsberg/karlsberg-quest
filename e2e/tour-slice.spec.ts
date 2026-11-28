@@ -603,7 +603,10 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   // the Quelle (so not "ahead" for the leash). The follow objective leads back onto the
   // route, to its nearest point but never past the guide (src/systems/walk/find.ts
   // groupLeadPoint): here that is the guide himself, so both real markers share a bearing.
-  const strayAt = await page.evaluate((points) => {
+  // the walked route and its Quelle stop, read from the route file (TASK-087 moved the stop)
+  const fuehrung = JSON.parse(readFileSync('content/routes/p-fuehrung.json', 'utf8')) as { points: [number, number][]; stops: { id: string; x: number; z: number }[] };
+  const quelleStop = fuehrung.stops.find((st) => st.id === 'quelle')!;
+  const strayAt = await page.evaluate(({ points, stop }) => {
     const k = window.kq!;
     const g = k.walk!.walker('imhoff')!;
     // the route direction at the guide's arc length
@@ -620,7 +623,6 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
     }
     // the side away from the Quelle (on the other one the spot would be nearer the stop than the
     // guide, which the leash counts as ahead): there it is the Karlsbergweiher's edge
-    const stop = { x: 1062, z: -836.7 };
     const spots = [1, -1].map((sd) => ({ x: g.x + dir.x * 5 - dir.z * 44.7 * sd, z: g.z + dir.z * 5 + dir.x * 44.7 * sd }));
     const spot = spots.reduce((a, b) => (Math.hypot(b.x - stop.x, b.z - stop.z) > Math.hypot(a.x - stop.x, a.z - stop.z) ? b : a));
     const heading = (Math.atan2(g.x - spot.x, -(g.z - spot.z)) * 180) / Math.PI;
@@ -629,13 +631,13 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
     // the compass and the lead refresh at 10 Hz: settle them at the new position
     k.ctx.loop.renderOnce(0.1);
     return { guide: { x: g.x, z: g.z }, spot, waiting: k.walk!.walker('imhoff')!.waiting, lead: k.quests!.lead() };
-  }, (JSON.parse(readFileSync('content/routes/p-fuehrung.json', 'utf8')) as { points: [number, number][] }).points);
+  }, { points: fuehrung.points, stop: { x: quelleStop.x, z: quelleStop.z } });
   console.log(`[tour] stray lead: ${JSON.stringify(strayAt)}`);
   // the objective sits on the route at the group, not on the Quelle stop
   expect(strayAt.waiting).toBe(true);
   expect(strayAt.lead?.label).toContain('hinauf zur Karlsbergquelle');
   expect(Math.hypot(strayAt.lead!.x! - strayAt.guide.x, strayAt.lead!.z! - strayAt.guide.z)).toBeLessThan(1.5);
-  expect(Math.hypot(strayAt.lead!.x! - 1059.3, strayAt.lead!.z! - -833.1)).toBeGreaterThan(20);
+  expect(Math.hypot(strayAt.lead!.x! - quelleStop.x, strayAt.lead!.z! - quelleStop.z)).toBeGreaterThan(20);
   for (let i = 0; i < 20 && !(await page.evaluate(() => window.kq!.walk!.find().called)); i++) await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
   const stray = await page.evaluate(() => ({ find: window.kq!.walk!.find(), walker: window.kq!.walk!.walker('imhoff') }));
   console.log(`[tour] stray: ${JSON.stringify(stray)}`);
