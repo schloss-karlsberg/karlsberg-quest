@@ -8,7 +8,7 @@ afterEach(disposeTravel);
 
 describe('travel discoveries', () => {
   it.each(['photo', 'another card'])('shows the first map tip once after it was blocked by %s', (blocker) => {
-    const { hooks, events, step, save, cards, ui, shift } = setupTravel();
+    const { hooks, events, step, save, cards, ui, shift, paint } = setupTravel();
     const present = (text: string) => {
       const banner = vi.mocked(ui.add).mock.lastCall![0];
       const children = vi.mocked(banner.append).mock.calls.map(([el]) => (el as HTMLElement).textContent);
@@ -20,6 +20,8 @@ describe('travel discoveries', () => {
     hooks.activate('ehrenhof');
     step();
     step();
+    paint();
+    paint();
     expect(hooks.state()).toMatchObject({ activated: ['ehrenhof'], tips: [], mapTipPoint: 'ehrenhof' });
     expect(save.save('pending')).toBe(true);
     if (blocker === 'photo') expect(ui.add).not.toHaveBeenCalled();
@@ -38,7 +40,10 @@ describe('travel discoveries', () => {
     if (blocker === 'photo') expect(save.load('pending')).toBe(true);
     step();
     step();
-    present(TRAVEL_DE.firstMap);
+    present('Mit M öffnest du die Karte. Zu entdeckten Reisepunkten kannst du direkt reisen.');
+    paint();
+    expect(hooks.state().tips).toEqual([]);
+    paint();
     expect(hooks.state().tips).toEqual(['map']);
     expect(hooks.state().mapTipPoint).toBeUndefined();
 
@@ -48,6 +53,52 @@ describe('travel discoveries', () => {
     step();
     present(TRAVEL_DE.activatedSub);
     expect(hooks.state().tips).toEqual(['map']);
+  });
+
+  it.each(['dismissal', 'era change'])('keeps the first map tip pending after a same-batch %s', (interrupt) => {
+    const { hooks, step, save, cards, ui, shift, input, paint } = setupTravel();
+    cards.claim.mockReturnValue(false);
+    hooks.activate('ehrenhof');
+    step();
+    const held = vi.mocked(ui.add).mock.lastCall![0];
+    cards.claim.mockReturnValue(true);
+
+    if (interrupt === 'dismissal') {
+      input.wasPressed.mockImplementation((key) => key === 'listen');
+      step();
+      input.wasPressed.mockReturnValue(false);
+    } else {
+      step();
+      shift('1789');
+    }
+    expect(held.remove).toHaveBeenCalledOnce();
+    expect(hooks.state()).toMatchObject({ tips: [], mapTipPoint: 'ehrenhof' });
+    expect(save.autosave).not.toHaveBeenCalledWith('travel-map-tip', true);
+    if (interrupt === 'era change') shift('today');
+    step();
+    paint();
+    expect(hooks.state().tips).toEqual([]);
+    paint();
+    expect(hooks.state().tips).toEqual(['map']);
+    expect(save.autosave).toHaveBeenCalledWith('travel-map-tip', true);
+  });
+
+  it.each([[true, 'Karte'], [false, 'K']])('names the active map control on a restored tip (touch: %s)', (touch, label) => {
+    const { hooks, step, save, ui, input, events, cards } = setupTravel();
+    events.emit('photo:open', {});
+    hooks.activate('ehrenhof');
+    expect(save.save('pending')).toBe(true);
+    expect(save.load('pending')).toBe(true);
+    cards.claim.mockReturnValue(false);
+    events.emit('photo:close', {});
+    step();
+    input.touchMode = touch;
+    input.bindings.map = ['KeyK'];
+    cards.claim.mockReturnValue(true);
+    step();
+    const banner = vi.mocked(ui.add).mock.lastCall![0];
+    const text = vi.mocked(banner.append).mock.calls.map(([el]) => (el as HTMLElement).textContent);
+    expect(text).toContain(`Mit ${label} öffnest du die Karte. Zu entdeckten Reisepunkten kannst du direkt reisen.`);
   });
 
   it('grants lore XP once on foot per slot and restores an uncollected find from an older slot', () => {

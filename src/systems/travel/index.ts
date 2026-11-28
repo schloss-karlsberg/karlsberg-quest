@@ -29,6 +29,7 @@ import type { Era } from '../../core/era';
 import { defineSystem } from '../../core/systems';
 import { PLAYER_RADIUS, WADE_LIMIT_M } from '../../player/player';
 import type { QuestDef, QuestObjective, QuestSlice } from '../../rpg/types';
+import { actionLabel } from '../../ui/actionLabel';
 import { h } from '../../ui/dom';
 import { addPageSection, addPausePage, openPausePage, pausePageHandle } from '../../ui/pause-pages';
 import { loadBundledQuests, questsInPlay } from '../quests/data';
@@ -183,7 +184,8 @@ class Travel {
   private cardT = 0;
   /** The card up is the activation banner (it shares the centre-card slot: ui/cards.ts). */
   private cardBanner = false;
-  private cardMapTip = false;
+  private mapTipText: HTMLElement | null = null;
+  private mapTipFrame?: number;
   private readonly pendingActivations: SurveyPoint[] = [];
   private time = 0;
   /** 'world:quiet' (the party): tripods, POIs and the trail hidden, no activation, no announcement. */
@@ -633,11 +635,11 @@ class Travel {
 
   private showActivation(point: SurveyPoint): void {
     const first = this.slice.mapTipPoint === point.id;
-    this.showCard(TRAVEL_DE.activated(point.name), first ? TRAVEL_DE.firstMap : TRAVEL_DE.activatedSub, null, first ? 6 : 4.5, 'travel-card-activated');
-    this.cardMapTip = first;
+    const text = this.showCard(TRAVEL_DE.activated(point.name), first ? '' : TRAVEL_DE.activatedSub, null, first ? 6 : 4.5, 'travel-card-activated');
+    if (first) this.mapTipText = text;
   }
 
-  showCard(title: string, text: string, from: string | null, seconds: number, testid: string): void {
+  showCard(title: string, text: string, from: string | null, seconds: number, testid: string): HTMLParagraphElement {
     this.hideCard();
     const c = document.createElement('div');
     c.className = testid === 'travel-card-lore' ? 'kqt-card' : 'kqt-card kqt-banner';
@@ -671,14 +673,38 @@ class Travel {
     this.cardT = seconds;
     this.cardBanner = testid !== 'travel-card-lore';
     if (this.cardBanner) c.classList.toggle('kqt-aside', this.bannerAside());
+    return p;
   }
 
   hideCard(): void {
+    if (this.mapTipFrame !== undefined) cancelAnimationFrame(this.mapTipFrame);
+    this.mapTipFrame = undefined;
     this.card?.remove();
     this.card = null;
     if (this.cardBanner) this.ctx.ui.cards.release(BANNER_TOKEN);
     this.cardBanner = false;
-    this.cardMapTip = false;
+    this.mapTipText = null;
+  }
+
+  private waitForMapTipPaint(card: HTMLElement): void {
+    if (this.mapTipFrame !== undefined) return;
+    const visible = () => !document.hidden && !this.quiet.photoOpen && !this.ctx.ui.cards.held &&
+      !card.classList.contains('kqt-aside') &&
+      (card.checkVisibility?.({ opacityProperty: true, visibilityProperty: true }) ?? true);
+
+    // A fixed-step batch and the first animation-frame callback both run before paint.
+    this.mapTipFrame = requestAnimationFrame(() => {
+      this.mapTipFrame = undefined;
+      if (!visible()) return;
+      this.mapTipFrame = requestAnimationFrame(() => {
+        this.mapTipFrame = undefined;
+        if (!visible()) return;
+        this.mapTipText = null;
+        this.slice.tips.push('map');
+        delete this.slice.mapTipPoint;
+        this.ctx.save.autosave('travel-map-tip', true);
+      });
+    });
   }
 
   /**
@@ -907,12 +933,6 @@ class Travel {
       const aside = this.cardBanner && this.bannerAside();
       this.card.classList.toggle('kqt-aside', aside);
       if (aside) return;
-      if (this.cardMapTip) {
-        this.cardMapTip = false;
-        this.slice.tips.push('map');
-        delete this.slice.mapTipPoint;
-        ctx.save.autosave('travel-map-tip', true);
-      }
       this.cardT -= dt;
       if (this.cardT <= 0 || (ctx.input.wasPressed('listen') && this.cardT < 11 && cardMayTakeE(ctx.state.state.flags))) this.hideCard();
     }
@@ -922,6 +942,11 @@ class Travel {
       if (tip && this.pendingActivations[0] !== tip) this.pendingActivations.unshift(tip);
       const next = this.pendingActivations.shift();
       if (next) this.showActivation(next);
+    }
+    if (this.card && this.mapTipText && !this.card.classList.contains('kqt-aside')) {
+      const text = TRAVEL_DE.firstMap(actionLabel(ctx.input, 'map'));
+      if (this.mapTipText.textContent !== text) this.mapTipText.textContent = text;
+      this.waitForMapTipPaint(this.card);
     }
   }
 
