@@ -374,6 +374,16 @@ objective, Pause → Kapitel.
   speech hash of the shortened line, `chars` 94, `durationMs`, an `edit` note; voice id, model,
   licence and attribution unchanged. `pnpm voice:plan` lists the line as up to date. Checked by
   level analysis, not by ear.
+- PR #149 review on `feat/task-089-stay-numbers-tripods`: the night lantern tip records its display
+  and names the active return control. Older daytime saves lose their obsolete oil meter before
+  Hunt can drain the lantern. A present-day `tour/t18` save resumes the palace-facing arrival
+  at the midpoint. The first map tutorial waits for a visible banner in the present, including
+  after a shift or load. `?kapitel=2` equips Marlene’s Messstab and grants the Bussole page through
+  progression. The tour design and the Chapter 5 Küchenhof lines reflect the playable tour.
+  Browser checks in `chapter-prolog`, `photo` and `quests` await CI.
+  All four local gates passed on Node 24. Unit tests reported 2,752 passed, 17 todo and 0 failed
+  across 247 files. Content validation reported 0 errors and 28 warnings.
+  PR: https://github.com/schloss-karlsberg/karlsberg-quest/pull/149
 - 2026-11-28: integrated slices 2 and 3 on `feat/task-089-stay-numbers-tripods` using
   `9e85e709`, `013361a7` and `b9250b7b`. Rebuilt the generated quest and pack outputs.
 - Owner decision of 2026-11-28: stream and discover Laub's eleven tripods only in the present.
