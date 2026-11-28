@@ -342,6 +342,14 @@ objective, Pause → Kapitel.
 - 2026-11-28: analysis and plan written (planning run, no code changes).
 - 2026-11-28: go from the coordinator with the decisions above. Slice 1 built on
   `feat/task-089-one-way-jump`.
+- 2026-11-28, review of #138: rebased onto main + #137 + #140 + #139 (the spring moved to the
+  south-west flank: wake yaw 204, anchor 1058.5/−831). The new story literals (the `k1_0` wake and
+  its „heute“ anchor) follow, and `tests/story.test.ts` „keeps every spring position …“ ties them
+  to `HOME` / `QUELLE` next to #139's `tests/quelle-place.test.ts`. #137's tracker case for the
+  arrival lost its subject (the touch step is gone) and now checks that. `migrateFirstJump` only
+  moves a save of the old beat (`quelle.call` set or the objective `k1.quelle`): a save of
+  today's `k1_0` waiting in the present for Q (chapter chosen from Pause → Kapitel) loads as
+  written, because there the player decides when to cross.
 - Voice: the raw take of `laub.t.1789` (`.voice-raw/raw-service/laub.t.1789.wav`, sha256 as in the
   manifest) is silent below −50 dB from 7.51 s to 8.01 s, between „Atmen Sie.“ and the last
   sentence. Cut at 7.70 s with an 80 ms fade-out and run through `processClip`

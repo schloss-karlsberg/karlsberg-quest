@@ -9,7 +9,8 @@ import { legacyPrologueQuests } from './legacy-prologue-quests';
 import type { GameState } from './state';
 
 // Capture the migration destination without pulling chapter 1's full script into the boot bundle:
-// „Der Hof“ opens in 1789 at the spring (TASK-089), where its first beat hands on at once.
+// „Der Hof“ opens in 1789 at the spring (TASK-089): its first beat plays Laub's arrival lines there
+// and hands on. The place comes from the shared home constant, so it follows the spring.
 const CHAPTER_ONE = { chapter: 'k1', beat: 'k1_0', era: '1789', ...HOME.spawn } as const;
 const questDefs = new Map<string, QuestDefIn>(legacyPrologueQuests.map((q) => [q.id, q]));
 const retiredObjective = (id: string | undefined) => id?.startsWith('q.p.') ?? false;
