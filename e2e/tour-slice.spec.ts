@@ -119,9 +119,9 @@ async function viewGroup(page: Page, d = 10): Promise<void> {
   }, d);
 }
 
-async function expectObjectiveFits(page: Page): Promise<void> {
+async function expectObjectiveFits(page: Page, text: string): Promise<void> {
   const objective = page.getByTestId('objective');
-  await expect(objective).toContainText('Gerold Imhoff zuhören');
+  await expect(objective).toContainText(text);
   await expect.poll(() => objective.locator('.kqs-obj-text').evaluate((text) => {
     const column = text.closest('.kq-tl')!.getBoundingClientRect();
     const range = document.createRange();
@@ -152,7 +152,7 @@ test.describe('landscape phone', () => {
         k.step(60);
       }
     });
-    await expectObjectiveFits(page);
+    await expectObjectiveFits(page, 'Gerold Imhoff zuhören');
   });
 });
 
@@ -316,7 +316,7 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
     const k = window.kq!;
     for (let i = 0; i < 30 && !k.ctx.state.state.flags['tour.station1.ready']; i++) k.step(60);
   });
-  await expectObjectiveFits(page);
+  await expectObjectiveFits(page, 'Gerold Imhoff zuhören');
   await page.evaluate(() => {
     const k = window.kq!;
     const g = k.walk!.list().find((n) => n.npc === 'imhoff')!;
@@ -818,8 +818,14 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
     console.log(`[tour] no shift: era ${era}, ctx era ${await page.evaluate(() => window.kq!.ctx.era.current)}; last events ${tail.join(' | ')}`);
   }
   expect(era).toBe('1789');
-  await page.evaluate(() => window.kq!.step(1));
-  await expect(page.getByTestId('objective')).toContainText('Ein Rock, der nicht leuchtet');
+  const arrivalGoal = await page.evaluate(() => {
+    window.kq!.step(1);
+    const objective = document.querySelector<HTMLElement>('[data-testid="objective"]')!;
+    return { text: objective.textContent, clipPath: getComputedStyle(objective).clipPath };
+  });
+  expect(arrivalGoal.text).toContain('Ein Rock, der nicht leuchtet');
+  expect(arrivalGoal.clipPath).toBe('none');
+  await expectObjectiveFits(page, 'Ein Rock, der nicht leuchtet');
   await page.evaluate(() => window.kq!.step(300));
   expect(await page.evaluate(() => window.kq!.walk!.stats().visible)).toBe(0);
   expect(await page.evaluate(() => window.kq!.animals!.stats().visible)).toBe(0);

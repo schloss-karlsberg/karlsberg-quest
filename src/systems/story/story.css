@@ -334,17 +334,6 @@ body .kqs-dlg.kqs-dlg-raised {
   opacity: 1;
   transform: none;
 }
-.kqs-objective.kqs-new {
-  animation: kqs-ink 1.3s ease-out;
-}
-@keyframes kqs-ink {
-  from {
-    clip-path: inset(0 100% 0 0);
-  }
-  to {
-    clip-path: inset(0 0 0 0);
-  }
-}
 .kqs-obj-mark {
   color: #e9c46a;
   font-size: 15px;
@@ -1200,7 +1189,6 @@ html[data-kq-reduced-motion] .kqs-flow-card {
   animation: none !important;
   transition-duration: 0.01s !important;
 }
-html[data-kq-reduced-motion] .kqs-objective.kqs-new,
 html[data-kq-reduced-motion] .kqs-end-fire,
 html[data-kq-reduced-flash] .kqs-end-fire,
 html[data-kq-reduced-flash] .kqs-portrait .kqs-led {

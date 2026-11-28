@@ -32,7 +32,7 @@ Address the fresh-game playtest on main at db8b1b8d, through the first visit to 
 - [x] F2. Open passages between car-park visitors, with multi-direction collision regressions.
 - [x] F3. Align the coat marker with a working interaction spot and brief the player on approach.
 - [x] F5 and F10. Switch goals at the first shift and share the group target between HUD indicators.
-- [ ] F8 and F9. Pace clink captions and show the full goal as it wraps.
+- [x] F8 and F9. Pace clink captions and show the full goal as it wraps.
 - [ ] F12. Deliver the throw hint with the first pickup.
 - [ ] F7 and F11. Check the scripted compass grant and recorded dialogue before changing either.
 - [ ] Run the four gates and push the branch for review. Update the affected browser specs for CI.
@@ -45,3 +45,4 @@ Address the fresh-game playtest on main at db8b1b8d, through the first visit to 
 - F5. The coat objective replaces the trough on the first story tick in 1789 and stays in the HUD through the chapter handover. The runtime and tour spec check both moments.
 - F10. The story HUD reads the moving waypoint used by the group marker and uses its distance format. Unit and tour coverage check both indicators.
 - F8. The glass sound keeps its cue cadence. The first caption is immediate when the sound plays, and later captions are at least 30 seconds apart.
+- F9. Removed the objective text wipe that clipped the line. The tour spec checks the first arrival frame and wrapping in the HUD column.

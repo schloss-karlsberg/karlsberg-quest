@@ -93,7 +93,6 @@ export class ObjectiveView {
   }
 
   set(o: ObjectiveState | null): void {
-    const changed = (o?.text ?? null) !== (this.obj?.text ?? null);
     this.obj = o;
     if (!o) {
       this.el.classList.remove('kqs-show');
@@ -103,11 +102,6 @@ export class ObjectiveView {
     }
     this.textEl.textContent = o.text;
     this.el.classList.add('kqs-show');
-    if (changed) {
-      this.el.classList.remove('kqs-new');
-      void this.el.offsetWidth;
-      this.el.classList.add('kqs-new');
-    }
     if (o.x === undefined) this.hud.setMarker('objective', null);
   }
 
