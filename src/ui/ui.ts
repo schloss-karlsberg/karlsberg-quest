@@ -40,8 +40,8 @@ export class UI {
       subtitlesCoverToast(document.documentElement.hasAttribute('data-kq-touch'), window.innerHeight, this.hud.subtitleLines);
   }
 
-  toast(text: string, ms?: number): void {
-    this.cards.enqueueToast(text, ms);
+  toast(text: string, ms?: number, onShow?: () => string | null): void {
+    this.cards.enqueueToast(text, ms, onShow);
     this.requestRender();
   }
 

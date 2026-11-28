@@ -94,12 +94,12 @@ test('chapter 1: caught on the walk up, you wake at the spring and Q there takes
   await walk(page, [[SPRING.x, SPRING.z]]);
   await shiftToPast(page);
   expect(await story(page)).toMatchObject({ era: '1789', beat: 'k1_0b' });
-  // the disguise (short jumps between its places), the Musterung: k1_1, admitted, the lantern burns
+  // the disguise (short jumps between its places), the Musterung: k1_1, admitted, no oil timer by day
   await playDisguise(page, { shots: false });
   await upd(page, 20);
   s = await story(page);
   expect(s.beat).toBe('k1_1');
   expect(await page.evaluate(() => window.kq!.state().flags['court.admitted'])).toBe(true);
-  expect(!!s.meters.oil, 'the lantern burns in k1_1').toBe(true);
+  expect(!!s.meters.oil, 'no oil timer in k1_1').toBe(false);
   expect(errors).toEqual([]);
 });

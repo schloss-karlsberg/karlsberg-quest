@@ -396,7 +396,7 @@ export async function openAtSpring(page: Page, o: { shots?: boolean } = {}): Pro
   s = await story(page);
   expect(s.beat).toBe('k1_1');
   expect(await qn(page, 'q.k1.ankunft', 'wechsel')).toBe(1);
-  expect(!!s.meters.oil, 'the lantern burns from the court on').toBe(true);
+  expect(!!s.meters.oil, 'the day at the court has no oil timer').toBe(false);
   return near;
 }
 
@@ -596,7 +596,7 @@ export async function playK1(page: Page, o: PlayOptions = {}): Promise<void> {
   s = await story(page);
   expect(s.beat).toBe('k1_1');
   expect(await qn(page, 'q.k1.ankunft', 'wechsel')).toBe(1);
-  expect(!!s.meters.oil, 'the lantern burns from the court on').toBe(true);
+  expect(!!s.meters.oil, 'the day at the court has no oil timer').toBe(false);
   await flush(page);
   await upd(page, 120);
   await shot(page, '01-ehrenhof-1789');

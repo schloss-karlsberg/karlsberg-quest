@@ -528,16 +528,16 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   expect(await shownSince(page, shownMark, 'jost.k4.08', 20)).toBe(true);
 
   // ---- dawn at the Quelle -------------------------------------------------------------------------
+  const dawnMark = await page.evaluate(() => window.kq!.story!.shown().length);
   expect(await untilLine(page, 'marlene.end.morgen', 60)).toBe(true);
   s = await story(page);
   expect(s.beat).toBe('k4_14');
   expect((await flags(page))['combat.disabled']).toBe(true);
   await shot(page, '06-morgen');
-  expect(await untilLine(page, 'laub.k4.nur_steine', 70)).toBe(true);
+  expect(await shownSince(page, dawnMark, 'laub.k4.nur_steine', 70)).toBe(true);
   expect(await has(page, 'clue.k4.foto')).toBe(true);
 
   // ---- the last beat: Laub on the field book (deeds, no blanks) -------------------------------------
-  for (let i = 0; i < 30 && (await beat(page)) !== 'k4_15' && (await story(page)).chapter === 'k4'; i++) await run(page, 1);
   await run(page, 12);
   const fl = await page.evaluate(() => window.kq!.state().flags);
   expect(fl['quest.q.k4.zeichen']).toBe('done');
@@ -553,6 +553,10 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   await drainLines(page, 30);
   await run(page, 3);
   await expect(page.getByTestId('ending')).toBeVisible({ timeout: 30_000 });
+  const dawnLines = await page.evaluate((mark) => window.kq!.story!.shown().slice(mark), dawnMark);
+  const reaction = dawnLines.indexOf('laub.k4.nur_steine');
+  expect(reaction).toBeGreaterThanOrEqual(0);
+  expect(dawnLines.indexOf('laub.end.vorher')).toBeGreaterThan(reaction);
   await shot(page, '07-wahl');
   await o.at?.('ending:choice');
   await page.getByTestId('ending-keep').click();

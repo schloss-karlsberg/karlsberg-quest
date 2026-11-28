@@ -686,10 +686,14 @@ describe('story files', () => {
     runs.length = 0;
     step({ era: '1789', ...SPRING, flags: { 'k1.vorspiel': true } });
     expect(slice.beat).toBe('k1_0');
-    expect(all().map((a) => (a.do === 'say' ? a.id : a.do))).toEqual(['laub.k1.brunnenstube', 'objective', 'laub.k1.fremde', 'flag']);
+    // (the chapter's `oel-tag` also stops a day oil meter here, should an old save carry one)
+    expect(all().filter((a) => a.do !== 'meter').map((a) => (a.do === 'say' ? a.id : a.do))).toEqual(['laub.k1.brunnenstube', 'objective', 'laub.k1.fremde', 'flag']);
     expect(all().find((a) => a.do === 'objective')).toMatchObject({ id: 'k1.rock', text: 'Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach' });
     expect(all().at(-1)).toEqual({ do: 'flag', set: { 'k1.angekommen': true } });
+    // … and only once the chapter card has let go (`k1.karte`, set by the entry list after the card)
     step({ era: '1789', ...SPRING, flags: { 'k1.vorspiel': true, 'k1.angekommen': true } });
+    expect(slice.beat).toBe('k1_0');
+    step({ era: '1789', ...SPRING, flags: { 'k1.vorspiel': true, 'k1.angekommen': true, 'k1.karte': true } });
     expect(slice.beat).toBe('k1_0b');
     const k0bTalk = k1.beats.find((b) => b.id === 'k1_0b')!.enter!.filter((a) => a.do === 'say' || a.do === 'quest').map((a) => a.id);
     // the way in first, the coat last: the newest quest leads the tracker, and the coat is the first thing to do
@@ -762,7 +766,25 @@ describe('story files', () => {
     const k0b = k1.beats.find((b) => b.id === 'k1_0b')!;
     expect(k0b.wake).toEqual({ x: 1059.3, z: -833.1, yaw: 204, era: 'today', text: 'Du kommst an der Quelle zu dir, im Heute. Nichts ist verloren.' });
     // the chapter's oil and return-tip reactions wait for the end of the prelude
-    for (const id of ['oel-a', 'oel-b', 'lauf-zurueck']) expect(JSON.stringify(k1.on!.find((r) => r.id === id)!.when)).toContain('"not":{"flag":"k1.vorspiel"}');
+    for (const id of ['oel-b', 'lauf-zurueck']) expect(JSON.stringify(k1.on!.find((r) => r.id === id)!.when)).toContain('"not":{"flag":"k1.vorspiel"}');
+    // the day at the court has no oil timer (TASK-089: the first stay lasts until the story goes home):
+    // nothing starts the meter before the night part, and a meter from an older save is stopped
+    const oil = k1.on!.flatMap((r) => r.do.filter((a) => a.do === 'meter' && a.id === 'oil' && a.active).map(() => r));
+    expect(oil.map((r) => r.id)).toEqual(['oel-b']);
+    expect(JSON.stringify(oil[0]!.when)).toContain('{"flag":"k1.b"}');
+    expect(k1.on!.find((r) => r.id === 'oel-a')).toBeUndefined();
+    expect(k1.on!.find((r) => r.id === 'oel-tag')).toMatchObject({
+      when: { all: [{ era: '1789' }, { not: { flag: 'k1.b' } }] },
+      do: [{ do: 'meter', id: 'oil', active: false }],
+    });
+    for (const b of k1.beats) {
+      const acts = [...(b.enter ?? []), ...(b.exit ?? []), ...(b.on ?? []).flatMap((r) => r.do)];
+      expect(acts.some((a) => a.do === 'meter' && a.id === 'oil' && a.active), b.id).toBe(false);
+    }
+    // the lantern rule and the way home are taught at night, where they apply
+    const tip = k1.on!.find((r) => r.id === 'lauf-zurueck')!;
+    expect(JSON.stringify(tip.when)).toContain('{"flag":"k1.b"}');
+    expect(JSON.stringify(tip.when)).not.toContain('chapterTimer');
     // every Ehrenhof anchor in k1 waits for court.admitted
     for (const b of k1.beats)
       for (const r of b.on ?? [])
@@ -809,8 +831,25 @@ describe('story files', () => {
     engine.tick(0.5, env({ era: '1789', x: HOME.spawn.x, z: HOME.spawn.z }));
     expect(slice.beat).toBe('k1_0');
     expect(runs.flatMap((r) => r.actions).at(-1)).toEqual({ do: 'flag', set: { 'k1.angekommen': true } });
-    engine.tick(0.5, env({ era: '1789', x: HOME.spawn.x, z: HOME.spawn.z, flags: { 'k1.angekommen': true } }));
+    engine.tick(0.5, env({ era: '1789', x: HOME.spawn.x, z: HOME.spawn.z, flags: { 'k1.angekommen': true, 'k1.karte': true } }));
     expect(slice.beat).toBe('k1_0b');
+  });
+
+  it('numbers the chapters for the player: the tour is chapter 1, „Der Hof“ chapter 2', () => {
+    const cards = files
+      .map((f) => f.story)
+      .filter((s) => !s.test && !s.dev)
+      .sort((a, b) => a.order - b.order)
+      .map((s) => [s.chapter, s.title_de, s.sub_de]);
+    expect(cards).toEqual([
+      ['tour', 'Die Führung', 'Kapitel 1 · heute, ein Novembernachmittag'],
+      ['k1', 'Der Hof', 'Kapitel 2 · Sommer 1789'],
+      ['k2', 'Die Flucht', 'Kapitel 3 · Nacht vom 9. auf den 10. Februar 1793'],
+      ['k3', 'Die Nacht', 'Kapitel 4 · Sonntag, 28. Juli 1793'],
+      ['k4', 'Der Steinbruch', 'Kapitel 5 · 1796 → 1840 → heute'],
+      ['enden', 'Was das Feuer nicht fraß', 'heute · Morgengrauen'],
+    ]);
+    for (const [, title, sub] of cards) expect(`${title} ${sub}`).not.toMatch(/Prolog/i);
   });
 
   it('keeps every spring position of the opening on the shared home constant', () => {

@@ -48,6 +48,10 @@ Zeitreise beginnt in der Pause, mit dieser einen Berührung. Für die Gruppe ver
 
 ## 2. Kapitelübersicht
 
+Im Spiel sind die Kapitel seit dem 28.11.2026 durchnummeriert: Kapitel 1 „Die Führung“, 2 „Der
+Hof“, 3 „Die Flucht“, 4 „Die Nacht“, 5 „Der Steinbruch“. Die Bibel, die Dateinamen und die IDs
+(`tour`, `k1` … `k4`) zählen weiter wie bisher: „Kapitel 1“ in den Bibeldateien ist „Der Hof“.
+
 Lokales Koordinatensystem: `x = E − 381000`, `z = −(N − 5465000)` (EPSG:25832). Spielbereich: x 150 … 2300, z −2150 … 500. Corps de logis: x 1262.7 / z −1126.3.
 
 | Kapitel | Ära | Spielbereich (Anker, x/z, Radius) | Ziele | Bedrohungen | Set piece | Dauer |

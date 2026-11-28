@@ -87,6 +87,8 @@ const CLINK_R = 6;
 const GLINT_R = 12;
 const GLINT_COS = Math.cos((15 * Math.PI) / 180);
 const WUCHT_R = 3.5;
+/** A thrown chestnut shakes a hanging bottle down when it strikes within this distance of it (m, in plan). */
+export const NUT_R = 2;
 const OWNER = 'flaschen';
 
 interface Live {
@@ -473,6 +475,15 @@ class Flaschen {
         for (const s of FLASCHEN) {
           if (!s.hang || s.era !== this.ctx.era.current || this.slice.dropped.includes(s.id)) continue;
           if (Math.hypot(s.hang.x - x, s.hang.z - z) < WUCHT_R) this.drop(s.id);
+        }
+      }),
+      // a thrown chestnut (src/systems/forage) that strikes the trunk, the wall or the ground
+      // right by a hanging bottle shakes it down too
+      ev.on('forage:impact', ({ x, z, on }) => {
+        if (on === 'water' || on === 'enemy' || on === 'body') return;
+        for (const s of FLASCHEN) {
+          if (!s.hang || s.era !== this.ctx.era.current || this.slice.dropped.includes(s.id)) continue;
+          if (Math.hypot(s.hang.x - x, s.hang.z - z) < NUT_R) this.drop(s.id);
         }
       }),
     );

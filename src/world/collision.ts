@@ -30,6 +30,35 @@ function closestOnSeg(px: number, pz: number, e: Edge): [number, number] {
   return [e.ax + t * dx, e.az + t * dz];
 }
 
+/** First contact (0..1) with a vertical cylinder, or null if the segment misses. */
+export function segmentCylinderEntry(ax: number, ay: number, az: number, bx: number, by: number, bz: number, cx: number, cz: number, r: number, bottom: number, top: number): number | null {
+  const dx = bx - ax;
+  const dz = bz - az;
+  const ox = ax - cx;
+  const oz = az - cz;
+  const len2 = dx * dx + dz * dz;
+  const offset = ox * ox + oz * oz - r * r;
+  let enter = 0;
+  let exit = 1;
+  if (len2 > 0) {
+    const dot = ox * dx + oz * dz;
+    const disc = dot * dot - len2 * offset;
+    if (disc < 0) return null;
+    const root = Math.sqrt(disc);
+    enter = Math.max(enter, (-dot - root) / len2);
+    exit = Math.min(exit, (-dot + root) / len2);
+  } else if (offset > 0) return null;
+
+  const dy = by - ay;
+  if (dy !== 0) {
+    const low = (bottom - ay) / dy;
+    const high = (top - ay) / dy;
+    enter = Math.max(enter, Math.min(low, high));
+    exit = Math.min(exit, Math.max(low, high));
+  } else if (ay < bottom || ay > top) return null;
+  return enter <= exit ? enter : null;
+}
+
 /** Extra solid (set dressing): a circle or an oriented box (centre, unit axis u, half extents). */
 export type Solid = { kind: 'circle'; x: number; z: number; r: number } | { kind: 'box'; x: number; z: number; ux: number; uz: number; hu: number; hv: number };
 
@@ -160,6 +189,27 @@ export class FootprintCollider {
     // a point deep inside a big footprint may be far from all edges: brute-force fallback
     for (let p = 0; p < this.rings.length; p++) if (!polys.has(p) && pointInRing(x, z, this.rings[p]!)) return p;
     return -1;
+  }
+
+  /** First exterior footprint edge crossed by the segment, as a fraction of its length. */
+  footprintEntry(ax: number, az: number, bx: number, bz: number): number | null {
+    const dx = bx - ax;
+    const dz = bz - az;
+    const radius = Math.max(Math.abs(dx), Math.abs(dz)) / 2;
+    let first = Infinity;
+    for (const e of this.nearby(ax + dx / 2, az + dz / 2, radius)) {
+      const ex = e.bx - e.ax;
+      const ez = e.bz - e.az;
+      const den = dx * ez - dz * ex;
+      if (den === 0) continue;
+      const ox = e.ax - ax;
+      const oz = e.az - az;
+      const t = (ox * ez - oz * ex) / den;
+      const u = (ox * dz - oz * dx) / den;
+      if (t < 0 || t > 1 || t >= first || u < 0 || u > 1) continue;
+      if (!pointInRing(ax, az, this.rings[e.poly]!)) first = t;
+    }
+    return first === Infinity ? null : first;
   }
 
   /** Replace the solids of one owner ([] removes them). */
