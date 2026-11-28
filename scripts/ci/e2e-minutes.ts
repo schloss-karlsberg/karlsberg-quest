@@ -4,9 +4,10 @@
  * The shard planner balances shards with these numbers and sizes the matrix of a selected run from
  * them. A spec that is missing here counts DEFAULT_TEST_MINUTES per runnable test.
  *
- * Source: first estimate. Each shard's Playwright time, averaged over the full runs 46045395516,
- * 46082539997 and 46086245820 (2026-11-27/28), split across its files by test count. Replace it
- * with measured values: every run prints a "Spec timings" table in its summary and uploads
+ * Source: the twelve longest specs are measured, from the per-spec timings of the full run
+ * 46104995434 (2026-11-28); the rest is the first estimate (each shard's Playwright time,
+ * averaged over the full runs 46045395516, 46082539997 and 46086245820, split across its files by
+ * test count). Every run prints a "Spec timings" table in its summary and uploads
  * `e2e-timings-*` artifacts. Hosted runners differ by up to a factor of two between runs, so
  * round to the minute and do not chase small differences.
  */
@@ -17,12 +18,12 @@ export const SPEC_MINUTES: Readonly<Record<string, number>> = {
   'avatar-mpfb': 1,
   bauwagen: 0.7,
   camera: 2.8,
-  campaign: 30.3,
-  'chapter-k1': 10,
+  campaign: 44.7,
+  'chapter-k1': 8.2,
   'chapter-k1-disguise': 9.7,
   'chapter-k1-quelle': 1.4,
   'chapter-k2': 11.9,
-  'chapter-k3': 8.6,
+  'chapter-k3': 11.3,
   'chapter-k3-autosave': 2.3,
   'chapter-k4': 14.4,
   'chapter-prolog': 1.8,
@@ -49,24 +50,24 @@ export const SPEC_MINUTES: Readonly<Record<string, number>> = {
   npc: 2.5,
   pacing: 4.6,
   party: 4.5,
-  perf: 19.5,
+  perf: 12.3,
   photo: 7.8,
   'pikeur-credit': 0.5,
   pilot: 2,
-  'pol-flow': 6.3,
-  'polish-art': 12.4,
+  'pol-flow': 9.6,
+  'polish-art': 12.2,
   progression: 1.4,
   quelle: 1,
   quests: 2.2,
   readability: 4.9,
-  scenery: 10.6,
+  scenery: 9.2,
   setpieces: 6.2,
   skills: 6,
-  smoke: 9.4,
-  'stage-k2k4': 12.3,
-  story: 9.8,
-  touch: 17.4,
-  'tour-slice': 10.1,
+  smoke: 8.4,
+  'stage-k2k4': 10.7,
+  story: 9,
+  touch: 10.7,
+  'tour-slice': 10.2,
   'travel-paths': 0.9,
   'travel-session': 0.9,
   'twins-echo': 1.1,
