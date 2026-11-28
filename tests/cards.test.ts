@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { LevelCards, dismissedClock } from '../src/systems/progression/levelup-card';
-import { CARD_GAP, CardDirector, SOFT_MAX } from '../src/ui/cards';
+import { CARD_GAP, CardDirector, SOFT_MAX, subtitlesCoverToast } from '../src/ui/cards';
 import type { ModalHandle } from '../src/ui/modal';
 
 /** Card discipline (playtest round 4): one centre card at a time, held in fights and conversations. */
@@ -213,6 +213,37 @@ describe('HUD toast slot', () => {
   });
 });
 
+describe('toast vs the subtitle box (TASK-085)', () => {
+  it('holds only on a short touch layout with a line in the box', () => {
+    expect(subtitlesCoverToast(true, 375, 1)).toBe(true);
+    expect(subtitlesCoverToast(true, 375, 0)).toBe(false);
+    expect(subtitlesCoverToast(true, 820, 2)).toBe(false);
+    expect(subtitlesCoverToast(false, 375, 2)).toBe(false);
+  });
+
+  it('a waiting toast waits for the caption, an up one steps aside with its clock stopped', () => {
+    const { d, toast } = rig();
+    let caption = true;
+    d.toastHold = () => caption;
+    d.enqueueToast('Laufschritt', 2000);
+    d.tick(5);
+    expect(toast()).toBeNull();
+    expect(d.showing).toBeNull(); // the slot stays free for a level card meanwhile
+    caption = false;
+    d.tick(0);
+    expect(toast()).toBe('Laufschritt');
+    d.tick(1);
+    caption = true;
+    d.tick(10);
+    expect(toast()).toBeNull();
+    caption = false;
+    d.tick(0.5);
+    expect(toast()).toBe('Laufschritt');
+    d.tick(0.6);
+    expect(toast()).toBeNull();
+  });
+});
+
 describe('CardDirector soft holds (playtest round 5)', () => {
   it('a line being spoken keeps slide-in cards back (with a short linger), but a page asked for still opens', async () => {
     const { SOFT_LINGER } = await import('../src/ui/cards');
@@ -298,6 +329,21 @@ describe('CardDirector soft holds (playtest round 5)', () => {
     d.soft('dialogue', true, b);
     d.tick(0.05);
     expect(d.held).toBe(true);
+  });
+
+  it('the level card waits while any dialogue box is open, past SOFT_MAX too (cardHeld)', () => {
+    const { d } = rig();
+    let box = true;
+    d.dialogueOpen = () => box;
+    d.soft('dialogue', true, 'a');
+    for (let t = 0; t < SOFT_MAX + 2; t += 0.5) d.tick(0.5);
+    d.soft('dialogue', true, 'b');
+    d.tick(0.05);
+    expect(d.held).toBe(false); // a toast or payout may come now
+    expect(d.cardHeld).toBe(true);
+    expect(d.holdReasons()).toContain('dialogue-box');
+    box = false;
+    expect(d.cardHeld).toBe(false);
   });
 
   it('a pack out (no line) still lets cards through after SOFT_MAX', () => {

@@ -1126,28 +1126,39 @@ const STATES: State[] = [
           tracker: !!tracker && !meet(tracker, dlg),
           strip: stripBox ? strip!.textContent ?? '' : null,
           stripCut: !!strip && (strip.scrollWidth > strip.clientWidth + 1 || strip.scrollHeight > strip.clientHeight + 1),
+          // the strip rides on the row of „Tippen: weiter“: one line, so it takes no room from the
+          // spoken text (a long line scrolls under the sticky footer as before)
+          stripRows: stripBox ? Math.round(stripBox.height / (parseFloat(getComputedStyle(strip!).lineHeight) || 15)) : 0,
         };
       });
       await c.shot('speech', `goal while a line is up: ${goal.tracker ? 'tracker clear of the card' : `strip "${goal.strip}"`}`);
       expect(goal.obj, 'the tour has an objective here').not.toBe('');
       expect(goal.tracker || (goal.strip ?? '').includes(goal.obj), `objective readable while someone speaks (${JSON.stringify(goal)})`).toBe(true);
+      expect(goal.stripRows, 'the goal strip is one line').toBeLessThanOrEqual(1);
       if (goal.stripCut) c.f.notes.push(`hud-overlap: the goal strip is cut ("${goal.strip}")`);
       await dropLines(c);
       await c.tidy();
-      // 2. a tip toast while a sound caption is up (playtest: „Laufschritt …“ over „Vögel zwitschern.“)
+      // 2. a tip toast while a sound caption is up (playtest: „Laufschritt …“ over „Vögel zwitschern.“).
+      // On a landscape phone the toast steps aside while a line is in the subtitle box; taller
+      // layouts show both, apart.
+      const short = unit.height <= 500;
+      const toast = c.page.locator('.kq-toast:not(.kq-notice-out)');
       await c.page.evaluate(() => {
         const k = window.kq!;
-        const w = window as unknown as { kqCaptionOff?: () => void };
         k.ctx.ui.cards.clearToasts();
-        w.kqCaptionOff = k.ctx.ui.hud.subtitle(null, 'Vögel zwitschern.', 20_000);
-        k.ctx.ui.toast('Laufschritt: den Stick ganz nach vorn schieben und halten – auf freien Wegen wirst du schneller.', 12_000);
+        k.ctx.ui.toast('Laufschritt: den Stick ganz nach vorn schieben und halten – auf freien Wegen wirst du schneller.', 30_000);
       });
       try {
         // the running tour talks: a spoken line holds the toast, so tap lines away until it is up
-        const toast = c.page.locator('.kq-toast:not(.kq-notice-out)');
         for (const end = Date.now() + 30_000; Date.now() < end && !(await toast.isVisible());) await dropLines(c);
         await expect(toast).toBeVisible();
-        await c.shot('toast-caption', 'a tip toast and a sound caption: both readable');
+        await c.page.evaluate(() => {
+          const w = window as unknown as { kqCaptionOff?: () => void };
+          w.kqCaptionOff = window.kq!.ctx.ui.hud.subtitle(null, 'Vögel zwitschern.', 20_000);
+        });
+        if (short) await expect(toast).toBeHidden();
+        await c.page.waitForTimeout(300);
+        await c.shot('toast-caption', short ? 'a sound caption: the tip toast steps aside' : 'a tip toast and a sound caption: both readable');
         // and with a low line up (it does not hold the toast; the caption moves above the dialogue
         // card on taller layouts), three captions at the largest subtitle size
         await c.page.evaluate(() => {
@@ -1161,8 +1172,17 @@ const STATES: State[] = [
         });
         await c.page.waitForTimeout(2000);
         const toastUp = await toast.isVisible();
-        await c.shot('toast-caption-line', `three captions (xl), a low line and ${toastUp ? 'the toast' : 'no toast (a spoken tour line held it)'}`);
-        if (!toastUp) c.f.notes.push('hud-overlap: a spoken tour line held the toast during -toast-caption-line');
+        await c.shot('toast-caption-line', `three captions (xl), a low line and ${toastUp ? 'the toast' : 'no toast (held)'}`);
+        if (!toastUp && !short) c.f.notes.push('hud-overlap: a spoken tour line held the toast during -toast-caption-line');
+        // the captions gone, the toast comes back with its time left
+        await c.page.evaluate(() => {
+          const w = window as unknown as { kqCaptionOff?: () => void; kqCaptionOff2?: () => void; kqCaptionOff3?: () => void };
+          for (const off of [w.kqCaptionOff, w.kqCaptionOff2, w.kqCaptionOff3]) off?.();
+        });
+        if (short) {
+          for (const end = Date.now() + 20_000; Date.now() < end && !(await toast.isVisible());) await dropLines(c);
+          await expect(toast, 'the toast returns after the captions').toBeVisible();
+        }
       } finally {
         await c.page.evaluate(() => {
           const w = window as unknown as { kqCaptionOff?: () => void; kqCaptionOff2?: () => void; kqCaptionOff3?: () => void };
@@ -1199,12 +1219,21 @@ const STATES: State[] = [
           if (card && document.querySelector('.kqs-card')) bad.push('level card up while the chapter card shows or fades');
           if (meet(card, story)) bad.push('level card on the chapter card');
           if (meet(card, vis('.kqs-dlg.kqs-show .kqs-dlg-body'))) bad.push('level card on the dialogue card');
+          // TASK-085: the level card waits until no dialogue box is open (1789's arrival on the desktop)
+          if (card && document.querySelector('.kqs-dlg.kqs-show')) bad.push('level card up while a dialogue box is open');
         }
         return { bad: [...new Set(bad)], seen };
       });
       c.f.notes.push(`hud-overlap: level card ${watch.seen ? 'came up' : 'stayed back'} within 24 s of the chapter card`);
+      if (!watch.seen) {
+        // it waited for the lines; it is never dropped: once no box is open it comes up
+        const lvl = c.page.locator('.kqp-card.kqp-in:not(.kqp-held)');
+        for (const end = Date.now() + 40_000; Date.now() < end && !(await lvl.isVisible());) await dropLines(c);
+        await expect(lvl, 'the level card comes up once the lines are done').toBeVisible();
+        expect(await c.page.locator('.kqs-dlg.kqs-show').count(), 'no dialogue box under the level card').toBe(0);
+      }
       await c.shot('level-after-card', 'after the chapter card');
-      expect(watch.bad, 'level card vs chapter card and dialogue').toEqual([]);
+      expect(watch.bad, `level card vs chapter card and dialogue: ${watch.bad.join('; ')}`).toEqual([]);
       await c.page.evaluate(() => window.kq!.story!.goto('tour', 't1'));
       await c.tidy();
     },

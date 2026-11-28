@@ -43,10 +43,48 @@ of the skill and level cards on phones; these overlaps are still there:
 
 ## Acceptance criteria
 
-- [ ] On phones the objective stays readable while someone speaks (the speech box moves, or the
+- [x] On phones the objective stays readable while someone speaks (the speech box moves, or the
       tracker shows in a free spot or as a one-line strip).
-- [ ] Toasts and tip cards never cover subtitles or sound captions (all viewports).
-- [ ] The level card waits until the chapter title card and the current speech line are done, or
+- [x] Toasts and tip cards never cover subtitles or sound captions (all viewports).
+- [x] The level card waits until the chapter title card and the current speech line are done, or
       takes a slot that covers neither.
-- [ ] The mobile UI tour (`scripts/dev/mobile-tour.ts`) gets a state that checks tracker vs.
+- [x] The mobile UI tour (`scripts/dev/mobile-tour.ts`) gets a state that checks tracker vs.
       speech box.
+
+## Plan
+
+_Status: done 2026-11-28 (branch `fix/hud-overlaps`)_
+
+**Approach:** Keep the phone dialogue card where it is and carry the goal in its footer as a
+strip; keep captions out of the toast dock's reach; tighten the card director's hold so the level
+card neither starts during a chapter card's fade nor comes in over a line after `SOFT_MAX`.
+
+- [x] 1. Goal strip: `DialoguePresenter.setGoal`, filled by story from the objective or the
+  tracker's current goal (`dialogueGoal`); only the short touch layout shows it, one line on the row of „Tippen: weiter“ (cut with an ellipsis), so it never takes room from the spoken text.
+- [x] 2. Captions: on the short touch layout they stay above the prompt while a line is up (the
+  dialogue card is in the top band there); a toast waits, or steps aside with its clock stopped,
+  while a line is in the subtitle box (`cards.toastHold`, `subtitlesCoverToast`).
+- [x] 3. Level card: the chapter card holds the slot from the frame it is added until its fade
+  ends (`.kqs-card`); past `SOFT_MAX` toasts and payouts wait until the line on screen is done (a
+  break or the next line), then stay for the rest of the spell; the level card waits while
+  any dialogue box is open (`cards.cardHeld`; seen in 1789's arrival on the desktop, where
+  "Stufe III" lay over Laub's lines) and are never dropped; a raised radio line keeps the level and skill
+  cards below it on taller layouts; no tilt on the phone slip (a corner reached the dialogue band).
+- [x] 3b. Sound captions: at most two at once in the subtitle box (an era's sound bed started
+  three cues that stacked over the avatar); further ones wait their turn.
+- [x] 4. Mobile tour state `hud-overlap` (goal vs. speech box, toast vs. captions incl. three xl
+  captions, level card vs. chapter card and dialogue at the start of chapter 1); the measurer's
+  `caption-covered` also counts toasts and quest payouts. Unit tests in `tests/cards.test.ts` and
+  `tests/dialogue-goal.test.ts`. Docs: ARCHITECTURE (card discipline), MOBILE-UI-PASS (state 28).
+
+## Progress
+
+- Repro before the fix (desktop 1309×688, real GPU): at the start of chapter 1 and with
+  `?kapitel=4` the level card was up while the chapter card faded (3 overlapping samples each).
+  After the fix: 0 overlapping samples; at the start of chapter 1 the card came up at the turn to
+  Marlene's radio line, below it.
+- Mobile tour `hud-overlap` on `small-landscape`, `large-landscape` and `tablet-landscape` with
+  the shots judged by eye: the goal strip reads „◆ Zur Gruppe am Wanderparkplatz · 10 m“ in the
+  phone dialogue footer (the tracker is clear of the dialogue card on the tablet), no caption under
+  a toast, the level card never on the chapter card or the dialogue card.
+

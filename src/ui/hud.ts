@@ -8,6 +8,9 @@ const ZONE_GAP = 18;
 /** Subtitle lines on screen at once, and how long each stays before a newer line may push it out. */
 const SUB_MAX = 3;
 const SUB_MIN_MS = 1500;
+/** Sound captions on screen at once: an era's sound bed starts three cues together; more than two
+ * stacked up over the avatar (TASK-085). Further ones wait like any line. */
+const SOUND_MAX = 2;
 
 type SubtitleLine = { el: HTMLElement; ms: number; shownAt: number; timer: ReturnType<typeof setTimeout> | undefined; sound: boolean };
 
@@ -144,6 +147,11 @@ export class Hud {
     let n = 0;
     for (const line of this.subsShown) if (line.sound) n++;
     return n;
+  }
+
+  /** All lines in the subtitle box now, sound captions and spoken subtitles (TASK-085: toasts). */
+  get subtitleLines(): number {
+    return this.subsShown.length;
   }
 
   /** Something action-heavy is on (or just ended): keep the centre of the screen clear. */
@@ -423,8 +431,11 @@ export class Hud {
     this.subsWake = undefined;
     while (this.subsQueued.length) {
       const now = performance.now();
-      if (this.subsShown.length >= SUB_MAX) {
-        const oldest = this.subsShown[0]!;
+      const next = this.subsQueued[0]!;
+      const sounds = this.subsShown.filter((l) => l.sound);
+      const full = this.subsShown.length >= SUB_MAX || (next.sound && sounds.length >= SOUND_MAX);
+      if (full) {
+        const oldest = this.subsShown.length >= SUB_MAX ? this.subsShown[0]! : sounds[0]!;
         const wait = oldest.shownAt + SUB_MIN_MS - now;
         if (wait > 0) {
           this.subsWake = setTimeout(() => this.flushSubtitles(), wait);

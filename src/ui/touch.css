@@ -690,15 +690,17 @@ html[data-kq-touch] .kqp-q-key {
   /* TASK-085: the card covers the tracker, so the current goal rides along as one line in the
      footer, left of „Tippen: weiter“ (the story fills it from the objective or the tracker) */
   html[data-kq-touch] body .kqs-dlg .kqs-dlg-goal:not(:empty) {
-    display: -webkit-box;
+    /* one line, on the row of „Tippen: weiter“: a second line took the room of the spoken text
+       in the capped card and hid its end (TASK-085) */
+    display: block;
     flex: 1 1 auto;
     min-width: 0;
     overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
+    white-space: nowrap;
+    text-overflow: ellipsis;
     font-family: var(--serif);
     font-style: normal;
-    font-size: 13px;
+    font-size: 12px;
     line-height: 1.25;
     color: var(--ink);
   }
@@ -707,7 +709,6 @@ html[data-kq-touch] .kqp-q-key {
   }
   html[data-kq-touch] body .kqs-dlg .kqs-dlg-goal:not(:empty) ~ .kqs-skip {
     flex: none;
-    align-self: flex-end;
   }
   /* The dialogue card is in the top band here, so a caption stays at its place above the prompt
      instead of moving up to the middle of the screen, where the notice dock's tip toasts reach

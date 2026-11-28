@@ -1,7 +1,7 @@
 import './styles.css';
 import './hud-restyle.css';
 import { h } from './dom';
-import { CardDirector } from './cards';
+import { CardDirector, subtitlesCoverToast } from './cards';
 import { Hud } from './hud';
 import { LoaderView, LoadingRequests } from './loader';
 import { ModalManager } from './modal';
@@ -35,6 +35,9 @@ export class UI {
     this.cards.extraHold = () => !!document.querySelector(
       '.kq-title:not(.kq-hidden):not(.fade-out), .kqs-card, .kqs-curtain.kqs-down, .kqs-choice-card.kqs-show, .kqt-travel-curtain, html[data-kq-rotate]',
     );
+    this.cards.dialogueOpen = () => !!document.querySelector('.kqs-dlg.kqs-show');
+    this.cards.toastHold = () =>
+      subtitlesCoverToast(document.documentElement.hasAttribute('data-kq-touch'), window.innerHeight, this.hud.subtitleLines);
   }
 
   toast(text: string, ms?: number): void {

@@ -53,6 +53,15 @@ export function captionCoversCard(touch: boolean, viewportH: number, captionLine
   return touch && viewportH <= SHORT_LAYOUT_MAX_H && captionLines > 0;
 }
 
+/**
+ * The same band problem for a toast (TASK-085): on a short touch layout a long tip in the notice
+ * dock reaches down to the subtitle box („Laufschritt …“ over „Vögel zwitschern.“), so it waits
+ * while any line is in the box, spoken or a sound caption. Taller layouts keep them apart.
+ */
+export function subtitlesCoverToast(touch: boolean, viewportH: number, subtitleLines: number): boolean {
+  return touch && viewportH <= SHORT_LAYOUT_MAX_H && subtitleLines > 0;
+}
+
 interface Toast {
   text: string;
   left: number;
@@ -72,6 +81,13 @@ export class CardDirector {
   private gap = 0;
   /** A screen that covers the card or notice, such as a title card or a curtain. */
   extraHold: (() => boolean) | null = null;
+  /**
+   * Keeps the toast back (and steps an up one aside, its clock stopped) while it would share the
+   * screen with the subtitle box: on a landscape phone a long tip reaches the captions (TASK-085).
+   */
+  toastHold: (() => boolean) | null = null;
+  /** A dialogue box is open (story line, bark, echo): the level card waits for it (TASK-085). */
+  dialogueOpen: (() => boolean) | null = null;
 
   constructor(
     private readonly hud: Pick<Hud, 'inAction' | 'showToast' | 'holdToast' | 'closeToast'>,
@@ -160,10 +176,19 @@ export class CardDirector {
     return this.busy || this.softBusy || this.modalOwner !== null || this.modals.count > 0 || !!this.extraHold?.();
   }
 
+  /**
+   * Must the level card wait or step aside now? `held`, and also while any dialogue box is
+   * open, past SOFT_MAX too: on the desktop and in 1789's arrival the card lay over Laub's lines
+   * (TASK-085). It is never dropped; it shows in the first moment without a box.
+   */
+  get cardHeld(): boolean {
+    return this.held || !!this.dialogueOpen?.();
+  }
+
   /** Why it is held (tests / debug). */
   holdReasons(): string[] {
     const soft = [...this.softs].filter(([, v]) => v > this.clock).map(([k]) => `soft:${k}`);
-    return [...this.holds, ...soft, ...(this.hud.inAction ? ['action'] : []), ...(this.extraHold?.() ? ['story'] : [])];
+    return [...this.holds, ...soft, ...(this.hud.inAction ? ['action'] : []), ...(this.extraHold?.() ? ['story'] : []), ...(this.dialogueOpen?.() ? ['dialogue-box'] : [])];
   }
 
   /** The token on screen now (null: none). */
@@ -217,7 +242,7 @@ export class CardDirector {
 
   private tickToast(dt: number): void {
     if (!this.toast) {
-      if (this.toasts.length && this.claim('toast', this.closeToast)) {
+      if (this.toasts.length && !this.toastHold?.() && this.claim('toast', this.closeToast)) {
         this.toast = this.toasts.shift()!;
         this.hud.showToast(this.toast.text);
       }
@@ -228,7 +253,7 @@ export class CardDirector {
       if (this.claim('toast', this.closeToast)) this.hud.holdToast(false);
       return;
     }
-    const held = this.held;
+    const held = this.held || !!this.toastHold?.();
     this.hud.holdToast(held);
     if (held) return;
     this.toast.left -= dt;
