@@ -43,6 +43,7 @@ import { ConversationView, questCardEl, type TalkLine, type TalkTopic } from './
 import { GiverGlyphs } from './glyphs';
 import type { Person } from '../people/types';
 import { type BodySpot, bodySpot, faceYaw, talkCues } from './bind';
+import { segmentHitsBody } from '../combat/rules';
 
 addStrings('de', {
   'npc.prompt': 'Mit {name} sprechen',
@@ -121,6 +122,8 @@ interface Placed {
   faceT?: number;
   /** Idle heading set by 'npc:yaw' (degrees; the court's head turns), over the sweep / placement yaw. */
   yawOverride?: number;
+  /** Metres off the placement for now ('npc:offset': a watcher walking to a noise). Never saved. */
+  off?: { x: number; z: number };
 }
 
 class NpcRuntime {
@@ -155,6 +158,32 @@ class NpcRuntime {
     ev.on('npc:spawn', (p) => this.spawn(p));
     ev.on('npc:despawn', ({ npc }) => this.despawn(npc));
     ev.on('npc:yaw', ({ npc, yaw }) => this.setYaw(npc, yaw));
+    ev.on('npc:offset', ({ npc, dx, dz }) => {
+      const f = this.figs.get(npc);
+      if (!f) return;
+      if (dx === 0 && dz === 0) delete f.off;
+      else f.off = { x: dx, z: dz };
+    });
+    // a thrown chestnut (src/systems/forage) bounces off whoever stands in its way; nobody is hurt
+    ev.on('world:pelt', (q) => {
+      if (q.receipt.hit) return;
+      let best: string | null = null;
+      let bestT = Infinity;
+      let bx = 0;
+      let bz = 0;
+      for (const [id, f] of this.figs) {
+        if (!this.visible(f)) continue;
+        const b = this.spot(id, f);
+        const at = segmentHitsBody(q.ax, q.ay, q.az, q.bx, q.by, q.bz, b.x, b.floor, b.z, 0.36, b.tall);
+        if (at !== null && at < bestT) {
+          bestT = at;
+          best = id;
+          bx = b.x;
+          bz = b.z;
+        }
+      }
+      if (best) Object.assign(q.receipt, { hit: true, npc: best, x: bx, z: bz });
+    });
     // a kneeling figure asked about the hounds' names scratches the one at his knee
     ev.on('npc:talk', ({ npc, topic }) => {
       const f = this.figs.get(npc);
@@ -300,7 +329,7 @@ class NpcRuntime {
 
   /** Floor under the figure; a placement with a storey hint (`y`, rooms upstairs) keeps its storey. */
   private figY(f: Placed): number {
-    return this.ctx.world.heightAt(f.p.x, f.p.z, f.p.y);
+    return this.ctx.world.heightAt(f.p.x + (f.off?.x ?? 0), f.p.z + (f.off?.z ?? 0), f.p.y);
   }
 
   /** The live person bound to this speaker's placement (people contract v0.1), if any. */
@@ -311,6 +340,11 @@ class NpcRuntime {
   /** Where a placement's body is now: the bound person, else the placement (./bind.ts). */
   private spot(id: string, f: Placed): BodySpot & { floor: number; tall: number } {
     const s = bodySpot(f.p, this.person(id));
+    // a figure of its own may stand off its placement for a while ('npc:offset')
+    if (!s.bound && f.off) {
+      s.x += f.off.x;
+      s.z += f.off.z;
+    }
     return { ...s, floor: s.y ?? this.figY(f), tall: s.height ?? f.fig.look.height };
   }
 
@@ -667,17 +701,19 @@ class NpcRuntime {
       const vis = this.visible(f) && !this.person(id);
       f.fig.target = vis ? 1 : 0;
       const o = f.fig.object;
-      o.position.set(f.p.x, this.figY(f), f.p.z);
+      const fx = f.p.x + (f.off?.x ?? 0);
+      const fz = f.p.z + (f.off?.z ?? 0);
+      o.position.set(fx, this.figY(f), fz);
       // in a conversation (or while it speaks a story line to the player close by) the person turns
       // round to the player in ~0.4 s (F-33), then back to its idle heading; the rigged head keeps
       // looking at a player who comes close, the procedural figure (no head look) turns slowly instead
-      const d = Math.hypot(p.x - f.p.x, p.z - f.p.z);
+      const d = Math.hypot(p.x - fx, p.z - fz);
       f.faceT = Math.max(0, (f.faceT ?? 0) - dt);
       const talkTo = this.talking?.npc === id || (f.faceT > 0 && d < 10);
       const nearTo = !talkTo && d < 8 && !f.fig.isRigged;
       // a watcher (court) keeps its own heading close up: it turns its head by 'npc:yaw', not by proximity
       const watching = !!f.p.watch && !talkTo;
-      const want = talkTo || (nearTo && !watching) ? yawToward(f.p.x, f.p.z, p.x, p.z) : yawRad(this.idleYaw(f));
+      const want = talkTo || (nearTo && !watching) ? yawToward(fx, fz, p.x, p.z) : yawRad(this.idleYaw(f));
       f.yaw = approachYaw(f.yaw, want, dt, talkTo ? TALK_TURN_S : nearTo ? NEAR_TURN_S : IDLE_TURN_S, reduced);
       o.rotation.y = f.yaw;
       // kneeling: lower and leaning forward over what lies before him; a scratching hand rocks him

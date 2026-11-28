@@ -117,6 +117,9 @@ export function avatarModelParam(v: string | null): AvatarModelId {
   return v === 'surveyor' ? 'surveyor' : 'mpfb';
 }
 
+/** Seconds the throwing arm takes (`react('throw')`). */
+const THROW_S = 0.45;
+
 /** A clip's upper-body (swings, charge, flare, hit over the walking legs) or lower-body tracks (bones.ts). */
 function splitClip(c: AnimationClip, upper: boolean, kind: RigKind): AnimationClip {
   const tracks = c.tracks.filter((t) => isUpperTrack(kind, t.name) === upper);
@@ -194,6 +197,7 @@ export class Avatar {
   private vel = { x: 0, z: 0 };
   private hitT = 0;
   private interactT = 0;
+  private throwT = 0;
   private waveT = 0;
   private deathT = 0;
   private wasDead = false;
@@ -286,9 +290,10 @@ export class Avatar {
     this.last.copy(this.player.renderPos);
   }
 
-  /** A short reaction (events from boot): 'hit' | 'interact' | 'wave'. */
-  react(kind: 'hit' | 'interact' | 'wave'): void {
-    if (kind === 'hit') this.hitT = 0.42;
+  /** A short reaction (events from boot): 'hit' | 'interact' | 'wave' | 'throw' (a chestnut leaves the hand). */
+  react(kind: 'hit' | 'interact' | 'wave' | 'throw'): void {
+    if (kind === 'throw') this.throwT = THROW_S;
+    else if (kind === 'hit') this.hitT = 0.42;
     else if (kind === 'interact') this.interactT = 1.05;
     else this.waveT = 1.6;
   }
@@ -797,7 +802,7 @@ export class Avatar {
     else if (A.dodge !== null && this.speed > 0.5) want = Math.atan2(-this.vel.x, -this.vel.z);
     else if (A.target && (fight || A.charge !== null)) want = Math.atan2(-(A.target.x - p.x), -(A.target.z - p.z));
     else if (fight && this.speed > 0.3) want = pl.yaw;
-    else if (A.charge !== null || A.flare > 0.2) want = pl.yaw;
+    else if (A.charge !== null || A.flare > 0.2 || this.throwT > 0) want = pl.yaw;
     else if (this.speed > 0.35) want = Math.atan2(-this.vel.x, -this.vel.z);
     // F-15 hook (guards.ts turnToward): the short way round; a NaN wish or facing never sticks
     this.facing = turnToward(this.facing, want ?? this.facing, A.swing || A.dodge !== null ? 22 : 11, dt, pl.yaw);
@@ -859,6 +864,7 @@ export class Avatar {
     const still = 1 - moveK;
     this.debug.upper = '';
     this.debug.full = '';
+    const throwClip = this.throwT <= 0 ? null : this.acts.has('Punch_Right') ? 'Punch_Right' : this.acts.has('Interact') ? 'Interact' : null;
     if (A.dead && !this.wasDead) this.deathT = 0;
     this.wasDead = A.dead;
     if (A.dead) {
@@ -901,6 +907,13 @@ export class Avatar {
       set('Punch_Left', smooth(A.flare), 0, 0.42 - A.flare * 0.12);
       upperW = smooth(A.flare);
       this.debug.upper = 'Punch_Left';
+    } else if (throwClip) {
+      // a throw: the right arm comes through over the walking legs (the punch clip, else the reach)
+      const k = 1 - this.throwT / THROW_S;
+      const w = smooth(clamp01(Math.min(k * 9, (1 - k) * 4)));
+      set(throwClip, w, 0, throwClip === 'Punch_Right' ? 0.08 + k * 0.8 : 0.15 + k * 0.6);
+      upperW = w;
+      this.debug.upper = `throw:${throwClip}`;
     } else if (A.drink > 0) {
       set('Interact', 1, 0, 0.2 + A.drink * 0.6);
       upperW = 1;
@@ -928,6 +941,7 @@ export class Avatar {
     if (!A.frozen) {
       this.hitT = Math.max(0, this.hitT - dt);
       this.interactT = Math.max(0, this.interactT - dt);
+      this.throwT = Math.max(0, this.throwT - dt);
       this.waveT = Math.max(0, this.waveT - dt);
     }
     // apply weights (eased: the locomotion blend moves at ~8/s)

@@ -4,8 +4,9 @@
  *  - Throw (action `throw`, F / the touch button „Kastanie“): hold shows the arc and where it
  *    lands, letting go throws one chestnut there. The landing point is where the view points
  *    (2–22 m), or the body of the locked / soft target. One chestnut leaves the pack per throw.
- *    It stings an enemy (`combat:pelt`), bounces off trunks, walls and people, makes a noise where
- *    it lands (`world:noise`: the deer prick up, a calm pack sends a hound to look) and is gone.
+ *    It stings an enemy (`combat:pelt`), bounces off trunks, walls and people (`world:pelt`), makes
+ *    a noise where it lands (`world:noise`: the deer prick up, a calm pack sends a hound to look, a
+ *    court watcher walks over) and is gone.
  *  - Cut: where the staff comes down (`combat:arc`), ferns, flower clumps and low bushes are cut
  *    to a stub and grass is mown; they grow back in steps (src/world/vegetation/cuts.ts). A fresh
  *    plant sometimes hides a chestnut (logic.ts `rollDrop`: seeded, with bad-luck protection),
@@ -45,7 +46,7 @@ declare module '../../core/events' {
     /** A chestnut left the hand towards t; `left` are still in the pack. */
     'forage:throw': { x: number; y: number; z: number; tx: number; ty: number; tz: number; left: number };
     /** A thrown chestnut struck something (its first impact). */
-    'forage:impact': { x: number; y: number; z: number; on: 'ground' | 'water' | 'enemy' | 'body' | 'wood' | 'wall' };
+    'forage:impact': { x: number; y: number; z: number; on: 'ground' | 'water' | 'enemy' | 'body' | 'wood' | 'wall'; /** The placed person it struck ('body'). */ npc?: string };
     /** The staff cut plants in a circle: how many, and how many chestnuts lay under them. */
     'forage:cut': { x: number; z: number; r: number; plants: number; drops: number };
     /** Chestnuts in the pack (the touch button and the HUD chip follow it). */
@@ -410,7 +411,7 @@ class Forage {
     return { pan: side * 0.8, level: Math.max(0.25, 1 - d / 40) };
   }
 
-  private impact(n: Nut, on: 'ground' | 'water' | 'enemy' | 'body' | 'wood' | 'wall'): void {
+  private impact(n: Nut, on: 'ground' | 'water' | 'enemy' | 'body' | 'wood' | 'wall', npc?: string): void {
     const { ctx } = this;
     const reduced = ctx.settings.state.reducedMotion;
     const { pan, level } = this.pan(n.x, n.z);
@@ -424,8 +425,10 @@ class Forage {
         if (on === 'ground' && ctx.world.surfaceAt(n.x, n.z) !== 'gravel') this.visuals.burst('grass', n.x, n.y - THROW.radius, n.z, 3, 0.6);
       }
     }
-    ctx.events.emit('forage:impact', { x: n.x, y: n.y, z: n.z, on });
-    ctx.events.emit('world:noise', { x: n.x, z: n.z, loud: on === 'water' ? THROW.loud * 0.7 : THROW.loud, by: 'kastanie' });
+    ctx.events.emit('forage:impact', { x: n.x, y: n.y, z: n.z, on, ...(npc ? { npc } : {}) });
+    // a chestnut on a coat is a dull thud, one in the water a plop: both carry less far
+    const loud = on === 'body' ? THROW.loud * 0.5 : on === 'water' ? THROW.loud * 0.7 : THROW.loud;
+    ctx.events.emit('world:noise', { x: n.x, z: n.z, loud, by: 'kastanie' });
   }
 
   /** Something upright on the way from a to the chestnut's new place? It turns back and is spent. */
@@ -442,6 +445,17 @@ class Forage {
       n.z = q.receipt.z ?? n.z;
       back();
       this.impact(n, 'enemy');
+      return true;
+    }
+    // a placed person (a watcher, a giver): it bounces off; the court takes a struck watcher from the impact
+    const who = { ax, ay, az, bx: n.x, by: n.y, bz: n.z, receipt: { hit: false } as { hit: boolean; x?: number; z?: number; npc?: string } };
+    ctx.events.emit('world:pelt', who);
+    if (who.receipt.hit) {
+      n.x = ax;
+      n.y = ay;
+      n.z = az;
+      deflectNut(n, who.receipt.x ?? n.x + n.vx / speed, who.receipt.z ?? n.z + n.vz / speed);
+      this.impact(n, 'body', who.receipt.npc);
       return true;
     }
     // the tour's people and dogs

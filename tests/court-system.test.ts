@@ -8,7 +8,7 @@ import { createInitialState, GameStateStore } from '../src/core/state';
 import type { Input } from '../src/player/input';
 import { Player } from '../src/player/player';
 import court from '../src/systems/court';
-import { EJECT_FADE } from '../src/systems/court/logic';
+import { EJECT_FADE, yawGap } from '../src/systems/court/logic';
 import { COURT_K1_DE } from '../src/systems/court-k1';
 import { Quality } from '../src/systems/fx/quality';
 import { ShiftEffect } from '../src/systems/fx/shift/shift';
@@ -251,4 +251,132 @@ describe('court runtime', () => {
   });
 
   it.todo('decide which set piece owns input when a court escort and cinematic overlap');
+});
+
+describe('court runtime: a thrown chestnut (TASK-095)', () => {
+  const POST = { x: 1222, z: IN_COURT.z };
+  /** Seven metres north of the Gardist: in earshot, out of his fan (he looks west). */
+  const NOISE = { x: POST.x, z: POST.z - 7, loud: 0.7, by: 'kastanie' };
+
+  function scene(inspector = false) {
+    const s = setup();
+    Object.assign(s.ctx.world, { collider: { enabled: false, resolve: (x: number, z: number) => ({ x, z, hit: false }) }, heightfield: { slopeDeg: () => 0 } });
+    s.setNpc('gardist', POST.x, POST.z, inspector);
+    s.activate();
+    // the player in the hi-vis vest, eight metres in front of him: seen at once
+    delete s.state.mutable.flags['disguise.coat'];
+    s.player.position.set(POST.x - 8, 0, POST.z);
+    const watcher = () => s.hooks.watchers()[0]!;
+    const captions = () => (s.hud.subtitle as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[1]));
+    const run = (seconds: number) => {
+      for (let t = 0; t < seconds; t += 1 / 60) s.step();
+    };
+    return { ...s, watcher, captions, run };
+  }
+
+  it('draws the watcher off its post: its fan turns to the noise and the player crosses unseen', () => {
+    const s = scene();
+    s.step();
+    expect(s.watcher().sees).toBe(true);
+    // out of sight first (behind him), then the chestnut lands
+    s.player.position.set(POST.x + 9, 0, POST.z);
+    s.hooks.set(0);
+    s.step();
+    s.events.emit('world:noise', NOISE);
+    s.step();
+    expect(s.watcher()).toMatchObject({ distract: 'turn', postX: POST.x, postZ: POST.z });
+    expect(yawGap(s.watcher().yaw, 0)).toBeLessThan(0.01);
+    expect(s.captions().some((c) => c.includes('horcht auf und geht nachsehen'))).toBe(true);
+    expect(s.named('court:distracted')).toEqual([{ watcher: 'gardist', phase: 'turn' }]);
+    // he walks: the npc system is told where he stands, the placement stays his post
+    s.run(3);
+    const w = s.watcher();
+    expect(w.distract).toBe('walk');
+    expect(w.z).toBeLessThan(POST.z - 3);
+    expect(s.named('npc:offset').at(-1)).toMatchObject({ npc: 'gardist', dz: expect.closeTo(w.z - POST.z, 6) });
+    expect((s.state.state.systems.npc as NpcSlice).placed.gardist).toMatchObject({ x: POST.x, z: POST.z });
+    // where his fan was a moment ago, in the vest: nothing
+    s.player.position.set(POST.x - 8, 0, POST.z);
+    s.run(1);
+    expect(s.watcher()).toMatchObject({ sees: false, level: 0 });
+    expect(s.hooks.state().ejecting).toBe(false);
+    // he looks around, walks back and stands at his post again
+    s.player.position.set(POST.x + 9, 0, POST.z);
+    s.run(12);
+    expect(s.watcher()).toMatchObject({ distract: 'post', x: POST.x, z: POST.z });
+    expect(s.named('npc:offset').at(-1)).toEqual({ npc: 'gardist', dx: 0, dz: 0 });
+    expect(s.named('npc:yaw').at(-1)).toEqual({ npc: 'gardist', yaw: null });
+    expect(s.named('court:distracted').map((e) => (e as { phase: string }).phase)).toEqual(['turn', 'walk', 'look', 'back', 'post']);
+    expect(s.captions().some((c) => c.includes('geht zurück auf den Posten'))).toBe(true);
+    // the same trick right away only turns his head
+    s.events.emit('world:noise', NOISE);
+    s.step();
+    expect(s.watcher().distract).toBe('glance');
+    expect(s.captions().some((c) => c.includes('dreht nur kurz den Kopf'))).toBe(true);
+    s.run(3);
+    expect(s.watcher()).toMatchObject({ distract: 'post', x: POST.x, z: POST.z });
+  });
+
+  it('out of earshot nothing happens; the gate’s inspector keeps the gate', () => {
+    const far = scene();
+    far.player.position.set(POST.x + 9, 0, POST.z);
+    far.events.emit('world:noise', { ...NOISE, z: POST.z - 14 });
+    far.step();
+    expect(far.watcher().distract).toBe('post');
+    expect(far.named('court:distracted')).toEqual([]);
+    court.dispose();
+
+    const gate = scene(true);
+    gate.player.position.set(POST.x + 9, 0, POST.z);
+    gate.events.emit('world:noise', NOISE);
+    gate.run(4);
+    expect(gate.named('court:distracted').map((e) => (e as { phase: string }).phase)).toEqual(['glance', 'post']);
+    expect(gate.named('npc:offset')).toEqual([]);
+  });
+
+  it('a chestnut that strikes the watcher alerts it: it turns to the thrower; a second one makes it suspicious, not more', () => {
+    const s = scene();
+    // in the coat, behind him: he has no reason to look
+    s.state.mutable.flags['disguise.coat'] = true;
+    s.player.position.set(POST.x + 9, 0, POST.z);
+    s.step();
+    s.events.emit('forage:impact', { x: POST.x, y: 1.2, z: POST.z, on: 'body', npc: 'gardist' });
+    s.events.emit('world:noise', { x: POST.x, z: POST.z, loud: 0.35, by: 'kastanie' });
+    s.step();
+    const w = s.watcher();
+    expect(w.distract).toBe('alert');
+    expect(w.tell).toBe('throw');
+    expect(w.level).toBeGreaterThan(0.5);
+    expect(w.stage).toBe('blick');
+    expect(s.captions().some((c) => c.includes('Getroffen!'))).toBe(true);
+    expect(s.captions().some((c) => c.includes('du wirfst mit Kastanien'))).toBe(true);
+    expect(s.hooks.state().ejecting).toBe(false);
+    // he faces east now, where the chestnut came from
+    s.step();
+    expect(yawGap(s.watcher().yaw, 90)).toBeLessThan(1);
+    s.events.emit('forage:impact', { x: POST.x, y: 1.2, z: POST.z, on: 'body', npc: 'gardist' });
+    s.step();
+    expect(s.watcher().stage).toBe('misstrauen');
+    expect(s.hooks.state().ejecting).toBe(false);
+  });
+
+  it('throwing where a watcher sees it is a tell; a throw from behind is not', () => {
+    const seen = scene();
+    seen.state.mutable.flags['disguise.coat'] = true;
+    seen.hooks.set(0);
+    seen.step();
+    expect(seen.watcher()).toMatchObject({ sees: true, level: 0 });
+    seen.events.emit('forage:throw', { x: 0, y: 0, z: 0, tx: 0, ty: 0, tz: 0, left: 3 });
+    seen.step();
+    expect(seen.watcher()).toMatchObject({ tell: 'throw', stage: 'blick' });
+    court.dispose();
+
+    const unseen = scene();
+    unseen.state.mutable.flags['disguise.coat'] = true;
+    unseen.player.position.set(POST.x + 9, 0, POST.z);
+    unseen.step();
+    unseen.events.emit('forage:throw', { x: 0, y: 0, z: 0, tx: 0, ty: 0, tz: 0, left: 3 });
+    unseen.step();
+    expect(unseen.watcher().level).toBe(0);
+  });
 });
