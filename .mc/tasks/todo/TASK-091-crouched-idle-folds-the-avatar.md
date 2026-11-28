@@ -50,14 +50,16 @@ the ground.
 
 - [x] `Rig.update` puts every bone turned since the last update back into the mixer's pose before
       the mixer runs, so a `turnBone` lasts one frame for every caller.
-- [x] Avatar crouch as a pose over the clips (`CROUCH`): knees bent (thigh forward, shin back, foot
-      levelled), the lean at the waist, the head lifted; the body is lowered by what the bent legs
-      lost, so the planted foot keeps its height. The CC0 surveyor (`?avatar=surveyor`) has its
-      feet as baked IK targets outside the leg chain: it keeps lean and sink.
+- [x] Avatar crouch as a pose over the clips (`CROUCH`): the hips sink by 0.28 of the leg length
+      and each knee bends to keep its foot where the clip put it (two-bone IK, `legBend.ts`), with
+      the lean at the waist and the head lifted. Idle and walk keep their foot plants and the
+      clip's own hip bob. The CC0 surveyor (`?avatar=surveyor`) has its feet as baked IK targets
+      outside the leg chain: it keeps lean and sink.
 - [x] Unit tests: `tests/rig-bones.test.ts` (a turn on a bone with a still track or no track is one
-      turn after 240 frames and after frames with dt 0), `tests/avatar-crouch.test.ts` (the real
-      player GLBs in node: head over hips, pose stable over 600 frames and 300 paused frames, feet
-      on the ground standing and walking, standing up returns to the standing pose).
+      turn after 240 frames and after frames with dt 0), `tests/leg-bend.test.ts` (the IK maths),
+      `tests/avatar-crouch.test.ts` (the real player GLBs in node: head over hips, pose stable over
+      600 frames and 300 paused frames, feet on the ground and hips level standing and walking,
+      standing up returns to the standing pose).
 - [x] e2e: `e2e/avatar-mpfb.spec.ts` checks head over hips and feet on the ground in crouched idle.
 - [x] Docs: `docs/ACTION-RPG.md` §4.2, `docs/ARCHITECTURE.md` (characters).
 

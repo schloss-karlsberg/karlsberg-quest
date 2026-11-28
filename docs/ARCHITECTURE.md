@@ -1279,7 +1279,8 @@ Round-4 (polish: set dressing) integration rules:
   bone) and `rigInfo` (bind-pose height, eyes, head top). A `turnBone` lasts one frame: `Rig.update`
   first puts every turned bone back into the mixer's pose, because the mixer writes a bone only when
   its blended value changed (a bone with a still track or none would keep the turn and add the next
-  one on top; `tests/rig-bones.test.ts`). Call `update`, then `turnBone`, every frame. `shaders.ts`: skinned ghost and spectral
+  one on top; `tests/rig-bones.test.ts`). Call `update`, then `turnBone`, every frame.
+  `rotateBone` is the same for a rotation given in world space (the avatar's leg IK). `shaders.ts`: skinned ghost and spectral
   ShaderMaterials (premultiplied, depth pre-pass twins). Models in `src/assets/manifests/characters.ts`.
 
 ### npc (`src/systems/npc/`) – ghostly people, conversations

@@ -138,24 +138,33 @@ describe('avatar crouch on the mpfb model: the legs', () => {
       player.setStance('crouch');
       play(120);
       const idle = pose();
-      for (const f of idle.feet) expect(Math.abs(f - ankle)).toBeLessThan(0.05);
+      // each foot exactly where the standing idle has it; the knees ahead of the hips
+      idle.feet.forEach((f, i) => expect(Math.abs(f - stand.feet[i]!)).toBeLessThan(0.01));
       idle.knees.forEach((k, i) => expect(k).toBeGreaterThan(stand.knees[i]! + 0.15));
       input.press('forward', true);
+      play(60);
       let low = Infinity;
-      let headLow = Infinity;
+      let high = -Infinity;
       let gap = Infinity;
-      for (let i = 0; i < 180; i++) {
+      let hipsLow = Infinity;
+      let hipsHigh = -Infinity;
+      for (let i = 0; i < 240; i++) {
         play(1);
         const p = pose();
         low = Math.min(low, ...p.feet);
-        headLow = Math.min(headLow, p.head);
+        high = Math.max(high, ...p.feet);
         gap = Math.min(gap, p.head - p.hips);
+        hipsLow = Math.min(hipsLow, p.hips);
+        hipsHigh = Math.max(hipsHigh, p.hips);
       }
       expect(avatar.debug.clip).toBe('Walk');
-      // no foot sinks into the ground, the body stays upright over the hips
-      expect(low).toBeGreaterThan(ankle - 0.06);
+      // no foot sinks into the ground or steps knee-high; the body stays upright over the hips
+      expect(low).toBeGreaterThan(ankle - 0.02);
+      expect(high).toBeLessThan(ankle + 0.3);
       expect(gap).toBeGreaterThan((stand.head - stand.hips) * 0.7);
-      expect(headLow).toBeGreaterThan(stand.head * 0.55);
+      // the hips stay low and level: the walk clip's own bob, no bounce from the bent legs
+      expect(hipsHigh).toBeLessThan(stand.hips - 0.1);
+      expect(hipsHigh - hipsLow).toBeLessThan(0.08);
     } finally {
       avatar.dispose();
     }
