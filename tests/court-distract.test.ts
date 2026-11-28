@@ -112,7 +112,7 @@ describe('not an instant win', () => {
     const d = createDistract();
     hearNoise(d, POST, EAST);
     run(d, 'post');
-    expect(d.wary).toBeGreaterThan(DISTRACT.wary - 4);
+    expect(d.wary).toBe(DISTRACT.wary);
     expect(hearNoise(d, POST, EAST)).toBe('glance');
     expect(d.phase).toBe('glance');
     expect(distractYaw(d, POST)).toBeCloseTo(90, 5);
@@ -120,10 +120,17 @@ describe('not an instant win', () => {
     expect(phases).toEqual(['post']);
     expect(took.glance).toBeCloseTo(DISTRACT.glance, 1);
     expect(d.ox).toBe(0);
-    // once the wariness is over it goes again
-    for (let t = 0; t < DISTRACT.wary; t += DT) stepDistract(d, DT);
-    expect(d.wary).toBe(0);
-    expect(hearNoise(d, POST, EAST)).toBe('go');
+  });
+
+  it.each([[19.99, 'glance'], [20.01, 'go']] as const)('reacts to a new noise %s seconds after returning with %s', (elapsed, reaction) => {
+    const d = createDistract();
+    const far = { ...EAST, x: POST.x + 11 };
+    hearNoise(d, POST, far);
+    run(d, 'look');
+    expect(d.ox).toBe(DISTRACT.leash);
+    run(d, 'post');
+    for (let t = 0; t < elapsed; t += DT) stepDistract(d, Math.min(DT, elapsed - t));
+    expect(hearNoise(d, POST, far)).toBe(reaction);
   });
 
   it('a busy watcher takes no notice of further noises', () => {
@@ -173,9 +180,9 @@ describe('not an instant win', () => {
     run(d, 'look');
     abort(d);
     expect(d.phase).toBe('back');
-    expect(d.wary).toBe(DISTRACT.wary);
     run(d, 'post');
     expect(d.ox).toBe(0);
+    expect(d.wary).toBe(DISTRACT.wary);
     // at its post there is nothing to break off
     const still = createDistract();
     abort(still);

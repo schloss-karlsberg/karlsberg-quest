@@ -334,6 +334,19 @@ describe('court runtime: a thrown chestnut (TASK-095)', () => {
     expect(gate.named('npc:offset')).toEqual([]);
   });
 
+  it.each([0.8, 0.45])('skips noise feedback when suspicion is or reaches Misstrauen (starting at %s)', (level) => {
+    const s = scene(true);
+    s.hooks.set(level);
+    if (level < 0.8) {
+      s.events.emit('forage:throw', { x: 0, y: 0, z: 0, tx: 0, ty: 0, tz: 0, left: 3 });
+    }
+    s.events.emit('world:noise', NOISE);
+    s.step();
+    expect(s.watcher()).toMatchObject({ stage: 'misstrauen', distract: 'post' });
+    expect(s.named('court:distracted')).toEqual([]);
+    expect(s.captions().some((c) => c.includes('dreht nur kurz den Kopf'))).toBe(false);
+  });
+
   it('a chestnut that strikes the watcher alerts it: it turns to the thrower; a second one makes it suspicious, not more', () => {
     const s = scene();
     // in the coat, behind him: he has no reason to look

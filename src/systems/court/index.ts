@@ -493,12 +493,8 @@ class CourtRuntime {
     for (const a of watchers) {
       const r = this.rtOf(a.id);
       const d = r.d;
-      // a chestnut: struck by it, or its landing in earshot (a busy watcher takes no notice)
-      if (struck.includes(a.id)) this.onStruck(a, r);
-      else {
-        const heard = noises.find((n) => hears(a.x, a.z, n));
-        if (heard) this.onNoise(a, r, heard);
-      }
+      const hit = struck.includes(a.id);
+      if (hit) this.onStruck(a, r);
       const s = this.sees(a, zone !== null, ringed);
       r.sees = s.sees;
       const step = stepSuspicion(r.level, hits, s.sees, s.dist, mul, dt);
@@ -509,6 +505,10 @@ class CourtRuntime {
       if (this.eject) return;
       // it has made the player out: the search for the noise is over
       if (r.stage >= 2 && d.phase !== 'alert') abort(d);
+      else if (!hit && r.stage < 2) {
+        const heard = noises.find((n) => hears(a.x, a.z, n));
+        if (heard) this.onNoise(a, r, heard);
+      }
       const phase = stepDistract(d, dt);
       if (phase) this.phaseChanged(a, phase);
       if (d.ox !== r.sentX || d.oz !== r.sentZ) {
@@ -573,8 +573,8 @@ class CourtRuntime {
   }
 
   private onNoise(a: Active, r: WatchRt, n: Noise): void {
-    // the gate's inspector keeps the gate, a watcher in a Musterung or one that eyes the player stays
-    const stay = a.w.inspector === true || this.ring?.watcher === a.id || r.stage >= 2;
+    // the gate's inspector keeps the gate, and a watcher in a Musterung stays
+    const stay = a.w.inspector === true || this.ring?.watcher === a.id;
     const res = hearNoise(r.d, { x: a.hx, z: a.hz }, n, { stay, free: (ux, uz, want) => this.freeWay(a, ux, uz, want) });
     if (!res) return;
     const hud = this.ctx.ui.hud;

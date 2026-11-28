@@ -126,13 +126,20 @@ export function strike(d: Distract): void {
 /** It has made the player out (or the scene moves on): the search is over, back to the post. */
 export function abort(d: Distract): void {
   if (d.phase === 'post' || d.phase === 'back') return;
-  d.wary = Math.max(d.wary, DISTRACT.wary);
   home(d);
 }
 
 function home(d: Distract): void {
-  d.phase = d.ox !== 0 || d.oz !== 0 ? 'back' : 'post';
+  if (d.ox !== 0 || d.oz !== 0) {
+    d.phase = 'back';
+    d.t = 0;
+  } else arrive(d);
+}
+
+function arrive(d: Distract): void {
+  d.phase = 'post';
   d.t = 0;
+  d.wary = Math.max(d.wary, DISTRACT.wary);
 }
 
 /** Walk the offset towards tx/tz; true once it is there. */
@@ -170,16 +177,10 @@ export function stepDistract(d: Distract, dt: number): DistractPhase | null {
       }
       break;
     case 'look':
-      if (d.t >= DISTRACT.look) {
-        d.wary = Math.max(d.wary, DISTRACT.wary);
-        home(d);
-      }
+      if (d.t >= DISTRACT.look) home(d);
       break;
     case 'back':
-      if (walk(d, 0, 0, DISTRACT.speed * dt)) {
-        d.phase = 'post';
-        d.t = 0;
-      }
+      if (walk(d, 0, 0, DISTRACT.speed * dt)) arrive(d);
       break;
     case 'glance':
       if (d.t >= DISTRACT.glance) {
