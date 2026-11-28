@@ -84,7 +84,8 @@ export const CAST_N1 = 60;
  * trees too: in a 2048² map over ±75 m a texel is 7 cm, the lod0 bark and card detail do not show),
  * and only the trees whose shadow can fall into the shadow box (`castGap`): the CPU lists leave
  * the others out, the vertex shaders (`CAST_GLSL`) collapse what the lists keep for the focus's
- * drift, so the casters depend on where the box is and on nothing else.
+ * drift, so the shadows in the picture depend on where the box is and on nothing else (the
+ * forest also leaves out trees whose shadow the picture cannot show, `shadowInSector`).
  *
  * `SHADOW_REACH` (m) is a crown's half width, added to the box's radius. Until TASK-088 the rule
  * was a plain disc, box + 30 m: under the low sun of the day eras (19–20°) a 25 m tree throws its

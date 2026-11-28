@@ -114,6 +114,19 @@ the e2e test fails when a scene is over.
   Recheck the Niedrig route and nine-scene bench, the Mittel and Hoch route peaks and the first-input
   bytes on Hoch (19,833,613 bytes in the slice 6 capture, 20 MiB cap). Hardware results are pending.
 
+- **Turn sweep (TASK-088).** `e2e/gpu/turn-luma.gpu.ts` turns the view through 360° on the spot
+  at 16 places (car park, Felsenpfad, Weiher, Quelle, plateau, forest and forest edge, every era)
+  on each tier, in 2° steps of one fixed tick: a steady turn each way (120° a second) and every
+  yaw after the view has rested. Per frame it reads back the mean display luminance (whole frame
+  and its thirds) and records what can explain a step: tree and ground-cover lists, the lens's
+  position and boom, the haze under the trees, the reflection, the tree casters, and the frame's
+  and the shadow pass's triangles. A picture that depends only on where the view is gives three
+  equal curves and no step larger than its neighbours. `TURN_LABEL=before|after` names the run,
+  `TURN_Q` and `TURN_SPOTS` narrow it, `TURN_CAPTURE=plateau:still:328,330` saves frames,
+  `TURN_BENCH=1` runs `kq.bench` uncapped at five fixed views instead. Results in
+  `test-results/gpu/turn-luma-<label>-<tier>.json`. Hold the exclusive lane for one tier at a
+  time (about three minutes).
+
 ## 3. Results
 
 ### 3.1 Real GPU (Apple M5 Pro, ANGLE Metal, 1920×1080, pixel ratio 1, Hoch, uncapped)
@@ -647,6 +660,78 @@ Same container, same build otherwise:
 | 14 × 45 `kq.step(1)`, one evaluate each | batches 1.0–6.3 s, stall from batch 4 (> 70 s), renderer 1.4 → 2.9 GB and browser 1.2 → 2.5 GB in 50 s, still rising (with trace: container limit of 7 GB in 140 s) | all 14 batches; 3.2–7.6 s while the boot backlog drains, then 0.09–0.19 s; browser 2.7 → 0.17 GB, renderer settles at 1.5 GB |
 | Camera sequence (3 × F-03 with shots, F-07 40 steps, 6 dodges) | screenshots 49–70 s (on the runner the growth started at F-07) | done in 144 s; F-07 0.2 s; screenshots 15–28 s; peaks renderer 2.9 GB, browser 0.9 GB, both drain |
 | One `kq.step(1)` per evaluate | 45 steps in 76–101 s, renderer up to 4.0 GB | unchanged: the rAF loop's own full draws (every frame in `?manual` under WebDriver) pace it at about 1.6 fps; memory swings up to 3.3 GB / 1 GB and drains |
+
+### 3.10 Turning the view: light and shadow (TASK-088, 2026-11-28)
+
+Owner report: „a visual bug sometimes when the player rotates (light/darker)“. Measured with the
+turn sweep (§2) on an Apple M5 Pro (ANGLE Metal, headless Chromium, 1280 × 720, `?manual`, so
+the shadow map is drawn every frame). Before is `f8a75ff7`. „Largest step“ is the largest change
+of the frame's mean display luminance (0..255) between two neighbouring 2° yaws in any of the
+three passes, not counting steps in which a wall or a slope moved the lens; a typical step is
+0.2–0.4. „Haze“ is the range of `uUnderCanopy` over the turn.
+
+| Place | Tier | Largest step before | after | Haze before | after | Triangles avg / peak before | after | Shadow pass avg before | after |
+|---|---|---|---|---|---|---|---|---|---|
+| Car park | Mittel | 1.4 at 164° | 1.4 | 0.45–0.50 | 0.45 | 0.85 / 1.01 M | 0.84 / 0.98 M | 206 k | 196 k |
+| Felsenpfad | Mittel | **7.6** at 110° | **3.1** | 1.00 | 1.00 | 1.17 / 1.29 M | 1.17 / 1.30 M | 348 k | 350 k |
+| Weiher | Mittel | **15.8** at 330° | **2.3** | 1.00 | 1.00 | 0.71 / 0.76 M | 0.69 / 0.76 M | 167 k | 151 k |
+| Quelle | Mittel | **5.6** at 106° | **1.5** | 1.00 | 1.00 | 1.12 / 1.30 M | 1.12 / 1.23 M | 371 k | 366 k |
+| Palace plateau | Mittel | **28.8** at 110° | **1.1** | 0.45 | 0.45 | 1.10 / 1.17 M | 1.09 / 1.17 M | 325 k | 313 k |
+| Forest at the corps de logis | Mittel | **11.9** at 330° | **1.6** | 1.00 | 1.00 | 1.05 / 1.13 M | 1.05 / 1.12 M | 311 k | 303 k |
+| Forest edge (1216 / −1052) | Mittel | **11.5** at 132° | **1.9** | 0.51–1.00 | 0.69 | 1.06 / 1.14 M | 1.04 / 1.11 M | 314 k | 295 k |
+| 1789 Ehrenhof | Mittel | 0.7 at 172° | 0.7 | 0.45 | 0.45 | 0.85 / 1.02 M | 0.85 / 1.02 M | 253 k | 253 k |
+| 1789 forest edge (912 / −616) | Mittel | 3.3 at 302° | 3.3 | 0.51–1.00 | 0.94 | 0.87 / 1.21 M | 0.86 / 1.18 M | 157 k | 154 k |
+| Car park | Hoch | 1.4 at 164° | 1.4 | 0.45–0.50 | 0.45 | 1.29 / 1.50 M | 1.27 / 1.45 M | 327 k | 310 k |
+| Felsenpfad | Hoch | **7.7** at 110° | **3.1** | 1.00 | 1.00 | 1.67 / 1.85 M | 1.67 / 1.88 M | 526 k | 529 k |
+| Weiher | Hoch | **15.8** at 330° | **2.0** | 1.00 | 1.00 | 1.33 / 1.80 M | 1.31 / 1.79 M | 286 k | 268 k |
+| Quelle | Hoch | **10.5** at 342° | **1.2** | 1.00 | 1.00 | 1.59 / 1.87 M | 1.58 / 1.77 M | 523 k | 513 k |
+| Palace plateau | Hoch | **28.5** at 330° | **1.2** | 0.45 | 0.45 | 1.72 / 1.89 M | 1.73 / 1.93 M | 510 k | 515 k |
+| Forest at the corps de logis | Hoch | **11.7** at 330° | **1.6** | 1.00 | 1.00 | 1.54 / 1.66 M | 1.52 / 1.59 M | 480 k | 462 k |
+| Forest edge (1216 / −1052) | Hoch | **11.7** at 132° | **2.2** | 0.51–1.00 | 0.69 | 1.55 / 1.66 M | 1.54 / 1.62 M | 468 k | 458 k |
+| 1789 Ehrenhof | Hoch | 0.7 at 318° | 0.7 | 0.45 | 0.45 | 1.19 / 1.38 M | 1.19 / 1.38 M | 268 k | 268 k |
+| 1789 forest edge (912 / −616) | Hoch | 3.4 at 302° | 3.4 | 0.51–1.00 | 0.94 | 1.21 / 1.56 M | 1.21 / 1.52 M | 206 k | 209 k |
+| Palace plateau | Niedrig | 0.8 at 198° | 0.8 | 0.45 | 0.45 | 257 / 292 k | 257 / 292 k | – | – |
+| Forest edge (1216 / −1052) | Niedrig | 2.8 at 190° | 1.5 | 0.51–1.00 | 0.69 | 258 / 294 k | 258 / 294 k | – | – |
+| 1796 forest edge | Niedrig | 2.7 at 100° | 1.4 | 0.51–1.00 | 0.94 | 351 / 614 k | 351 / 614 k | – | – |
+
+Three causes:
+
+1. **Trees out of view stopped casting** (Mittel and Hoch). The forest rebuilds its instance
+   lists for the view sector after every 20° of a turn, and the caster lists were filled from the
+   same cut. Under the 19° sun a tree behind the camera shades the ground in front of it, so
+   each rebuild switched those shadows on or off: one frame, 90–110° either side of the sun's
+   azimuth, on the plateau a quarter of the frame's brightness (the ground alone 63 of 255).
+   Now a tree the picture leaves out stays a caster while its shadow can fall into the shadow
+   box and into the picture.
+2. **Casters were picked by a disc of box + 30 m** (Mittel and Hoch). A 25 m tree throws its
+   shadow 70 m, so trees on the sun's side joined and left the casters with their shadow well
+   inside the box, as the box moves with the view: after 1 was fixed, a 10 m patch in front of
+   the player still flashed (plateau, 1.6). Now a tree casts while its shadow, foot to tip,
+   comes within the box's radius plus a crown (`castGap`).
+3. **The haze under the trees followed the lens** (all tiers). The lens circles the character
+   3.6 m out; at a forest edge a turn on the spot moved the haze between 0.5 and 1.0, eased over
+   about a second (89 such spots on a 4 m grid of the present-day paths; open against closed
+   cover is 2–8 of 255 on the same frame). Now it is taken where the character stands.
+
+Frame cost. The casters added by 1 are a fifth of the shadow pass where the sun stands behind
+the camera (Hoch, plateau: 510 k → 623 k triangles in the pass on average over the turn). Two
+things pay for them. Trees down-sun of the box, and trees whose shadow points away behind the
+camera, are no longer drawn. And the casters turn into impostors from 60 · k m instead of the
+picture's 72 (`CAST_N1`): look pairs at seven views per tier, same instant and camera, differ by
+0.03–0.5 of 255 on average and in 0.06–1.5 % of the pixels by more than 12 per channel; side by
+side the pictures cannot be told apart. Over the seven present-day places the frame draws 1.525 M →
+1.516 M triangles on Hoch (shadow pass 446 k → 436 k) and 1.009 M → 0.999 M on Mittel (292 k →
+282 k); the largest peak is 1.89 M → 1.93 M on Hoch (plateau, sun at the back) and unchanged on
+Mittel. Niedrig has no shadow pass and draws what it drew. Draw calls are unchanged. Frame and
+GPU times from `kq.bench` (`TURN_BENCH=1`) were not usable on the shared machine that day: a
+scene with identical work (1789 Ehrenhof, 1.06 M triangles in both builds) measured 2.5 ms and
+3.9 ms in two runs, more than any difference the triangle counts allow.
+
+What is left are steps of the scene itself, the same before and after: the lens cutting in
+where its boom meets the spring house's wall or the ravine's slope at the Quelle (up to 30 in
+1789, when the character then fills the frame), a trunk at the lens dithered away (the forest
+edges, 3–4), a signpost leaving the frame's corner at the Felsenpfad (3.1), the sun or a quest
+beacon entering the view (1–2).
 
 ## 4. Loading
 
