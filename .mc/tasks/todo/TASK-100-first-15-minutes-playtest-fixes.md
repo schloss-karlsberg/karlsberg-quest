@@ -4,7 +4,7 @@ aliases:
 - TASK-100
 title: Fix the first 15 minutes of the guided tour
 slug: first-15-minutes-playtest-fixes
-status: in-progress
+status: review
 priority: 2
 owner: ''
 projects: []
@@ -35,12 +35,12 @@ Address the fresh-game playtest on main at db8b1b8d, through the first visit to 
 - [x] F8 and F9. Pace clink captions and show the full goal as it wraps.
 - [x] F12. Deliver the throw hint with the first pickup.
 - [x] F7 and F11. Check the scripted compass grant and recorded dialogue before changing either.
-- [ ] Run the four gates and push the branch for review. Update the affected browser specs for CI.
+- [x] Run the four gates and push the branch for review. Update the affected browser specs for CI.
 
 ## Progress
 
 - Branch `fix/first-15-minutes`.
-- F2. Spaced the gathered arcs for player clearance. The car-park regression reproduced the stall on the baseline and now passes from 16 headings, including starts inside the ring.
+- F2. Spaced the gathered arcs for player clearance. The car-park regression reproduced the stall on the baseline and now passes from 16 headings, including starts inside the ring. The authored Felsenpfad and Quelle slots also clear the player width.
 - F3. The story and quest point to the existing reach spot behind the second line. The brief starts within 30 m, including during the spring arrival beat. The disguise spec checks the approach and takes the coat from its marked spot.
 - F5. The coat objective replaces the trough on the first story tick in 1789 and stays in the HUD through the chapter handover. The runtime and tour spec check both moments.
 - F10. The story HUD reads the moving waypoint used by the group marker and uses its distance format. Unit and tour coverage check both indicators.
@@ -49,3 +49,5 @@ Address the fresh-game playtest on main at db8b1b8d, through the first visit to 
 - F12. The first non-debug chestnut pickup shows the one-time help in the HUD alongside the controls. The unit test exercises desktop and touch with the cut tip and dialogue already active.
 - F7. The proximity handover at the trough is deliberate per the tour design. The optional E route and both grants still use the existing tour beat.
 - F11. Laub's arrival line and the coat quest refer to the default red jacket. The arrival line has no entry in the voice manifest. Regenerated the chapter pack and quest files.
+- The four gates passed. Vitest reported 245 files, 2,742 passing tests, 17 todo and zero failures. Content validation reported 0 errors and 29 warnings. The production build transformed 504 modules.
+- Updated `e2e/tour-slice.spec.ts` and `e2e/chapter-k1-disguise.spec.ts`. Playwright collected all five cases. Browser execution is pending in CI, whose selector requests the full suite.

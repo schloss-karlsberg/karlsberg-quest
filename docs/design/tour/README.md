@@ -53,8 +53,8 @@ are pending; PRD D-012.
 
 - **One touch.** `t17` ends on the touch, `t18` is the arrival: the shift, `player.q.wo`,
   `laub.t.1789` (without „Für heute genügt ein Blick.“) and `laub.t.seite`, with the player free to
-  move as soon as the shift is done. No fade, no return, no second touch. The hand-over grants are
-  unchanged.
+  move as soon as the shift is done. The coat objective appears on arrival and stays visible
+  through the chapter card. No fade, no return, no second touch.
 - **„Der Hof“ continues where the visitor stands** (`continues` in the story file): no teleport, no
   era change. Its first beat `k1_0` sets the chapter up under the card; then Laub says „Sommer 1789.
   Kies, Hunde …“ and what is needed, and only then `k1_0b` offers the quests, with the coat at the
@@ -66,6 +66,14 @@ are pending; PRD D-012.
   quest's „das Wasser berühren“ step. The next-morning framing also broke the one-afternoon rule.
 - **How far "stay" reaches:** the first jump is one-way. Not built: a chapter or a game without
   the present (wake in the past, no Q home); see TASK-089, follow-ups.
+
+## First 15 minutes (2026-11-28, TASK-100)
+
+- The car-park gathering leaves room to pass between visitors from either side of the arcs. On the path, the goal line and its world marker both measure to the moving group waypoint.
+- The first chestnut pickup shows the throw hint beside the vitals, with the bound key or the Kastanie touch control.
+- At the trough, the tour hands over the Bussole when the visitor approaches after the pause or presses E during „Untersuchen“.
+- The glass clink at the 1789 spring is captioned on its first sound and at least 30 seconds apart thereafter.
+- The full goal is visible as soon as it changes. At the Bleiche, Laub starts the sneak brief within 30 m and the marker points to the reachable side behind the second washing line. Liese still offers the coat through her favour.
 
 ## Decisions (owner, 2026-11-20)
 
@@ -83,7 +91,7 @@ The owner's answers to the open questions, plus the earlier rulings:
 - **Photo mode:** N toggles the viewfinder in every era. It shows „Kein Netz“ in the past. Good photos in the present unlock codex cards. Photos give no XP.
 - **Storyboard:** 66–68 shots accepted; the budget is raised.
 - **Party drinks (Q12):** mulled wine plus children's punch, nobody drunk, no brands, no fireworks; fairy lights; a fire bowl in the burn ending.
-- **Jacket (Q13):** a bright outdoor jacket (orange or red), so „Feuersalamander“ and `laub.k1.orange` survive; costume by kq-characters (WP-13).
+- **Jacket (Q13):** the default visitor wears a bright red outdoor jacket. Laub and the coat quest refer to that colour.
 - **Messstab (Q14):** Marlene lends it and says „Ach, behalt ihn“ at the party. **Return leg (Q15):** the group goes uphill to the plateau. **cx.32 (Q16):** the brewery / villa sentence is dropped.
 
 All open questions are resolved.
