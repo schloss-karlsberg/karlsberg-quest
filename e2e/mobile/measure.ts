@@ -5,7 +5,7 @@
  * It reports, for the current screen state:
  *  - taps: every visible interactive element with its box; `small` when under 44×44 CSS px
  *  - overlaps: intersections between visible HUD / overlay regions and interactive elements
- *  - caption-covered: a subtitle line under a visible level or skill card (TASK-074)
+ *  - caption-covered: a subtitle line under a visible level or skill card, toast or payout (TASK-074, TASK-085)
  *  - text: visible text under 12 CSS px; low contrast against the nearest opaque background
  *  - clipped: text cut by overflow (ellipsis or hidden overflow)
  *  - offscreen: interactive elements partly outside the viewport
@@ -152,8 +152,9 @@ export function measureUi(insets: { top: number; right: number; bottom: number; 
   // ---- captions under a card (TASK-074) ---------------------------------------------------------
   // A subtitle line (sound caption or spoken subtitle) must stay fully readable: any intersection
   // with a visible level or skill card is reported, however small (the general overlap rule above
-  // ignores slivers under 24 px² and rates caption over card S3 only).
-  const cards = [...document.querySelectorAll('[data-testid=level-card], [data-testid=skill-card]')].filter((el) => shown(el));
+  // ignores slivers under 24 px² and rates caption over card S3 only). TASK-085: toasts, tip cards
+  // and quest payouts count as well.
+  const cards = [...document.querySelectorAll('[data-testid=level-card], [data-testid=skill-card], .kq-toast:not(.kq-notice-out), [data-testid=quest-reward]')].filter((el) => shown(el));
   for (const line of document.querySelectorAll('.kq-subtitles .line')) {
     if (!shown(line)) continue;
     const rl = line.getBoundingClientRect();

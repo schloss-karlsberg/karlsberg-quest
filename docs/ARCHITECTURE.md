@@ -388,7 +388,8 @@ above the oil gauge, top centre under the threat eye, right edge under the toast
 `setMarker(id, bearingDeg|null, color)` (compass markers),
 `prompt(key, text, owner?)` (one prompt per owner, the newest shows; clearing yours reveals the
 one below: story uses `'story'`, Chronik `'chronik'`), `subtitle(speaker, text, ms, fiction)`
-(at most three lines; a full box lets the oldest line go only after it has been up 1.5 s, newer lines
+(at most three lines, of them at most two sound captions, so an era's sound bed does not stack three
+cues over the avatar; a full box lets the oldest line go only after it has been up 1.5 s, newer lines
 wait in order meanwhile), `setThreat(0..1)`,
 `setLantern(oil|null, lit)`, `setStatus(text)`, `setStance`, `setEraLabel`, `noticeDock`,
 `stack(el, order)`. `hud.staged` is true while a boss reveal (`busy('reveal')`) or a staged climax
@@ -426,10 +427,18 @@ conversation is open (`cards.hold('talk', on)`, set by npc): nothing comes up, a
 steps aside and its clock stops. **Soft holds** (`cards.soft(reason, on)`, playtest round 5) keep
 automatic feedback back (payout, toast, level and skill), while a clue page or modal may still open. They linger
 `SOFT_LINGER` = 1.2 s after they end, but never more than `SOFT_MAX` = 8 s of unbroken holding (a
-chain of lines must not bury a card): a spoken story line that is not low priority (`dialogue`), an
-active pack outside the ending's resting tableau (`hunt`); hard holds also cover the Festsaal
+chain of lines must not bury a card). Past `SOFT_MAX` a card still waits until the line on screen is
+done (a break, or the next line taking its place: story passes the line as `cards.soft('dialogue',
+on, line)`), then stays for the rest of that spell of talk. The level card waits longer: it holds
+(`cards.cardHeld`) while any dialogue box is open, past `SOFT_MAX` too, and shows in the first moment
+without one (never dropped). The skill card keeps the plain hold so Laub's remark on an unlock comes
+with it; both sit below a raised radio line on taller layouts (TASK-085). On a short touch layout (≤ 500 px tall) a toast also
+waits, or steps aside with its clock stopped, while any line is in the subtitle box
+(`cards.toastHold`, `subtitlesCoverToast`): a long tip in the notice dock reached the captions. Soft reasons: a spoken
+story line that is not low priority (`dialogue`), an active pack outside the ending's resting
+tableau (`hunt`); hard holds also cover the Festsaal
 (`festsaal`) and a playing echo (`echo`, set on `echo:start` / `echo:end`; releasing a hold
-opens a waiting page at once). The level and skill cards also wait while `cards.held`. Slide-in cards also wait for the chapter title card / curtain and
+opens a waiting page at once). The level and skill cards also wait while `cards.held`. Slide-in cards also wait for the chapter title card (from the frame it is added until its fade has ended) / curtain and
 other modals. A clue page may open over Pause. Merging: skill
 unlocks that wait as a level card comes up ride along on it (`cards.source('skill', …)` /
 `cards.drain('skill')` → "Freigeschaltet" rows, `level-card-skill`; combat's new abilities the

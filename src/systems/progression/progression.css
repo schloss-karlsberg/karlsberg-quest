@@ -352,6 +352,14 @@
 body:has(.kq-dock-boss:not(:empty)) .kqp-cards {
   top: max(206px, 29vh);
 }
+/* TASK-085: a radio line (the raised dialogue card under the compass, about 56 px + min(130px, 24vh)
+   + padding) keeps the card below it; past SOFT_MAX a card may stay up over the next line. The
+   short touch layout has its own band under the dialogue (touch.css). */
+@media (min-height: 501px) {
+  body:has(.kqs-dlg.kqs-show.kqs-dlg-raised) .kqp-cards {
+    top: max(calc(90px + env(safe-area-inset-top, 0px) + min(130px, 24vh)), 29vh);
+  }
+}
 .kqp-card {
   position: relative;
   display: flex;

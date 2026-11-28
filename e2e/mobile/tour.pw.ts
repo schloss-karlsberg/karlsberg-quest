@@ -169,6 +169,19 @@ async function stepWithoutCaption(c: Ctx, frames = 2): Promise<void> {
   }, frames);
 }
 
+/** Click the dialogue card away (it advances on mousedown) until no line is up, or give up after a few. */
+async function dropLines(c: Ctx): Promise<void> {
+  await c.page.evaluate(() => {
+    for (let i = 0; i < 6; i++) {
+      const dlg = document.querySelector('.kqs-dlg.kqs-show');
+      if (!dlg) return;
+      window.kq!.story!.finishTyping();
+      dlg.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    }
+  });
+  await c.page.waitForTimeout(450);
+}
+
 async function captionClearOfCard(c: Ctx, card: ReturnType<Page['getByTestId']>, sub: string): Promise<void> {
   await c.page.evaluate(() => {
     const w = window as unknown as { kqCaptionOff?: () => void };
@@ -1065,6 +1078,164 @@ const STATES: State[] = [
           k.ctx.settings.update((s) => (s.reducedMotion = reduced), 'reducedMotion');
         }, reduced);
       }
+    },
+  },
+  {
+    // TASK-085: HUD boxes that covered each other. The goal stays readable while someone speaks,
+    // a toast never lies on a caption, and the level card never covers the chapter card or a line.
+    id: 'hud-overlap',
+    run: async (c) => {
+      await c.tidy();
+      await c.page.evaluate(() => {
+        const k = window.kq!;
+        const s = k.story!.state();
+        if (s.chapter !== 'tour' || s.beat !== 't1') k.story!.goto('tour', 't1');
+        k.story!.flush();
+        k.ctx.ui.modals.closeAll();
+        k.story!.finishTyping();
+      });
+      // (a tour line may already be up and hide the tracker on a phone: only its text is checked here)
+      await expect(c.page.locator('[data-testid=objective] .kqs-obj-text')).not.toHaveText('', { timeout: 10_000 });
+      // 1. a long line up: where does the goal show?
+      await c.page.evaluate(() => {
+        const k = window.kq!;
+        k.ctx.events.emit('dialogue:say', {
+          speaker: 'imhoff', priority: 'now', ms: 20_000,
+          text: 'So. Treffpunkt am Karlsberger Hof. Schön, dass ihr da seid. Wir gehen gleich los, den Hang hinauf, und ich erzähle euch unterwegs, was hier einmal stand.',
+        });
+        k.story!.finishTyping();
+      });
+      await expect(c.page.locator('.kqs-dlg.kqs-show')).toBeVisible();
+      await c.page.waitForTimeout(400);
+      const goal = await c.page.evaluate(() => {
+        const vis = (el: Element | null): DOMRect | null => {
+          if (!el) return null;
+          const he = el as HTMLElement;
+          if (!he.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) return null;
+          const r = el.getBoundingClientRect();
+          return r.width > 2 && r.height > 2 && r.bottom > 0 && r.top < innerHeight ? r : null;
+        };
+        const meet = (a: DOMRect, b: DOMRect) => Math.min(a.right, b.right) > Math.max(a.left, b.left) && Math.min(a.bottom, b.bottom) > Math.max(a.top, b.top);
+        const dlg = vis(document.querySelector('.kqs-dlg.kqs-show .kqs-dlg-body'))!;
+        const obj = document.querySelector<HTMLElement>('[data-testid=objective] .kqs-obj-text')?.textContent ?? '';
+        const tracker = vis(document.querySelector('[data-testid=objective]'));
+        const strip = document.querySelector<HTMLElement>('[data-testid=dialogue-goal]');
+        const stripBox = vis(strip);
+        return {
+          obj,
+          tracker: !!tracker && !meet(tracker, dlg),
+          strip: stripBox ? strip!.textContent ?? '' : null,
+          stripCut: !!strip && (strip.scrollWidth > strip.clientWidth + 1 || strip.scrollHeight > strip.clientHeight + 1),
+          // the strip rides on the row of „Tippen: weiter“: one line, so it takes no room from the
+          // spoken text (a long line scrolls under the sticky footer as before)
+          stripRows: stripBox ? Math.round(stripBox.height / (parseFloat(getComputedStyle(strip!).lineHeight) || 15)) : 0,
+        };
+      });
+      await c.shot('speech', `goal while a line is up: ${goal.tracker ? 'tracker clear of the card' : `strip "${goal.strip}"`}`);
+      expect(goal.obj, 'the tour has an objective here').not.toBe('');
+      expect(goal.tracker || (goal.strip ?? '').includes(goal.obj), `objective readable while someone speaks (${JSON.stringify(goal)})`).toBe(true);
+      expect(goal.stripRows, 'the goal strip is one line').toBeLessThanOrEqual(1);
+      if (goal.stripCut) c.f.notes.push(`hud-overlap: the goal strip is cut ("${goal.strip}")`);
+      await dropLines(c);
+      await c.tidy();
+      // 2. a tip toast while a sound caption is up (playtest: „Laufschritt …“ over „Vögel zwitschern.“).
+      // On a landscape phone the toast steps aside while a line is in the subtitle box; taller
+      // layouts show both, apart.
+      const short = unit.height <= 500;
+      const toast = c.page.locator('.kq-toast:not(.kq-notice-out)');
+      await c.page.evaluate(() => {
+        const k = window.kq!;
+        k.ctx.ui.cards.clearToasts();
+        k.ctx.ui.toast('Laufschritt: den Stick ganz nach vorn schieben und halten – auf freien Wegen wirst du schneller.', 30_000);
+      });
+      try {
+        // the running tour talks: a spoken line holds the toast, so tap lines away until it is up
+        for (const end = Date.now() + 30_000; Date.now() < end && !(await toast.isVisible());) await dropLines(c);
+        await expect(toast).toBeVisible();
+        await c.page.evaluate(() => {
+          const w = window as unknown as { kqCaptionOff?: () => void };
+          w.kqCaptionOff = window.kq!.ctx.ui.hud.subtitle(null, 'Vögel zwitschern.', 20_000);
+        });
+        if (short) await expect(toast).toBeHidden();
+        await c.page.waitForTimeout(300);
+        await c.shot('toast-caption', short ? 'a sound caption: the tip toast steps aside' : 'a tip toast and a sound caption: both readable');
+        // and with a low line up (it does not hold the toast; the caption moves above the dialogue
+        // card on taller layouts), three captions at the largest subtitle size
+        await c.page.evaluate(() => {
+          const k = window.kq!;
+          const w = window as unknown as { kqCaptionOff2?: () => void; kqCaptionOff3?: () => void };
+          k.ctx.ui.hud.setSubtitleSize('xl');
+          w.kqCaptionOff2 = k.ctx.ui.hud.subtitle(null, 'Ein Hund bellt in der Ferne.', 20_000);
+          w.kqCaptionOff3 = k.ctx.ui.hud.subtitle(null, 'Schritte im Laub.', 20_000);
+          k.ctx.events.emit('dialogue:say', { speaker: 'laub', priority: 'low', ms: 8000, text: 'Hörst du das? Unter dem Hang rauscht Wasser.' });
+          k.story!.finishTyping();
+        });
+        await c.page.waitForTimeout(2000);
+        const toastUp = await toast.isVisible();
+        await c.shot('toast-caption-line', `three captions (xl), a low line and ${toastUp ? 'the toast' : 'no toast (held)'}`);
+        if (!toastUp && !short) c.f.notes.push('hud-overlap: a spoken tour line held the toast during -toast-caption-line');
+        // the captions gone, the toast comes back with its time left
+        await c.page.evaluate(() => {
+          const w = window as unknown as { kqCaptionOff?: () => void; kqCaptionOff2?: () => void; kqCaptionOff3?: () => void };
+          for (const off of [w.kqCaptionOff, w.kqCaptionOff2, w.kqCaptionOff3]) off?.();
+        });
+        if (short) {
+          for (const end = Date.now() + 20_000; Date.now() < end && !(await toast.isVisible());) await dropLines(c);
+          await expect(toast, 'the toast returns after the captions').toBeVisible();
+        }
+      } finally {
+        await c.page.evaluate(() => {
+          const w = window as unknown as { kqCaptionOff?: () => void; kqCaptionOff2?: () => void; kqCaptionOff3?: () => void };
+          for (const off of [w.kqCaptionOff, w.kqCaptionOff2, w.kqCaptionOff3]) off?.();
+          window.kq!.ctx.ui.hud.setSubtitleSize('m');
+          window.kq!.ctx.ui.cards.clearToasts();
+        });
+      }
+      for (const s of c.f.shots.filter((s) => s.state === 'hud-overlap' && s.sub?.startsWith('toast-caption'))) {
+        expect(s.ui.issues.filter((i) => i.kind === 'caption-covered'), `${s.sub}: a caption under a toast`).toEqual([]);
+      }
+      await dropLines(c);
+      await c.tidy();
+      // 3. a level-up just before a chapter card: the card waits for the title and the lines
+      const watch = await c.page.evaluate(async () => {
+        const k = window.kq!;
+        const vis = (sel: string): DOMRect | null => {
+          const el = document.querySelector<HTMLElement>(sel);
+          if (!el || !el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) return null;
+          const r = el.getBoundingClientRect();
+          return r.width > 2 ? r : null;
+        };
+        const meet = (a: DOMRect | null, b: DOMRect | null) => !!a && !!b && Math.min(a.right, b.right) > Math.max(a.left, b.left) && Math.min(a.bottom, b.bottom) > Math.max(a.top, b.top);
+        // the start of chapter 1 (its title card, then Laub's and Marlene's lines), as in the playtest
+        k.story!.goto('k1', 'k1_0');
+        k.progression!.level(k.progression!.state().level + 1);
+        const bad: string[] = [];
+        let seen = false;
+        for (const end = performance.now() + 24_000; performance.now() < end;) {
+          await new Promise((r) => setTimeout(r, 100));
+          const card = vis('.kqp-card.kqp-in:not(.kqp-held)');
+          if (card) seen = true;
+          const story = document.querySelector('.kqs-card') ? vis('.kqs-card') : null;
+          if (card && document.querySelector('.kqs-card')) bad.push('level card up while the chapter card shows or fades');
+          if (meet(card, story)) bad.push('level card on the chapter card');
+          if (meet(card, vis('.kqs-dlg.kqs-show .kqs-dlg-body'))) bad.push('level card on the dialogue card');
+          // TASK-085: the level card waits until no dialogue box is open (1789's arrival on the desktop)
+          if (card && document.querySelector('.kqs-dlg.kqs-show')) bad.push('level card up while a dialogue box is open');
+        }
+        return { bad: [...new Set(bad)], seen };
+      });
+      c.f.notes.push(`hud-overlap: level card ${watch.seen ? 'came up' : 'stayed back'} within 24 s of the chapter card`);
+      if (!watch.seen) {
+        // it waited for the lines; it is never dropped: once no box is open it comes up
+        const lvl = c.page.locator('.kqp-card.kqp-in:not(.kqp-held)');
+        for (const end = Date.now() + 40_000; Date.now() < end && !(await lvl.isVisible());) await dropLines(c);
+        await expect(lvl, 'the level card comes up once the lines are done').toBeVisible();
+        expect(await c.page.locator('.kqs-dlg.kqs-show').count(), 'no dialogue box under the level card').toBe(0);
+      }
+      await c.shot('level-after-card', 'after the chapter card');
+      expect(watch.bad, `level card vs chapter card and dialogue: ${watch.bad.join('; ')}`).toEqual([]);
+      await c.page.evaluate(() => window.kq!.story!.goto('tour', 't1'));
+      await c.tidy();
     },
   },
 ];

@@ -29,8 +29,15 @@ interface QueuedModal {
 export const CARD_GAP = 0.35;
 /** A soft hold (a line being spoken, a hunt) keeps cards back this long after it ends. */
 export const SOFT_LINGER = 1.2;
-/** Longest a soft reason keeps a waiting card back in one go (s): a chain of lines must not bury it. */
+/**
+ * Longest a soft reason keeps a waiting card back in one go (s): a chain of lines must not bury it.
+ * Past it a card still waits until the line on screen is done (TASK-085: the level card came up over
+ * Laub's line), a break or the next line taking its place; once through, it stays for the rest of
+ * that spell of talk (it sits clear of the dialogue card on every layout).
+ */
 export const SOFT_MAX = 8;
+/** The soft reason for a line being spoken (story): past SOFT_MAX cards wait for a break in it. */
+export const SOFT_LINE = 'dialogue';
 
 /** Tallest viewport (CSS px) that uses the short touch layout of touch.css (`max-height: 500px`). */
 export const SHORT_LAYOUT_MAX_H = 500;
@@ -44,6 +51,15 @@ export const SHORT_LAYOUT_MAX_H = 500;
  */
 export function captionCoversCard(touch: boolean, viewportH: number, captionLines: number): boolean {
   return touch && viewportH <= SHORT_LAYOUT_MAX_H && captionLines > 0;
+}
+
+/**
+ * The same band problem for a toast (TASK-085): on a short touch layout a long tip in the notice
+ * dock reaches down to the subtitle box („Laufschritt …“ over „Vögel zwitschern.“), so it waits
+ * while any line is in the box, spoken or a sound caption. Taller layouts keep them apart.
+ */
+export function subtitlesCoverToast(touch: boolean, viewportH: number, subtitleLines: number): boolean {
+  return touch && viewportH <= SHORT_LAYOUT_MAX_H && subtitleLines > 0;
 }
 
 interface Toast {
@@ -65,6 +81,13 @@ export class CardDirector {
   private gap = 0;
   /** A screen that covers the card or notice, such as a title card or a curtain. */
   extraHold: (() => boolean) | null = null;
+  /**
+   * Keeps the toast back (and steps an up one aside, its clock stopped) while it would share the
+   * screen with the subtitle box: on a landscape phone a long tip reaches the captions (TASK-085).
+   */
+  toastHold: (() => boolean) | null = null;
+  /** A dialogue box is open (story line, bark, echo): the level card waits for it (TASK-085). */
+  dialogueOpen: (() => boolean) | null = null;
 
   constructor(
     private readonly hud: Pick<Hud, 'inAction' | 'showToast' | 'holdToast' | 'closeToast'>,
@@ -99,16 +122,28 @@ export class CardDirector {
    * player asked for (E on a clue). Released, it lingers `SOFT_LINGER` s, so a card does not pop
    * up in the breath between two lines.
    */
-  soft(reason: string, on: boolean): void {
+  soft(reason: string, on: boolean, line?: unknown): void {
+    if (reason === SOFT_LINE) {
+      // `line` names the line on screen: the next one taking its place is a break too (past SOFT_MAX)
+      const key = on ? line : undefined;
+      if (key !== undefined && this.lineKey !== undefined && key !== this.lineKey) this.lineTurned = true;
+      this.lineKey = key;
+    }
     if (on) this.softs.set(reason, Infinity);
     else if (this.softs.get(reason) === Infinity) this.softs.set(reason, this.clock + SOFT_LINGER);
   }
+
+  private lineKey: unknown = undefined;
+  /** The line on screen gave way to the next one since the last tick. */
+  private lineTurned = false;
 
   private readonly softs = new Map<string, number>();
   private clock = 0;
 
   /** Since when (clock) the soft reasons have held without a break (−1: not holding). */
   private softSince = -1;
+  /** Past SOFT_MAX a break between two lines came: the cards may show for the rest of this spell. */
+  private softReleased = false;
 
   private get softRaw(): boolean {
     for (const v of this.softs.values()) if (v > this.clock) return true;
@@ -116,7 +151,19 @@ export class CardDirector {
   }
 
   private get softBusy(): boolean {
-    return this.softRaw && (this.softSince < 0 || this.clock - this.softSince < SOFT_MAX);
+    return this.softRaw && !this.softReleased;
+  }
+
+  /** A line is on screen now (not only lingering after one). */
+  private get lineUp(): boolean {
+    return this.softs.get(SOFT_LINE) === Infinity;
+  }
+
+  /** Past SOFT_MAX the soft hold lets go at the first moment no line is on screen (tick, clear). */
+  private updateSoftRelease(): void {
+    if (!this.softRaw) this.softReleased = false;
+    else if (!this.softReleased && this.softSince >= 0 && this.clock - this.softSince >= SOFT_MAX && (!this.lineUp || this.lineTurned)) this.softReleased = true;
+    this.lineTurned = false;
   }
 
   /** Is the slot held (fight, chase, reveal, being knocked down, conversation …)? */
@@ -129,10 +176,19 @@ export class CardDirector {
     return this.busy || this.softBusy || this.modalOwner !== null || this.modals.count > 0 || !!this.extraHold?.();
   }
 
+  /**
+   * Must the level card wait or step aside now? `held`, and also while any dialogue box is
+   * open, past SOFT_MAX too: on the desktop and in 1789's arrival the card lay over Laub's lines
+   * (TASK-085). It is never dropped; it shows in the first moment without a box.
+   */
+  get cardHeld(): boolean {
+    return this.held || !!this.dialogueOpen?.();
+  }
+
   /** Why it is held (tests / debug). */
   holdReasons(): string[] {
     const soft = [...this.softs].filter(([, v]) => v > this.clock).map(([k]) => `soft:${k}`);
-    return [...this.holds, ...soft, ...(this.hud.inAction ? ['action'] : []), ...(this.extraHold?.() ? ['story'] : [])];
+    return [...this.holds, ...soft, ...(this.hud.inAction ? ['action'] : []), ...(this.extraHold?.() ? ['story'] : []), ...(this.dialogueOpen?.() ? ['dialogue-box'] : [])];
   }
 
   /** The token on screen now (null: none). */
@@ -186,7 +242,7 @@ export class CardDirector {
 
   private tickToast(dt: number): void {
     if (!this.toast) {
-      if (this.toasts.length && this.claim('toast', this.closeToast)) {
+      if (this.toasts.length && !this.toastHold?.() && this.claim('toast', this.closeToast)) {
         this.toast = this.toasts.shift()!;
         this.hud.showToast(this.toast.text);
       }
@@ -197,7 +253,7 @@ export class CardDirector {
       if (this.claim('toast', this.closeToast)) this.hud.holdToast(false);
       return;
     }
-    const held = this.held;
+    const held = this.held || !!this.toastHold?.();
     this.hud.holdToast(held);
     if (held) return;
     this.toast.left -= dt;
@@ -234,6 +290,7 @@ export class CardDirector {
     for (const [k, v] of this.softs) if (v <= this.clock) this.softs.delete(k);
     if (!this.softRaw) this.softSince = -1;
     else if (this.softSince < 0) this.softSince = this.clock;
+    this.updateSoftRelease();
     if (this.gap > 0) this.gap = Math.max(0, this.gap - dt);
     if (this.modalHandle?.closed) this.release(this.modalOwner ?? '');
     this.pump();
@@ -270,6 +327,9 @@ export class CardDirector {
     this.gap = 0;
     this.softs.clear();
     this.softSince = -1;
+    this.softReleased = false;
+    this.lineKey = undefined;
+    this.lineTurned = false;
   }
 
   /** The kinds of cards and notices visible in the DOM now (tests: never more than one). */

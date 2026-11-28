@@ -466,7 +466,7 @@ class Progression {
     const skillCard = !!document.querySelector('.kqk-card.kqk-in:not(.kqk-out):not(.kqk-held)');
     // on a landscape phone a caption shares the card's band: the card steps aside until it has gone (TASK-074)
     const captionCovered = ctx.input.touchMode && captionCoversCard(true, window.innerHeight, ctx.ui.hud?.captionLines ?? 0);
-    let hold = ctx.pause.paused || skillCard || captionCovered || ctx.ui.cards.held;
+    let hold = ctx.pause.paused || skillCard || captionCovered || ctx.ui.cards.cardHeld;
     // on touch a tap on the play surface sends the card off (CardDirector.dismissNotice); on a
     // desktop Escape keeps opening the pause menu
     const dismiss = ctx.input.touchMode ? () => this.cards.dismiss() : undefined;

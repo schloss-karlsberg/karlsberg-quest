@@ -14,6 +14,12 @@
 body:has(.kq-dock-boss > :not(.kq-court-off):not([style*='display: none'])) .kqk-cards {
   top: 196px;
 }
+/* TASK-085: a radio line (the raised dialogue card under the compass) keeps the card below it */
+@media (min-height: 501px) {
+  body:has(.kqs-dlg.kqs-show.kqs-dlg-raised) .kqk-cards {
+    top: calc(90px + env(safe-area-inset-top, 0px) + min(130px, 24vh));
+  }
+}
 .kqk-card {
   position: relative;
   display: flex;

@@ -704,6 +704,35 @@ html[data-kq-touch] .kqp-q-key {
     background: var(--paper);
     box-shadow: 0 -5px 5px -3px var(--paper);
   }
+  /* TASK-085: the card covers the tracker, so the current goal rides along as one line in the
+     footer, left of „Tippen: weiter“ (the story fills it from the objective or the tracker) */
+  html[data-kq-touch] body .kqs-dlg .kqs-dlg-goal:not(:empty) {
+    /* one line, on the row of „Tippen: weiter“: a second line took the room of the spoken text
+       in the capped card and hid its end (TASK-085) */
+    display: block;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-family: var(--serif);
+    font-style: normal;
+    font-size: 12px;
+    line-height: 1.25;
+    color: var(--ink);
+  }
+  html[data-kq-touch] body .kqs-dlg .kqs-dlg-goal:not(:empty) ~ .kqs-src:empty {
+    display: none;
+  }
+  html[data-kq-touch] body .kqs-dlg .kqs-dlg-goal:not(:empty) ~ .kqs-skip {
+    flex: none;
+  }
+  /* The dialogue card is in the top band here, so a caption stays at its place above the prompt
+     instead of moving up to the middle of the screen, where the notice dock's tip toasts reach
+     („Laufschritt …“ over „Vögel zwitschern.“, TASK-085) */
+  html[data-kq-touch] .kq-root:has(.kqs-dlg.kqs-show:not(.kqs-dlg-raised)) .kq-subtitles {
+    bottom: 96px;
+  }
   /* the era label (top-left) lies under the card: it steps back while a line is up */
   html[data-kq-touch] .kq-root:has(.kqs-dlg.kqs-show) .kq-hud .kq-tl {
     opacity: 0;
@@ -797,6 +826,10 @@ html[data-kq-touch] .kqp-q-key {
   /* the open survey menu hangs below the top row */
   html[data-kq-touch] body:has(.kq-t-btn.survey[aria-expanded='true']) .kqp-cards {
     right: calc(270px + var(--kq-safe-r));
+  }
+  /* no tilt: the slip sits 6 px under the dialogue band and a turned corner reached into it */
+  html[data-kq-touch] .kqp-card.kqp-in {
+    transform: none;
   }
   html[data-kq-touch] .kqp-card {
     width: min(100%, 400px);
