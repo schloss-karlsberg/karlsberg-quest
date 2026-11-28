@@ -135,7 +135,7 @@ export class StoryOverlays {
     layer.append(...(hud ? [] : [this.gaugeBox]), this.curtain);
   }
 
-  /** Chapter / place card: "Prolog · heute, ein Novembernachmittag". `chapter`: it holds the opening beat while it shows. */
+  /** Chapter / place card: "Kapitel 1 · heute, ein Novembernachmittag". `chapter`: it holds the opening beat while it shows. */
   card(title: string, sub?: string, note?: string, seconds = 5.5, chapter = false): void {
     this.cardEl?.remove();
     const el = h('div.kqs-card', { 'data-testid': 'story-card' }, [

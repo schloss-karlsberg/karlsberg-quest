@@ -24,6 +24,7 @@ This is the single, living source of truth for the game. It lives in the repo, n
 | --- | --- | --- |
 | unreleased | 2026-11-28 | **Faster merge signal (TASK-094).** Every pull request runs the four gates in about a minute. The hosted Playwright run picks its specs from the changed paths: none for docs, task files and unit tests, the covering specs plus smoke for a feature system, the full suite for shared code. The full suite still runs after every merge and in the merge queue, and a red run on `main` opens an issue. No change for players. |
 | unreleased | 2026-11-28 | **Calmer ambience captions (TASK-079).** „Vögel zwitschern.“ and the 1789 hoof and court captions appear when the sound starts and then at most every 30 s instead of on every chirp, so they no longer crowd out story captions. |
+| unreleased | 2026-11-28 | **Five numbered chapters (TASK-089).** The guided tour is chapter 1, not a prologue: the cards and Pause → Kapitel read „Kapitel 1 · Die Führung“, „Kapitel 2 · Der Hof“, „Kapitel 3 · Die Flucht“, „Kapitel 4 · Die Nacht“ and „Kapitel 5 · Der Steinbruch“. The ids in files, saves and code stay `tour`, `k1` to `k4`. The key overview says measuring comes with chapter 3. |
 | unreleased | 2026-11-28 | **Each line once (TASK-093).** The same caption no longer stands twice in the subtitle box; a repeat keeps the line up longer. The quest tracker no longer lists the story's wording of a step under the quest goal when both name the same step („An der Quelle: E – das Wasser berühren“). No key prompt shows under an open conversation. Laub explains „VAT“ (Visualisierung für archäologische Topografie) when the third relief view unlocks. |
 | unreleased | 2026-11-28 | **Kastanien werfen, Farn abschlagen (TASK-090).** F throws a chestnut where the view points (hold to see the arc; on touch the „Kastanie“ button, shown while there are chestnuts). It stings and briefly staggers small enemies, wakes one out of a pack, makes the tour's deer look up and draws one hound of a calm patrol to the spot. The staff now cuts ferns, flower clumps, low bushes and grass, which grow back after 75 s; about one fresh plant in five or six hides a chestnut. In the guided tour the borrowed Messstab swings at plants although fighting stays off. `docs/ACTION-RPG.md` §7.1. |
 | unreleased | 2026-11-28 | **The Karlsbergquelle is back in view, on the right of the gorge (TASK-087, TASK-081).** The spring had not been removed, but „Weiter“ opened the title on its bare ground (sets and water were not built under the title), and on the tour it stood on the left of the path with the group on the slope behind its wall. It now stands at the foot of the south-west flank, on the right for people walking up from the Karlsbergweiher (local 1058.5/−831.0 facing 24°, before 1061.0/−834.5 facing 234°; evidence: the OSM node lies right of the footpath inside its hairpin, the 1 m LiDAR shows the hollow and the brook's channel there). The trough stand, wake spot and Q-return keep their place (1059.3/−833.1) and now face the other way. The brook runs visibly beside the trail, the trough overflows in a small fall, ferns and mossy boulders fill the shaded hollow, the guide stops before the spring and the group leaves the trough free. At the break, „Nachsehen, was im Trog glänzt“ offers E „Untersuchen“ anywhere before the trough. The title backdrop of a save shows the spring. |
@@ -367,11 +368,13 @@ _Everything in this section is fiction unless it cites a fact from §2.1._
 
 **Chapter structure (v1.0):**
 
-1. **Prologue "Die Führung"** (today, one November afternoon): the guided tour as tutorial, no combat; Marlene’s loan at the Weiher and the first time travel at the Karlsbergquelle.
-2. **Ch. 1 "Der Hof"** (1789): the court at its height; the unpaid builders, the menagerie, a quiet memorial to the 1785 fireworks victims.
-3. **Ch. 2 "Die Flucht"** (9 Feb 1793): the night race of the warner from Rohrbach, with the hunt at your heels. Warn the duke, or let the French come?
-4. **Ch. 3 "Die Nacht"** (28 Jul 1793): the fire. Save one object and find it again in a museum "today". _The MVP slice is a cut of this chapter._
-5. **Ch. 4 "Der Steinbruch"** (1796 → today): follow the wandering stones into Homburg and back to the Hohenburg; the ending.
+The player sees five numbered chapters since 2026-11-28; the ids in content and code are `tour`, `k1` … `k4`.
+
+1. **Ch. 1 "Die Führung"** (`tour`; today, one November afternoon): the guided tour as tutorial, no combat; Marlene’s loan at the Weiher and the time travel at the Karlsbergquelle, where the chapter ends.
+2. **Ch. 2 "Der Hof"** (`k1`; 1789): the court at its height; the unpaid builders, the menagerie, a quiet memorial to the 1785 fireworks victims.
+3. **Ch. 3 "Die Flucht"** (`k2`; 9 Feb 1793): the night race of the warner from Rohrbach, with the hunt at your heels. Warn the duke, or let the French come?
+4. **Ch. 4 "Die Nacht"** (`k3`; 28 Jul 1793): the fire. Save one object and find it again in a museum "today". _The MVP slice is a cut of this chapter._
+5. **Ch. 5 "Der Steinbruch"** (`k4`; 1796 → today): follow the wandering stones into Homburg and back to the Hohenburg; the ending.
 
 ### 4.3 Expansion hooks
 

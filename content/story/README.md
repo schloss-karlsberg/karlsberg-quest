@@ -11,7 +11,7 @@ files. Placeholders carry `"placeholder": true`.
 
 ```jsonc
 {
-  "chapter": "tour", "order": -1, "title_de": "Die Führung", "sub_de": "Prolog · …",
+  "chapter": "tour", "order": -1, "title_de": "Die Führung", "sub_de": "Kapitel 1 · …",
   "start": "t1", "next": "k1",                // next chapter starts when the last beat completes
   "checkpoint": { "x": 529, "z": -777, "yaw": 215, "era": "today" }, // chapter start / after being caught
   "on": [ /* chapter-wide reactions */ ],
@@ -27,6 +27,22 @@ files. Placeholders carry `"placeholder": true`.
   ]
 }
 ```
+
+## Chapter ids and the numbers on the cards
+
+The player sees five numbered chapters. The ids in files, saves, quests, clues and voice clips are
+one behind, because the tour used to be a prologue. Renaming them would touch every save.
+
+| id | file | card (`title_de` / `sub_de`) |
+| --- | --- | --- |
+| `tour` | `00-tour.story.json` | Die Führung / Kapitel 1 · heute, ein Novembernachmittag |
+| `k1` | `01-kapitel-1.story.json` | Der Hof / Kapitel 2 · Sommer 1789 |
+| `k2` | `02-kapitel-2.story.json` | Die Flucht / Kapitel 3 · Nacht vom 9. auf den 10. Februar 1793 |
+| `k3` | `03-kapitel-3.story.json` | Die Nacht / Kapitel 4 · Sonntag, 28. Juli 1793 |
+| `k4` | `04-kapitel-4.story.json` | Der Steinbruch / Kapitel 5 · 1796 → 1840 → heute |
+| `enden` | `05-enden.story.json` | Was das Feuer nicht fraß / heute · Morgengrauen |
+
+In docs and code comments "K1" … "K4" and "chapter 1" … "chapter 4" usually mean the ids.
 
 ## Static progression checks
 

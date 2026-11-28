@@ -813,6 +813,23 @@ describe('story files', () => {
     expect(slice.beat).toBe('k1_0b');
   });
 
+  it('numbers the chapters for the player: the tour is chapter 1, „Der Hof“ chapter 2', () => {
+    const cards = files
+      .map((f) => f.story)
+      .filter((s) => !s.test && !s.dev)
+      .sort((a, b) => a.order - b.order)
+      .map((s) => [s.chapter, s.title_de, s.sub_de]);
+    expect(cards).toEqual([
+      ['tour', 'Die Führung', 'Kapitel 1 · heute, ein Novembernachmittag'],
+      ['k1', 'Der Hof', 'Kapitel 2 · Sommer 1789'],
+      ['k2', 'Die Flucht', 'Kapitel 3 · Nacht vom 9. auf den 10. Februar 1793'],
+      ['k3', 'Die Nacht', 'Kapitel 4 · Sonntag, 28. Juli 1793'],
+      ['k4', 'Der Steinbruch', 'Kapitel 5 · 1796 → 1840 → heute'],
+      ['enden', 'Was das Feuer nicht fraß', 'heute · Morgengrauen'],
+    ]);
+    for (const [, title, sub] of cards) expect(`${title} ${sub}`).not.toMatch(/Prolog/i);
+  });
+
   it('keeps every spring position of the opening on the shared home constant', () => {
     // the Karlsbergquelle may move (TASK-087): the story files must follow HOME / QUELLE
     const tour = files.find((f) => f.story.chapter === 'tour')!.story;
