@@ -64,6 +64,8 @@ const models = [
   'art', 'polish-art', 'scenery', 'perf', 'avatar-mpfb', 'interiors', 'flaschen', 'readability', 'animals', 'world', 'party', 'walk',
   // enemy models
   'combat', 'combat-variety', 'fun-combat',
+  // tree models and their shadows
+  'turn-light',
 ];
 
 export const AREA_RULES: readonly AreaRule[] = [
@@ -154,6 +156,7 @@ export const AREA_RULES: readonly AreaRule[] = [
   { paths: ['src/systems/combat/**'], run: fights, why: 'combat' },
   { paths: ['src/systems/court/**', 'src/systems/court-k1/**'], run: ['court', 'chapter-k1-disguise', 'chapter-k1-quelle', 'chapter-k1', 'avatar-mpfb', 'integration'], why: 'court' },
   { paths: ['src/systems/flaschen/**'], run: ['flaschen'], why: 'bottles' },
+  { paths: ['src/systems/forage/**'], run: ['forage', 'kastanien', 'combat', 'touch', 'animals', 'hunt', 'tour-slice'], why: 'foraging: throwing chestnuts, cutting plants' },
   { paths: ['src/systems/footsteps/**'], run: ['notes', 'progression'], why: 'footsteps' },
   {
     paths: ['src/systems/fx/**'],

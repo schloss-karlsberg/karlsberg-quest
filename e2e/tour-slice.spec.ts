@@ -604,7 +604,7 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   // route, to its nearest point but never past the guide (src/systems/walk/find.ts
   // groupLeadPoint): here that is the guide himself, so both real markers share a bearing.
   // the walked route and its Quelle stop, read from the route file (TASK-087 moved the stop)
-  const fuehrung = JSON.parse(readFileSync('content/routes/p-fuehrung.json', 'utf8')) as { points: [number, number][]; stops: { id: string; x: number; z: number }[] };
+  const fuehrung = JSON.parse(readFileSync(new URL('../content/routes/p-fuehrung.json', import.meta.url), 'utf8')) as { points: [number, number][]; stops: { id: string; x: number; z: number }[] };
   const quelleStop = fuehrung.stops.find((st) => st.id === 'quelle')!;
   const strayAt = await page.evaluate(({ points, stop }) => {
     const k = window.kq!;
