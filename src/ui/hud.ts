@@ -71,7 +71,7 @@ export class Hud {
   readonly waymark = new Waymark();
   /** World coordinates behind the story and quest compass markers, for the minimap. */
   storyTarget: MapTarget | null = null;
-  questLead: { target: Readonly<{ x: number; z: number }> | null; story?: MapTarget } | null = null;
+  questLead: { target: Readonly<{ x: number; z: number }> | null; story?: MapTarget; movingGroup?: boolean } | null = null;
 
   get objectiveTarget() {
     const story = this.storyTarget;

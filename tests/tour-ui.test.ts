@@ -16,7 +16,7 @@ import { TouchControls, type TouchDeps } from '../src/ui/touch';
 
 class ElementStub {
   className = '';
-  readonly style: Record<string, string> = {};
+  readonly style = Object.assign({} as Record<string, string>, { setProperty: () => {} });
   readonly dataset: Record<string, string> = {};
   readonly children: ElementStub[] = [];
   readonly attributes = new Map<string, string>();
@@ -44,7 +44,7 @@ class ElementStub {
   append(...children: ElementStub[]): void { this.children.push(...children); }
   appendChild(child: ElementStub): void { this.append(child); }
   replaceChildren(...children: ElementStub[]): void { this.children.splice(0, this.children.length, ...children); }
-  querySelector(): null { return null; }
+  querySelector(_selector?: string): ElementStub | null { return null; }
   querySelectorAll(): ElementStub[] { return []; }
   remove(): void {}
   addEventListener(): void {}
@@ -74,7 +74,10 @@ beforeEach(() => {
     createTextNode: () => new ElementStub(),
   });
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe('tour compass', () => {
   it('refreshes the tracked story waypoint on the first frame after the Weiher handoff', () => {
@@ -122,15 +125,32 @@ describe('tour compass', () => {
     view.set(goal);
     const group = { x: 3, z: 4, y: 0, r: 3, kind: 'zone', main: true, label: goal.text } as const;
     hud.waymark.set(group);
-    hud.questLead = { target: group, story: goal };
+    hud.questLead = { target: group, story: goal, movingGroup: true };
     view.frame(1 / 60, 0, 0, 0, { compass: false, visible: true, reducedMotion: false });
     expect(view.line).toBe('Der Gruppe folgen · 5 m');
 
     const closer = { ...group, x: 0, z: 1 };
     hud.waymark.set(closer);
-    hud.questLead = { target: closer, story: goal };
+    hud.questLead = { target: closer, story: goal, movingGroup: true };
     view.frame(1 / 60, 0, 0, 0, { compass: false, visible: true, reducedMotion: false });
     expect(view.line).toBe('Der Gruppe folgen');
+  });
+
+  it('points the Bussole at the foot of the steps on a story-led door route', () => {
+    const needle = new ElementStub();
+    vi.spyOn(ElementStub.prototype, 'querySelector').mockImplementation((selector?: string) =>
+      selector === '.kqs-b-needle' ? needle : null);
+    const hud = new Hud();
+    const goal = { id: 'registratur', text: 'In die Registratur', x: 0, z: -20 };
+    const view = new ObjectiveView(root as unknown as HTMLElement, hud);
+    view.set(goal);
+    hud.questLead = { target: { x: 13.4, z: 0 }, story: goal };
+    hud.waymark.set({ x: 0, y: 2, z: -14, r: 1.5, kind: 'zone', main: true, label: goal.text });
+
+    view.frame(1 / 60, 0, 0, 0, { compass: true, visible: true, reducedMotion: true });
+
+    expect(needle.attributes.get('transform')).toBe('rotate(90.00 50 50)');
+    expect(view.line).toBe('In die Registratur · 15 m');
   });
 
   it('keeps the guide on the second row when looking ahead or when both markers clamp to the same edge', () => {
@@ -231,9 +251,13 @@ it.each([false, true])('shows the throw hint on the first pickup during a cut ti
   const autosave = vi.fn();
   const hud = new Hud();
   const toast = vi.fn();
+  const muted = new Set<string>();
   const ctx = {
     events, state, save: { autosave }, scene: new Scene(),
-    input: { touchMode, bindings: { throw: ['KeyF'] }, wasPressed: () => false },
+    input: {
+      enabled: true, muted, touchMode, bindings: { throw: ['KeyF'] },
+      wasPressed: () => false, wasCancelled: () => false,
+    },
     ui: { hud, toast, modals: { count: 0 } }, player: {},
     quality: { level: 'high', listeners: [] }, world: { nature: {} },
     settings: { state: { reducedMotion: false } },
@@ -249,6 +273,7 @@ it.each([false, true])('shows the throw hint on the first pickup during a cut ti
     for (let i = 0; i < 151; i++) forage.update(1 / 60);
     expect(toast).toHaveBeenCalledWith(expect.stringContaining('Mit dem Stab'), 7000);
     events.emit('dialogue:active', { speaker: 'imhoff' });
+    muted.add('throw');
     expect(hint.attributes.has('hidden')).toBe(true);
     pickup(1);
     expect(hint).toMatchObject({

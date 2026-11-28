@@ -180,13 +180,15 @@ export class ObjectiveView {
       this.distEl.textContent = '';
       target = angleDiff(bearingDeg(px, pz, opts.questTarget.x, opts.questTarget.z), heading);
     } else if (o && o.x !== undefined && o.z !== undefined) {
-      const waymark = this.hud.questLead?.story === o ? this.hud.waymark.target : null;
-      const x = waymark?.x ?? o.x;
-      const z = waymark?.z ?? o.z;
+      const lead = this.hud.questLead?.story === o ? this.hud.questLead : null;
+      // Door routes can draw the marker in the doorway while navigation leads to the steps.
+      const x = lead?.target?.x ?? o.x;
+      const z = lead?.target?.z ?? o.z;
       const b = bearingDeg(px, pz, x, z);
       const d = Math.hypot(x - px, z - pz);
-      this.hud.setMarker('objective', dup || waymark ? null : b, '#e9c46a', { kind: 'obj' });
-      if (waymark && (waymark.x !== o.x || waymark.z !== o.z)) {
+      this.hud.setMarker('objective', dup || lead?.target ? null : b, '#e9c46a', { kind: 'obj' });
+      const waymark = lead?.movingGroup ? this.hud.waymark.target : null;
+      if (waymark) {
         // The tour's moving lead can be close. Use the world marker's range and rounding.
         this.distEl.textContent = d <= waymark.r * 0.7 ? '' : ` · ${waymarkDistance(d)}`;
       } else {

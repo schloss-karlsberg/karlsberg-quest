@@ -51,3 +51,15 @@ Address the fresh-game playtest on main at db8b1b8d, through the first visit to 
 - F11. Laub's arrival line and the coat quest refer to the default red jacket. The arrival line has no entry in the voice manifest. Regenerated the chapter pack and quest files.
 - The four gates passed. Vitest reported 245 files, 2,742 passing tests, 17 todo and zero failures. Content validation reported 0 errors and 29 warnings. The production build transformed 504 modules.
 - Updated `e2e/tour-slice.spec.ts` and `e2e/chapter-k1-disguise.spec.ts`. Playwright collected all five cases. Browser execution is pending in CI, whose selector requests the full suite.
+
+### PR #151 review round
+
+- Integrated the train's chapter numbering, Liese's coat rules, daytime oil fix, present-day tripods, throw cancellation and completing dialogue. Kept the reachable-side coat target.
+- F3. Made the Bleiche brief the first line of the 1789 arrival and kept the recorded exchange and Bussole-page line. The runtime test follows the trail at sprint speed and checks that the presenter starts the line before reaching the linen, with and without reduced motion. Chapter 2 retains the approach trigger for saves that missed the tour brief.
+- F10. Pointed the Bussole at the resolved route target and restricted world-marker rounding to the moving group. The door regression distinguishes the foot of the steps from the marker in the opening.
+- F12. Verified the pickup hint on desktop and touch while throw is muted, alongside the train’s held and buffered throw cancellation tests.
+- The tour and disguise browser expectations are covered by CI. Playwright was reserved for CI in this round.
+
+## Follow-ups
+
+- F2. Test dog occupancy in the car-park passages and give settled dogs positions clear of those gaps. Dog positions follow Jost and use their own avoidance, so visitor slot spacing alone cannot reserve the passage.
