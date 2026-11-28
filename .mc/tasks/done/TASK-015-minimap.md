@@ -4,7 +4,7 @@ aliases:
 - TASK-015
 title: Minimap
 slug: minimap
-status: in-progress
+status: done
 priority: 2
 owner: ''
 projects: []
@@ -18,7 +18,7 @@ milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-26
-updated: 2026-11-26
+updated: 2026-11-28
 ---
 
 # Minimap
@@ -39,8 +39,8 @@ Give players a corner map for local orientation and for finding the tour group a
 - [x] The first Registratur lead uses its entrance route from outside, and the historical minimap overlays the in-game paths on the survey.
 - [x] The touch layout reserves space for the lit action label, and staged scenes and the touch survey menu suspend the minimap.
 - [x] Local redraws cull off-screen footprints, with layer-specific unit assertions and Canvas 2D instrumentation in the browser spec.
-- [ ] Capture the Canvas 2D draw-cost figure from a browser run.
-- [ ] Verify the browser specs and run the standard validation wrapper outside the sandbox.
+- [x] Capture the Canvas 2D draw-cost figure from a browser run.
+- [x] Verify the browser specs and run the standard validation wrapper outside the sandbox.
 
 ## Plan
 
@@ -85,10 +85,16 @@ _Status: approved 2026-11-26_
 - 2026-11-26. The first review round is in `19ff905` in the PR checkout.
 - 2026-11-26. PR #54 review fix. The notice dock clears the unlocked skills on tall touch layouts. Dialogue and notices reclaim the map slot when the shortest layout hides it. The historical path canvas is prepared before the first redraw, and the north label has clear space above the markers. Playwright covers the live layouts and logs the cold 667 × 375 touch shift. The standalone Node benchmark measured 7.988 ms for terrain-buffer preparation and 0.010 ms per warmed present-day redraw with a stub canvas.
 - 2026-11-26. Typecheck, Vitest (119 files, 1,586 tests), direct content validation and the production build passed. Playwright discovered all six minimap tests. The locked browser run stopped at `listen EPERM 127.0.0.1:5401`, leaving the layout and cold-shift timings unverified. The fixes are unstaged.
+- 2026-11-28. After `pnpm build`, `e2e/minimap.spec.ts` ran locally under the heavy lock (6 passed):
+  100 Canvas 2D calls and 0.040 ms per warmed redraw at the tour car park; at 667 × 375 touch a
+  18.7 ms cold era change and 0.2 ms of minimap submission in the first historical frame. The figures
+  replace "pending" in `docs/PERFORMANCE.md` §3.8. The four gates, including the `pnpm validate`
+  wrapper, passed; the other browser specs (touch, smoke, progression, chapter-prolog) run in the
+  hosted e2e shards on the PR.
 
 ## Follow-ups
 
-- Run `pnpm validate` in an environment that permits the tsx IPC socket. Run the browser specs after building and record the logged Canvas 2D timings in the performance notes.
+- Done 2026-11-28 (see Progress). Run `pnpm validate` in an environment that permits the tsx IPC socket. Run the browser specs after building and record the logged Canvas 2D timings in the performance notes.
 
   ```sh
   pnpm build
