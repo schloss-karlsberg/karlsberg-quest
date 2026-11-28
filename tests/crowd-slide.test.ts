@@ -1,12 +1,13 @@
 /** TASK-082: the player slides round standing tour members; held / waiting groups leave a lane on the path. */
 import { describe, expect, it } from 'vitest';
+import tour from '../content/story/00-tour.story.json';
 import route from '../content/routes/p-fuehrung.json';
 import { EventBus } from '../src/core/events';
 import { Player, type PlayerWorld } from '../src/player/player';
 import { laneSlots, LANE_OFFSET, straightBehind } from '../src/systems/walk/group';
 import { buildRoute } from '../src/systems/walk/route';
 import { WalkRuntime, type WalkBus } from '../src/systems/walk/runtime';
-import type { Route, WalkSlice } from '../src/systems/walk/types';
+import type { Route, WalkRequest, WalkSlice } from '../src/systems/walk/types';
 import { MIN_SLIDE, PLAYER_RADIUS, VISITOR_RADIUS, slideThroughCrowd, type CrowdCircle, type WallResolve } from '../src/world/crowd';
 
 const R = PLAYER_RADIUS + VISITOR_RADIUS;
@@ -275,4 +276,48 @@ describe('wait slots beside the path (TASK-082)', () => {
     expect(Math.hypot(L.x - q.x, L.z - q.z)).toBeLessThanOrEqual(3);
     expect(ticks * STEP).toBeLessThan(20);
   });
+});
+
+describe('the car park gathering (F2)', () => {
+  it('lets the player cross the group from the playtest approach and exit from inside', () => {
+    const player = tour.checkpoint;
+    const slice: WalkSlice = { walkers: [], groups: [] };
+    const rt = new WalkRuntime({
+      bus: new EventBus() as unknown as WalkBus,
+      routes: new Map([[route.id, route as Route]]),
+      slice: () => slice,
+      log: () => {},
+      world: { heightAt: () => 0, player: () => player, era: () => 'today', reducedMotion: () => false },
+      bodies: () => ({ setPos() {}, face() {}, setSpeed() {}, play() {}, setVisible() {}, dispose() {} }),
+    });
+    for (const { do: action, ...op } of tour.beats[0]!.enter) {
+      if (action === 'npc') rt.request(op as WalkRequest);
+    }
+    for (let i = 0; i < 60 * 10; i++) rt.update(1 / 60);
+    const circles = [...rt.tourVisitors()];
+    expect(circles).toHaveLength(15);
+
+    const check = (start: { x: number; z: number }, dx: number, dz: number, distance: number) => {
+      const path = walk(start, dx * STEP, dz * STEP, circles, 360);
+      expectNeverInside(path, circles);
+      const end = path.at(-1)!;
+      expect((end.x - start.x) * dx + (end.z - start.z) * dz).toBeGreaterThan(distance);
+    };
+    const length = Math.hypot(516 - player.x, -762 - player.z);
+    check(player, (516 - player.x) / length, (-762 - player.z) / length, length);
+    const center = { x: 522, z: -768.9 };
+    for (let i = 0; i < 16; i++) {
+      const a = (i * Math.PI) / 8;
+      const dx = Math.cos(a), dz = Math.sin(a);
+      check({ x: center.x - dx * 9, z: center.z - dz * 9 }, dx, dz, 17);
+      check(center, dx, dz, 8);
+    }
+  });
+});
+
+it.each((route as Route).stops.filter((stop) => stop.slots))('leaves a player-width gap at the authored $id stop', (stop) => {
+  const positions = [[stop.x, stop.z], ...stop.slots!];
+  for (const [i, [x, z]] of positions.entries()) {
+    for (const [ox, oz] of positions.slice(i + 1)) expect(Math.hypot(x - ox, z - oz)).toBeGreaterThan(2 * R + 0.07);
+  }
 });
