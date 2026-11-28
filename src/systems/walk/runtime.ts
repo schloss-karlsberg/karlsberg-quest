@@ -7,7 +7,7 @@
 import { FIND, rejoinArc } from './find';
 import { VISITOR_RADIUS, type CrowdCircle } from '../../world/crowd';
 import { buildRoute, type BuiltRoute } from './route';
-import { MEMBER_SPEEDS, assignSlots, followSlots, gatherSlots, pushOutOfTrunks, separate, stepMember, type MemberSpeeds, type Slot, type TrunksNear } from './group';
+import { MEMBER_SPEEDS, assignSlots, followSlots, gatherSlots, laneSlots, pushOutOfTrunks, separate, stepMember, straightBehind, type MemberSpeeds, type PathBehind, type Slot, type TrunksNear } from './group';
 import { arriveAtTarget, createWalker, earlyArrival, headingOf, restoreWalker, serializeWalker, snapAhead, stepWalker, type WalkEvent, type Walker } from './walker';
 import type { GatherOp, GroupRelocation, GroupSave, Route, WalkRequest, WalkSlice } from './types';
 
@@ -155,6 +155,8 @@ interface NpcRt {
 }
 
 type Mode = 'follow' | 'gather' | 'hold';
+/** A slot layout: the modes plus the wait slots beside the path. */
+type Layout = Mode | 'lane';
 
 interface GroupRt {
   id: string;
@@ -168,6 +170,8 @@ interface GroupRt {
   route?: string;
   assign: number[];
   slots: Slot[];
+  /** Layout of `slots` (a change drops the kept assignment, so members take the nearest new slot). */
+  layout?: 'follow' | 'lane' | 'gather';
   /** Implicit group of a single `follow` npc. */
   implicit?: boolean;
 }
@@ -513,9 +517,12 @@ export class WalkRuntime {
 
   /** Every member straight into its slot (hold keeps its mode, but lands around the leader too). */
   landMembers(g: GroupRt): void {
-    const slots = this.slotsFor(g, g.mode === 'hold' ? 'follow' : g.mode);
+    // a held group lands beside the path (it stays there while the guide walks on: TASK-082)
+    const layout = this.layoutOf(g);
+    const slots = this.slotsFor(g, layout === 'lane' ? 'lane' : g.mode);
     const pos = g.members.map((m) => this.npcs.get(m) ?? this.ensureNpc(m, slots[0]?.x ?? 0, slots[0]?.z ?? 0));
     g.slots = slots;
+    g.layout = layout;
     g.assign = assignSlots(pos, slots);
     pos.forEach((n, i) => {
       const sl = slots[g.assign[i]!];
@@ -554,7 +561,7 @@ export class WalkRuntime {
     return this.npcs.get(id);
   }
 
-  private slotsFor(g: GroupRt, mode: Mode): Slot[] {
+  private slotsFor(g: GroupRt, mode: Layout): Slot[] {
     const L = this.npcs.get(g.leader);
     if (!L) return [];
     const n = g.members.length;
@@ -568,7 +575,42 @@ export class WalkRuntime {
       }
       return gatherSlots(n, { x: c.x, z: c.z, yaw: (c === L ? w?.yaw : undefined) ?? c.yaw }, face, g.r ?? [3, 7]);
     }
+    if (mode === 'lane') return laneSlots(n, this.pathBehind(g.leader), hash(g.id));
     return followSlots(n, { x: L.x, z: L.z, yaw: w?.yaw ?? L.yaw }, g.spacing ?? [1.2, 4], hash(g.id));
+  }
+
+  /**
+   * Which layout a group stands in: a held group and a group whose guide waits for the player
+   * stand in the wait slots beside the path, so the player can walk through to the guide (TASK-082).
+   */
+  private layoutOf(g: GroupRt): 'follow' | 'lane' | 'gather' {
+    if (g.mode === 'gather') return 'gather';
+    if (g.mode === 'hold') return 'lane';
+    if (g.implicit) return 'follow';
+    const w = this.walkers.get(g.leader);
+    return w?.waiting && !w.arrived ? 'lane' : 'follow';
+  }
+
+  /** The leader's path back from where it stands (its walker's line, else straight behind it). */
+  private pathBehind(leader: string): PathBehind {
+    const w = this.walkers.get(leader);
+    const L = this.npcs.get(leader);
+    if (w && w.line.length > 1) {
+      const line = w.line;
+      const s0 = w.s;
+      const pt = { x: 0, z: 0, dirX: 0, dirZ: -1 };
+      return (d) => {
+        const s = s0 - d;
+        line.pointAt(Math.max(0, s), pt);
+        if (s < 0) {
+          // before the start of the line: carry on straight back
+          pt.x += pt.dirX * s;
+          pt.z += pt.dirZ * s;
+        }
+        return { x: pt.x, z: pt.z, dirX: pt.dirX, dirZ: pt.dirZ };
+      };
+    }
+    return straightBehind({ x: L?.x ?? w?.x ?? 0, z: L?.z ?? w?.z ?? 0, yaw: w?.yaw ?? L?.yaw ?? 0 });
   }
 
   private reslot(g: GroupRt): void {
@@ -580,7 +622,10 @@ export class WalkRuntime {
       g.assign = g.members.map((_, i) => i);
       return;
     }
-    const slots = this.slotsFor(g, g.mode);
+    const layout = this.layoutOf(g);
+    if (layout !== g.layout) g.assign = [];
+    g.layout = layout;
+    const slots = this.slotsFor(g, layout === 'lane' ? 'lane' : g.mode);
     const pos = g.members.map((m) => this.npcs.get(m)!).filter(Boolean);
     g.assign = assignSlots(pos, slots, g.assign.length ? g.assign : undefined);
     g.slots = slots;

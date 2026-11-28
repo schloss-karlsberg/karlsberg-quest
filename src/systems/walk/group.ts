@@ -64,6 +64,49 @@ export function followSlots(n: number, leader: { x: number; z: number; yaw: numb
   });
 }
 
+/** Lateral offset of the two files of wait slots from the path's centre line. */
+export const LANE_OFFSET = 1.15;
+/** Distance between wait slots along a file. */
+const LANE_PITCH = 1.1;
+/** The first pair of wait slots stands this far behind the leader (along the path). */
+const LANE_FIRST = 0.9;
+/** Seeded jitter of a wait slot along the path (never across, so the lane stays open). */
+const LANE_JITTER = 0.25;
+
+/** A point on the path and its forward direction (unit), `d` metres behind the leader. */
+export type PathBehind = (d: number) => { x: number; z: number; dirX: number; dirZ: number };
+
+/**
+ * Wait slots beside the path (TASK-082): when the group stands while the guide is elsewhere or
+ * waits for the player, the members stand in two files LANE_OFFSET to the left and right of the
+ * path's centre line, pairs every 1.1 m behind the leader, so the walking line along the path
+ * stays open (2 × 1.15 m − two visitor circles ≈ 1.7 m, the player needs 0.7 m) and the files keep
+ * within a 3 m path. `behind(d)` follows the path back from the leader (a bend bends the files);
+ * slots face along the path. Deterministic per seed.
+ */
+export function laneSlots(n: number, behind: PathBehind, seed = 1): Slot[] {
+  const rand = rng(seed);
+  const out: Slot[] = [];
+  for (let i = 0; i < n; i++) {
+    const row = Math.floor(i / 2);
+    const side = i % 2 === 0 ? 1 : -1;
+    const d = LANE_FIRST + row * LANE_PITCH + (row > 0 ? (rand() * 2 - 1) * LANE_JITTER : 0);
+    const p = behind(d);
+    // right-hand vector of the forward direction (x east, z south)
+    const rx = -p.dirZ;
+    const rz = p.dirX;
+    out.push({ x: p.x + rx * LANE_OFFSET * side, z: p.z + rz * LANE_OFFSET * side, yaw: Math.atan2(-p.dirX, -p.dirZ) });
+  }
+  return out;
+}
+
+/** `behind` for a straight path through the leader along its heading. */
+export function straightBehind(leader: { x: number; z: number; yaw: number }): PathBehind {
+  const fx = -Math.sin(leader.yaw);
+  const fz = -Math.cos(leader.yaw);
+  return (d) => ({ x: leader.x - fx * d, z: leader.z - fz * d, dirX: fx, dirZ: fz });
+}
+
 /** Slot pitch along a gathering arc and the gap between rings. */
 const ARC_PITCH = 1.1;
 const RING_GAP = 1.3;

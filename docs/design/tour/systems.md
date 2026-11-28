@@ -120,6 +120,18 @@ radio captions sit in the upper band on desktop and landscape phones. The tour b
 emulates touch to check the portrait rotate prompt and that a landscape tap advances dialogue.
 The player and dogs share the visitors' collision circles. The
 circles' ground heights are refreshed when the visitors move.
+The player collides and slides through them (TASK-082, `slideThroughCrowd` in `src/world/crowd.ts`).
+Each step is swept against the circles, so the player never tunnels through a visitor. At a
+contact the player keeps the part of the step along the visitor, at least 45 % of it, so a
+near head-on bump walks round the visitor instead of stopping dead. Such a bump goes round the
+side that no wall or other visitor shuts. Between two visitors closer than the player is wide,
+the player stops. A slide that a wall would push back into a visitor is refused. Wait slots
+beside the path (`laneSlots` in `src/systems/walk/group.ts`) keep the path open: a held group
+landed by a warp stands there, and so does a following group while the guide waits on the leash.
+They form two files 1.15 m left and right of the route line, a pair every 1.1 m behind the guide.
+On the dam (t10 → t11 holds the group and warps it to `damm` while Gerold walks on to the Weiher),
+the player walks the open lane between the files to the waiting guide. Enemy body-blocking and
+combat hits are unchanged.
 
 ---
 
