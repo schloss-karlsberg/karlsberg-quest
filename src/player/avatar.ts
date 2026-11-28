@@ -279,6 +279,7 @@ export class Avatar {
     this.trail = new Trail();
     scene.add(this.root, this.trail.mesh);
     this.offTeleport = events.on('player:teleport', () => {
+      this.throwT = 0;
       this.facing = player.yaw;
       this.resetMotion();
     });
@@ -755,6 +756,8 @@ export class Avatar {
   }
 
   frame(f: AvatarFrame): void {
+    const dt = safeDt(f.dt);
+    if (!actionPose.frozen) this.throwT = Math.max(0, this.throwT - dt);
     if (!this.rig) {
       if (!this.building) this.building = this.build();
       lanternPose.anchor = null;
@@ -763,7 +766,6 @@ export class Avatar {
     const pl = this.player;
     const A = actionPose;
     const rig = this.rig;
-    const dt = safeDt(f.dt);
     const show = !f.hidden && pl.thirdPerson && pl.rig.distance > BOOM_MIN * 0.98;
     this.root.visible = show;
     this.debug.visible = show;
@@ -941,7 +943,6 @@ export class Avatar {
     if (!A.frozen) {
       this.hitT = Math.max(0, this.hitT - dt);
       this.interactT = Math.max(0, this.interactT - dt);
-      this.throwT = Math.max(0, this.throwT - dt);
       this.waveT = Math.max(0, this.waveT - dt);
     }
     // apply weights (eased: the locomotion blend moves at ~8/s)

@@ -194,6 +194,36 @@ describe('avatar animation', () => {
     }
   });
 
+  it('expires a throw made in first person before showing the avatar again', async () => {
+    const { avatar, player, frame } = await avatarFixture();
+    try {
+      player.cameraMode = 'first';
+      avatar.react('throw');
+      frame(30);
+      player.cameraMode = 'third';
+      frame();
+      expect(avatar.debug.visible).toBe(true);
+      expect(avatar.debug.upper).toBe('');
+    } finally {
+      avatar.dispose();
+    }
+  });
+
+  it('clears a throw reaction on teleport', async () => {
+    const { avatar, player, frame } = await avatarFixture();
+    try {
+      frame();
+      avatar.react('throw');
+      frame(6);
+      expect(avatar.debug.upper).toBe('throw:Punch_Right');
+      player.teleport(30, 30);
+      frame();
+      expect(avatar.debug.upper).toBe('');
+    } finally {
+      avatar.dispose();
+    }
+  });
+
   it('holds a hit reaction during hit-stop and hides the body during first person or a camera override', async () => {
     const { avatar, player, poseChest, frame } = await avatarFixture();
     try {
