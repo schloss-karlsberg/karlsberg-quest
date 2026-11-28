@@ -66,6 +66,8 @@ const FLY_MAX_AGL = 450;
 export class Player {
   readonly position = new Vector3();
   private readonly prev = new Vector3();
+  /** Scratch `from` for the crowd push-out after the wall check. */
+  private readonly crowdAt = new Vector3();
   yaw = 0;
   pitch = 0;
   stance: Stance = 'stand';
@@ -368,6 +370,21 @@ export class Player {
     const col = this.world.collide(nx, nz, PLAYER_RADIUS);
     nx = col.x;
     nz = col.z;
+    if (moving && !this.frozen && this.world.separate) {
+      // slope, water and walls may have bent the step back into a person: push out once more, and
+      // if that lands in a wall, stay put (never through a wall, never inside a person)
+      const p = this.world.separate(nx, nz, PLAYER_RADIUS, this.crowdAt.set(nx, this.position.y, nz));
+      if (p.x !== nx || p.z !== nz) {
+        const again = this.world.collide(p.x, p.z, PLAYER_RADIUS);
+        if (Math.hypot(again.x - p.x, again.z - p.z) > 1e-4) {
+          nx = this.position.x;
+          nz = this.position.z;
+        } else {
+          nx = p.x;
+          nz = p.z;
+        }
+      }
+    }
     const b = this.world.bounds();
     nx = Math.min(b.x1, Math.max(b.x0, nx));
     nz = Math.min(b.z1, Math.max(b.z0, nz));

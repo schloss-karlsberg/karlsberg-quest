@@ -3,7 +3,7 @@ import { AssetLoader } from './assets/loader';
 import { AudioManager } from './audio/audio';
 import { loadBundledContent } from './content/db';
 import type { EraController, GameContext, PauseController } from './core/context';
-import { separateFromCrowd, type TourCrowd } from './world/crowd';
+import { slideThroughCrowd, type CrowdCircle, type TourCrowd } from './world/crowd';
 import { ERA_INFO, type Era, isEra } from './core/era';
 import { EventBus } from './core/events';
 import { FixedStepLoop, frameCap, renderRate } from './core/loop';
@@ -217,6 +217,8 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   const tourCrowd: TourCrowd = {};
   // Reused every fixed step: the player reads x / z straight away.
   const crowdBody = { x: 0, y: 0, z: 0, radius: 0 };
+  const crowdAll: CrowdCircle[] = [];
+  const crowdWalls = (x: number, z: number, r: number) => world.collider.resolve(x, z, r);
   const player = new Player(
     {
       heightAt: (x, z) => world.heightAt(x, z),
@@ -229,8 +231,12 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
         body.radius = radius;
         const visitors = tourCrowd.visitors?.();
         const dogs = tourCrowd.dogs?.();
-        if (visitors?.length) separateFromCrowd(body, visitors, from);
-        if (dogs?.length) separateFromCrowd(body, dogs, from);
+        const all = crowdAll;
+        all.length = 0;
+        if (visitors) for (const v of visitors) all.push(v);
+        if (dogs) for (const d of dogs) all.push(d);
+        // collide and slide round people and dogs; walls refuse a slide that squeezes past a person
+        if (all.length) slideThroughCrowd(body, all, from, crowdWalls);
         return body;
       },
       bounds: () => world.bounds(),

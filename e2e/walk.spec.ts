@@ -140,6 +140,42 @@ test('walk (c): a teleport > 60 m ahead snaps the guide to the stop ahead (skipp
   expect(errors).toEqual([]);
 });
 
+test('walk (e): the group held on the dam leaves a lane, the player walks through to the waiting guide (TASK-082)', async ({ page }) => {
+  const errors = trackErrors(page);
+  await boot(page, '&manual');
+  await page.evaluate(() => window.kq!.walk!.demo({ to: 'damm' }));
+  // 14 m short of the dam stop on the path, looking along it (east)
+  await page.evaluate(() => window.kq!.teleport(822.9, -837.6, 87, -8));
+  await step(page, 2);
+  // the tour's t10 → t11: hold, walk on with the leash, the held group warped to the dam
+  await page.evaluate(() => {
+    const w = window.kq!.walk!;
+    w.request({ op: 'warp', group: 'fuehrung', to: 'damm' });
+    w.request({ op: 'hold', group: 'fuehrung' });
+    w.request({ op: 'walk', npc: 'imhoff', route: 'p-fuehrung', to: 'weiher', speed: 1.9, wait: { for: 'player', r: 25 } });
+    w.request({ op: 'warp', group: 'fuehrung', to: 'damm' });
+  });
+  let waiting: any[] = [];
+  for (let s = 0; s < 30 && !waiting.length; s++) {
+    await step(page, 60);
+    waiting = await events(page, 'group:waiting');
+  }
+  expect(waiting).toHaveLength(1);
+  const g0 = await guide(page);
+  expect(g0.x).toBeGreaterThan(840);
+  // W held: past the whole held group (its front pair stands 0.9 m behind the dam stop)
+  let p = { x: 0, z: 0 };
+  for (let s = 0; s < 12 && p.x < 840; s++) {
+    await page.evaluate(() => window.kq!.press('KeyW', 30));
+    p = await page.evaluate(() => ({ x: window.kq!.ctx.player.position.x, z: window.kq!.ctx.player.position.z }));
+  }
+  console.log(`[walk e] player at ${p.x.toFixed(1)}, ${p.z.toFixed(1)}; guide waited at ${g0.x.toFixed(1)}, ${g0.z.toFixed(1)}`);
+  expect(p.x).toBeGreaterThan(840);
+  const members = await page.evaluate(() => window.kq!.walk!.list().filter((n) => n.npc !== 'imhoff'));
+  for (const m of members) expect(m.x).toBeLessThan(837);
+  expect(errors).toEqual([]);
+});
+
 const TIERS = (process.env.KQ_WALK_TIERS ?? 'high,medium,low').split(',');
 const SAMPLE = { frames: 8, ticksPerFrame: 15 };
 // Room for 183 primitive draws and 124k triangles in one pass (packed tour bodies, including
