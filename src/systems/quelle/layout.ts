@@ -3,27 +3,76 @@
  * data and math (no three.js), shared by the scenery set (stone, wood) and the quelle system
  * (water, motes, the touch).
  *
- * Position: OpenStreetMap node 368031320 "Karlsbergquelle" (natural=spring, 49.3338291 N,
- * 7.3766361 E → UTM 32N → local 1061.0 / −834.5); the OSM Karlsbergbach starts at the same point
- * (public/data/paths.json) and the information board stands 5 m away. The LiDAR shows a small
- * ravine there running SSE → NNW down to the Karlsbergweiher; the spring sits at the foot of its
- * north-east flank, 59 m below the Orangerie terrace. So the stonework backs into that slope and
- * faces south-west (compass 234°) across the ravine floor, where the trail comes up from the
- * Weiher and climbs on the left (north-west) — as on the reference photo: path in front, steps on
- * the left, the trough before a low dry wall, the little arched spring house up the slope behind.
+ * Position (TASK-087): the spring sits on the RIGHT of the ravine as the tour walks up it from the
+ * Karlsbergweiher, at the foot of the south-west flank.
+ *  - OpenStreetMap node 368031320 "Karlsbergquelle" (natural=spring, 49.3338291 N, 7.3766361 E →
+ *    UTM 32N → local 1061.0 / −834.5) lies 2.3 m to the right of the OSM footpath that comes up
+ *    from the Weiher (public/data/paths.json, 1046.6/−848.4 → 1064.2/−835.0), and the OSM
+ *    Karlsbergbach, which starts at the node, stays on that side of the path all the way down.
+ *    The path then turns right in a hairpin (apex 1066.6/−830.8) and climbs back along the
+ *    south-west flank, so the spring lies inside the bend.
+ *  - The 1 m LiDAR terrain shows a flat bench about 8 m wide on the ravine floor (the path) and,
+ *    along the foot of the south-west bank, a channel that starts in a small hollow at
+ *    1058.5 / −830.5 and runs north-west to the Weiher (x − z ≈ 1889).
+ * So the stonework backs into the south-west flank at that hollow, 4 m from the OSM node, and
+ * faces north-north-east (compass 24°) across the ravine floor: the path in front, coming up from
+ * the Weiher on the right and climbing away round the hairpin on the left, the steps on the left
+ * up to the path's upper leg, the trough before a low dry wall, the little arched spring house up
+ * the slope behind, the brook leaving to the right. That is the reference photo's arrangement.
+ * (Until TASK-087 the same set stood at the node itself, backed into the north-east flank and
+ * facing 234°: on the left of the people walking up, its end towards them.)
  *
- * Local frame of the set: u = to the right of a viewer facing the spring (≈ up the ravine, SE),
- * w = towards that viewer (SW), y up. `toWorld(u, w)` maps it (the kit's `face(234)` frame).
+ * Local frame of the set: u = to the right of a viewer facing the spring (≈ down the ravine, NW),
+ * w = towards that viewer (NNE), y up. `toWorld(u, w)` maps it (the kit's `face(24)` frame).
  */
 import type { Era } from '../../core/era';
 import { clearings as bleicheClearings } from '../bleiche/layout';
 
 export const QUELLE = {
-  x: 1061.0,
-  z: -834.5,
+  x: 1058.5,
+  z: -831.0,
   /** Compass facing of the spring's front (the viewer stands this way). */
-  facing: 234,
+  facing: 24,
 } as const;
+
+/** The OpenStreetMap node of the spring (local frame): the reference the position is checked against. */
+export const OSM_SPRING = { x: 1061.0, z: -834.5 } as const;
+
+/**
+ * The OSM footpath the tour walks up the ravine, to the hairpin's apex above the spring
+ * (paths.json nodes, world x/z, in walking order): the reference for "which side of the gorge".
+ */
+export const TOUR_PATH: readonly (readonly [number, number])[] = [
+  [1013.9, -867.5],
+  [1035.7, -855.1],
+  [1046.6, -848.4],
+  [1064.2, -835.0],
+  [1066.6, -830.8],
+];
+
+/**
+ * How far (m) world x/z lies to the right of the tour path's nearest leg, for people walking up
+ * from the Weiher (negative: on their left).
+ */
+export function rightOfTourPath(x: number, z: number): number {
+  let best = Infinity;
+  let side = 0;
+  for (let i = 0; i + 1 < TOUR_PATH.length; i++) {
+    const [ax, az] = TOUR_PATH[i]!;
+    const [bx, bz] = TOUR_PATH[i + 1]!;
+    const dx = bx - ax;
+    const dz = bz - az;
+    const l = Math.hypot(dx, dz);
+    const t = Math.min(1, Math.max(0, ((x - ax) * dx + (z - az) * dz) / (l * l)));
+    const d = Math.hypot(x - ax - dx * t, z - az - dz * t);
+    if (d < best) {
+      best = d;
+      // east is +x and south is +z, so the right-hand normal of a heading (dx, dz) is (−dz, dx)
+      side = ((x - ax) * -dz + (z - az) * dx) / l;
+    }
+  }
+  return side;
+}
 
 const YAW = Math.PI - (QUELLE.facing * Math.PI) / 180;
 const CY = Math.cos(YAW);
@@ -71,7 +120,7 @@ export const PIECES = {
   pipe: { u: 0.25, y: 1.02, reach: 0.62 },
   /** The arched spring house up the slope behind (the Brunnenstube proper). */
   house: { u: 0.7, w: -4.3, width: 1.9, height: 1.55, depth: 1.6 },
-  /** Steps on the left (north-west), climbing into the slope. */
+  /** Steps on the left (south-east, up the ravine), climbing the slope towards the path's upper leg. */
   steps: { u: -3.35, w0: 1.1, n: 6, run: 0.62, width: 1.05 },
   /** The trail edge in front (mossy blocks). */
   edge: { w: 2.75, u0: -3.4, u1: 3.4 },
@@ -208,6 +257,33 @@ export function canTouch(px: number, pz: number, yaw: number, era: Era, reach = 
   return (dx * fx + dz * fz) / d > 0.35;
 }
 
+/**
+ * Is a player at x/z close enough before the trough to look into it, whichever way they face
+ * (the tour's find, E „Untersuchen“)? Only from the front, like `canTouch`.
+ */
+export function canFind(px: number, pz: number, era: Era, reach = TOUR_REACH): boolean {
+  if (toLocal(px, pz)[1] < PIECES.wall.w) return false;
+  const [tu, tw] = touchLocal(era);
+  const [tx, tz] = toWorld(tu, tw);
+  return Math.hypot(tx - px, tz - pz) <= reach;
+}
+
+/**
+ * Today's overflow: the water runs over a lip at the trough's low end (its right, +u) and falls to
+ * the runnel. Where it leaves (world) and the ground it falls to; null in the other eras (the
+ * basin drains below ground).
+ */
+export function overflow(h: HeightAt, era: Era): { x: number; y: number; z: number; toY: number } | null {
+  if (lookFor(era) !== 'today') return null;
+  const T = PIECES.trough;
+  const u = T.u + T.len / 2 + OVERFLOW_LIP;
+  const [x, z] = toWorld(u, T.w);
+  return { x, y: waterSpec(h, era).y - 0.015, z, toY: groundLocal(h, u + 0.2, T.w) + 0.03 };
+}
+
+/** How far the overflow lip stands out of the trough's end (m). */
+export const OVERFLOW_LIP = 0.14;
+
 /** Yaw (three.js) that faces the water from x/z. */
 export function yawToWater(px: number, pz: number, era: Era): number {
   const [tu, tw] = touchLocal(era);
@@ -218,7 +294,7 @@ export function yawToWater(px: number, pz: number, era: Era): number {
 /**
  * The Karlsbergbach below the spring: OSM line (paths.json, "Karlsbergbach") from the overflow
  * down the ravine and out past the Bleiche's meadow towards the Weiher. The first two points are
- * the runnel from the trough's low end.
+ * the runnel from the trough's low end (its right, down the ravine).
  */
 export const BROOK_OSM: readonly [number, number][] = [
   [1039, -849],
@@ -227,6 +303,9 @@ export const BROOK_OSM: readonly [number, number][] = [
   [991, -865],
   [966, -873],
 ];
+
+/** Where the runnel from the trough's low end turns down the ravine (local u, w). */
+export const RUNNEL = [2.3, 1.95] as const;
 
 /**
  * Length of brook drawn (m along the line): down the ravine and on past the 1789 Bleiche, whose
@@ -255,6 +334,8 @@ const keptOff = (x: number, z: number) => KEEP_OFF.some(([cx, cz, r]) => Math.hy
  */
 export const BROOK_PATHS: readonly (readonly (readonly [number, number])[])[] = [
   [
+    [1066.6, -830.8],
+    [1064.2, -835.0],
     [1046.6, -848.4],
     [1035.7, -855.1],
     [1013.9, -867.5],
@@ -278,8 +359,8 @@ export const PATH_HALF = 0.9;
  */
 export function brookLine(heightAt: (x: number, z: number) => number, era: Era, step = 1, snap = 3): [number, number][] {
   const look = lookFor(era);
-  const start = look === 'today' ? toWorld(PIECES.trough.u - PIECES.trough.len / 2 - 0.15, PIECES.trough.w + 0.1) : toWorld(PIECES.basin.u - PIECES.basin.len / 2 - 0.2, PIECES.basin.w + 0.1);
-  const runnel = toWorld(-2.3, 1.95);
+  const start = look === 'today' ? toWorld(PIECES.trough.u + PIECES.trough.len / 2 + 0.15, PIECES.trough.w + 0.1) : toWorld(PIECES.basin.u + PIECES.basin.len / 2 + 0.2, PIECES.basin.w + 0.1);
+  const runnel = toWorld(RUNNEL[0], RUNNEL[1]);
   const pts: [number, number][] = [start, runnel, ...BROOK_OSM];
   // resample by arc length
   const out: [number, number][] = [];
@@ -336,24 +417,31 @@ export function brookLine(heightAt: (x: number, z: number) => number, era: Era, 
 export type TrailStrand = readonly (readonly [number, number, number])[];
 
 /**
- * The red sandy trail of the reference photo (local u, w, half width): up the ravine floor from
- * the Weiher on the far side of the brook, past the front of the spring and on up the ravine; the
- * open forecourt before the water (between the trough and the mossy edge blocks); the branch to
- * the steps, over the runnel.
+ * The red sandy trail of the reference photo (local u, w, half width). The main strand comes up
+ * the ravine on the OSM footpath (from the Weiher, on the viewer's right), forks off it down onto
+ * the floor beside the brook, passes the front of the spring and climbs to the hairpin's apex on
+ * the left, then a little way up the path's upper leg behind the spring. The others: the open
+ * forecourt before the water (between the trough and the mossy edge blocks), the branch to the
+ * steps, and the few metres from the top step to the upper leg.
  */
 export const TRAIL: readonly TrailStrand[] = [
   [
-    [-26, 9.9, 0.75],
-    [-20, 9.0, 0.8],
-    [-15, 7.9, 0.8],
-    [-11, 6.8, 0.85],
-    [-7.5, 5.7, 0.85],
-    [-4.5, 4.7, 0.9],
-    [-2, 4.1, 0.95],
-    [1, 3.95, 0.95],
-    [3.8, 4.3, 0.85],
-    [6.5, 4.95, 0.8],
-    [10, 6.1, 0.75],
+    [26, 12.1, 0.75],
+    [22, 11.6, 0.8],
+    [18, 11.0, 0.8],
+    [14, 9.6, 0.85],
+    [10.5, 7.8, 0.85],
+    [7.5, 6.1, 0.9],
+    [4.8, 4.9, 0.95],
+    [2.4, 4.1, 0.95],
+    [0.2, 3.75, 0.95],
+    [-2, 3.6, 0.9],
+    [-4.4, 3.45, 0.85],
+    [-6.4, 3.3, 0.8],
+    [-7.9, 2.6, 0.75],
+    [-8.8, 0.9, 0.7],
+    [-8.3, -1.8, 0.7],
+    [-5.6, -3.6, 0.7],
   ],
   [
     [-1.9, 2.35, 0.75],
@@ -361,9 +449,14 @@ export const TRAIL: readonly TrailStrand[] = [
     [2.2, 2.45, 0.75],
   ],
   [
-    [-3.75, 4.3, 0.55],
-    [-3.5, 2.9, 0.5],
+    [-3.7, 3.5, 0.55],
+    [-3.5, 2.6, 0.5],
     [-3.35, 1.55, 0.5],
+  ],
+  [
+    [-3.35, -2.3, 0.45],
+    [-3.7, -3.4, 0.45],
+    [-4.4, -4.2, 0.5],
   ],
 ];
 

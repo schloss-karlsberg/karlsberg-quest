@@ -20,7 +20,7 @@ New looks needed by `h.look()`: `tour` (golden afternoon, low sun), `pause` (low
 | 10 | `t7-marlene` | On the dam a forester with a tripod hands the player her measuring staff. | 826 / −866 (prüfen) | today · tour | two-shot, `tx:826,tz:-866`; the pond behind |
 | 11 | `t7-relief` | On the phone the forest falls away and a straight wall line appears beside the dam. | 813 / −903 | today · tour | `k.setScanMode(2)`, `place({x:798,z:-896,tx:813,tz:-903,pitch:-14,zoom:6,fly:4})` |
 | 12 | `t7-weiher` | The guide talks at the north-shore benches; the islet sits in the still water. | 898 / −840 | today · tour | `tx:891,tz:-869`; group on the benches |
-| 13 | `t9-quelle-gruppe` | At the spring the guide waves the group on uphill: "Kommst du nach?" | 1061 / −834.5 | today · pause | from the trough stand 1059.3/−833.1, yaw 50, group walking away up the slope |
+| 13 | `t9-quelle-gruppe` | At the spring the guide waves the group on uphill: "Kommst du nach?" | 1058.5 / −831 | today · pause | from the trough stand 1059.3/−833.1, yaw 204, looking after the group round the hairpin |
 | 14 | `t10-allein` | Alone on the stone step, the player watches the water while distant voices fade. | 1059 / −833 | today · pause, warmer gold | wide, low; empty trail uphill |
 | 15 | `t10-bussole` | A green-tarnished brass compass glints in the log trough and comes up dripping. | 1059.3 / −833.1 | today · pause | close on the trough; `story.compass` true; `ui: '.kqs-bussole'` |
 | 16 | `t10-laub` | The needle trembles and a dry voice says: "Nicht fallen lassen." | same | today · pause | `h.say('laub', 'Nicht fallen lassen. Ich bin schon einmal gefallen, das genügt.')`, `ui: '.kqs-dlg, .kqs-bussole'` |
@@ -30,7 +30,7 @@ New looks needed by `h.look()`: `tour` (golden afternoon, low sun), `pause` (low
 
 | # | Shot id | Beat | Place | Era · light | Shot hint |
 |---|---|---|---|---|---|
-| 18 | `t11-brunnenstube` | Summer 1789: the baroque Brunnenstube, open meadows, and the phone says "Kein Netz". | 1061 / −834.5 | 1789 · day | reuse `p3r-brunnenstube` framing; phone corner `ui: '.kq-photo'` |
+| 18 | `t11-brunnenstube` | Summer 1789: the baroque Brunnenstube, open meadows, and the phone says "Kein Netz". | 1058.5 / −831 | 1789 · day | reuse `p3r-brunnenstube` framing; phone corner `ui: '.kq-photo'` |
 | 19 | `t12-training` | Three Nebelinge rise from the brook mist and Laub calls out each move. | 1030 / −852 (prüfen) | 1789 · morning | fight framing with the lesson caption pinned; spawn 3 `nebelling` tier 0 |
 | 20 | `t12-bannlicht` | The lantern flares and two flying unpaid decrees drop like dead leaves. | 1030 / −852 | 1789 · morning | Bannlicht cone mid-flare, 2 `mahnbrief` |
 | 21 | `t13-heulen` | A single hound howls far to the north and the needle jerks. | 1035 / −850 | 1789 · morning | camera turned north towards 1216/−1571, the palace roofs over the Orangerie |

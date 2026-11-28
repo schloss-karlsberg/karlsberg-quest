@@ -300,11 +300,11 @@ export async function giverShot(page: Page, npc: string, from: [number, number],
 }
 
 /** In front of the Karlsbergquelle's trough, facing the water (the touch reaches 2.1 m from it; prologue spot). */
-export const SPRING = { x: 1059.3, z: -833.1, yaw: 50 } as const;
+export const SPRING = { x: 1059.3, z: -833.1, yaw: 204 } as const;
 /** The chapter's checkpoint and the k1_0b wake (story 01-kapitel-1): the same spot, within reach of the water. */
 export const K1_START = SPRING;
 /** The water in the trough (what the player faces for the E prompt). */
-export const SPRING_WATER = { x: 1061, z: -834.5 } as const;
+export const SPRING_WATER = { x: 1058.5, z: -831 } as const;
 /** The walk up in 1789: the trail out of the hollow, west of the Orangerie, in through the Ehrenhof gate. */
 export const SPRING_TO_COURT: [number, number][] = [
   [1100, -870],
@@ -404,6 +404,7 @@ export async function openAtSpring(page: Page, o: { shots?: boolean } = {}): Pro
 export const DISGUISE_SPOTS = {
   /** From the spring down the trail to the front of the Bleiche, round its right end, behind line B. */
   toBleiche: [
+    [1055.6, -838.1],
     [1047, -845],
     [1035.7, -855.1],
     [1018, -866],

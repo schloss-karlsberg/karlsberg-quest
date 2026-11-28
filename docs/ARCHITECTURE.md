@@ -712,7 +712,13 @@ placement against terrain water and room/footprint polygons). UI texts from the 
 - Karlsbergquelle (`src/systems/quelle`): `tests/quelle.test.ts` (the pure layout on a flat and a
   sloped synthetic heightfield: frame, water per era, the jet, who may touch, brook, clearings);
   `e2e/quelle.spec.ts` checks the tour interaction at the trough, including the timed scene and the
-  shift to 1789. The tour driver uses the same path (`touchSpring` in `e2e/helpers/prolog.ts`).
+  shift to 1789, and that the title backdrop of a save at home builds the spring. The tour driver
+  uses the same path (`touchSpring` in `e2e/helpers/prolog.ts`). `tests/quelle-place.test.ts`
+  (TASK-087) holds the place itself: the set is registered and builds in every era, it lies on the
+  right of the tour path (`rightOfTourPath`, against the OSM footpath and spring node), the brook
+  leaves to the right, wakes and checkpoints face the water, the tour stop and its 14 slots leave
+  the trough free, and the find (t16) has its prompt. `e2e/gpu/quelle.gpu.ts` takes the real-GPU
+  views from the path, the forecourt, the hairpin and the title.
 - Third-person camera (`e2e/camera.spec.ts`, round 10): the F-03 slope fight (low and Mittel),
   dodges below the hohe Stufe, a Streuner at the lens, the Küchenhof by the Nordflügel stairs with
   the boom zoomed out, the Registratur and a talk with Soll; asserts in-frame, lens-to-head

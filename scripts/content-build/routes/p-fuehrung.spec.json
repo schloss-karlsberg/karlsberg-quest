@@ -10,6 +10,6 @@
     { "id": "reh", "x": 727.4, "z": -751.5, "ref": "tour slice v0: the deer stop. The doe and fawn graze 36 m down the slope to the SW (704/-779, forest, terrain-checked clear line of sight from here, scripts probe)" },
     { "id": "damm", "x": 837, "z": -840, "ref": "t11 end of the Felsenpfad, west end of the dam" },
     { "id": "weiher", "x": 898, "z": -840, "ref": "t13 station 3, benches on the north shore" },
-    { "id": "quelle", "x": 1059.3, "z": -833.1, "ref": "t15 station 4, trough stand at the Karlsbergquelle (home spawn)" }
+    { "id": "quelle", "x": 1059.3, "z": -833.1, "ref": "t15 station 4, trough stand at the Karlsbergquelle (home spawn). Past 1046.6/−848.4 the last leg is staged by hand in content/routes (TASK-087): down the trail's fork to the forecourt of the spring, the stop on the trail left of the trough, the group's slots across the trail. Re-add it after a rebuild." }
   ]
 }

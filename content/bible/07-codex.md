@@ -319,7 +319,7 @@ Examining the note at the hidden Bauwagen unlocks `cx.48` „Die letzte Messung�
 ### cx.41 – Die Karlsbergquelle
 - **Label:** FAKT · **Sicherheit:** D · **fiction:** nein
 - **Text:** In einer Rinne zwischen Weiher und Orangerie entspringt der Karlsbergbach. Am Trog führt ein Rohr das Wasser in einen ausgehöhlten Stamm. Hangaufwärts liegt eine kleine gewölbte Brunnenstube. Wann die Quelle gefasst wurde und ob sie das Schloss versorgte, bleibt offen.
-- **Quellen:** OSM-KQ; KOMOOT-KQ; LIDAR (Quellmulde 1061/−835)
+- **Quellen:** OSM-KQ; KOMOOT-KQ; LIDAR (Quellmulde 1058/−831 am Fuß des Südwesthangs)
 
 ### cx.42 – Das Wasser erinnert sich
 - **Label:** FIKTION · **Sicherheit:** – · **fiction:** ja

@@ -210,7 +210,7 @@ export async function holdHome(page: Page): Promise<void> {
   if (log.length) console.log('[holdHome] retried:', log.join(' | '));
 }
 /** Before the Karlsbergquelle's trough, facing the water. */
-export const QUELLE_STAND = { x: 1059.3, z: -833.1, yaw: 54 } as const;
+export const QUELLE_STAND = { x: 1059.3, z: -833.1, yaw: 204 } as const;
 
 /**
  * The Karlsbergquelle (src/systems/quelle): stand before the trough facing the water,

@@ -376,8 +376,15 @@ declare module '../../debug/hooks' {
 ### C4. Karlsbergquelle home contract
 
 - `src/systems/story/hub/home.ts` defines `HOME` from the Quelle layout. Its center is
-  1061/−834.5, its arrival radius is 12 m, the wake pose is 1059.3/−833.1 at yaw 50° and the combat
-  safety radius is 40 m in the present.
+  1058.5/−831.0 (`QUELLE`, the spring at the foot of the south-west flank, on the right of the tour
+  path; TASK-087), its arrival radius is 12 m, the wake pose is 1059.3/−833.1 at yaw 204° (before
+  the trough, facing the water) and the combat safety radius is 40 m in the present. Take positions
+  from `QUELLE`, `HOME` and `toWorld(u, w)`, never from literals.
+- The title backdrop of a save that rests at home builds the spring's set and water per frame
+  (`TITLE_SETS` in `src/systems/scenery/index.ts`); the fixed steps stand still under the title.
+- The tour's find at the trough (t16) sets `quelle.find`: E „Untersuchen“ anywhere before the
+  trough, no facing asked, emits `quelle:find` (TASK-081). Walking up to the trough still completes
+  the beat after 10 s.
 - `story/index.ts` emits `hub:enter` and `hub:leave` when home membership changes. After a
   `shift:done` into today with reason `return`, the story teleports to `HOME.spawn` and emits
   `home:arrived { reason: 'return' }`. Being caught uses its own wake logic, with `HOME.spawn`

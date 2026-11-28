@@ -100,7 +100,7 @@ describe('the tour hands over into chapter 1', () => {
 
   it('leads into chapter 1 at the Quelle in the present', () => {
     expect(story('00-tour').next).toBe('k1');
-    expect(story('01-kapitel-1').checkpoint).toMatchObject({ x: 1059.3, z: -833.1, yaw: 50, era: 'today' });
+    expect(story('01-kapitel-1').checkpoint).toMatchObject({ x: 1059.3, z: -833.1, yaw: 204, era: 'today' });
   });
 
   it.each(['t12', 't13', 't17', 't18'])('continues a tour slot at %s with the correct staff ownership', (beat) => {
@@ -130,7 +130,7 @@ describe('retired prologue saves', () => {
     expect(saves.load()).toBe(true);
     expect(store.state).toEqual(preview);
     expect(preview.era).toBe('today');
-    expect(preview.player).toMatchObject({ x: 1059.3, z: -833.1, yaw: -50 * Math.PI / 180, stance: 'stand', flying: false });
+    expect(preview.player).toMatchObject({ x: 1059.3, z: -833.1, yaw: -204 * Math.PI / 180, stance: 'stand', flying: false });
     expect(preview.systems.story).toMatchObject({
       active: true, chapter: 'k1', beat: 'k1_0', name: 'Mara', completed: ['tour'], unlocked: ['prolog', 'k1'],
       doneBeats: original.systems.story!.doneBeats, said: original.systems.story!.said, objective: null,

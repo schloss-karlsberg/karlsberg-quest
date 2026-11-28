@@ -6,7 +6,7 @@
   "era": "1793-02",
   "start": "k2_0",
   "next": "k3",
-  "checkpoint": { "x": 1059.3, "z": -833.1, "yaw": 50, "era": "today" },
+  "checkpoint": { "x": 1059.3, "z": -833.1, "yaw": 204, "era": "today" },
   "on": [
     {
       "id": "k2-mannlich",
@@ -193,7 +193,7 @@
         {
           "id": "k2_0-hund",
           "when": {
-            "all": [{ "era": "today" }, { "leave": { "x": 1061, "z": -834.5, "r": 380 } }]
+            "all": [{ "era": "today" }, { "leave": { "x": 1058.5, "z": -831, "r": 380 } }]
           },
           "do": [
             { "do": "sound", "sound": "howl", "x": 1460, "z": -260, "caption": "[Ein Hund bellt, fern]" },

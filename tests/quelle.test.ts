@@ -36,8 +36,8 @@ type HeightAt = (x: number, z: number) => number;
 
 const H0 = 290;
 const plane: HeightAt = () => H0;
-/** Rises 0.5 m per m towards −w (uphill behind the wall), flat along u. */
-const slope: HeightAt = (x, z) => H0 - 0.5 * toLocal(x, z)[1];
+/** Rises 0.5 m per m towards −w (uphill behind the wall) and falls 0.2 m per m down the ravine (+u, the viewer's right). */
+const slope: HeightAt = (x, z) => H0 - 0.5 * toLocal(x, z)[1] - 0.2 * toLocal(x, z)[0];
 const FIELDS: [string, HeightAt][] = [
   ['plane', plane],
   ['slope', slope],
@@ -62,7 +62,7 @@ describe('Karlsbergquelle: local frame', () => {
       expect(w2).toBeCloseTo(w, 9);
     }
     for (const [x, z] of [
-      [1061, -834.5],
+      [1058.5, -831],
       [1059.3, -833.1],
       [1000, -900],
     ] as const) {
@@ -91,12 +91,12 @@ describe('Karlsbergquelle: local frame', () => {
     expect(uz!).toBeCloseTo(fx, 9);
   });
 
-  it('the synthetic slope really rises towards −w', () => {
+  it('the synthetic slope really rises towards −w and falls down the ravine (+u)', () => {
     const [ax, az] = toWorld(0, 2);
     const [bx, bz] = toWorld(0, -2);
     expect(slope(bx, bz) - slope(ax, az)).toBeCloseTo(2, 9);
     const [cx, cz] = toWorld(5, 2);
-    expect(slope(cx, cz)).toBeCloseTo(slope(ax, az), 9);
+    expect(slope(ax, az) - slope(cx, cz)).toBeCloseTo(1, 9);
   });
 });
 
@@ -224,8 +224,8 @@ describe.each(FIELDS)('Karlsbergquelle water on the %s', (_name, h) => {
       // the first point is the overflow at the low end of the log / basin (pinned by the smoothing)
       const want =
         lookFor(era) === 'today'
-          ? toWorld(PIECES.trough.u - PIECES.trough.len / 2 - 0.15, PIECES.trough.w + 0.1)
-          : toWorld(PIECES.basin.u - PIECES.basin.len / 2 - 0.2, PIECES.basin.w + 0.1);
+          ? toWorld(PIECES.trough.u + PIECES.trough.len / 2 + 0.15, PIECES.trough.w + 0.1)
+          : toWorld(PIECES.basin.u + PIECES.basin.len / 2 + 0.2, PIECES.basin.w + 0.1);
       expect(line[0]![0]).toBeCloseTo(want[0], 9);
       expect(line[0]![1]).toBeCloseTo(want[1], 9);
       // length

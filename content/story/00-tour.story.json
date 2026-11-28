@@ -7,7 +7,7 @@
   "start": "t1",
   "next": "k1",
   "leave": [
-    { "do": "flag", "set": { "combat.disabled": null, "laub.silent": null, "tour.slice": null, "tour.ende": null, "tour.welcome": null, "tour.station1.ready": null, "quelle.call": null, "quelle.guide": null, "walk.find": null } },
+    { "do": "flag", "set": { "combat.disabled": null, "laub.silent": null, "tour.slice": null, "tour.ende": null, "tour.welcome": null, "tour.station1.ready": null, "quelle.call": null, "quelle.guide": null, "quelle.find": null, "walk.find": null } },
     { "do": "npc", "op": "despawn", "group": "fuehrung" },
     { "do": "npc", "op": "despawn", "npc": "imhoff" },
     { "do": "npc", "op": "despawn", "npc": "marlene" },
@@ -19,7 +19,7 @@
     { "do": "fade", "to": 0, "seconds": 1.2 }
   ],
   "checkpoint": { "x": 529, "z": -777, "yaw": 215, "era": "today" },
-  "wake": { "x": 1059.3, "z": -833.1, "yaw": 50, "era": "today" },
+  "wake": { "x": 1059.3, "z": -833.1, "yaw": 204, "era": "today" },
   "on": [
     { "id": "kastanie-1", "when": { "event": "item:pickup", "match": { "item": "item.kastanie" } },
       "do": [{ "do": "say", "id": "imhoff.t.kastanie1", "speaker": "imhoff", "text": "Esskastanien. Am Karlsberg gab es die Herzogskastanien. Die sollen über zweihundert Jahre alt gewesen sein." }] },
@@ -364,7 +364,7 @@
         { "do": "npc", "op": "despawn", "npc": "imhoff" },
         { "do": "npc", "op": "follow", "group": "fuehrung", "leader": "imhoff" },
         { "do": "npc", "op": "walk", "npc": "imhoff", "route": "p-aufstieg", "to": "plateau", "speed": 1.9 },
-        { "do": "objective", "id": "tour", "text": "Am Trog verschnaufen", "x": 1058.63, "z": -832.66 }
+        { "do": "objective", "id": "tour", "text": "Am Trog verschnaufen", "x": 1059.6, "z": -833.8 }
       ]
     },
     {
@@ -375,10 +375,11 @@
         {
           "id": "glanz",
           "when": { "timer": 9 },
-          "do": [{ "do": "objective", "id": "tour", "text": "Nachsehen, was im Trog glänzt", "x": 1058.63, "z": -832.66 }]
+          "do": [{ "do": "flag", "set": { "quelle.find": true } }, { "do": "objective", "id": "tour", "text": "Nachsehen, was im Trog glänzt", "x": 1059.6, "z": -833.8 }]
         }
       ],
-      "complete": { "all": [{ "enter": { "x": 1058.63, "z": -832.66, "r": 1.45, "era": "today" } }, { "timer": 10 }] }
+      "complete": { "any": [{ "event": "quelle:find" }, { "all": [{ "enter": { "x": 1059.6, "z": -833.8, "r": 1.45, "era": "today" } }, { "timer": 10 }] }] },
+      "exit": [{ "do": "flag", "set": { "quelle.find": null } }]
     },
     {
       "id": "t17",
@@ -400,7 +401,7 @@
             { "do": "say", "id": "laub.t.quelle", "speaker": "laub", "text": "Hören Sie das? Nein, natürlich nicht. Das Wasser. Es erinnert sich an etwas.", "wait": true },
             { "do": "say", "id": "laub.t.trog", "speaker": "laub", "text": "Halten Sie die Hand hinein. Nein, das ist nicht hygienisch. Tun Sie es trotzdem.", "wait": true },
             { "do": "flag", "set": { "quelle.guide": true, "quelle.call": true } },
-            { "do": "objective", "id": "tour", "text": "Am Trog das Wasser berühren", "x": 1058.63, "z": -832.66 },
+            { "do": "objective", "id": "tour", "text": "Am Trog das Wasser berühren", "x": 1059.6, "z": -833.8 },
             { "do": "autosave" }
           ]
         }
