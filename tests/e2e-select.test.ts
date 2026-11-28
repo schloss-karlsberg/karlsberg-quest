@@ -56,7 +56,7 @@ describe('glob matching', () => {
 
 describe('e2e selection for a pull request', () => {
   it('runs nothing for docs, task files and unit tests', () => {
-    const selection = pr(['.mc/tasks/todo/TASK-094-x.md', 'docs/PRD.md', 'CONTRIBUTING.md', 'tests/photo.test.ts', '.github/workflows/pages.yml']);
+    const selection = pr(['.mc/tasks/todo/TASK-094-x.md', 'docs/PRD.md', 'CONTRIBUTING.md', 'tests/photo.test.ts', '.github/pull_request_template.md']);
     expect(selection).toMatchObject({ mode: 'none', specs: [] });
     expect(selection.rows.map((row) => row.run)).toEqual(['none', 'none', 'none', 'none', 'none']);
     expect(pr([])).toMatchObject({ mode: 'none' });
@@ -72,7 +72,7 @@ describe('e2e selection for a pull request', () => {
   it('runs the full suite for shared code, the workflow, unmapped paths and the label', () => {
     for (const path of [
       'src/boot.ts', 'src/core/save.ts', 'src/player/player.ts', 'src/render/quality.ts', 'src/debug/hooks.ts', 'src/world/terrain.ts',
-      'scripts/content-build/kapitel1.mjs', 'playwright.config.ts', '.github/workflows/e2e.yml', 'scripts/ci/e2e-areas.ts',
+      'scripts/content-build/kapitel1.mjs', 'playwright.config.ts', '.github/workflows/e2e.yml', '.github/workflows/pages.yml', 'scripts/ci/e2e-areas.ts',
       'scripts/dev/plan-e2e-shards.ts', 'scripts/dev/heavy-env.mjs', 'package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'index.html',
       'src/systems/brand-new/index.ts', 'some/new/place.ts',
     ]) {

@@ -142,8 +142,9 @@ queue. The pull request lists the exact settings.
 | Push to `main` | the full suite, unless the same commit already passed it in the queue or in a manual full run | 8, one run at a time and one waiting |
 | `workflow_dispatch` | the listed specs, or the full suite | up to 12 |
 
-- The job **"End-to-end tests"** reports for every run that is not cancelled and fails when a
-  shard failed or timed out or the plan failed. A manual run of chosen specs reports as
+- The job **"End-to-end tests"** reports in every case (`always()`) and fails when a shard
+  failed, was cancelled, timed out or stopped itself, when the plan failed, and when the run was
+  cancelled. A manual run of chosen specs reports as
   "End-to-end tests (manual selection)", so it cannot stand in for the pull request's check.
 - The campaign runs only with the full suite. Rules never list it.
 - Specs import some game modules in Node (save format, layouts). A change to such a module also
@@ -154,12 +155,14 @@ queue. The pull request lists the exact settings.
   and the run summary lists the tests.
 - A file that a spec imports or reads with `new URL('../x', import.meta.url)` selects that spec,
   also below a `none` rule (the save fixtures in `tests/fixtures/`).
-- A cancelled run leaves "End-to-end tests" without a result (GitHub can show it as skipped).
-  Only a green check on the latest commit counts. The first version of the job used `always()`
-  to fail on a cancelled run. Under load that blocked the next run: the superseded run of this
-  pull request kept its concurrency group for as long as its 10-second result job waited for a
-  runner (queued from 02:22 UTC with 112 jobs waiting), and the run of the new commit stayed
-  "pending" behind it. The job now uses `!cancelled()`.
+- **Cancellation fails closed and does not block.** The result job runs with `always()` and is
+  in no concurrency group. Pull-request runs have no shared group at the workflow level. The
+  jobs "plan" and "e2e" carry the groups instead (`e2e-pr-<n>-plan`, `e2e-pr-<n>-shard-<k>`,
+  cancel-in-progress), so a new push cancels the old plan at once and each old shard as soon as
+  the new run has planned a shard with the same number. Until then, and for shards the new run
+  does not have, a shard stops itself as a failure: a first step and a check once a minute
+  compare the commit with the pull request's head (`git ls-remote`, which needs no token
+  permission and no API quota). Only runs on `main` share a workflow-level group.
 - Each shard writes per-spec minutes; the result job prints one "Spec timings" table per run.
 - 12 shards instead of 16 for a full run: the campaign sets the wall time, and 12 + 8 (a run on
   `main`) fit the pool of 20.
@@ -232,6 +235,18 @@ then runs once per batch branch.
 - The workflow YAML and its expressions were checked by reading, a YAML parse and `bash -n` only:
   `actionlint` is installed neither here nor at the reviewer's. The pull request's hosted run is
   the first real check of the expressions.
+
+### Second review · 2026-11-28
+
+- Two earlier designs of the result job were wrong. With `always()` and a workflow-level group
+  with cancel-in-progress, the superseded run of this pull request kept the group for as long as
+  its 10-second result job waited for a runner (queued from 02:22 UTC with 112 jobs waiting), and
+  the run of the new commit stayed "pending" behind it. With `!cancelled()` the job is skipped in
+  a cancelled run, and GitHub counts a skipped check as passing, also when a shard had already
+  failed. The design above replaces both.
+- The workflow forces the full suite in shell, before the selection script runs, when the pull
+  request changes `scripts/ci/`, the shard planner or a workflow, and checks that a full run's
+  matrix contains every spec file.
 
 ## Follow-ups
 

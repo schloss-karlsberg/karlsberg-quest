@@ -89,7 +89,7 @@ decides:
 | --- | --- | --- |
 | Only docs, `.mc/` task files, unit tests or developer tooling | Nothing. The check passes at once. | under 1 min |
 | A feature system, content, a spec or an e2e helper | The specs that cover those paths, plus smoke, on as many runners as the work needs | 5–20 min |
-| Shared code (boot, core, player, render, world, shared strings, content builders, the build, the Playwright config, the workflow itself) or a path without a rule | The full suite on 12 runners | 30–45 min |
+| Shared code (boot, core, player, render, world, shared strings, content builders, the build, the Playwright config, `scripts/ci/`, any workflow) or a path without a rule | The full suite on 12 runners | 30–45 min |
 | Anything, from a fork | The full suite on 12 runners | 30–45 min |
 
 - See what your branch will run, before you push: `node scripts/ci/select-e2e.ts` (committed
@@ -102,10 +102,14 @@ decides:
   A file that a spec imports or reads with `new URL('../…', import.meta.url)` (a game module, a
   save fixture in `tests/fixtures/`) selects that spec too. Load files in specs only in these two
   ways, never by a path relative to the working directory: the selection cannot see those.
-- Only a green "End-to-end tests" on the latest commit counts. A cancelled run, whether a newer
-  push or a person cancelled it, leaves the check without a result, which GitHub can show as
-  skipped and does not treat as a failure. If you cancel a run by hand, run it again before the
-  merge (`gh run rerun <run-id>`).
+- Only a green "End-to-end tests" on the latest commit counts. A cancelled run is a failed run:
+  the check reports a failure when the run or a shard was cancelled or timed out. A newer push
+  cancels the old run's jobs, and shards that are still running stop themselves within about a
+  minute, so an older commit ends with a red "End-to-end tests".
+- A pull request that changes `scripts/ci/`, the shard planner or a workflow always runs the full
+  suite. The workflow decides that itself, before it runs the selection script, and it checks that
+  a full run contains every spec file. A pull request can still edit the workflow file it is
+  tested with. That is how `pull_request` workflows work, and it is what review is for.
 - A new directory needs no rule to be safe: an unknown path runs the full suite. New files below
   `src/` need a rule (`tests/e2e-select.test.ts` says which), so that later changes stay cheap.
 - A failed shard: `gh run rerun <run-id> --failed` repeats only the failed shards.

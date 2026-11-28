@@ -77,8 +77,9 @@ export const AREA_RULES: readonly AreaRule[] = [
   { paths: ['tests/fixtures/**'], run: ['chapter-prolog'], why: 'save fixtures that specs load' },
   { paths: ['tests/**'], run: 'none', why: 'unit tests (Gates)' },
   { paths: ['e2e/gpu/**', 'e2e/mobile/**', 'playwright.gpu.config.ts'], run: 'none', why: 'local-only Playwright configs' },
-  { paths: ['.github/workflows/e2e.yml'], run: 'full', why: 'the e2e workflow itself' },
-  { paths: ['.github/**'], run: 'none', why: 'other workflows and templates' },
+  // The workflow decides these two itself, before it runs the selection (see e2e.yml).
+  { paths: ['.github/workflows/**'], run: 'full', why: 'a workflow' },
+  { paths: ['.github/**'], run: 'none', why: 'issue and pull request templates' },
   { paths: ['.release-please-manifest.json', 'release-please-config.json'], run: 'none', why: 'release tooling' },
   { paths: ['scripts/dev/heavy-env.*'], run: 'full', why: 'imported by the Playwright config and specs' },
   { paths: ['scripts/dev/plan-e2e-shards.ts', 'scripts/ci/**'], run: 'full', why: 'e2e selection and shard planning' },

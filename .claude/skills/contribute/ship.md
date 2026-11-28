@@ -78,8 +78,8 @@ Both render with SwiftShader (software). For the real-GPU look, `e2e/gpu/*.gpu.t
    - Green with the warning "Flaky e2e tests"? A test passed only on its retry. Name it in the PR
      and fix it or file a task.
    - Red? Read the failed shard (`gh run view <run-id> --log-failed`), fix it and push; the new push
-     cancels the old run. A failure that is not yours: `gh run rerun <run-id> --failed` repeats
-     only the failed shards. Say so in the PR.
+     cancels the old run, whose commit ends red. A failure that is not yours:
+     `gh run rerun <run-id> --failed` repeats only the failed shards. Say so in the PR.
    - Unsure whether the selected specs are enough? Label the PR `full-e2e` and push, or run
      `gh workflow run e2e.yml --ref <branch>`.
    - Don't merge the PR yourself; a maintainer merges it once both checks are green.
