@@ -91,6 +91,7 @@
         "fiction": { "type": "boolean" },
         "echoDate_de": { "type": "string", "minLength": 1, "description": "Echo date outside the playable eras, e.g. 'November 1840'; where.era = nearest playable era" },
         "needsLantern": { "type": "boolean" },
+        "prompt_de": { "type": "string", "minLength": 1, "description": "E prompt instead of 'Untersuchen', e.g. 'Rock nehmen'" },
         "chapter": { "type": "string", "minLength": 1, "description": "Story chapter, e.g. 'p', 'k1'" },
         "sketch": {
           "type": "object",
