@@ -30,6 +30,7 @@ import { defineSystem } from '../../core/systems';
 import { addStrings, t } from '../../i18n';
 import type { Action } from '../../player/input';
 import { cameraHints } from '../../player/camera';
+import { phonePose } from '../../player/pose';
 import { h } from '../../ui/dom';
 import { addPausePage } from '../../ui/pause-pages';
 import { addControlKeys } from '../../ui/menus';
@@ -41,6 +42,7 @@ import { type PhotoMeta, openPhotoStore, requestPersist } from './store';
 import { type AlbumEntry, type PhotoSlice, type PhotoTargetDef, type PhotoView, type PhotoWorld, type PhotoLiveBinding, type ShotResult, type TargetJudgement, type Vec3, PhotoCore, debugDeerBlocker, goodEvents, lensDown, SteadyMeter, emptySlice, normaliseSlice } from './core';
 import { type PhotoTargetData, type PhotoTargetFile, targetFromData } from './data';
 import { DebugDeer, buildBoard } from './demo';
+import { PhoneRaise, type RaisePhase } from './raise';
 import targetsFile from '../../../content/photo/targets.json';
 
 addStrings('de', {
@@ -129,7 +131,8 @@ export interface PhotoHooks {
   targets(): { id: string; era: string; label_de: string; placeholder: boolean; inWorld: boolean; at: Vec3 | null }[];
   /** Judge one target against the current view without shooting (null if unknown). */
   judge(id: string): TargetJudgement | null;
-  state(): { open: boolean; zoom: number; signal: boolean; steady: number; blocked: string | null; lastShot: ShotResult | null };
+  /** `phase`: the phone coming out / going back (TASK-005); a shot needs 'open'. */
+  state(): { open: boolean; phase: RaisePhase; zoom: number; signal: boolean; steady: number; blocked: string | null; lastShot: ShotResult | null };
   zoom(k: 1 | 2): void;
   /** Photo cards unlocked. */
   cards(): string[];
@@ -236,6 +239,12 @@ type Block = 'dialog' | 'combat' | 'fly' | 'scene' | 'menu';
 
 class Photo {
   isOpen = false;
+  /** The phone coming out of the pocket and going back (TASK-005); `isOpen` flips at the start of either. */
+  private readonly raise = new PhoneRaise();
+  /** The rig is in photo mode (from the start of the opening to the end of the closing). */
+  private lensUp = false;
+  /** The viewfinder is switched on (it fades with the raise's `ui`). */
+  private finderShown = false;
   private zoomK: 1 | 2 = 1;
   private readonly steady = new SteadyMeter();
   private readonly thumbs = new Map<string, string>();
@@ -483,7 +492,11 @@ class Photo {
     return null;
   }
 
-  open(): boolean {
+  /**
+   * Phone up. The player's N / touch button plays the move out of the pocket (TASK-005); `instant`
+   * (the `kq.photo.open()` test hook), reduced motion, first person and flying cut to the lens.
+   */
+  open(instant = false): boolean {
     if (this.isOpen) return true;
     const b = this.blocked();
     if (b) {
@@ -494,10 +507,16 @@ class Photo {
     this.cooldown = 0.25;
     this.steady.reset();
     const pl = this.ctx.player;
-    pl.rig.setPhoto(true);
+    const cut = instant || pl.reducedMotion === true || pl.thirdPerson !== true || pl.flying === true;
+    pl.rig.setPhoto(true, !cut);
+    this.lensUp = true;
+    this.raise.open(cut);
+    if (instant) this.raise.snapOpen(true);
     this.setZoom(1);
     for (const a of MUTED) this.ctx.input.muted.add(a);
     showViewfinder(true, document.documentElement, this.el, this.zoomBar);
+    this.finderShown = true;
+    this.applyRaise();
     // level, skill and reward cards wait while the phone is up: not in the viewfinder (M-18)
     this.ctx.ui.cards.hold('photo', true);
     this.syncSignal();
@@ -506,15 +525,56 @@ class Photo {
     return true;
   }
 
-  /** Phone down. `forced` (anything but the player's own N / Esc / right click): the lens snaps to 1×. */
+  /**
+   * Phone down. The player's own N / Esc / right click plays the move back into the pocket;
+   * `forced` (a fight, a cut scene, death, an era change, a menu, …) snaps everything shut in this
+   * call, also in the middle of a move: the lens back at the shoulder at 1×, no phone in hand.
+   */
   close(forced = false): void {
-    if (!this.isOpen) return;
+    if (!this.isOpen) {
+      if (forced && this.lensUp) this.finishClose(true);
+      return;
+    }
     this.isOpen = false;
-    lensDown(this.ctx.player.rig, this.ctx.camera, forced);
     for (const a of MUTED) this.ctx.input.muted.delete(a);
-    showViewfinder(false, document.documentElement, this.el, this.zoomBar);
     this.ctx.ui.cards.hold('photo', false);
+    if (forced) this.finishClose(true);
+    else {
+      // the HUD is back at once (listeners of photo:close read it), the viewfinder fades out over it;
+      // the zoom eases back meanwhile, then the camera glides out
+      document.documentElement.toggleAttribute('data-kq-photo', false);
+      this.ctx.player.rig.setFovScale(1);
+      this.raise.close();
+      this.applyRaise();
+    }
     this.ctx.events.emit('photo:close', {});
+  }
+
+  /** The phone is in the pocket: photo mode off, viewfinder away, nothing in hand. */
+  private finishClose(forced: boolean): void {
+    this.raise.snapShut();
+    // a forced close restores the boom from scratch; after the glide out it is already running
+    if (this.lensUp) lensDown(this.ctx.player.rig, this.ctx.camera, forced, !forced);
+    this.lensUp = false;
+    this.applyRaise();
+  }
+
+  /** Hand the raise's look to the camera, the avatar and the viewfinder. */
+  private applyRaise(): void {
+    const r = this.raise;
+    const o = r.out;
+    this.ctx.player.rig.setPhotoBlend(o.lens);
+    phonePose.raise = r.cut ? 0 : o.raise;
+    phonePose.inHand = !r.cut && o.inHand;
+    // the viewfinder fades in at the end of the opening and out at the start of the closing
+    const op = r.moving ? String(o.ui) : '';
+    this.el.style.opacity = op;
+    this.zoomBar.style.opacity = op;
+    if (this.finderShown && !this.isOpen && (o.ui <= 0 || r.phase === 'closed')) {
+      showViewfinder(false, document.documentElement, this.el, this.zoomBar);
+      this.finderShown = false;
+    }
+    if (!this.isOpen && this.lensUp && r.phase === 'closed') this.finishClose(false);
   }
 
   setZoom(k: 1 | 2): void {
@@ -536,7 +596,11 @@ class Photo {
     const pl = this.ctx.player;
     core.tick(dt, this.ctx.era.current, pl.position);
     if (inp.wasPressed('photo')) {
-      if (this.isOpen) this.close();
+      // N during the move: straight to its end (camera mode, or the phone away)
+      if (this.raise.moving) {
+        this.raise.skip();
+        this.applyRaise();
+      } else if (this.isOpen) this.close();
       else this.open();
       return;
     }
@@ -551,10 +615,20 @@ class Photo {
       this.close();
       return;
     }
-    if (inp.wasPressed('attack', true) || inp.wasPressed('interact', true)) this.shoot();
+    if (inp.wasPressed('attack', true) || inp.wasPressed('interact', true)) {
+      // the shutter while the phone comes up: camera mode now (the next press takes the picture)
+      if (this.raise.phase === 'opening') {
+        this.raise.skip();
+        this.applyRaise();
+      } else this.shoot();
+    }
   }
 
   frame(dt: number): void {
+    if (this.raise.moving) {
+      this.raise.tick(dt);
+      this.applyRaise();
+    }
     const now = performance.now() / 1000;
     const cam = this.ctx.camera;
     if (this.isOpen) {
@@ -586,7 +660,8 @@ class Photo {
   }
 
   shoot(): ShotResult | null {
-    if (!this.isOpen || this.cooldown > 0) return null;
+    // no picture from half way up: the lens is not at the phone yet
+    if (!this.isOpen || this.cooldown > 0 || this.raise.phase !== 'open') return null;
     this.cooldown = 0.6;
     const ctx = this.ctx;
     const r = core.judge(ctx.era.current, this.view(), this.world);
@@ -716,8 +791,13 @@ class Photo {
 
   hooks(): PhotoHooks {
     return {
-      open: () => this.open(),
-      close: () => this.close(),
+      open: () => this.open(true),
+      // the test hook puts the phone away at once (as `open` brings it up at once)
+      close: () => {
+        this.close();
+        this.raise.skip();
+        this.applyRaise();
+      },
       shoot: () => {
         this.cooldown = 0;
         return this.shoot();
@@ -733,7 +813,7 @@ class Photo {
         const r = core.judge(this.ctx.era.current, this.view(), this.world);
         return r.details.find((d) => d.id === id) ?? null;
       },
-      state: () => ({ open: this.isOpen, zoom: this.zoomK, signal: this.ctx.era.current === 'today', steady: this.steady.speed(performance.now() / 1000), blocked: this.blocked(), lastShot: this.lastShot }),
+      state: () => ({ open: this.isOpen, phase: this.raise.phase, zoom: this.zoomK, signal: this.ctx.era.current === 'today', steady: this.steady.speed(performance.now() / 1000), blocked: this.blocked(), lastShot: this.lastShot }),
       zoom: (k) => this.setZoom(k),
       cards: () => [...slice().cards],
       gallery: {

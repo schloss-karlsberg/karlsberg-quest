@@ -1,13 +1,14 @@
 import { type CDPSession, type Page, devices, expect, test } from '@playwright/test';
 import { ciScale } from './helpers/ci';
 import { SCREENS, trackErrors } from './helpers/common';
-import { openPause } from './helpers/pause';
+import { openPause, waitForHooks } from './helpers/pause';
 
 /**
  * Smartphone photo mode (src/systems/photo, WP-14): N raises the phone at the car park, the attack key
  * shoots the placeholder board (photo.parkplatz), the card shows stars, the album has the entry;
  * in 1789 there is no signal („Kein Netz“, a white picture, nothing in the album); on a phone the
- * top-row camera button opens it and the attack button is the shutter.
+ * top-row camera button opens it and the attack button is the shutter. N and the button take the
+ * phone out of the pocket first (TASK-005): about a second until camera mode, the shutter skips it.
  */
 
 /** 11 m south of the car-park board (528 / −806, face to the south), looking north at it. */
@@ -17,6 +18,34 @@ async function boot(page: Page, extra = ''): Promise<void> {
   await page.goto(`./?notitle&nosave&fresh${extra}`);
   await page.waitForFunction(() => window.kq?.photo !== undefined && window.kq?.quests !== undefined, null, { timeout: 120_000 });
   await page.addStyleTag({ content: '[data-testid="dialogue"]{display:none!important}' });
+}
+
+/** `?manual&holdvisuals`: frame time moves only through `kq.step` (the hooks appear after the first ticks). */
+async function bootManual(page: Page): Promise<void> {
+  await page.goto('./?notitle&nosave&fresh&manual&holdvisuals');
+  await waitForHooks(page, ['photo', 'avatar', 'quests'], 120_000);
+  await page.addStyleTag({ content: '[data-testid="dialogue"]{display:none!important}' });
+}
+
+/** N / the touch button: wait until the phone is up (camera mode), as a shot needs. */
+async function phoneUp(page: Page): Promise<void> {
+  await expect.poll(() => page.evaluate(() => window.kq!.photo!.state().phase)).toBe('open');
+}
+
+/** `?manual`: n fixed ticks, one 1/60 s frame each (the phone's move runs on frame time). */
+async function ticks(page: Page, n: number): Promise<void> {
+  await page.evaluate((count) => {
+    for (let i = 0; i < count; i++) window.kq!.step(1);
+  }, n);
+}
+
+/** What the phone's move looks like now: its phase, the camera glide, the character and the phone in hand. */
+function look(page: Page) {
+  return page.evaluate(() => {
+    const k = window.kq!;
+    const a = k.avatar!.state();
+    return { phase: k.photo!.state().phase, glide: k.ctx.player.rig.photoGlide, lens: k.ctx.player.rig.photoMode, phone: a.phone === true, visible: a.visible, upper: a.upper };
+  });
 }
 
 async function standAtBoard(page: Page): Promise<void> {
@@ -49,6 +78,7 @@ test.describe('photo mode', () => {
     expect(await page.evaluate(() => window.kq!.photo!.targets().find((t) => t.id === 'photo.parkplatz')?.inWorld)).toBe(true);
     await page.keyboard.press('KeyN');
     await expect.poll(() => page.evaluate(() => window.kq!.photo!.state().open)).toBe(true);
+    await phoneUp(page);
     await expect(page.getByTestId('photo')).toBeVisible();
     await expectGameplayHud(page, false);
     await expect(page.getByTestId('photo-nonet')).toBeHidden();
@@ -131,6 +161,74 @@ test.describe('photo mode', () => {
     expect(errors).toEqual([]);
   });
 
+  test('N takes the phone out of the pocket: hand, glide, viewfinder; N skips; an era change mid-move snaps shut (TASK-005)', async ({ page }) => {
+    const errors = trackErrors(page);
+    // frame time only through kq.step: one 1/60 s frame per tick, so the move is the same on any machine
+    await bootManual(page);
+    await standAtBoard(page);
+    await page.evaluate(() => window.kq!.avatar!.ready());
+    await ticks(page, 30);
+    expect(await look(page)).toMatchObject({ phase: 'closed', lens: false, phone: false, visible: true });
+    await page.keyboard.press('KeyN');
+    await ticks(page, 1);
+    expect(await look(page)).toMatchObject({ phase: 'opening', glide: 0, phone: false, visible: true });
+    // 0.4 s: the phone is out of the pocket, the character still in view
+    await ticks(page, 24);
+    const mid = await look(page);
+    expect(mid).toMatchObject({ phase: 'opening', phone: true, visible: true, upper: 'phone' });
+    expect(mid.glide).toBeGreaterThan(0);
+    expect(mid.glide).toBeLessThan(1);
+    await ticks(page, 12);
+    await page.evaluate(() => window.kq!.screenshotReady());
+    await page.screenshot({ path: `${SCREENS}/photo-raise-mid.png` });
+    // about a second: camera mode, the character hidden, the viewfinder up
+    await ticks(page, 24);
+    expect(await look(page)).toMatchObject({ phase: 'open', glide: 1, lens: true, visible: false });
+    await expect(page.getByTestId('photo')).toBeVisible();
+    await expect(page.getByTestId('photo')).toHaveCSS('opacity', '1');
+    // N: back into the pocket; N again during that skips to the end
+    await page.keyboard.press('KeyN');
+    await ticks(page, 1);
+    expect((await look(page)).phase).toBe('closing');
+    await page.keyboard.press('KeyN');
+    await ticks(page, 1);
+    expect(await look(page)).toMatchObject({ phase: 'closed', lens: false, phone: false });
+    await expect(page.getByTestId('photo')).toBeHidden();
+    // the shutter while it comes up: camera mode at once, no picture
+    await page.keyboard.press('KeyN');
+    await ticks(page, 6);
+    await page.keyboard.press('KeyK');
+    await ticks(page, 1);
+    expect(await look(page)).toMatchObject({ phase: 'open', glide: 1 });
+    expect(await page.evaluate(() => window.kq!.photo!.state().lastShot)).toBeNull();
+    await page.keyboard.press('KeyN');
+    await ticks(page, 60);
+    expect((await look(page)).phase).toBe('closed');
+    // an era change in the middle of the move: shut at once, never half way
+    await page.keyboard.press('KeyN');
+    await ticks(page, 30);
+    expect((await look(page)).phase).toBe('opening');
+    await page.evaluate(() => window.kq!.setEra('1789'));
+    expect(await look(page)).toMatchObject({ phase: 'closed', lens: false, phone: false });
+    await expect(page.getByTestId('photo')).toBeHidden();
+    expect(errors).toEqual([]);
+  });
+
+  test('reduced motion: N cuts straight to camera mode, no glide and no phone in hand (TASK-005)', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await bootManual(page);
+    await standAtBoard(page);
+    await page.evaluate(() => window.kq!.avatar!.ready());
+    await ticks(page, 30);
+    await page.keyboard.press('KeyN');
+    await ticks(page, 1);
+    expect(await look(page)).toMatchObject({ glide: 1, lens: true, phone: false, visible: false });
+    await ticks(page, 12);
+    expect((await look(page)).phase).toBe('open');
+    expect(errors).toEqual([]);
+  });
+
   test('gallery: every shot is kept on the device (IndexedDB); G opens it; full size, share / download, Album button, delete (TASK-006)', async ({ page }) => {
     // many steps under SwiftShader (two shots, downloads, the album): more than the describe's 4 min
     test.setTimeout(480_000);
@@ -139,6 +237,7 @@ test.describe('photo mode', () => {
     await standAtBoard(page);
     await page.keyboard.press('KeyN');
     await expect.poll(() => page.evaluate(() => window.kq!.photo!.state().open)).toBe(true);
+    await phoneUp(page);
     // the phone bar: 1× 2× and the gallery button; the hint names G (the pointer is locked on desktop)
     await expect(page.getByTestId('photo-gallery')).toHaveText('Galerie');
     await expect(page.getByTestId('photo')).toContainText('G: Galerie');
@@ -349,6 +448,7 @@ test.describe('photo mode on a phone (iPhone 13 landscape)', () => {
     const cam = await center(page, 'touch-photo');
     await tap(cdp, cam.x, cam.y);
     await expect.poll(() => page.evaluate(() => window.kq!.photo!.state().open)).toBe(true);
+    await phoneUp(page);
     await expectGameplayHud(page, false);
     await expect(page.getByTestId('touch-pause')).toBeHidden();
     await expect(page.getByTestId('touch-crouch')).toBeHidden();
@@ -389,6 +489,7 @@ test.describe('photo mode on a phone (iPhone 13 landscape)', () => {
     const cam = await center(page, 'touch-photo');
     await tap(cdp, cam.x, cam.y);
     await expect.poll(() => page.evaluate(() => window.kq!.photo!.state().open)).toBe(true);
+    await phoneUp(page);
     await page.waitForTimeout(700);
     const shutter = await center(page, 'touch-attack');
     await tap(cdp, shutter.x, shutter.y);

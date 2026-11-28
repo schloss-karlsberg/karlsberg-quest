@@ -52,3 +52,15 @@ export const actionPose: ActionPose = {
   target: null,
   time: 0,
 };
+
+/**
+ * The phone coming out of the pocket (TASK-005), written by the photo system every frame and read
+ * by the avatar: `raise` 0..1 (the hand at the pocket → the phone at the face), `inHand` (the
+ * phone mesh shows). Both 0 / false whenever the phone is away or a cut (no arm) brings it up.
+ */
+export interface PhonePose {
+  raise: number;
+  inHand: boolean;
+}
+
+export const phonePose: PhonePose = { raise: 0, inHand: false };

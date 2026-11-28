@@ -216,3 +216,85 @@ describe('camera rig: photo mode hook', () => {
     expect(cam.fov).toBe(70);
   });
 });
+
+describe('camera rig: the phone coming out (TASK-005)', () => {
+  const settle = (rig: CameraRig, cam: PerspectiveCamera, n = 120) => {
+    for (let i = 0; i < n; i++) rig.update(cam, input({ x: 3, z: 4, yaw: 0.4, pitch: -0.05 }), flat, noHints());
+  };
+
+  it('glide 0 is the third-person camera, 1 the lens, and in between on the line from one to the other', () => {
+    const plain = new CameraRig();
+    const camP = new PerspectiveCamera(70, 16 / 9);
+    settle(plain, camP);
+    const third = camP.position.clone();
+    const lensRig = new CameraRig();
+    const camL = new PerspectiveCamera(70, 16 / 9);
+    lensRig.setPhoto(true);
+    settle(lensRig, camL, 2);
+    const lens = camL.position.clone();
+
+    const rig = new CameraRig();
+    const cam = new PerspectiveCamera(70, 16 / 9);
+    settle(rig, cam);
+    rig.setPhoto(true, true);
+    rig.setPhotoBlend(0);
+    settle(rig, cam, 1);
+    expect(cam.position.distanceTo(third)).toBeLessThan(1e-6);
+    // half way: between the two, and the character is still drawn (the boom keeps its length)
+    rig.setPhotoBlend(0.5);
+    settle(rig, cam, 1);
+    const mid = third.clone().lerp(lens, 0.5);
+    expect(cam.position.distanceTo(mid)).toBeLessThan(1e-6);
+    expect(rig.distance).toBeGreaterThan(1);
+    // there: the lens, looking along the player's view, the character hidden
+    rig.setPhotoBlend(1);
+    settle(rig, cam, 1);
+    expect(cam.position.distanceTo(lens)).toBeLessThan(1e-6);
+    expect(cam.rotation.x).toBeCloseTo(-0.05);
+    expect(cam.rotation.y).toBeCloseTo(0.4);
+    expect(rig.distance).toBe(0);
+  });
+
+  it('gliding out ends on the same third-person camera, with no jump when photo mode goes off', () => {
+    const plain = new CameraRig();
+    const camP = new PerspectiveCamera(70, 16 / 9);
+    settle(plain, camP);
+    const rig = new CameraRig();
+    const cam = new PerspectiveCamera(70, 16 / 9);
+    settle(rig, cam);
+    rig.setPhoto(true, true);
+    for (let i = 0; i <= 30; i++) {
+      rig.setPhotoBlend(i / 30);
+      settle(rig, cam, 1);
+    }
+    for (let i = 30; i >= 0; i--) {
+      rig.setPhotoBlend(i / 30);
+      settle(rig, cam, 1);
+    }
+    const before = cam.position.clone();
+    rig.setPhoto(false, true);
+    settle(rig, cam, 1);
+    expect(cam.position.distanceTo(before)).toBeLessThan(1e-3);
+    settle(plain, camP, 32);
+    expect(cam.position.distanceTo(camP.position)).toBeLessThan(1e-3);
+  });
+
+  it('first person cuts to the lens whatever the glide', () => {
+    const rig = new CameraRig();
+    rig.mode = 'first';
+    const cam = new PerspectiveCamera(70, 16 / 9);
+    rig.setPhoto(true, true);
+    rig.setPhotoBlend(0.2);
+    rig.update(cam, input({ x: 5, z: 5 }), flat, noHints());
+    expect(cam.position.x).toBeCloseTo(5);
+    expect(cam.position.z).toBeCloseTo(5 - PHOTO_AHEAD);
+  });
+
+  it('a broken glide value means the lens', () => {
+    const rig = new CameraRig();
+    rig.setPhotoBlend(Number.NaN);
+    expect(rig.photoGlide).toBe(1);
+    rig.setPhotoBlend(-2);
+    expect(rig.photoGlide).toBe(0);
+  });
+});

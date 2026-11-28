@@ -11,7 +11,9 @@
  *   target and the legs strafe (Run_Left / Run_Right / Run_Back);
  * - the upper body is a separate layer (clips split by bone): swings, the Wuchthieb charge, the
  *   Bannlicht push, drinking, a hit, examining play over walking legs, scrubbed to the combat
- *   timing so the blow lands on the hit frame;
+ *   timing so the blow lands on the hit frame; the phone coming out of the pocket (TASK-005,
+ *   `phonePose`) scrubs `Interact` from the hand at the pocket to the phone at the face, with a
+ *   small phone (made here, no asset) in the right hand's grip;
  * - full-body overrides: the dodge roll, being undone (death), the abilities' lunge / spin.
  *
  * Models (`AVATAR_MODELS`): the authored MPFB player is the default; `?avatar=surveyor` (or
@@ -27,6 +29,7 @@ import {
   AnimationClip,
   AdditiveBlending,
   type Bone,
+  BoxGeometry,
   BufferGeometry,
   Color,
   ConeGeometry,
@@ -64,7 +67,7 @@ import { COSTUME_IDS, type Costume, costumeColours, costumeEmissive, costumeHide
 // camera session hooks (round 10): NaN guards (F-15) and the character's fade (round 9, F-07)
 import { clamp01, finiteOr, ribbonStep, safeDt, turnToward, usablePos } from './guards';
 import type { Player } from './player';
-import { actionPose } from './pose';
+import { actionPose, phonePose } from './pose';
 import { CharacterFade, FADE_BOUNDS_DEFAULT, type FadeBounds, plausibleFadeBounds } from './seeThrough';
 
 export { type Costume, SURVEYOR_COSTUME } from './costume';
@@ -115,6 +118,16 @@ export type AvatarModelId = keyof typeof AVATAR_MODELS;
 export function avatarModelParam(v: string | null): AvatarModelId {
   return v === 'surveyor' ? 'surveyor' : 'mpfb';
 }
+
+/**
+ * The phone coming out (TASK-005): `Interact` scrubbed from `pocket` (the hand at the trouser
+ * pocket) to `face` (the phone held up in front of the face), as fractions of the clip; both rigs
+ * play the same retargeted clip. Exported for tuning in the dev console.
+ */
+export const PHONE_CLIP = { pocket: 0.04, face: 0.55 };
+/** The phone (m): width, thickness, length; the screen is inset by `PHONE_BEZEL` on one face. */
+const PHONE_SIZE = { w: 0.072, d: 0.009, l: 0.15 };
+const PHONE_BEZEL = 0.005;
 
 /** A clip's upper-body (swings, charge, flare, hit over the walking legs) or lower-body tracks (bones.ts). */
 function splitClip(c: AnimationClip, upper: boolean, kind: RigKind): AnimationClip {
@@ -172,6 +185,10 @@ export class Avatar {
   private crouch = 0;
   private prone = 0;
   private readonly staffHand = new Group();
+  /** The phone in the right hand's grip (TASK-005), shown while `phonePose.inHand`. */
+  private readonly phone = new Group();
+  private readonly phoneGeos: BufferGeometry[] = [];
+  private readonly phoneMats: Material[] = [];
   private readonly staffBack = new Group();
   private staff: Mesh | null = null;
   private staffMat: ShaderMaterial | null = null;
@@ -212,6 +229,7 @@ export class Avatar {
     weights: {} as Record<string, number>,
     visible: false,
     armed: false,
+    phone: false,
     model: '' as '' | RigKind,
     measured: null as FadeBounds | null,
   };
@@ -244,6 +262,35 @@ export class Avatar {
       this.facing = player.yaw;
       this.resetMotion();
     });
+    this.buildPhone();
+  }
+
+  /**
+   * The phone (own work, no asset): a dark body with a lit screen on one face, its long side along
+   * the grip's -z (the line the staff runs along), held a little past the knuckles.
+   */
+  private buildPhone(): void {
+    const { w, d, l } = PHONE_SIZE;
+    const bodyGeo = new BoxGeometry(w, d, l);
+    const screenGeo = new BoxGeometry(w - 2 * PHONE_BEZEL, 0.001, l - 2 * PHONE_BEZEL);
+    const bodyMat = new MeshStandardMaterial({ color: 0x1d2024, roughness: 0.45, metalness: 0.3 });
+    const screenMat = new MeshBasicMaterial({ color: 0x9fc4e8 });
+    const body = new Mesh(bodyGeo, bodyMat);
+    const screen = new Mesh(screenGeo, screenMat);
+    // the screen faces the holder (the grip's -y in the held-up pose); the dark back faces the subject
+    screen.position.y = -(d / 2 + 0.0006);
+    body.add(screen);
+    body.position.z = -l * 0.3;
+    for (const m of [body, screen]) {
+      m.name = 'player-phone';
+      m.castShadow = m === body;
+      m.frustumCulled = false;
+    }
+    this.phone.add(body);
+    this.phone.visible = false;
+    this.phoneGeos.push(bodyGeo, screenGeo);
+    this.phoneMats.push(bodyMat, screenMat);
+    this.staffHand.add(this.phone);
   }
 
   private resetMotion(): void {
@@ -855,6 +902,12 @@ export class Avatar {
       set('Interact', 1, 0, 0.2 + A.drink * 0.6);
       upperW = 1;
       this.debug.upper = 'Interact';
+    } else if (phonePose.raise > 0) {
+      // the phone coming out (TASK-005): the hand to the pocket, then up to the face; the legs keep walking
+      const k = phonePose.raise;
+      set('Interact', 1, 0, PHONE_CLIP.pocket + (PHONE_CLIP.face - PHONE_CLIP.pocket) * k);
+      upperW = smooth(clamp01(k * 3));
+      this.debug.upper = 'phone';
     } else if (this.hitT > 0) {
       const k = 1 - this.hitT / 0.42;
       const w = smooth(clamp01(Math.min(k * 6, (1 - k) * 4)));
@@ -930,6 +983,9 @@ export class Avatar {
         this.staffMat.uniforms.uFlash!.value = A.flare;
       }
     } else if (this.staff?.parent) this.staff.removeFromParent();
+    // ---- the phone in hand (TASK-005): never with the staff in the same hand
+    this.phone.visible = phonePose.inHand && this.staff?.parent !== this.staffHand;
+    this.debug.phone = this.phone.visible;
     // swing trail: the shoe end of the staff in world space
     if (this.staff?.parent === this.staffHand) {
       const active = (!!A.swing && A.swing.t / A.swing.dur > 0.1 && A.swing.t / A.swing.dur < 0.7) || (!!A.skill && A.skill.t / A.skill.dur < 0.9);
@@ -976,6 +1032,8 @@ export class Avatar {
     for (const g of this.geos) g.dispose();
     this.staff?.geometry.dispose();
     this.staffMat?.dispose();
+    for (const g of this.phoneGeos) g.dispose();
+    for (const m of this.phoneMats) m.dispose();
   }
 }
 

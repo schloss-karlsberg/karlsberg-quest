@@ -4,7 +4,7 @@ aliases:
 - TASK-005
 title: 'Smartphone: pull-out animation into camera mode'
 slug: smartphone-pull-out-animation-into-camera-mode
-status: todo
+status: review
 priority: 3
 owner: ''
 projects: []
@@ -19,7 +19,7 @@ milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-28
 ---
 
 # Smartphone: pull-out animation into camera mode
@@ -85,6 +85,48 @@ takes the smartphone out of a pocket and raises it, then the view moves smoothly
 - [ ] Tests updated or added (`tests/camera-photo.test.ts`, `tests/photo.test.ts`, `e2e/photo.spec.ts`)
 - [ ] `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build` pass
 
+## Plan
+_Status: approved 2026-11-27_
+
+**Approach:** A small, pure timeline (`PhoneRaise`) drives the whole move from wall-clock frame time: reach to the pocket, phone in the right hand, raise, camera blend, viewfinder fade-in. Closing plays it backwards. The photo system owns it. It writes two numbers that the avatar and the camera read, like the existing `actionPose`: `raise` (arm and phone) and `lens` (camera blend). The arm uses the upper-body `Interact` clip, which drinking already scrubs, so the legs keep walking. The phone is a small procedural mesh (own work, no asset file) on a `hand_r` anchor. The right hand is always free here, because the phone can't come up in a fight. The camera eases from its third-person spot to the phone lens and hides the character only at the end. N or the shutter during the move jumps to the end. Every forced close (fight, cut scene, death, era change, pause) snaps everything shut in the same frame, as `lensDown` does today. Reduced motion and first person skip the blend: a cut to the lens, with only the viewfinder fade.
+
+**Files to touch:**
+- `src/systems/photo/raise.ts` (new) - the pure `PhoneRaise` timeline: phases closed / opening / open / closing, `tick(dt)`, `skip()`, `snapShut()`, outputs `raise`, `lens`, `ui` (0..1). Opening about 0.9 s, closing about 0.7 s; reduced motion and first person: `lens` jumps.
+- `src/player/pose.ts` - `phonePose { raise, inHand }` next to `actionPose`.
+- `src/player/camera.ts` - `setPhotoBlend(k)`: in photo mode with k < 1 in third person, the camera is placed as usual and then eased (smoothstep) towards the lens. `distance` follows, so the avatar stays visible until the end. k = 1 is today's lens.
+- `src/player/avatar.ts` - the phone mesh on a `hand_r` anchor, shown while `inHand`. The upper-body `Interact` scrubbed by `raise` (pocket → face) over the walking legs, below fights and drinking in priority.
+- `src/systems/photo/index.ts` - `open()` / `close()` drive `PhoneRaise`. N, the touch button and the shutter skip during the move; forced closes snap. The `kq.photo.open()` test hook stays instant, so existing specs keep working. A shot always snaps to the end state first, so judging uses the lens. `photo:open` / `photo:close` still fire at the start, as today.
+- `src/ui/styles.css` - the viewfinder fades in and out (about 150 ms), none with reduced motion.
+- Tests: `tests/photo-raise.test.ts` (new), `tests/camera-photo.test.ts`, `tests/photo.test.ts`, `e2e/photo.spec.ts`.
+- Docs: `docs/ARCHITECTURE.md` (photo, camera, avatar), `docs/ACTION-RPG.md` §14, `docs/PRD.md` changelog.
+
+**Steps:**
+- [x] 1. `PhoneRaise` timeline with unit tests (durations ≤ 1 s, reverse, skip, snap shut, reduced motion, first person).
+- [x] 2. Camera blend in `CameraRig` with `tests/camera-photo.test.ts` (k 0 = third person, 1 = lens, in between on the line; first person ignores it).
+- [x] 3. Photo system wiring: animated open / close, skip, forced snap, instant hook, shots snap to the end, viewfinder fade; `tests/photo.test.ts`.
+- [x] 4. Avatar: phone mesh and arm pose. Find the `Interact` frames for pocket and face on both avatars (MPFB and `?avatar=surveyor`), checked with screenshots; if the clip doesn't fit, a procedural turn of the arm bones instead.
+- [x] 5. Touch and phone views (button, shutter skip, portrait and landscape), first-person camera (`?cam=first`), reduced motion.
+- [x] 6. `e2e/photo.spec.ts`: KeyN shows the avatar with the phone mid-move, then the viewfinder; N skips; an era change mid-move closes at once. Plus the specs that open the phone (`animals`, `minimap`, `tour-slice`).
+- [x] 7. Docs.
+- [x] 8. Gates, e2e, after screenshots.
+
+**Test plan:**
+- Unit: `pnpm exec vitest run tests/photo-raise.test.ts tests/camera-photo.test.ts tests/photo.test.ts`.
+- e2e: `pnpm build && pnpm exec playwright test e2e/photo.spec.ts e2e/animals.spec.ts e2e/minimap.spec.ts --workers=1`, plus the deer-photo test in `e2e/tour-slice.spec.ts`.
+- Gates: `pnpm typecheck`, `pnpm test`, `pnpm validate`, `pnpm build`.
+- Manual: `http://localhost:5280/?debug&nosave&fresh&notitle`, press N while standing and while walking: hand to the pocket, phone up, camera glides in, viewfinder. Press N again to close. Repeat with `&avatar=surveyor`, `&cam=first`, reduced motion on, and on a phone-sized view with the touch button.
+- Screenshots (real GPU, desktop): before, the frame just before N and 0.2 s after (already in camera mode). After, frames at about 0.2 s, 0.5 s and 0.8 s after N, for both avatars, plus a phone-sized portrait and landscape view.
+
+**Risks:**
+- The `Interact` clip may not read as "phone out of the pocket"; then the arm bones are turned procedurally (the rig already turns bones for crouching). That fallback works on both rigs through the logical bone names.
+- A shot or a forced close mid-move: handled by snapping. The unit and e2e tests cover both.
+- The blend passes along the swept, wall-checked boom line, so it never goes through a wall.
+- Specs that open the phone through `kq.photo.open()` stay instant; only the e2e test uses the animated path.
+
+**Out of scope (follow-ups):** the live camera image on the phone screen, sounds, NPC reactions, the „Kein Netz“ flicker (the task's optional ideas).
+
+**Open questions:** none. The phone mesh is made in code (a small box with a screen), so there is no asset file to credit.
+
 ## Optional ideas
 - Phone screen shows the live camera image (render target) during the raise.
 - A small sound: fabric rustle, then the camera app click.
@@ -93,3 +135,17 @@ takes the smartphone out of a pocket and raises it, then the view moves smoothly
 
 ## Notes
 - In-game text stays German. Update `docs/ACTION-RPG.md` §14 and the `docs/PRD.md` changelog (CONTRIBUTING.md).
+
+## Progress
+
+- Branch: `feat/task-005-phone-pull-out`
+- 2026-11-27: before screenshots (real GPU, Iris Xe) in `test-results/contribute/TASK-005/`: free roam at x 704, z -779; the frame before N (character from behind) and right after N (already in camera mode, no move in between). Note: a GPU screenshot takes about 2 s, so the after frames are taken with `?manual` and `kq.step` at fixed times.
+- 2026-11-27: step 1 done - `src/systems/photo/raise.ts`: `PhoneRaise` (one progress value, open 0.9 s = reach 0.3 + raise and glide 0.45 + viewfinder 0.15; close 0.7 s, the same curve backwards; a cut of 0.15 s for reduced motion / first person) and the pure `raiseAt(p, cut)`. `tests/photo-raise.test.ts` (7): order of hand / lens / viewfinder, reverse, skip, forced snap from anywhere, turning round, the cut, broken frame times.
+- 2026-11-27: step 2 done - `src/player/camera.ts`: `setPhotoBlend(k)` and `setPhoto(on, glide)`; with photo on and k < 1 in third person the usual camera is placed, then moved k of the way to the lens and the player's own look (`lensSpot()` factored out of `placePhoto`); `glide` keeps the boom running instead of resetting it; first person always cuts to the lens. `tests/camera-photo.test.ts` (+4): k 0 / 0.5 / 1, gliding out lands on the plain third-person camera with no jump, first person, a broken k.
+- 2026-11-27: step 3 done - `src/systems/photo/index.ts`: `open(instant)` starts the raise (cut for the hook, reduced motion, first person, flying); `close()` plays it back, `close(true)` snaps in the same call, also mid-move (`finishClose`); `frame()` ticks it and hands `lens` to the rig, `raise` / `inHand` to `phonePose` (`src/player/pose.ts`), `ui` to the viewfinder's opacity; N during a move skips, the shutter during the opening skips and takes no picture, `shoot()` only from camera mode; `lensDown(…, glide)`. The viewfinder fade is the element's opacity from the timeline, so no CSS change was needed. Plan change: the system tests went into `tests/photo-hud.test.ts` (it has the photo system harness; +6: the move, skip by N and shutter, closing, forced close mid-opening and mid-closing, the cut, the instant hook); `tests/session-resources.test.ts`: its fake rig has `setPhotoBlend`.
+- 2026-11-27: step 4 done - `src/player/avatar.ts`: a phone made in code (dark body 7.2 × 15 cm, a lit screen towards the holder) in the right hand's grip anchor, shown while `phonePose.inHand` and never with the staff in that hand; the upper-body `Interact` scrubbed from 0.04 (hand at the hip pocket) to 0.55 (arm held out at shoulder height, phone upright) by `phonePose.raise`, after drinking in priority; `kq.avatar.state().phone`. The clip times were picked from side, back and close views on both avatars (MPFB and `?avatar=surveyor`, probes in `test-results/contribute/TASK-005/`). The real N flow, frame by frame (`?manual&holdvisuals`, one `kq.step(1)` per 1/60 s): 0.2 s reaching, 0.4 s phone in hand (glide 0.13), 0.6 s glide 0.74 over the shoulder, 0.8 s camera mode.
+- 2026-11-27: step 5 done - touch: the iPhone-landscape tests in `e2e/photo.spec.ts` (camera button, shutter, gallery) are green with the move; frames of a landscape (844 × 390) and a portrait (390 × 844) phone mid-move show the touch layout with the camera button and the shutter. First person (`&cam=first`) and reduced motion cut to the lens with no phone in hand (frames, `tests/photo-hud.test.ts`, the reduced-motion e2e). The surveyor (`&avatar=surveyor`) holds the phone up the same way.
+- 2026-11-27: step 6 done - `e2e/photo.spec.ts`: two new tests stepped frame by frame (`?manual&holdvisuals`, booted through `waitForHooks` because the hooks appear only after the first ticks): the move, N skip, shutter skip without a picture, an era change mid-move, reduced motion; the flows that shoot after N or the button wait for `phase` open. The minimap test found a real bug: `photo:close` listeners read `data-kq-photo`, which was still set while the viewfinder faded; closing now brings the HUD back at once. Runs (`--workers=1`): photo 10 of 11, minimap 6 of 6, touch 9 of 11. Red, and red the same way on untouched `main` in a main worktree on this machine: photo „N at the car park“ (the pack catches the player before the shot, line `photo-card` visible), touch „ipad-pro-11“ (a tap times out in Pause), touch „notices on a small landscape phone“ (the modal stays). `animals` uses the instant `kq.photo.open()` hook and was not rerun.
+- 2026-11-27: step 7 done - `docs/ARCHITECTURE.md` (photo: the move, `PhoneRaise`, the glide, `phonePose`, skip and snap rules, the instant hooks), a row in `docs/ACTION-RPG.md` §14 and in the `docs/PRD.md` changelog (placed away from the rows the open PRs #126 / #127 add).
+- 2026-11-27: step 8 done, gates green - `pnpm typecheck`, `pnpm validate` (28 warnings, none new), `pnpm build` green. `pnpm test`: 2,394 passed; failing locally: the known Windows-only files (`content-packs`, `save-fuzz`, `voice-moss`, `voice-assets`, `voice-service`, also on `main`), `i18n-text` (its cold-start timeout), and `camera-palace` / `flaschen`, which ran next to the GPU screenshots and pass alone (12/12). After screenshots (real GPU) in `test-results/contribute/TASK-005/`: `after-f00…f48` (0, 0.2, 0.4, 0.6, 0.8 s after N), `after-surveyor-f24/f36`, `after-first-f01…f12`, `after-phone-landscape-f36/f48`, `after-phone-portrait-f36`.
+- 2026-11-28: PR: https://github.com/schloss-karlsberg/karlsberg-quest/pull/146 (status review)
