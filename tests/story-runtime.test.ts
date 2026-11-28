@@ -154,6 +154,26 @@ describe('beat retirement in the story runtime', () => {
     expect(game.dialogue.shown()).not.toContain('marlene.k4.foto');
   });
 
+  it.each(['k4', 'enden'])('restores the unshown completing reaction from the %s autosave', async (chapter) => {
+    const game = await dawn(15000);
+    game.find('clue.k4.foto');
+    game.find('clue.k4.nur_steine');
+    if (chapter === 'enden') for (let i = 0; i < 36; i++) game.tick(0.25);
+    expect(rawAuto(game.storage).systems.story).toMatchObject({
+      chapter,
+      beat: chapter === 'k4' ? 'k4_15' : 'e1',
+      pendingCompletingDialogue: ['laub.k4.nur_steine'],
+    });
+    expect(game.dialogue.shown()).toEqual(['test.long']);
+    expect(game.save.load('auto')).toBe(true);
+    game.tick(0.25);
+    expect(game.dialogue.shown()).toEqual(['test.long', 'laub.k4.nur_steine']);
+    game.save.save('auto');
+    expect(game.save.load('auto')).toBe(true);
+    game.tick(0.25);
+    expect(game.dialogue.shown()).toEqual(['test.long', 'laub.k4.nur_steine']);
+  });
+
   it('still expires the earlier clue reaction when it did not complete the beat', async () => {
     const game = await dawn();
     game.find('clue.k4.foto');

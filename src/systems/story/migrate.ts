@@ -18,7 +18,7 @@ const ENDINGS = allOf<EndingId>()(['museum', 'burn', 'keep']);
 
 /** Fill missing legacy fields and reject malformed values used when restoring the story. */
 export function readStorySlice(saved: Record<string, unknown>): StorySlice {
-  for (const key of ['fired', 'unlocked', 'completed', 'doneBeats', 'said']) {
+  for (const key of ['fired', 'unlocked', 'completed', 'doneBeats', 'said', 'pendingCompletingDialogue']) {
     const value = saved[key];
     if (value !== undefined && (!Array.isArray(value) || !value.every((id) => typeof id === 'string'))) {
       throw new Error(`save: story.${key} must be a list of strings`);

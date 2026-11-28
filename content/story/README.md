@@ -94,7 +94,8 @@ by the event that satisfies the beat's completion keeps its place through retire
 chapter handoffs. An active completing reaction can finish across the handoff. This covers event
 latches, clue discovery for `have.clue` and quest turn-in for `quest`. Silent events can complete the
 beat without protecting earlier dialogue. Queue limits, timeouts, place checks and presentation
-holds still apply.
+holds still apply. A save preserves waiting once-only completing reactions by line ID and restores
+them on resume. Once a line reaches the presenter, subsequent saves leave it out of the queue.
 Put other lines the player needs to hear early in a reaction or into the beat's `exit`
 (lines already said stay silent, see k4_9). A scripted `grant` can be followed by a `say` of the
 clue's triggered line to reserve reading time before the next action (see the photo in k4_14).

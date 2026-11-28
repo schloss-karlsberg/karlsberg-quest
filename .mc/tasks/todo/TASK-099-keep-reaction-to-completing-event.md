@@ -34,6 +34,7 @@ line can spend the entire three-second retirement grace waiting.
 - [x] The pack reaction to the event that completes a beat keeps its queue position through
       beat retirement and natural chapter handoffs. The queue still expires ordinary dialogue.
 - [x] Silent events can complete the beat without protecting a preceding voiced event.
+- [x] Reload restores a waiting once-only completing reaction from the beat autosave.
 - [x] Runtime tests reproduce the loss behind a long line and verify ordinary retirement.
 - [x] All four local gates pass.
 - [ ] The hosted chapter 4 and campaign runs verify the dialogue in the browser.
@@ -56,3 +57,8 @@ line can spend the entire three-second retirement grace waiting.
   Content validation reported 0 errors and 29 warnings.
 - 2026-11-28. Review follow-up covers both silent completion attribution and the endings handoff
   with the reaction queued or on screen. The shared chapter 4 and campaign flow checks line order.
+- 2026-11-28. The beat and endings autosaves preserve pending once-only completing reactions.
+  Runtime tests verify that reload restores the waiting line and a later save does not replay it.
+- 2026-11-28. Review follow-up gates passed. Vitest reported 245 suites, 2,742 passed, 0 failed
+  and 17 todo. Content validation reported 0 errors and 29 warnings. Hosted browser verification
+  remains pending for chapter 4 and campaign.

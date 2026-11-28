@@ -36,8 +36,10 @@ export interface StorySlice {
   doneBeats: string[];
   /** Player name. */
   name: string;
-  /** Dialogue line ids already spoken (once-lines). */
+  /** Once-line IDs already claimed, including lines still waiting to be shown. */
   said: string[];
+  /** Once-only completing reactions that were queued but have not reached the presenter. */
+  pendingCompletingDialogue: string[];
   objective: ObjectiveState | null;
   /** Last threat configuration per kind (re-sent after a reload). */
   threats: Record<string, ThreatConfig>;
@@ -87,6 +89,7 @@ export function createStorySlice(): StorySlice {
     doneBeats: [],
     name: DEFAULT_VISITOR_NAME,
     said: [],
+    pendingCompletingDialogue: [],
     objective: null,
     threats: {},
     look: 'day',

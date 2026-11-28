@@ -1283,8 +1283,8 @@ Round-4 (polish: set dressing) integration rules:
   non-lore line is queued ahead of waiting lore that has not started (quest history at a turn-in
   never pushes the beat's line past its moment). Pack dialogue from the event that satisfies beat
   completion skips the retirement deadline and survives natural chapter handoffs, both while
-  queued and on screen. The ordinary queue
-  limits and validity checks still apply, including the place check. Lines a
+  queued and on screen. Ordinary queue limits and validity checks still apply. The story save keeps
+  the IDs of once-only completing reactions that are still queued and restores them on resume. Lines a
   trigger fires on `story:ending` are assembled by the ending card, not spoken; the presenter is
   cleared at the credits. Reactions take `cooldown` (s, with `repeat`). Starting or replaying a
   chapter resets reaction cooldowns and rising-edge state. The `speed {gte, lte}` condition reads the

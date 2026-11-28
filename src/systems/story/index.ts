@@ -323,7 +323,11 @@ class StoryRuntime {
       run: (actions, o) =>
         this.run(actions, o.resume, { beat: o.beat ?? null, where: o.where ?? null, eraVisit: o.sameEra ? this.eraVisit : undefined }, o.source),
       chapterEntered: (f, o) => this.chapterEntered(f, o),
-      keepCompletingDialogue: (group) => this.presenter.keepCompletingGroup(group),
+      keepCompletingDialogue: (group) => {
+        for (const item of this.presenter.keepCompletingGroup(group)) {
+          if (item.id && ctx.content.dialogue.get(item.id)?.once) this.slice.pendingCompletingDialogue.push(item.id);
+        }
+      },
       beatEntered: (ch, b, o) => {
         if (ch === 'enden' && b.id === 'e1' && !o.resume) {
           const finaleLines = new Set(sayLineIds(this.engine.chapter()));
@@ -384,7 +388,9 @@ class StoryRuntime {
       onShow: (item) => {
         if (!item.id) return;
         this.shownIds.push(item.id);
+        this.forgetPendingReaction(item);
       },
+      onDrop: (item) => this.forgetPendingReaction(item),
       // history and long remarks wait out a fight; barks and short calls go on (playtest round 3)
       // a boss's reveal (combat: title card, camera, sting) holds everything but 'now' lines;
       // so does a chapter's title card while it shows and fades: the opening beat's own timeline
@@ -590,6 +596,7 @@ class StoryRuntime {
     // a title Continue keeps the live state but drops the queue that would spawn Jost's pack (TASK-042)
     migrateInterruptedHunt(this.slice, this.ctx.state.mutable);
     this.engine.resume(useCheckpoint);
+    this.restorePendingReactions();
     const s = this.slice;
     const flags = this.ctx.state.state.flags;
     if (s.chapter === 'enden' && s.beat === 'e2' && s.ending && !s.finished && !flags['story.party']) {
@@ -631,6 +638,7 @@ class StoryRuntime {
     const ctx = this.ctx;
     // the ending card told the scene; nothing the ending queued plays again after the credits
     this.presenter.clear();
+    this.slice.pendingCompletingDialogue = [];
     ctx.state.update((s) => (s.flags['story.credits'] = true), 'story');
     if (this.inPartyBeat()) this.engine.tick(0, this.env());
     this.slice.finished = true;
@@ -672,6 +680,7 @@ class StoryRuntime {
   goto(chapter: string, beat?: string, replay?: readonly string[]): void {
     this.cancelScheduled();
     this.presenter.clear();
+    this.slice.pendingCompletingDialogue = [];
     // jumping between beats of the running chapter: no title card
     this.quietCard = !!beat && this.slice.active && this.slice.chapter === chapter;
     try {
@@ -1391,7 +1400,28 @@ class StoryRuntime {
     else if (s.room === id) s.room = null;
   }
 
-  private showLine(p: GameEvents['dialogue:say']): void {
+  private forgetPendingReaction(item: DialogueItem): void {
+    if (!item.completesBeat || !item.id) return;
+    const pending = this.slice.pendingCompletingDialogue;
+    const index = pending.indexOf(item.id);
+    if (index >= 0) pending.splice(index, 1);
+  }
+
+  private restorePendingReactions(): void {
+    const s = this.slice;
+    if (!s.pendingCompletingDialogue.length) return;
+    const pending = s.pendingCompletingDialogue;
+    s.pendingCompletingDialogue = [];
+    const scope: RunScope = { beat: s.beat, where: null, dialogueGroup: ++this.lineGroup };
+    for (const id of pending) {
+      const line = this.ctx.content.dialogue.get(id);
+      if (!line?.once || this.mutedLines.has(id)) continue;
+      s.pendingCompletingDialogue.push(id);
+      this.withScope(scope, () => this.showLine({ id, speaker: line.speaker, text: line.text_de }, true));
+    }
+  }
+
+  private showLine(p: GameEvents['dialogue:say'], completesBeat = false): void {
     const line = p.id ? this.ctx.content.dialogue.get(p.id) : undefined;
     const src = line?.sources?.[0];
     // tag the line: its beat, the place it is about, its priority (barks / hints of other features: low)
@@ -1413,6 +1443,7 @@ class StoryRuntime {
       where,
       priority: p.priority ?? (low ? 'low' : 'normal'),
       group: sc ? sc.dialogueGroup ?? this.lineGroup : ++this.lineGroup,
+      completesBeat,
       expired: this.expiry(p, line?.trigger?.event),
       // sourced lines teach history: they wait out a fight (and are dropped if it lasts too long)
       lore: p.lore || !!src || undefined,

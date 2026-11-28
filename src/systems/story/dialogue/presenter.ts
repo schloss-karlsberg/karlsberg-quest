@@ -74,6 +74,7 @@ export interface PresenterOptions {
   name: () => string;
   /** Called when a line starts showing. */
   onShow?: (item: DialogueItem) => void;
+  onDrop?: (item: DialogueItem) => void;
   /** Is a queued line still worth saying (place, era …)? Checked when its turn comes. */
   valid?: (item: DialogueItem) => boolean;
   /** Must this line wait now (lore while a fight is on)? It stays queued; later lines go first. */
@@ -121,7 +122,7 @@ export class DialoguePresenter {
   private suspended = false;
   readonly voiceStats: PresenterVoiceStats = { clips: 0, murmured: 0, lastClip: null };
   constructor(private readonly o: PresenterOptions) {
-    this.queue = new LineQueue<DialogueItem>((group) => this.cur?.item.group === group || this.interruptedGroups.has(group), o.valid);
+    this.queue = new LineQueue<DialogueItem>((group) => this.cur?.item.group === group || this.interruptedGroups.has(group), o.valid, o.onDrop);
     ensurePortraitDefs();
     this.portraitEl = h('div.kqs-portrait');
     this.whoEl = h('span.kqs-who');
@@ -196,9 +197,9 @@ export class DialoguePresenter {
     this.queue.retireBeat(beat);
   }
 
-  keepCompletingGroup(group: number): void {
+  keepCompletingGroup(group: number): DialogueItem[] {
     if (this.cur?.item.group === group) this.cur.item.completesBeat = true;
-    this.queue.keepCompletingGroup(group);
+    return this.queue.keepCompletingGroup(group);
   }
 
   clear(keepCompleting = false): void {
