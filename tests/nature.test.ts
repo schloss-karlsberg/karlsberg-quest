@@ -301,12 +301,12 @@ describe('model trees (nature round 2)', () => {
     expect(out[0]).toBe(1);
   });
 
-  it('shadow casters: lod0 casts as lod1, the CPU cut matches the shader reach', () => {
+  it('shadow casters: lod0 casts as lod1, the lists are cut by a sorted reach', () => {
     expect(shadowLevel(0)).toBe(1);
     expect(shadowLevel(1)).toBe(1);
     expect(shadowLevel(2)).toBe(2);
-    // the vertex shaders drop casters past uShadowCenter.w + 30.0
-    expect(SHADOW_REACH).toBe(30);
+    // a crown's half width past the box (the reach itself: tests/forest-casters.test.ts)
+    expect(SHADOW_REACH).toBe(12);
     const d = new Float32Array([1, 5, 5, 9, 40, 120, 0]);
     expect(castCount(d, 6, 0.5)).toBe(0);
     expect(castCount(d, 6, 5)).toBe(3);

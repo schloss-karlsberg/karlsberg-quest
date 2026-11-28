@@ -17,7 +17,7 @@ import { GROUND } from '../data/types';
 import { ATMOS_GLSL, SEE_FRAG_GLSL, SEE_GLSL, atmosphere } from './atmosphere';
 import type { Heightfield } from './heightfield';
 import { FOLIAGE_GLSL } from './vegetation/foliage';
-import { type ModelTrees, pickVariant, SHADOW_REACH } from './vegetation/trees';
+import { CAST_MAX, type ModelTrees, SHADOW_REACH, castGap, pickVariant } from './vegetation/trees';
 import { ViewCone } from './viewCone';
 
 /**
@@ -63,21 +63,16 @@ export function forestCullMode(cull: boolean, dirY: number, agl: number): 'full'
 }
 
 /**
- * May a tree at (x, z) cast into the sun shadow box (pure; exported for tests)? (refX, refZ) is
- * where the box's focus is expected, `castMax` the radius around it that the shadow pass draws
- * from at all. The view plays no part: a tree behind the camera shades the ground in front of it.
+ * Can the 64 m tile (tx, tz) hold a tree that casts into the sun shadow box (pure; exported for
+ * tests)? (refX, refZ) is where the box's focus is expected, `castMax` the gap (`castGap`) up to
+ * which a tree is a caster; a shadow is at most `CAST_MAX` long. The view plays no part: a tree
+ * behind the camera shades the ground in front of it.
  */
-export function casterInReach(x: number, z: number, refX: number, refZ: number, castMax: number): boolean {
-  const dx = x - refX;
-  const dz = z - refZ;
-  return dx * dx + dz * dz <= castMax * castMax;
-}
-
-/** Can the 64 m tile (tx, tz) hold such a caster (pure; exported for tests)? */
 export function tileInReach(tx: number, tz: number, refX: number, refZ: number, castMax: number): boolean {
   const dx = Math.max(tx * TILE - refX, 0, refX - (tx + 1) * TILE);
   const dz = Math.max(tz * TILE - refZ, 0, refZ - (tz + 1) * TILE);
-  return dx * dx + dz * dz <= castMax * castMax;
+  const r = castMax + CAST_MAX;
+  return dx * dx + dz * dz <= r * r;
 }
 
 /** Bounding sphere of every tile's trees, base to crown top (cx, cy, cz, r; pure, exported for tests). */
@@ -921,6 +916,8 @@ export class Forest {
    */
   casting: () => boolean = () => false;
   private lastCasting = false;
+  /** The sun the caster lists were built for: they follow when it moves (an era's look, the party's dusk). */
+  private readonly castSun = new Vector3(0, 1, 0);
 
   /** Shadow pass hook (render/shadows.ts `onPass`): the model trees draw their caster lists. */
   shadowPass(on: boolean, focus: Vector3, range: number): void {
@@ -1000,9 +997,13 @@ export class Forest {
     if (dYaw > Math.PI) dYaw = 2 * Math.PI - dYaw;
     const turned = mode === 'sector' ? dYaw > 0.35 : mode === 'cone' && this.cone.turned(camera, 0.35);
     const casting = this.casting();
-    if (!this.dirty && !turned && down === this.lastDown && mode === this.lastMode && camera.fov === this.lastFov && casting === this.lastCasting && Math.hypot(p.x - this.lastX, p.z - this.lastZ) < 8) return;
+    const sun = atmosphere.uSunDir.value;
+    // (2.5°: the shadow of a 30 m tree ends 4 m from where the lists expect it)
+    const sunMoved = casting && this.castSun.dot(sun) < 0.999;
+    if (!this.dirty && !turned && !sunMoved && down === this.lastDown && mode === this.lastMode && camera.fov === this.lastFov && casting === this.lastCasting && Math.hypot(p.x - this.lastX, p.z - this.lastZ) < 8) return;
     this.dirty = false;
     this.lastCasting = casting;
+    this.castSun.copy(sun);
     this.lastX = p.x;
     this.lastZ = p.z;
     this.lastYaw = yaw;
@@ -1029,12 +1030,13 @@ export class Forest {
     const winter = atmosphere.uSeason.value > 1.6;
     const snagRate = atmosphere.uSeason.value > 0.5 ? 0.05 : 0.025;
     // the shadow lists are sorted from where the shadow focus will be (boot.ts: ahead of the camera
-    // by 0.35 × the box's half extent); trees past the box + reach + 24 m of drift never cast
+    // by 0.35 × the box's half extent); a tree whose shadow ends further from it than the box +
+    // reach + 24 m of drift never casts
     const lead = this.shadowRange * 0.35;
     const refX = p.x + fx * lead;
     const refZ = p.z + fz * lead;
     const castMax = this.shadowRange + SHADOW_REACH + 24;
-    models?.begin(refX, refZ, castMax);
+    models?.begin(refX, refZ, castMax, sun);
     const t0x = Math.floor((p.x - far) / TILE);
     const t1x = Math.floor((p.x + far) / TILE);
     const t0z = Math.floor((p.z - far) / TILE);
@@ -1059,7 +1061,7 @@ export class Forest {
           const unseen = hidden || (d > 30 && dx * fx + dz * fz < cosLimit * d);
           if (unseen) {
             if (!hidden) culled++;
-            if (!casting || !casterInReach(arr[k]!, arr[k + 2]!, refX, refZ, castMax)) continue;
+            if (!casting || castGap(arr[k]!, arr[k + 2]!, arr[k + 3]!, refX, refZ, sun.x, sun.y, sun.z) > castMax) continue;
           }
           if (this.activeClearings.length && this.inClearing(arr[k]!, arr[k + 2]!)) continue;
           const kind = Math.min(KINDS - 1, Math.max(0, Math.round(arr[k + 5]!)));

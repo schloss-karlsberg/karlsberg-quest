@@ -74,10 +74,56 @@ export const TREE_BAND = 5;
 /**
  * Shadow casters (phase B): the shadow pass draws every model tree with the lod1 geometry (lod0
  * trees too: in a 2048² map over ±75 m a texel is 7 cm, the lod0 bark and card detail do not show),
- * and only trees within the shadow box plus `SHADOW_REACH` m of the focus, the same limit the
- * vertex shaders already applied (`uShadowCenter.w + 30.0`), now on the CPU so the draw skips them.
+ * and only the trees whose shadow can fall into the shadow box (`castGap`): the CPU lists leave
+ * the others out, the vertex shaders (`CAST_GLSL`) collapse what the lists keep for the focus's
+ * drift, so the casters depend on where the box is and on nothing else.
+ *
+ * `SHADOW_REACH` (m) is a crown's half width, added to the box's radius. Until TASK-088 the rule
+ * was a plain disc, box + 30 m: under the low sun of the day eras (19–20°) a 25 m tree throws its
+ * shadow 70 m, so trees on the sun's side entered and left the casters with their shadow already
+ * well inside the box, and patches of ground flashed lit or shaded as the box moved with the view.
  */
-export const SHADOW_REACH = 30;
+export const SHADOW_REACH = 12;
+/** A shadow's length over `height / tan(sun elevation)`: room for ground that falls away from the sun. */
+export const CAST_STRETCH = 1.15;
+/** Longest shadow (m) a tree is drawn for: at a grazing sun it thins out before it gets there. */
+export const CAST_MAX = 100;
+
+/** How far (m) the shadow of a tree of height `h` reaches on level ground, sun `sunY` = sin(elevation) (pure; tested). */
+export function shadowLength(h: number, sunY: number): number {
+  const sy = Math.min(1, Math.max(0.05, sunY));
+  return Math.min(CAST_MAX, (CAST_STRETCH * h * Math.sqrt(1 - sy * sy)) / sy);
+}
+
+/**
+ * Distance (m) from a point (fx, fz) to the shadow of the tree at (x, z), height `h`: the line
+ * from its foot away from the sun (unit direction `sun`, pointing at it) to the shadow's tip
+ * (pure; tested; `kqCastGap` in GLSL). 1-Lipschitz in the point: a focus that drifts by d changes
+ * it by at most d.
+ */
+export function castGap(x: number, z: number, h: number, fx: number, fz: number, sunX: number, sunY: number, sunZ: number): number {
+  const dx = fx - x;
+  const dz = fz - z;
+  const sl = Math.hypot(sunX, sunZ);
+  if (sl < 1e-4) return Math.hypot(dx, dz);
+  const ax = -sunX / sl;
+  const az = -sunZ / sl;
+  const t = Math.min(shadowLength(h, sunY), Math.max(0, dx * ax + dz * az));
+  return Math.hypot(dx - ax * t, dz - az * t);
+}
+
+/** `castGap` for the shadow pass's vertex shaders (needs the atmosphere uniforms). */
+const CAST_GLSL = /* glsl */ `
+float kqCastGap(vec2 tree, float h) {
+  vec2 d = uShadowCenter.xz - tree;
+  float sl = length(uSunDir.xz);
+  if (sl < 1e-4) return length(d);
+  float sy = clamp(uSunDir.y, 0.05, 1.0);
+  vec2 away = -uSunDir.xz / sl;
+  float reach = min(${CAST_MAX.toFixed(1)}, ${CAST_STRETCH.toFixed(2)} * h * sqrt(1.0 - sy * sy) / sy);
+  return length(d - away * clamp(dot(d, away), 0.0, reach));
+}
+`;
 
 /** Shadow-pass level of a main-pass level: lod0 casts as lod1 (pure; tested). */
 export function shadowLevel(level: number): number {
@@ -201,6 +247,7 @@ varying float vH;
 varying float vSee;
 ${FOLIAGE_GLSL}
 ${SHAPE_GLSL}
+${CAST_GLSL}
 void main() {
   float h = aInst.w;
   float dist = length(aInst.xz - uCamPos.xz);
@@ -239,8 +286,8 @@ void main() {
   // in the way of the third-person view (trunk, low crown): thinned in the fragment shader
   vSee = kqSee(aInst.xyz, 0.1 + h * 0.016, aInst.y + h, wp);
   gl_Position = projectionMatrix * viewMatrix * vec4(wp, 1.0);
-  // shadow pass: trees beyond the shadow box (plus a crown's reach) cost fill for nothing
-  if (uShadowPass > 0.5 && length(aInst.xz - uShadowCenter.xz) > uShadowCenter.w + 30.0) gl_Position = vec4(0.0, 0.0, -2.0, 1.0);
+  // shadow pass: a tree whose shadow cannot fall into the shadow box costs fill for nothing
+  if (uShadowPass > 0.5 && kqCastGap(aInst.xz, h) > uShadowCenter.w + ${SHADOW_REACH.toFixed(1)}) gl_Position = vec4(0.0, 0.0, -2.0, 1.0);
 }
 `;
 
@@ -392,6 +439,7 @@ varying float vFam;
 varying vec2 vDither;
 varying float vH;
 ${SHAPE_GLSL}
+${CAST_GLSL}
 void main() {
   float h = aInst.w;
   float dist = length(aInst.xz - uCamPos.xz);
@@ -447,8 +495,8 @@ void main() {
   vH = yf;
   vWorld = wp;
   gl_Position = projectionMatrix * viewMatrix * vec4(wp, 1.0);
-  // shadow pass: trees beyond the shadow box (plus a crown's reach) cost fill for nothing
-  if (uShadowPass > 0.5 && length(aInst.xz - uShadowCenter.xz) > uShadowCenter.w + 30.0) gl_Position = vec4(0.0, 0.0, -2.0, 1.0);
+  // shadow pass: a tree whose shadow cannot fall into the shadow box costs fill for nothing
+  if (uShadowPass > 0.5 && kqCastGap(aInst.xz, h) > uShadowCenter.w + ${SHADOW_REACH.toFixed(1)}) gl_Position = vec4(0.0, 0.0, -2.0, 1.0);
 }
 `;
 
@@ -861,10 +909,14 @@ export class ModelTrees {
   /** Shadow casters per variant (lod1 geometry) and impostors, sorted by distance (`ShadowList`). */
   private readonly shadowLod: ShadowList[] = [];
   private readonly shadowImp: ShadowList;
-  /** Rebuild-time reference point of the shadow lists (the expected shadow focus) and their radius. */
+  /**
+   * Rebuild-time reference of the shadow lists: the expected shadow focus, the sun, and the gap
+   * (`castGap`) up to which a tree is kept.
+   */
   private refX = 0;
   private refZ = 0;
   private castMax = Infinity;
+  private readonly sun = new Vector3(0, 1, 0);
   private readonly mainVis: boolean[] = [];
   private mainBatches: Batch[] | null = null;
 
@@ -1031,10 +1083,11 @@ export class ModelTrees {
 
   /**
    * Start a rebuild. (refX, refZ): where the shadow focus is expected (the shadow lists are sorted
-   * by the distance from it); `castMax`: the radius around it that may cast at all (the shadow box
-   * plus `SHADOW_REACH` plus room for the focus to move until the next rebuild).
+   * by how far each tree's shadow ends from it, `castGap`); `castMax`: the gap up to which a tree
+   * may cast at all (the shadow box's radius plus `SHADOW_REACH` plus room for the focus to move
+   * until the next rebuild); `sun`: the unit direction to the sun.
    */
-  begin(refX = 0, refZ = 0, castMax = Infinity): void {
+  begin(refX = 0, refZ = 0, castMax = Infinity, sun?: { x: number; y: number; z: number }): void {
     for (const l of this.lod) for (const b of l) b.n = 0;
     this.imp.n = 0;
     for (const s of this.shadowLod) s.n = 0;
@@ -1042,6 +1095,7 @@ export class ModelTrees {
     this.refX = refX;
     this.refZ = refZ;
     this.castMax = castMax;
+    if (sun) this.sun.set(sun.x, sun.y, sun.z);
   }
 
   /**
@@ -1075,7 +1129,7 @@ export class ModelTrees {
   private addCaster(n: number, x: number, y: number, z: number, h: number, rot: number, vr: number, variant: number): void {
     const lv = this.lv;
     // shadow casters: lod0 as lod1 (a tree fading lod0 → lod1 is one full lod1 caster)
-    const ds = Math.hypot(x - this.refX, z - this.refZ);
+    const ds = castGap(x, z, h, this.refX, this.refZ, this.sun.x, this.sun.y, this.sun.z);
     if (ds > this.castMax) return;
     if (n === 2 && lv[0] === 0) {
       this.shadowLod[variant]?.add(ds, x, y, z, h, rot, vr, 0, 2);
@@ -1090,9 +1144,9 @@ export class ModelTrees {
 
   /**
    * Shadow pass hook (render/shadows.ts `onPass`): during the pass only the caster lists draw,
-   * each up to the trees within `range + SHADOW_REACH` of the focus (plus the focus's drift from
-   * the rebuild's reference point, so the cut never drops a tree the shader would have kept).
-   * Returns that drift (m).
+   * each up to the trees whose shadow ends within `range + SHADOW_REACH` of the focus (plus the
+   * focus's drift from the rebuild's reference point, so the cut never drops a tree the shader
+   * would have kept). Returns that drift (m).
    */
   shadowPass(on: boolean, fx: number, fz: number, range: number): number {
     const main = (this.mainBatches ??= [...this.lod[0]!, ...this.lod[1]!, this.imp]);
