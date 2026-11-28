@@ -134,6 +134,28 @@ const STRIDE = { walk: 1.75, run: 3.3 };
  */
 const MPFB_GEAR = { lanternOut: 0.088, lanternDown: 0.1, lanternFwd: 0.04, backOut: 0.028 };
 
+const _foot = new Vector3();
+
+/**
+ * The crouch (sneaking, C), laid over whatever clip plays as bone turns after the mixer
+ * (`Rig.turnBone`), all scaled by the eased stance: the knees bend (thigh forward by `knee` rad,
+ * shin back by twice that, the foot levelled again), the trunk leans forward at the waist and the
+ * head lifts so the eyes stay on the way ahead. The body is then lowered by exactly what the bent
+ * legs lost, so the planted foot keeps its height.
+ *
+ * The knees need a leg chain that ends in the foot (the MPFB player: thigh → calf → foot). On the
+ * CC0 surveyor (`?avatar=surveyor`) the feet are baked IK targets under the root, not on the legs:
+ * it keeps the lean and sinks by `sink` m instead.
+ */
+export const CROUCH = { knee: 0.72, lean: 0.42, head: 0.24, sink: 0.2 } as const;
+
+/** One leg for the crouch: thigh and shin by name (`turnBone`), the foot bone for both. */
+interface Leg {
+  thigh: string;
+  calf: string;
+  foot: Bone;
+}
+
 interface Loco {
   name: string;
   low: AnimationAction;
@@ -186,8 +208,10 @@ export class Avatar {
   /** Rig of the model in (bones.ts), and its stride per loop (m). */
   private kind: RigKind | null = null;
   private stride = { ...STRIDE };
-  /** The bone the crouch bends (logical 'spine': Abdomen / spine_01), looked up once per model. */
+  /** The bones the crouch turns (`CROUCH`), looked up once per model: the waist ('spine': Abdomen / spine_01), the head, the legs. */
   private crouchBone: string | null = null;
+  private crouchHead: string | null = null;
+  private legs: Leg[] = [];
   /** The lantern's place on the hip bone per costume (the court coat's skirts stand off the hip). */
   private lanternAt: Partial<Record<Costume, Vector3>> = {};
   /** Costumes the model has outfit pieces for (MPFB avatar-<costume>-*). */
@@ -423,6 +447,15 @@ export class Avatar {
       }
     }
     this.crouchBone = rig.boneNameOf('spine');
+    this.crouchHead = rig.boneNameOf('head');
+    this.legs = [];
+    for (const side of ['l', 'r'] as const) {
+      const thigh = rig.boneNameOf(`thigh_${side}`);
+      const calf = rig.boneNameOf(`calf_${side}`);
+      const foot = rig.boneOf(`foot_${side}`);
+      // only a chain that carries its foot can bend at the knee and keep the foot planted (CROUCH)
+      if (thigh && calf && foot && foot.parent?.name === calf && foot.parent.parent?.name === thigh) this.legs.push({ thigh, calf, foot });
+    }
     // clips: locomotion split into legs / upper body, actions as upper-only and full-body copies
     // (names through the alias table, characters/bones.ts)
     const names = src.animations.map((a) => a.name);
@@ -503,6 +536,8 @@ export class Avatar {
     this.lanternAt = {};
     this.pieced = new Set();
     this.crouchBone = null;
+    this.crouchHead = null;
+    this.legs = [];
     this.bounds = FADE_BOUNDS_DEFAULT;
     this.debug.measured = null;
     this.trail.clear();
@@ -789,7 +824,7 @@ export class Avatar {
     const stride = this.stride.walk + (this.stride.run - this.stride.walk) * runK;
     if (!A.frozen) this.phase += (Math.max(sp, 0) / stride) * dt;
     // crouch / prone: slower, lower
-    this.crouch += ((pl.stance === 'crouch' ? 1 : 0) - this.crouch) * Math.min(1, dt * 8);
+    this.crouch += ((pl.stance === 'crouch' && !A.dead ? 1 : 0) - this.crouch) * Math.min(1, dt * 8);
     this.prone += ((pl.stance === 'prone' ? 1 : 0) - this.prone) * Math.min(1, dt * 6);
     // ---- action layer
     const set = (n: string, up: number, full: number, t01: number) => {
@@ -903,11 +938,9 @@ export class Avatar {
     }
     this.debug.clip = best;
     rig.update(0);
-    // crouch: bend at the waist and sink; prone: lie forward along the facing
-    if (this.crouch > 0.01) {
-      rig.turnBone(this.crouchBone, 0, 0.42 * this.crouch);
-      rig.holder.position.y = -rig.info.minY * rig.scale - 0.2 * this.crouch;
-    } else rig.holder.position.y = -rig.info.minY * rig.scale;
+    // crouch: knees bent, a lean at the waist, the head up; prone: lie forward along the facing
+    rig.holder.position.y = -rig.info.minY * rig.scale;
+    if (this.crouch > 0.01) this.crouchPose(rig, this.crouch);
     if (this.prone > 0.01) {
       rig.root.rotateX(1.45 * this.prone);
       rig.root.position.y += 0.15 * this.prone;
@@ -951,6 +984,37 @@ export class Avatar {
       const fl = f.reducedFlash || f.reducedMotion ? 1 : 0.85 + 0.15 * Math.sin(f.time * 17);
       this.flame.scale.set(1, 1.6 * fl, 1).multiplyScalar(0.6 + 0.4 * Math.min(1, lit));
     }
+  }
+
+  /**
+   * The crouch over the clip pose (`CROUCH`), `k` = 0..1. The turns last one frame: `Rig.update`
+   * starts from the mixer's pose again, so they never pile up on a bone that holds still in the
+   * clips (the MPFB player's spine_01; TASK-091).
+   */
+  private crouchPose(rig: Rig, k: number): void {
+    const legs = this.legs;
+    const a = CROUCH.knee * k;
+    let before = Infinity;
+    if (legs.length) {
+      rig.root.updateMatrixWorld(true);
+      for (const l of legs) before = Math.min(before, l.foot.getWorldPosition(_foot).y);
+      for (const l of legs) {
+        rig.turnBone(l.thigh, 0, -a);
+        rig.turnBone(l.calf, 0, 2 * a);
+        rig.turnBone(l.foot.name, 0, -a);
+      }
+    }
+    rig.turnBone(this.crouchBone, 0, CROUCH.lean * k);
+    rig.turnBone(this.crouchHead, 0, -CROUCH.head * k);
+    if (!legs.length) {
+      rig.holder.position.y -= CROUCH.sink * k;
+      return;
+    }
+    // lower the body by what the bent legs lost: the lower (planted) foot keeps its height
+    rig.root.updateMatrixWorld(true);
+    let after = Infinity;
+    for (const l of legs) after = Math.min(after, l.foot.getWorldPosition(_foot).y);
+    if (Number.isFinite(before) && Number.isFinite(after)) rig.holder.position.y += before - after;
   }
 
   /** The character's camera-side fade (src/player/seeThrough.ts; the camera session owns it). */
