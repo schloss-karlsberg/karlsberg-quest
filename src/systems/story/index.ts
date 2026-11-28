@@ -695,9 +695,11 @@ class StoryRuntime {
     this.presenter.clear();
     // a new chapter (a new day) starts on your feet, not still prone from the last chase
     if (ctx.player.stance !== 'stand') ctx.player.setStance('stand');
-    // … and with the new chapter's own objective, not the last one of the previous chapter
-    this.slice.objective = null;
-    this.objectives.set(null);
+    // The tour already points to the coat on arrival in 1789. Keep that goal through the title card.
+    if (!(handover && f.chapter === 'k1' && this.slice.objective?.id === 'k1.rock')) {
+      this.slice.objective = null;
+      this.objectives.set(null);
+    }
     // switch threats of the previous chapter off
     for (const [kind, cfg] of Object.entries(this.slice.threats)) {
       if (cfg.active) this.configureThreat({ kind: kind as ThreatKind, active: false });

@@ -253,7 +253,7 @@ describe('the first time travel in the story runtime (TASK-089)', () => {
 
   it('touches the water once, keeps the player where they walked and opens „Der Hof“ in 1789', async () => {
     const initial = createInitialState();
-    initial.systems.story = { ...createStorySlice(), active: true, chapter: 'tour', beat: 't17', unlocked: ['tour'] };
+    initial.systems.story = { ...createStorySlice(), active: true, chapter: 'tour', beat: 't17', unlocked: ['tour'], objective: { id: 'tour', text: 'Am Trog das Wasser berühren' } };
     initial.flags = { 'quelle.call': true, 'quelle.guide': true, 'story.laub': true, 'story.compass': true, 'combat.disabled': true };
     const game = await boot(initial);
     quests.init(game.ctx);
@@ -273,6 +273,8 @@ describe('the first time travel in the story runtime (TASK-089)', () => {
     game.tick();
     expect(beat(game)).toBe('tour/t18');
     expect(game.era.current).toBe('1789');
+    game.tick();
+    expect(game.state.state.systems.story?.objective).toMatchObject({ id: 'k1.rock' });
     // free to walk on during Laub's lines: 80 m down the brook
     Object.assign(game.player.position, { x: HOME.spawn.x - 70, z: HOME.spawn.z - 40 });
     for (let i = 0; i < 160 && game.state.state.systems.story?.chapter === 'tour'; i++) game.tick(0.5);
@@ -280,6 +282,7 @@ describe('the first time travel in the story runtime (TASK-089)', () => {
     // the people of the chapter stand while the card is still up, the prelude's too
     game.tick(0.5);
     expect(beat(game)).toBe('k1/k1_0');
+    expect(game.state.state.systems.story?.objective).toMatchObject({ id: 'k1.rock' });
     expect(Object.keys(placed(game)).sort()).toEqual(['diener', 'gaertner', 'gardist', 'gardist-tor', 'hanne', 'hofgaertner', 'jost', 'lakai', 'liese', 'soll']);
     // nothing is offered on the card: the quests wait for Laub's arrival lines
     expect(game.state.state.systems.quests?.quests['q.k1.kleider']?.state ?? 'hidden').toBe('hidden');

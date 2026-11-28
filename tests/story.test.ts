@@ -686,7 +686,7 @@ describe('story files', () => {
     runs.length = 0;
     step({ era: '1789', ...SPRING, flags: { 'k1.vorspiel': true } });
     expect(slice.beat).toBe('k1_0');
-    expect(all().map((a) => (a.do === 'say' ? a.id : a.do))).toEqual(['laub.k1.brunnenstube', 'objective', 'laub.k1.fremde', 'flag']);
+    expect(all().map((a) => (a.do === 'say' ? a.id : a.do))).toEqual(['objective', 'laub.k1.brunnenstube', 'laub.k1.fremde', 'flag']);
     expect(all().find((a) => a.do === 'objective')).toMatchObject({ id: 'k1.rock', text: 'Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach' });
     expect(all().at(-1)).toEqual({ do: 'flag', set: { 'k1.angekommen': true } });
     step({ era: '1789', ...SPRING, flags: { 'k1.vorspiel': true, 'k1.angekommen': true } });

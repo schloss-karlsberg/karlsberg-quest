@@ -42,3 +42,4 @@ Address the fresh-game playtest on main at db8b1b8d, through the first visit to 
 - Branch `fix/first-15-minutes`.
 - F2. Spaced the gathered arcs for player clearance. The car-park regression reproduced the stall on the baseline and now passes from 16 headings, including starts inside the ring.
 - F3. The story and quest point to the existing reach spot behind the second line. The brief starts within 30 m, including during the spring arrival beat. The disguise spec checks the approach and takes the coat from its marked spot.
+- F5. The coat objective replaces the trough on the first story tick in 1789 and stays in the HUD through the chapter handover. The runtime and tour spec check both moments.

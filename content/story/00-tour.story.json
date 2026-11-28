@@ -422,6 +422,13 @@
         { "do": "say", "id": "laub.t.seite", "speaker": "laub", "text": "Und im Deckel der Bussole steckt ein Blatt. Unten steht meine Handschrift. Sie finden es später unter Ausrüstung.", "delay": 0.8, "onResume": true },
         { "do": "flag", "set": { "tour.ende": true }, "delay": 1.6, "onResume": true }
       ],
+      "on": [
+        {
+          "id": "bleiche-nach-zeitsprung",
+          "when": { "era": "1789" },
+          "do": [{ "do": "objective", "id": "k1.rock", "text": "Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach", "x": 1001.08, "z": -880.9 }]
+        }
+      ],
       "complete": { "all": [{ "flag": "tour.ende" }, { "era": "1789" }] },
       "exit": [
         { "do": "skill", "id": "relief", "tier": 3 },

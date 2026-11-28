@@ -1149,19 +1149,19 @@
           },
           "do": [
             {
+              "do": "objective",
+              "id": "k1.rock",
+              "text": "Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach",
+              "x": 1001.08,
+              "z": -880.9
+            },
+            {
               "do": "say",
               "id": "laub.k1.brunnenstube",
               "speaker": "laub",
               "delay": 1,
               "wait": true,
               "text": "Sommer 1789. Kies, Hunde, irgendwo eine Geige. Und mittendrin Sie. In Orange."
-            },
-            {
-              "do": "objective",
-              "id": "k1.rock",
-              "text": "Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach",
-              "x": 1001.08,
-              "z": -880.9
             },
             {
               "do": "say",

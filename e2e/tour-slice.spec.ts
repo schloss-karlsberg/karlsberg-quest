@@ -813,6 +813,8 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
     console.log(`[tour] no shift: era ${era}, ctx era ${await page.evaluate(() => window.kq!.ctx.era.current)}; last events ${tail.join(' | ')}`);
   }
   expect(era).toBe('1789');
+  await page.evaluate(() => window.kq!.step(1));
+  await expect(page.getByTestId('objective')).toContainText('Ein Rock, der nicht leuchtet');
   await page.evaluate(() => window.kq!.step(300));
   expect(await page.evaluate(() => window.kq!.walk!.stats().visible)).toBe(0);
   expect(await page.evaluate(() => window.kq!.animals!.stats().visible)).toBe(0);
@@ -839,6 +841,7 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   expect(s1.chapter).toBe('k1');
   expect(s1.beat).toBe('k1_0');
   expect(s1.era).toBe('1789');
+  expect(s1.objective).toMatchObject({ id: 'k1.rock' });
   // the chapter card stands alone: no quest banner on it
   expect(await page.evaluate(() => window.kq!.quests!.state().quests['q.k1.kleider']?.state ?? 'hidden')).toBe('hidden');
   expect(await page.evaluate(() => window.kq!.quelle!.info().prompt), 'no second touch').toBe(false);
