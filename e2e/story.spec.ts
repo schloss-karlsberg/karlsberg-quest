@@ -2,6 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 import { ciScale } from './helpers/ci';
 import { SAVE_KEY } from '../src/core/save';
+import { HOME } from '../src/systems/story/hub/home';
 import { throughTour } from './helpers/tour';
 import { openPause, waitForHooks } from './helpers/pause';
 import { SCREENS } from './helpers/common';
@@ -183,6 +184,8 @@ test('story: home at the Quelle by day and night, dialogue portraits', async ({ 
     const k = window.kq!;
     k.story!.start('Alex');
     k.story!.goto('k1');
+    // chosen directly the chapter starts at the spring in the present; into the summer
+    k.setEra('1789');
     k.step(380);
   });
   const waitForLine = (lineId: string) => page.waitForFunction((id) => {
@@ -193,21 +196,28 @@ test('story: home at the Quelle by day and night, dialogue portraits', async ({ 
     return k.story!.state().dialogue?.id === id;
   }, lineId, { timeout: 90_000 });
 
-  // Keep the chapter timeline and let the quest's initial radio line finish first.
-  await waitForLine('marlene.k1.morgen.quelle');
+  // Keep the chapter timeline: the coat quest's offer first, then Laub's arrival line in 1789.
+  await waitForLine('laub.k1.brunnenstube');
+  await typed(page);
+  await expect(page.getByTestId('dialogue')).toHaveAttribute('data-portrait', 'compass');
+  await shot(page, 'dialogue-laub');
+
+  // a radio line with the player's name (chapter 1 opens without one since the journey is one-way)
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.story!.flush();
+    k.ctx.events.emit('dialogue:say', { speaker: 'marlene', text: 'Na, {Name}? Erzähl’s mir morgen.', id: 'e2e.marlene.name', priority: 'now' });
+  });
+  await waitForLine('e2e.marlene.name');
   await typed(page);
   await expect(page.getByTestId('dialogue')).toHaveAttribute('data-speaker', 'marlene');
   await expect(page.getByTestId('dialogue')).toContainText('Alex');
   await shot(page, 'dialogue-marlene');
 
-  await waitForLine('laub.k1.morgen.quelle');
-  await typed(page);
-  await expect(page.getByTestId('dialogue')).toHaveAttribute('data-portrait', 'compass');
-  await shot(page, 'dialogue-laub');
-
-  // home at the Quelle, day and night
+  // home at the Quelle in the present, day and night
   await page.evaluate(() => {
     const k = window.kq!;
+    k.setEra('today');
     k.story!.look('day');
     k.teleport(1053, -828, 51, -3);
     k.step(2);
@@ -296,7 +306,7 @@ test('story: caught by the pack → home at the Quelle', async ({ page }) => {
   await page.evaluate(() => window.kq!.step(9 * 60 + 5));
   expect(await page.evaluate(() => window.kq!.story!.state().era)).toBe('today');
   const p = await page.evaluate(() => ({ x: window.kq!.ctx.player.position.x, z: window.kq!.ctx.player.position.z }));
-  expect(Math.hypot(p.x - 1059.3, p.z + 833.1)).toBeLessThan(5);
+  expect(Math.hypot(p.x - HOME.spawn.x, p.z - HOME.spawn.z)).toBeLessThan(5);
   expect(await page.evaluate(() => window.kq!.story!.state().beat)).toBe('k1_0b');
   expect(await page.evaluate(() => window.kq!.story!.state().objective?.id)).toBe('k1.zurueck-q');
 

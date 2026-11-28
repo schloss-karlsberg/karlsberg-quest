@@ -330,7 +330,6 @@ const dialogue = [
   say('gardist.k1.01', 'gardist', 'Nicht stehen bleiben. Hier wird nicht gestanden, hier wird gewacht.', talk('gardist', 'greet'), { once: false }),
   say('lakai.k1.01', 'lakai', 'Ich trag nur. Fragen Sie wen, der was weiß.', talk('lakai', 'greet'), { once: false }),
   // Laub
-  say('laub.k1.morgen.quelle', 'laub', 'Sie sind vor Sonnenaufgang los. Ich habe Sie nicht aufgehalten. Der Tropfen von gestern ist über Nacht in der Bussole eingetrocknet, die Nadel zeigt aufs Wasser, nicht auf den Ehrenhof. Ein zweites Mal also. Sie wissen, wie es geht.', beat('1.0'), { once: true }),
   // the disguise opening (k1_0b / k1_0c): spoken by the story (inline say actions with these ids)
   say('laub.k1.brunnenstube', 'laub', 'Sommer 1789. Kies, Hunde, irgendwo eine Geige. Und mittendrin Sie. In Orange.', beat('1.0b'), { once: true }),
   say('laub.k1.fremde', 'laub', 'Der Herzog lässt keine Fremden auf den Berg. Hundert Gardisten an den Türen, schreibt man. Wir brauchen zwei Dinge: einen Rock, der nicht leuchtet, und ein Papier, das jemand anders geschrieben hat. Unten an der Bleiche hängt Wäsche.', beat('1.0b'), { once: true, src: [P('Einl. S. XXXIII (Stollreither: 100 Gardisten)')] }),
@@ -365,8 +364,6 @@ const dialogue = [
   say('laub.k1.nach_rondell', 'laub', 'Mannlich war schon am Fuß des Berges, als es geschah. Er hat das Licht gesehen und es schön gefunden. So steht es bei ihm. Das ist das Schlimmste daran.', beat('1.11-nach'), { once: true, src: [P('S. 391')] }),
   say('laub.k1.ende', 'laub', 'Februar dreiundneunzig. Da rennt einer durch die Nacht. Und hinter ihm bläst jemand zur Jagd.', beat('1.14'), { once: true }),
   // Marlene
-  // spoken by the story at the spring (k1_0, inline say actions with these ids; the '1.x' beat triggers never fire, as for laub.k1.start)
-  say('marlene.k1.morgen.quelle', 'marlene', 'Morgen, {Name}! Du bist ja schon weg. Die Brötchen liegen auf der Stufe. Ich ess deins, wenn du nicht bald zurück bist.', beat('1.0'), { once: true }),
   say('marlene.k1.abend', 'marlene', 'Du hast ja nasse Füße. Im November. Vom Weiher? Erzähl’s mir morgen.', beat('B-zurueck'), { once: true }),
   // Echos mit Mannlich-Zitaten
   ...seq(echo('clue.k1.mannlich'), [
@@ -464,17 +461,16 @@ const k1Quests = {
     {
       id: 'q.k1.ankunft', kind: 'main', era: E,
       title_de: 'Zu Fuß, außer einem',
-      summary_de: 'Die Bussole ist über Nacht trocken geworden. Ein neuer Tropfen aus der Karlsbergquelle bringt dich in den Sommer 1789. Von dort gehst du zum Hof wie alle anderen: zu Fuß, am Gitter vorbei, an dem eine Wache sehr genau weiß, wer fahren darf.',
+      summary_de: 'Ein Tropfen aus der Karlsbergquelle hat dich in den Sommer 1789 gebracht. Zum Hof gehst du wie alle anderen: zu Fuß, am Gitter vorbei, an dem eine Wache sehr genau weiß, wer fahren darf.',
       giver: { voice: 'laub' }, turnin: 'auto',
-      offer: [ln('laub', 'Erst die Quelle, dann gehen wir hinein. Zu Fuß, wie alle. Am Gitter steht eine Wache, die sehr genau weiß, wer fahren darf und wer nicht.')],
+      offer: [ln('laub', 'Wir gehen hinein. Zu Fuß, wie alle. Am Gitter steht eine Wache, die sehr genau weiß, wer fahren darf und wer nicht.')],
       turnin_lines: [ln('laub', 'Merken Sie sich die Wache. Die schreibt Sie auf, wenn Sie rennen.')],
       history: [ln('laub', 'Nur der Herzog durfte zum Schloss hinauffahren. Alle anderen gingen zu Fuß, und Singen war verboten. Ein Zeitgenosse fand die ganze Gegend „wie betäubt“.', { fact: 'cx.11', src: [src('RLS', 'P')] })],
       objectives: [
-        // the chapter opens at the Karlsbergquelle (story k1_0 → k1_0b → k1_1): touch, then walk up in 1789.
-        // `wechsel` keeps its id (saves and tests count it), only its text and place changed
-        { id: 'quelle', type: 'event', event: 'quelle:touch', text_de: 'An der Quelle: das Wasser berühren',
-          hint_de: 'Die Karlsbergquelle liegt im Hang westlich der Orangerie. Vor den Holztrog stellen, zum Wasser schauen und E drücken.' },
-        { id: 'wechsel', type: 'reach', after: ['quelle'], text_de: 'Hinauf zum Ehrenhof, zu Fuß', where: place(1200, -1116, 14) },
+        // the chapter opens in 1789 at the Karlsbergquelle, where the tour's touch brought the player
+        // (story k1_0 → k1_0b → k1_1): walk up. The old `quelle` objective (a second touch) is gone;
+        // `wechsel` keeps its id (saves and tests count it)
+        { id: 'wechsel', type: 'reach', text_de: 'Hinauf zum Ehrenhof, zu Fuß', where: place(1200, -1116, 14) },
         { id: 'wache', type: 'examine', clue: 'clue.k1.wache', text_de: 'Am Gitter: der Wache zuhören' },
         { id: 'fluegel', type: 'examine', clue: 'clue.k1.fluegel', text_de: 'Die beiden Flügel ansehen' },
       ],

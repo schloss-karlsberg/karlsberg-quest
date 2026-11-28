@@ -265,10 +265,13 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     expect(h.beat()).toBe('t18');
     expect(cleanups()).toHaveLength(0);
     expect(h.flags['quelle.call']).toBeUndefined();
-    // no „Fortsetzung folgt“: a look round in 1789, then the hand-over into chapter 1
+    // no „Fortsetzung folgt“ and no way back: the arrival in 1789, then the hand-over into chapter 1
     expect(h.sent.some((s) => s.kind === 'card')).toBe(false);
+    const arrival = h.sent.length;
     for (let i = 0; i < 80 && h.beat() === 't18'; i++) h.tick();
-    expect(h.said).toEqual(expect.arrayContaining(['player.q.wo', 'laub.t.1789']));
+    expect(h.said).toEqual(expect.arrayContaining(['player.q.wo', 'laub.t.1789', 'laub.t.seite']));
+    expect(h.sent.slice(arrival).some(({ a }) => a.do === 'fade' && a.to === 1)).toBe(false);
+    expect(h.era()).toBe('1789');
     expect(h.flags['combat.disabled']).toBeUndefined();
     expect(h.flags['tour.slice']).toBeUndefined();
     expect(h.flags['walk.find']).toBeUndefined();

@@ -161,6 +161,30 @@ function migrateStorySlice(story: StorySlice): void {
 }
 
 /**
+ * The first touch of the spring is the journey (TASK-089). Before, the tour's look at 1789 faded
+ * back to the present and „Der Hof“ opened at dawn with a second touch (`k1_0`, `quelle.call`). A
+ * save waiting for that touch continues where the touch would have taken it: in 1789 at the
+ * spring, where `k1_0` plays Laub's arrival lines and hands on as for a new arrival. Needs the
+ * era, the player and the flags, so deserializeState calls it after readStorySlice.
+ *
+ * Only that old save is moved. Today's `k1_0` can also stand in the present (the chapter chosen
+ * from Pause → Kapitel, or a player who held Q during the arrival): there the spring is the Q
+ * anchor and the player decides when to cross, so such a save loads as it was written. The old
+ * beat is told by what only it left behind: the spring's call (`quelle.call`, which today's
+ * `k1_0` clears on entry) or its objective „An der Quelle: E – das Wasser berühren“ (`k1.quelle`).
+ */
+export function migrateFirstJump(story: StorySlice, state: GameState): void {
+  if (!story.active || story.chapter !== 'k1' || story.beat !== 'k1_0' || state.era !== 'today') return;
+  if (state.flags['quelle.call'] !== true && story.objective?.id !== 'k1.quelle') return;
+  state.era = '1789';
+  const { x, z, yaw } = HOME.spawn;
+  Object.assign(state.player, { x, y: 0, z, yaw: -yaw * Math.PI / 180, pitch: 0, stance: 'stand', flying: false });
+  for (const key of ['quelle.call', 'quelle.guide', 'shift.allowed', 'shift.target', 'shift.x', 'shift.z', 'shift.r']) delete state.flags[key];
+  // „An der Quelle: E – das Wasser berühren“ is no longer asked for
+  story.objective = null;
+}
+
+/**
  * Chapter 2 sets `k2.jagd_laeuft` when Jost's horn lead-in starts, but the parforce pack only
  * appears after his lines. Scheduled actions are not saved, and a title Continue discards them:
  * without a matching pack the chase would claim to run forever. Clear the start state so the

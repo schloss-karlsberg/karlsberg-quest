@@ -13,7 +13,7 @@ import { type StoryEnv, type StoryHost, StoryEngine, type StorySlice, createStor
 import { composeEpilogue, nounToVariant } from '../src/systems/story/endings/epilogue';
 import { endingScenes, yearsSpelled } from '../src/systems/story/endings/scenes';
 import { HOME, atHome, bringHome } from '../src/systems/story/hub/home';
-import { REACH, canTouch, toLocal, toWorld, touchLocal } from '../src/systems/quelle/layout';
+import { QUELLE, REACH, canTouch, toLocal, toWorld, touchLocal } from '../src/systems/quelle/layout';
 import { angleDiff, bearingDeg } from '../src/systems/story/objectives';
 import { HORN_SIGNALS } from '../src/systems/story/sfx';
 import { storiesInPlay } from '../src/systems/story/stories';
@@ -642,7 +642,7 @@ describe('story files', () => {
     }
   });
 
-  it('opens chapter 1 at the Karlsbergquelle at dawn: touch, summer 1789, the walk up, the court', () => {
+  it('opens chapter 1 in 1789 at the Karlsbergquelle: no second touch, the walk up, the court', () => {
     let slice: StorySlice = createStorySlice();
     const runs: { source: string; resume: boolean; actions: Action[] }[] = [];
     const host: StoryHost = {
@@ -660,41 +660,42 @@ describe('story files', () => {
       for (let i = 0; i < n; i++) engine.tick(0.5, env(e));
     };
     const all = () => runs.flatMap((r) => r.actions);
-    const SPRING = { x: 1059.3, z: -833.1 };
-    const k0bWake = { x: 1059.3, z: -833.1, yaw: 204, era: 'today', text: 'Du kommst an der Quelle zu dir, im Heute. Nichts ist verloren.' };
+    const SPRING = { x: HOME.spawn.x, z: HOME.spawn.z };
+    const k0bWake = { ...HOME.spawn, era: 'today', text: 'Du kommst an der Quelle zu dir, im Heute. Nichts ist verloren.' };
     const k1 = files.find((f) => f.story.chapter === 'k1')!.story;
-    // the chapter checkpoint is the spring (chapterEntered teleports there from the station bed)
-    expect(k1.checkpoint).toEqual({ x: 1059.3, z: -833.1, yaw: 204, era: 'today' });
+    // the chapter goes on where the tour's touch left the player, in 1789 (TASK-089: `continues`);
+    // a replay or a jump starts at the spring in the present, where being caught also wakes you
+    expect(k1.checkpoint).toEqual({ ...HOME.spawn, era: 'today' });
+    expect(k1.continues).toBe(true);
     expect(k1.beats.slice(0, 4).map((b) => b.id)).toEqual(['k1_0', 'k1_0b', 'k1_0c', 'k1_1']);
     engine.goto('k1');
     expect(slice.beat).toBe('k1_0');
-    // dawn, no Q anywhere, the spring calls (guide motes + the E prompt)
+    // the arrival: no dawn, no radio, no line, no touch asked for; the prelude pauses the lantern
     const k0 = all();
-    expect(k0).toContainEqual({ do: 'look', time: 'dawn' });
+    expect(k0.some((a) => a.do === 'look' && a.time === 'dawn')).toBe(false);
     expect(k0).toContainEqual({ do: 'anchor', to: null });
     expect(k0.some((a) => a.do === 'anchor' && a.to !== null)).toBe(false);
-    expect(k0.some((a) => a.do === 'flag' && a.set['quelle.call'] === true && a.set['quelle.guide'] === true)).toBe(true);
-    expect(k0.some((a) => a.do === 'objective' && a.text === 'An der Quelle: E – das Wasser berühren' && a.x === SPRING.x && a.z === SPRING.z)).toBe(true);
-    const says = k0.filter((a): a is Extract<Action, { do: 'say' }> => a.do === 'say').map((a) => a.id);
-    expect(says).toEqual(['marlene.k1.morgen.quelle', 'laub.k1.morgen.quelle']);
-    // Q at the Ehrenhof does not count: only the touch
-    step({ era: '1789', x: 1222, z: -1119 }, 4);
-    expect(slice.beat).toBe('k1_0');
+    expect(k0.some((a) => a.do === 'flag' && a.set['quelle.call'] === null && a.set['quelle.guide'] === null && a.set['k1.vorspiel'] === true)).toBe(true);
+    expect(k0.some((a) => a.do === 'flag' && (a.set['quelle.call'] === true || a.set['quelle.guide'] === true))).toBe(false);
+    expect(k0.filter((a) => a.do === 'say' || a.do === 'sound' || a.do === 'objective' || a.do === 'shift' || a.do === 'teleport')).toEqual([]);
+    expect(k0.some((a) => a.do === 'quest')).toBe(false);
+    expect(JSON.stringify(k1)).not.toContain('morgen.quelle');
+    expect(JSON.stringify(k1.beats[0])).not.toContain('quelle:touch');
+    // in 1789 the beat hands on at once
     runs.length = 0;
-    engine.onEvent('quelle:touch', { era: 'today' });
-    step({ ...SPRING });
+    step({ era: '1789', ...SPRING, flags: { 'k1.vorspiel': true } });
     expect(slice.beat).toBe('k1_0b');
-    // the exit shifts to 1789 through the spring, the dawn ends, the prelude pauses the lantern
-    const exit = all();
-    expect(exit).toContainEqual({ do: 'shift', to: '1789', reason: 'quelle' });
-    expect(exit).toContainEqual({ do: 'look', time: 'day' });
-    expect(exit.some((a) => a.do === 'flag' && a.set['k1.vorspiel'] === true && a.set['quelle.call'] === null)).toBe(true);
+    const k0bSays = k1.beats.find((b) => b.id === 'k1_0b')!.enter!.filter((a): a is Extract<Action, { do: 'say' }> => a.do === 'say').map((a) => a.id);
+    expect(k0bSays).toEqual(['laub.k1.brunnenstube', 'laub.k1.fremde']);
+    // the place first, then the way in (the arrival quest), then what is needed for it
+    const k0bTalk = k1.beats.find((b) => b.id === 'k1_0b')!.enter!.filter((a) => a.do === 'say' || a.do === 'quest').map((a) => a.id);
+    expect(k0bTalk).toEqual(['q.k1.kleider', 'laub.k1.brunnenstube', 'q.k1.ankunft', 'laub.k1.fremde']);
     step({ era: '1789', ...SPRING, flags: { 'k1.vorspiel': true } }, 6);
     expect(slice.beat).toBe('k1_0b');
     // back to today on the walk: Q at the spring takes you back, never the Ehrenhof
     runs.length = 0;
     step({ era: 'today', x: 1150, z: -1000, flags: { 'k1.vorspiel': true } });
-    expect(all()).toContainEqual({ do: 'anchor', to: '1789', x: 1058.5, z: -831, r: 10 });
+    expect(all()).toContainEqual({ do: 'anchor', to: '1789', x: QUELLE.x, z: QUELLE.z, r: 10 });
     expect(all().some((a) => a.do === 'anchor' && a.to !== null && a.x === 1222)).toBe(false);
     step({ era: '1789', x: 1150, z: -1000, flags: { 'k1.vorspiel': true } }, 4);
     expect(slice.beat).toBe('k1_0b');
@@ -761,9 +762,10 @@ describe('story files', () => {
         if (r.do.some((a) => a.do === 'anchor' && a.x === 1222)) expect(JSON.stringify(r.when), `${b.id} ${r.id}`).toContain('"flag":"court.admitted"');
   });
 
-  it('a chapter-1 save from before the spring opening resumes at the spring (old Ehrenhof anchor cleared)', () => {
-    // an old save: k1_0 running at the station, the old morning lines said, the Ehrenhof anchor in the flags
-    let slice: StorySlice = { ...createStorySlice(), active: true, chapter: 'k1', beat: 'k1_0', said: ['marlene.k1.morgen', 'laub.k1.morgen'] };
+  it('a chapter-1 save still in the present at k1_0 never needs a touch: Q at the spring, then 1789', () => {
+    // the old flow's save: k1_0 running at the spring in the present, waiting for the second touch
+    // (deserializeState moves such a save to 1789, tests/tour-handover.test.ts; this is the content's own net)
+    let slice: StorySlice = { ...createStorySlice(), active: true, chapter: 'k1', beat: 'k1_0', said: ['marlene.k1.morgen.quelle', 'laub.k1.morgen.quelle'] };
     const runs: { resume: boolean; actions: Action[] }[] = [];
     const host: StoryHost = {
       run: (actions, o) => runs.push({ resume: o.resume, actions: actions.filter((a) => !o.resume || runsOnResume(a)) }),
@@ -779,22 +781,41 @@ describe('story files', () => {
     slice = JSON.parse(JSON.stringify(slice)) as StorySlice;
     engine.resume(true);
     expect(slice.beat).toBe('k1_0');
-    const acts = runs.flatMap((r) => r.actions);
-    // chapterEntered(resume) does not teleport: the beat's own teleport does (onResume)
-    expect(acts).toContainEqual({ do: 'teleport', x: 1059.3, z: -833.1, yaw: 204, onResume: true });
-    // the old anchor (shift.* flags) goes, the spring's flags come, the objective points at it
+    let acts = runs.flatMap((r) => r.actions);
+    // the resume clears the old call of the spring and any old anchor, and sets no dawn
     expect(acts).toContainEqual({ do: 'anchor', to: null });
-    expect(acts.indexOf(acts.find((a) => a.do === 'anchor')!)).toBeLessThan(acts.findIndex((a) => a.do === 'teleport'));
-    expect(acts.some((a) => a.do === 'anchor' && a.to !== null)).toBe(false);
-    expect(acts.some((a) => a.do === 'flag' && a.set['quelle.call'] === true)).toBe(true);
-    expect(acts).toContainEqual({ do: 'look', time: 'dawn' });
-    expect(acts.some((a) => a.do === 'objective' && a.x === 1059.3 && a.z === -833.1)).toBe(true);
-    // the old completion (era 1789 by Q at the Ehrenhof) no longer ends the morning
-    for (let i = 0; i < 4; i++) engine.tick(0.5, env({ era: '1789', x: 1222, z: -1119 }));
+    expect(acts.some((a) => a.do === 'flag' && a.set['quelle.call'] === null && a.set['quelle.guide'] === null)).toBe(true);
+    expect(acts).toContainEqual({ do: 'look', time: 'day' });
+    expect(acts.some((a) => a.do === 'teleport' || a.do === 'shift')).toBe(false);
+    // still in the present: the spring becomes the Q anchor and the objective says so
+    runs.length = 0;
+    engine.tick(0.5, env({ era: 'today', x: HOME.spawn.x, z: HOME.spawn.z }));
     expect(slice.beat).toBe('k1_0');
+    acts = runs.flatMap((r) => r.actions);
+    expect(acts).toContainEqual({ do: 'anchor', to: '1789', x: QUELLE.x, z: QUELLE.z, r: 10 });
+    expect(acts).toContainEqual({ do: 'objective', id: 'k1.zurueck-q', text: 'Zurück in den Sommer 1789: Q an der Quelle', x: HOME.spawn.x, z: HOME.spawn.z });
+    // a touch is neither needed nor counted; the era is what ends the beat
     engine.onEvent('quelle:touch', { era: 'today' });
-    engine.tick(0.5, env({ x: 1059.3, z: -833.1 }));
+    engine.tick(0.5, env({ era: 'today', x: HOME.spawn.x, z: HOME.spawn.z }));
+    expect(slice.beat).toBe('k1_0');
+    engine.tick(0.5, env({ era: '1789', x: HOME.spawn.x, z: HOME.spawn.z }));
     expect(slice.beat).toBe('k1_0b');
+  });
+
+  it('keeps every spring position of the opening on the shared home constant', () => {
+    // the Karlsbergquelle may move (TASK-087): the story files must follow HOME / QUELLE
+    const tour = files.find((f) => f.story.chapter === 'tour')!.story;
+    const k1 = files.find((f) => f.story.chapter === 'k1')!.story;
+    expect(tour.wake).toMatchObject({ ...HOME.spawn, era: 'today' });
+    for (const id of ['k1_0', 'k1_0b', 'k1_0c']) {
+      const beat = k1.beats.find((b) => b.id === id)!;
+      expect(beat.wake, id).toMatchObject({ ...HOME.spawn, era: 'today' });
+      const heute = beat.on!.find((r) => r.id === `${id}.heute`)!;
+      expect(heute.do, id).toContainEqual({ do: 'anchor', to: '1789', x: QUELLE.x, z: QUELLE.z, r: 10 });
+    }
+    for (const chapter of ['k1', 'k2', 'k3', 'k4', 'enden']) {
+      expect(files.find((f) => f.story.chapter === chapter)!.story.checkpoint, chapter).toMatchObject({ x: HOME.spawn.x, z: HOME.spawn.z });
+    }
   });
 });
 

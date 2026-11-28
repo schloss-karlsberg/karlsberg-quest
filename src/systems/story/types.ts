@@ -752,6 +752,14 @@ export interface StoryFile {
   /** Where the chapter starts (teleport + era) when chosen at the map table. */
   checkpoint?: Checkpoint;
   /**
+   * The chapter goes on where the one before it ended: when the story runs into it (its
+   * predecessor's last beat done) the checkpoint is not applied, so the player keeps their era and
+   * place. A replay or a jump still starts at the checkpoint. „Der Hof“ begins in 1789 where the
+   * tour's touch of the spring left the player, who may have walked on during Laub's lines; chosen
+   * from the chapter list it starts at the spring in the present, with Q as the way back.
+   */
+  continues?: boolean;
+  /**
    * Where a caught player comes to when no beat names a `wake` (default: the checkpoint). Home at
    * the Quelle for a chapter that starts somewhere else.
    */

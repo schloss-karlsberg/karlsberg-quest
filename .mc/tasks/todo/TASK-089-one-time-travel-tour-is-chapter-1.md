@@ -4,7 +4,7 @@ aliases:
 - TASK-089
 title: 'Story structure: travel in time once and stay; the tour is chapter 1, „Der Hof“ is chapter 2'
 slug: one-time-travel-tour-is-chapter-1
-status: todo
+status: in-progress
 priority: 1
 owner: ''
 projects: []
@@ -213,7 +213,41 @@ hand-over grants) … `5` „Der Steinbruch“ (`k4`). `kq.story.goto('k1')` now
 `CAMPAIGN_FROM` / `CAMPAIGN_TO` keep the internal ids. TASK-086 quotes the old numbers.
 
 ## Plan
-_Status: draft_
+_Status: approved 2026-11-28_ (by the coordinator; the owner's answers are pending and may still correct it)
+
+**Decisions (coordinator, 2026-11-28):**
+1. Scope of „stay“: option (b). The first jump is one-way and the day part of „Der Hof“ has no oil
+   eviction, so the first return is the story's own. (c) and (d) are follow-up notes below, not built.
+2. Arrival at the spring in 1789, the coat at the Bleiche as first objective. The spring may move
+   (TASK-087): positions come from the shared constant (`HOME`, `QUELLE`); a unit test ties the story
+   files to it.
+3. Five numbered chapters, ids unchanged.
+4. Voice: `laub.t.1789` was cut from its own raw take, so no new recording and no fourth PR (see
+   Progress).
+
+**Changes to the plan made while building slice 1:**
+- K1's `checkpoint` stays in the present. A new key `continues` on the story file skips the
+  checkpoint when the story runs into the chapter, so the player keeps era and place (they may have
+  walked on during Laub's lines; the checkpoint used to pull back anyone more than 30 m away). A
+  replay from Pause → Kapitel and debug jumps start at the spring in the present as before, where
+  `k1_0.heute` makes the spring the Q anchor. This keeps every `goto('k1', beat)` in specs and tools
+  working as it did.
+- The shift moved from `t17`'s exit to `t18`'s entry with `onResume`, so the `t18` autosave (written
+  before the shift runs) finishes the jump on Continue.
+- The arrival quest is offered in `k1_0b` between Laub's two arrival lines. The coat quest stays on
+  offer from the first tick: the static progression check (and a fast player) must never take the
+  coat before it counts.
+
+**Playtest findings of 2026-11-28 on the arrival path, and where they go:**
+| Finding | Where |
+| --- | --- |
+| F2 the tease and the return; F12 the touch step shown twice | slice 1 |
+| F5 the servant stands inside the player | slice 1: coordinates for him, and a room-bound NPC placed before the interiors can answer no longer takes the player's storey |
+| F7 overlay pile-up at the hand-over | the card hold is TASK-085's (src/ui); slice 1 removes the era mismatch and the dawn lines; re-check on the real GPU after rebasing onto its PR |
+| F9 Marlene has nothing to say | slice 1: two lines about the staff |
+| „25 s without input“ | slice 1: the player moves as soon as the shift is done; the hand-over no longer pulls them back |
+| F8 the coat: marker, prompt, the sneak | slice 3 |
+| F13 / F14 the trough prompt, the Bussole picks itself up | TASK-081 (tour `t16`), not here |
 
 **Approach:** Four PRs. The first makes the jump one-way with content edits and one save
 migration, no engine change. The second renames the chapters for the player and moves the testing
@@ -249,9 +283,7 @@ PR 3 — `feat(story): the first stay lasts until the story goes home` (owner de
       reworded; check lantern / Bannlicht supply without the meter; `chapter-k1`, `campaign`,
       `story.test.ts` assertions on the oil meter.
 
-PR 4 — `feat(content): re-record laub.t.1789`
-- [ ] 11. One MOSS clip through the voice pipeline (owner's `moss-run`), manifest and credits.
-      Until it lands the line shows as a subtitle with the murmur fallback.
+PR 4 — dropped: the clip was cut instead of re-recorded (in PR 1).
 
 **Test plan:** gates per PR. Manual: `/?nosave&fresh` new game through the tour; with
 `kq.story.goto('tour','t17')` for the jump; old saves built in unit tests from the shapes above.
@@ -286,6 +318,32 @@ objective, Pause → Kapitel.
 4. **Voice.** Re-record `laub.t.1789` with MOSS (synthetic Laub voice, one line). Default: yes,
    the text ships in PR 1, the clip in PR 4 when the machine is free.
 
+## Follow-ups (not built)
+
+- **(c) „Der Hof“ without the present.** Needs: a wake in the past (`validate.ts` requires
+  `wake.era: today`, `updateCaught` always shifts home), no Q-hold home or a home in 1789
+  (heal, respec, hunt reset live in the present ring), the walk or a cut to the Karlslust in 1789
+  instead of `k1_6` „Zurück“ (Geisterblick is present-only), about 20 beats with „…heute“ reactions,
+  and new recordings for at least `laub.k1.nacht` („Gehen wir erst nach Hause“). Its own task.
+- **(d) the whole game without the present.** Every chapter opens at the Quelle today, changes
+  era there (1789 → 1793 → 1796) and wakes the player there; PRD pillar 5 and tour decision 11
+  describe that loop. A new design document first.
+- The seams between the later chapters still imply several days (Marlene's „Erzähl’s mir morgen“,
+  „Brötchen auf der Stufe“), against the one-afternoon rule.
+- The order of Laub's lines on arrival: the coat quest's offer line („Ein Rock, der nicht
+  leuchtet …“) still comes before „Sommer 1789. Kies, Hunde …“ because the quest must be on from
+  the first tick. A quiet offer (no line) would let the place speak first.
+
 ## Progress
 
 - 2026-11-28: analysis and plan written (planning run, no code changes).
+- 2026-11-28: go from the coordinator with the decisions above. Slice 1 built on
+  `feat/task-089-one-way-jump`.
+- Voice: the raw take of `laub.t.1789` (`.voice-raw/raw-service/laub.t.1789.wav`, sha256 as in the
+  manifest) is silent below −50 dB from 7.51 s to 8.01 s, between „Atmen Sie.“ and the last
+  sentence. Cut at 7.70 s with an 80 ms fade-out and run through `processClip`
+  (`scripts/voice/audio.ts`, same pause cap) like every clip: 7147 ms, −17.9 LUFS, −1.5 dBTP; the
+  uncut take through the same chain gives the committed 8760 ms. Manifest entry: new files, text and
+  speech hash of the shortened line, `chars` 94, `durationMs`, an `edit` note; voice id, model,
+  licence and attribution unchanged. `pnpm voice:plan` lists the line as up to date. Checked by
+  level analysis, not by ear.

@@ -1187,7 +1187,9 @@ Round-4 (polish: set dressing) integration rules:
 ### story (`src/systems/story/`) – chapters, dialogue, home base, objectives, endings
 - A new game starts with the guided tour (`content/story/00-tour.story.json`, order −1, `next: k1`).
   The engine excludes chapters marked `legacy` from play. `deserializeState` migrates saves in
-  `prolog` to `k1/k1_0` before systems restore. It retains quest history and applies the tour
+  `prolog` to `k1/k1_0` (in 1789 at the spring) before systems restore, and a `k1/k1_0` save still
+  waiting in the present for the retired second touch to the same place (`migrateFirstJump`). A
+  chapter with `continues` (K1) keeps the player's era and place when the story runs into it. It retains quest history and applies the tour
   handover as minimums. The legacy quest file still supplies the tour's page item. Design at
   `docs/design/tour/`.
 - Data in `content/story/*.story.json` (schema notes: `content/story/README.md`, checked by

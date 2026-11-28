@@ -3,12 +3,14 @@ import { levelForXp } from '../rpg/stats';
 import { createProgressionSlice, normalizeSlice, ProgressionCore } from '../systems/progression/logic';
 import { createQuestSlice, normaliseSlice, QuestBook, type QuestDefIn } from '../systems/quests/logic';
 import { createStorySlice } from '../systems/story/engine';
+import { HOME } from '../systems/story/hub/home';
 import { EventBus } from './events';
 import { legacyPrologueQuests } from './legacy-prologue-quests';
 import type { GameState } from './state';
 
-// Capture the migration destination without pulling chapter 1's full script into the boot bundle.
-const CHAPTER_ONE = { chapter: 'k1', beat: 'k1_0', x: 1059.3, z: -833.1, yaw: 204 } as const;
+// Capture the migration destination without pulling chapter 1's full script into the boot bundle:
+// „Der Hof“ opens in 1789 at the spring (TASK-089), where its first beat hands on at once.
+const CHAPTER_ONE = { chapter: 'k1', beat: 'k1_0', era: '1789', ...HOME.spawn } as const;
 const questDefs = new Map<string, QuestDefIn>(legacyPrologueQuests.map((q) => [q.id, q]));
 const retiredObjective = (id: string | undefined) => id?.startsWith('q.p.') ?? false;
 
@@ -75,8 +77,8 @@ export function migrateLegacyPrologue(state: GameState): void {
   story.unlocked = [...new Set([...(story.unlocked ?? []), CHAPTER_ONE.chapter])];
   state.systems.story = story;
 
-  const { x, z, yaw } = CHAPTER_ONE;
-  state.era = 'today';
+  const { x, z, yaw, era } = CHAPTER_ONE;
+  state.era = era;
   Object.assign(state.player, { x, y: 0, z, yaw: -yaw * Math.PI / 180, pitch: 0, stance: 'stand', flying: false });
   for (const key of [
     'shift.allowed', 'shift.target', 'shift.x', 'shift.z', 'shift.r',

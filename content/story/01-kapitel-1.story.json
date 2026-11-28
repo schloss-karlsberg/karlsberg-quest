@@ -12,6 +12,7 @@
     "yaw": 204,
     "era": "today"
   },
+  "continues": true,
   "on": [
     {
       "id": "oel-a",
@@ -886,7 +887,14 @@
   "beats": [
     {
       "id": "k1_0",
-      "title_de": "Morgengrauen an der Quelle",
+      "title_de": "An der Brunnenstube",
+      "wake": {
+        "x": 1059.3,
+        "z": -833.1,
+        "yaw": 204,
+        "era": "today",
+        "text": "Du kommst an der Quelle zu dir, im Heute. Nichts ist verloren."
+      },
       "enter": [
         {
           "do": "enemy",
@@ -902,7 +910,7 @@
         },
         {
           "do": "look",
-          "time": "dawn"
+          "time": "day"
         },
         {
           "do": "look",
@@ -929,6 +937,8 @@
           "op": "spawn",
           "npc": "diener",
           "room": "B10.1.s-pfeilersaal",
+          "x": 1241.9,
+          "z": -967.1,
           "era": "1789",
           "chapter": "k1",
           "yaw": 180
@@ -943,8 +953,9 @@
             "npc.owns.clue.k1.gagern": true,
             "npc.owns.clue.k1.insel": true,
             "npc.owns.clue.k1.amphitheater": true,
-            "quelle.guide": true,
-            "quelle.call": true
+            "quelle.guide": null,
+            "quelle.call": null,
+            "k1.vorspiel": true
           }
         },
         {
@@ -981,76 +992,34 @@
         {
           "do": "anchor",
           "to": null
-        },
-        {
-          "do": "teleport",
-          "x": 1059.3,
-          "z": -833.1,
-          "yaw": 204,
-          "onResume": true
-        },
-        {
-          "do": "quest",
-          "op": "offer",
-          "id": "q.k1.ankunft",
-          "onResume": true
-        },
-        {
-          "do": "objective",
-          "id": "k1.quelle",
-          "text": "An der Quelle: E – das Wasser berühren",
-          "x": 1059.3,
-          "z": -833.1,
-          "delay": 0.5
-        },
-        {
-          "do": "sound",
-          "sound": "radio",
-          "caption": "[Das Funkgerät knackt]",
-          "delay": 2.5
-        },
-        {
-          "do": "say",
-          "id": "marlene.k1.morgen.quelle",
-          "speaker": "marlene",
-          "delay": 0.3,
-          "text": "Morgen, {Name}! Du bist ja schon weg. Die Brötchen liegen auf der Stufe. Ich ess deins, wenn du nicht bald zurück bist."
-        },
-        {
-          "do": "say",
-          "id": "laub.k1.morgen.quelle",
-          "speaker": "laub",
-          "delay": 1,
-          "until": {
-            "event": "quelle:touch"
-          },
-          "text": "Sie sind vor Sonnenaufgang los. Ich habe Sie nicht aufgehalten. Der Tropfen von gestern ist über Nacht in der Bussole eingetrocknet, die Nadel zeigt aufs Wasser, nicht auf den Ehrenhof. Ein zweites Mal also. Sie wissen, wie es geht."
         }
       ],
       "complete": {
-        "event": "quelle:touch"
+        "era": "1789"
       },
-      "exit": [
+      "on": [
         {
-          "do": "flag",
-          "set": {
-            "quelle.call": null,
-            "quelle.guide": null,
-            "k1.vorspiel": true
-          }
-        },
-        {
-          "do": "objective",
-          "text": null
-        },
-        {
-          "do": "shift",
-          "to": "1789",
-          "reason": "quelle"
-        },
-        {
-          "do": "look",
-          "time": "day"
+          "id": "k1_0.heute",
+          "when": {
+            "era": "today"
+          },
+          "repeat": true,
+          "do": [
+            {
+              "do": "anchor",
+              "to": "1789",
+              "x": 1058.5,
+              "z": -831,
+              "r": 10
+            },
+            {
+              "do": "objective",
+              "id": "k1.zurueck-q",
+              "text": "Zurück in den Sommer 1789: Q an der Quelle",
+              "x": 1059.3,
+              "z": -833.1
+            }
+          ]
         }
       ]
     },
@@ -1187,6 +1156,13 @@
           "speaker": "laub",
           "delay": 4.5,
           "text": "Sommer 1789. Kies, Hunde, irgendwo eine Geige. Und mittendrin Sie. In Orange."
+        },
+        {
+          "do": "quest",
+          "op": "offer",
+          "id": "q.k1.ankunft",
+          "delay": 0.6,
+          "onResume": true
         },
         {
           "do": "say",
@@ -1644,13 +1620,6 @@
           "data": {
             "open": true
           }
-        },
-        {
-          "do": "quest",
-          "op": "progress",
-          "id": "q.k1.ankunft",
-          "objective": "quelle",
-          "onResume": true
         },
         {
           "do": "say",

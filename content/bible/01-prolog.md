@@ -4,8 +4,9 @@ The opening follows an ordinary visitor on a November afternoon. Gerold Imhoff (
 name) leads the group from the Wanderparkplatz by the Karlsberger Hof to the Felsenpfad, the
 Karlsbergweiher and the Karlsbergquelle. Seven people resemble figures the player will meet in the
 past. The group goes ahead to the plateau while the visitor pauses at the spring. There the visitor
-finds Laub’s brass Bussole and touches the water. The story returns to the same afternoon and
-rejoins the group at the [party](06-enden.md#8-das-fest).
+finds Laub’s brass Bussole and touches the water. That touch is the journey: the visitor stays in
+1789 and „Der Hof“ begins there. The story returns to the same afternoon at the end and rejoins the
+group at the [party](06-enden.md#8-das-fest).
 
 [The story file](../story/00-tour.story.json) defines the shipped beats and dialogue.
 [The guide script](../../docs/design/tour/sources.md) records sources and future narration.
@@ -26,10 +27,11 @@ The chapter ID is `tour`, the runtime eras are `today` and `1789`, and the next 
 | `t13` Station 3 | Marlene erscheint am Ufer und leiht den Eschenstab (`item.stab.esche`, `marlene.t.messstab`). Der Fund erscheint im HUD. Am Weiher bleiben Baujahr und Zweck offen. |
 | `t14–t15` Station 4 | Gerold spricht an der Quelle über den Karlsbergbach und das Wassertretbecken in der Nähe. Fassung und Schlossversorgung bleiben offen. Die Gruppe geht über `p-aufstieg` zum Plateau. |
 | `t16–t17` Pause und Bussole | Am Trog findet der Besucher die Bussole (`item.bussole`, `story.compass`, `story.laub`). Laub stellt sich vor und bittet darum, die Hand ins Wasser zu halten. „Wasser berühren“ löst `quelle:touch` aus und wechselt nach 1789. |
-| `t18` Sommer 1789 | Laub erklärt das Jahr und verweist auf das Blatt im Deckel (`laub.t.seite`). Überblendung und Übergabe an „Der Hof“. |
+| `t18` Sommer 1789 | Ankunft: der Zeitwechsel, dann „Wo sind die alle hin?“, Laub erklärt das Jahr und verweist auf das Blatt im Deckel (`laub.t.seite`). Der Besucher kann sich bewegen. Keine Abblende, keine Rückkehr: „Der Hof“ beginnt an Ort und Stelle. |
 
-The tour has combat disabled. The closing scene in 1789 is a glimpse of the past. K1 starts back at the
-spring in the present and the route past Liese and the Orangerie follows the next spring touch.
+The tour has combat disabled. The closing scene in 1789 is the arrival, not a glimpse: the visitor
+stays, and K1 goes on where they stand with the route past Liese and the Orangerie (TASK-089; until
+2026-11-28 the scene faded back to the present and K1 asked for a second touch the next morning).
 The spring is still the wake point, the home target for a held Q and the rest-stop overlay.
 The overlay placement remains part of TASK-007.
 
@@ -49,7 +51,7 @@ See the [guide sources](../../docs/design/tour/sources.md) for historical claims
 | Wind | 676,1 / −635,7 | Hang nach dem Felsenpfad |
 | Rehhalt und Tiere | 727,4 / −751,5 → 698 / −773 | Die Tiere stehen unterhalb des Wegs. |
 | Damm und Weiher | 829,5 / −838,7 → 897,2 / −845,3 | Spielerposition nach der zweiten Abkürzung und Station 3 |
-| Trog | 1059,3 / −833,1, Blick 50° | Station 4, erste Zeitreise, K1-Checkpoint und Heimkehr |
+| Trog | 1059,3 / −833,1, Blick 50° | Station 4, die Zeitreise, Ankunft 1789, K1-Checkpoint (heute) und Heimkehr |
 | Plateau | 1216 / −1114 | Ehrenhof-Lichtung und Abschlussfest |
 
 ## 3. Foto und Doppelgänger
@@ -101,8 +103,11 @@ planning estimates for the optional-quest version.
 ## 6. Alte Spielstände
 
 [The migration](../../src/core/legacy-prologue.ts) resumes any saved `prolog` beat in `k1/k1_0`
-at the spring in `today` and marks the tour complete. It preserves earned XP, quest history and
+at the spring in `1789` and marks the tour complete. It preserves earned XP, quest history and
 deeds, pays earned pending quest rewards once, clears retired objectives, spawns and pickups, and
 fills in missing handover skills and items. The tour’s 549 EP and item counts are minimums.
 Older slots on `tour/t13` through `t18` get the staff if their inventory lacks it.
+A slot on `tour/t18` finishes the shift on Continue. A slot on `k1/k1_0` that waited in the present
+for the old second touch loads in 1789 at the spring (`migrateFirstJump`); should such a player
+stand in the present anyway, Q at the spring leads back. No save needs a touch that is not offered.
 The original „Vermessung“ design and content remain available in the release history.

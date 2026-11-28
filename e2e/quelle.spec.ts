@@ -2,12 +2,14 @@ import { expect, test } from '@playwright/test';
 import { ciScale } from './helpers/ci';
 import { trackErrors } from './helpers/common';
 import { boot } from './helpers/k1';
-import { QUELLE_STAND, flag, holdHome, qn, qs, story } from './helpers/prolog';
+import { QUELLE_STAND, flag, holdHome, story } from './helpers/prolog';
 import { PIECES, QUELLE, REACH, toLocal, toWorld, touchLocal } from '../src/systems/quelle/layout';
+import { HOME } from '../src/systems/story/hub/home';
 
 /**
- * At the K1 opening, E at the trough triggers the touch scene on game time. After the shift
- * to 1789 the player can move again and hold Q to return to the spring.
+ * At the tour's break (t17), E at the trough triggers the touch scene on game time. It is the one
+ * touch of the game: after the shift to 1789 the player can move again, the tour hands over to
+ * „Der Hof“ right there, and holding Q returns to the spring, where the water asks for nothing more.
  *
  * The fx transition runs on rendered frames (real time), so the test pins its clock with
  * `kq.fx.shiftAt` to look at the moments in between. Screenshot (for the record, no comparison):
@@ -15,7 +17,7 @@ import { PIECES, QUELLE, REACH, toLocal, toWorld, touchLocal } from '../src/syst
  */
 test.describe.configure({ timeout: ciScale(600_000) }); // software WebGL, a whole new game
 
-test('Karlsbergquelle: E at the trough, the still moment, the shift to 1789, Q home', async ({ page }, info) => {
+test('Karlsbergquelle: E at the trough, the still moment, the one shift to 1789, Q home', async ({ page }, info) => {
   const errors = trackErrors(page);
   await boot(page);
   await page.evaluate(() => {
@@ -26,17 +28,22 @@ test('Karlsbergquelle: E at the trough, the still moment, the shift to 1789, Q h
       k.ctx.events.on(n, (p: unknown) => log.push(`${n}${n.startsWith('quelle') ? `:${(p as { era: string }).era}` : ''}`));
     k.story!.flush();
     k.ctx.ui.modals.closeAll();
+    // the break at the spring: the Bussole is found, Laub leads to the water
+    k.story!.goto('tour', 't17');
     k.teleport(760, -902, 0);
     k.step(4);
   });
   const qlog = () => page.evaluate(() => (window as unknown as { __qlog: string[] }).__qlog.slice());
   const info0 = () => page.evaluate(() => window.kq!.quelle!.info());
+  for (let i = 0; i < 60 && !(await flag(page, 'quelle.call')); i++) await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
 
-  // ---- The spring calls and the first quest is active. ---------------------------------
-  expect((await story(page)).beat).toBe('k1_0');
+  // ---- The spring calls. -----------------------------------------------------------------
+  expect(await story(page)).toMatchObject({ chapter: 'tour', beat: 't17', era: 'today' });
   expect(await flag(page, 'quelle.call')).toBe(true);
   expect(await flag(page, 'quelle.guide')).toBe(true);
-  expect(await qs(page, 'q.k1.ankunft')).toBe('active');
+  await page.evaluate(() => {
+    (window as unknown as { __qlog: string[] }).__qlog.length = 0;
+  });
   // Far from the spring, nothing is built and there is no prompt.
   expect(await info0()).toMatchObject({ prompt: false, scene: null });
 
@@ -70,7 +77,6 @@ test('Karlsbergquelle: E at the trough, the still moment, the shift to 1789, Q h
   expect(front).toMatchObject({ prompt: true, built: 'today', look: 'today' });
   expect(Math.abs(front.dy)).toBeLessThan(2.5);
   await expect(page.locator('.kq-prompt')).toContainText('Wasser berühren');
-  expect(await qn(page, 'q.k1.ankunft', 'quelle')).toBe(0);
 
   // ---- E: the touch scene, on game time ---------------------------------------------------------
   const samples = await page.evaluate(() => {
@@ -99,7 +105,7 @@ test('Karlsbergquelle: E at the trough, the still moment, the shift to 1789, Q h
   expect(last.freeze).toBeGreaterThan(0.8);
   expect(last.flow).toBeLessThan(0); // the brook runs backwards
   expect(await qlog()).toEqual(['quelle:dip:today']);
-  expect((await story(page)).beat).toBe('k1_0');
+  expect((await story(page)).beat).toBe('t17');
   expect(await page.evaluate(() => window.kq!.story!.state().era)).toBe('today');
   // the still moment: for the record (the chapter title card runs out on rendered frames, which
   // `?manual` stepping barely produces: out of the picture, as in helpers/prolog.ts cna())
@@ -114,7 +120,7 @@ test('Karlsbergquelle: E at the trough, the still moment, the shift to 1789, Q h
   await page.screenshot({ path: info.outputPath('quelle-still-moment.png'), timeout: ciScale(90_000) });
   await page.evaluate(() => document.getElementById('quelle-hide')?.remove());
 
-  // ---- the touch: the story shifts (k1_0 → k1_0b); the player stays held -----------------------------
+  // ---- the touch: the story shifts (t17 → t18); the player stays held -------------------------------
   const touched = await page.evaluate(() => {
     const k = window.kq!;
     for (let j = 0; j < 120 && !k.fx!.state().shift.active; j++) k.step(2);
@@ -123,12 +129,11 @@ test('Karlsbergquelle: E at the trough, the still moment, the shift to 1789, Q h
     return { shift: k.fx!.state().shift, beat: k.story!.state().beat, era: k.story!.state().era, frozen: k.ctx.player.frozen, scene: k.quelle!.info().scene };
   });
   expect(touched.shift).toMatchObject({ active: true, from: 'today', to: '1789' });
-  expect(touched.beat).toBe('k1_0b');
+  expect(touched.beat).toBe('t18');
   expect(touched.era).toBe('today');
   expect(touched.frozen).toBe(true);
   expect(touched.scene).toBeGreaterThanOrEqual(2.7);
   expect(await qlog()).toEqual(['quelle:dip:today', 'quelle:touch:today', 'shift:begin']);
-  expect(await qn(page, 'q.k1.ankunft', 'quelle')).toBe(1);
   expect(await flag(page, 'quelle.call')).toBeUndefined();
 
   // past the midpoint: 1789, still held (game time goes on, the shift is not done)
@@ -138,7 +143,7 @@ test('Karlsbergquelle: E at the trough, the still moment, the shift to 1789, Q h
     k.step(30);
     return { era: k.story!.state().era, beat: k.story!.state().beat, frozen: k.ctx.player.frozen, scene: k.quelle!.info().scene, active: k.fx!.state().shift.active, built: k.quelle!.info().built };
   });
-  expect(mid).toMatchObject({ era: '1789', beat: 'k1_0b', frozen: true, active: true, built: '1789' });
+  expect(mid).toMatchObject({ era: '1789', beat: 't18', frozen: true, active: true, built: '1789' });
   expect(mid.scene).not.toBeNull();
   // the shift is done: let go
   const done = await page.evaluate(() => {
@@ -149,11 +154,9 @@ test('Karlsbergquelle: E at the trough, the still moment, the shift to 1789, Q h
     const i = k.quelle!.info();
     return { era: k.story!.state().era, beat: k.story!.state().beat, frozen: k.ctx.player.frozen, look: k.ctx.player.lookLocked, scene: i.scene, water: i.water?.look ?? null };
   });
-  expect(done).toMatchObject({ era: '1789', beat: 'k1_0b', frozen: false, look: false, scene: null, water: 'baroque' });
+  expect(done).toMatchObject({ era: '1789', beat: 't18', frozen: false, look: false, scene: null, water: 'baroque' });
   expect(await qlog()).toEqual(['quelle:dip:today', 'quelle:touch:today', 'shift:begin', 'era:change', 'shift:midpoint', 'shift:done']);
-  await expect(page.getByTestId('objective')).toContainText('Bleiche');
-  await expect(page.getByTestId('quest-tracker')).not.toContainText('das Wasser berühren');
-  // free to move in 1789 (a step back from the basin)
+  // free to move in 1789 as soon as the shift is done, while Laub still talks (a step back from the basin)
   const moved = await page.evaluate(() => {
     const k = window.kq!;
     const p0 = k.ctx.player.position.clone();
@@ -161,13 +164,23 @@ test('Karlsbergquelle: E at the trough, the still moment, the shift to 1789, Q h
     return Math.hypot(k.ctx.player.position.x - p0.x, k.ctx.player.position.z - p0.z);
   });
   expect(moved).toBeGreaterThan(0.3);
+  // the arrival lines, then „Der Hof“ begins where the player stands: no way back, no second touch
+  for (let i = 0; i < 80 && (await story(page)).beat !== 'k1_0b'; i++) await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
+  expect(await story(page)).toMatchObject({ chapter: 'k1', beat: 'k1_0b', era: '1789' });
+  expect(await qlog()).toEqual(['quelle:dip:today', 'quelle:touch:today', 'shift:begin', 'era:change', 'shift:midpoint', 'shift:done']);
+  await page.evaluate(() => {
+    window.kq!.story!.flush();
+    window.kq!.step(30);
+  });
+  await expect(page.getByTestId('objective')).toContainText('Bleiche');
+  await expect(page.getByTestId('quest-tracker')).not.toContainText('das Wasser berühren');
+  expect(await info0()).toMatchObject({ built: '1789', prompt: false, scene: null });
 
   // Hold Q to return home. The K1 objective points back to the spring's anchor.
   await holdHome(page);
   expect(await story(page)).toMatchObject({ era: 'today', beat: 'k1_0b', objective: { id: 'k1.zurueck-q' } });
   const home = await page.evaluate(() => ({ x: window.kq!.ctx.player.position.x, z: window.kq!.ctx.player.position.z }));
-  expect(Math.hypot(home.x - 1059.3, home.z + 833.1)).toBeLessThan(1);
-  expect(await qn(page, 'q.k1.ankunft', 'quelle')).toBe(1);
+  expect(Math.hypot(home.x - HOME.spawn.x, home.z - HOME.spawn.z)).toBeLessThan(1);
   expect(await page.evaluate(() => window.kq!.quelle!.info())).toMatchObject({ built: 'today', prompt: false, scene: null });
   expect((await story(page)).inHub).toBe(true);
   expect(errors).toEqual([]);

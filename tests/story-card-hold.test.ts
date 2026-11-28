@@ -107,12 +107,12 @@ describe('the opening beat timeline waits for the chapter card', () => {
     expect(h.holding()).toBe(true);
   });
 
-  it('kapitel 1: the radio crackle and Marlene stay 0.3 s apart (both wait for the card)', () => {
+  it('kapitel 1: the arrival beat is silent setup, nothing of it waits for the card', () => {
+    // „Der Hof“ opens in 1789 where the tour's touch left the player: its first beat only sets the
+    // chapter up and hands on; Laub's arrival lines belong to k1_0b and are held by the presenter
     const k1 = opening(story('01-kapitel-1.story.json'));
-    const crackle = k1.find((x) => x.a.do === 'sound')!;
-    const marlene = k1.find((x) => x.a.do === 'say')!;
-    expect(crackle.waits && marlene.waits).toBe(true);
-    expect(marlene.at - crackle.at).toBeCloseTo(0.3, 5);
+    expect(k1.length).toBeGreaterThan(5);
+    expect(k1.filter((x) => x.waits)).toEqual([]);
   });
 });
 

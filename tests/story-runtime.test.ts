@@ -7,14 +7,15 @@ import type { GameContext } from '../src/core/context';
 import type { Era } from '../src/core/era';
 import { EventBus } from '../src/core/events';
 import { MemoryStorage, SAVE_KEY, SaveManager } from '../src/core/save';
-import { createInitialState, GameStateStore, type GameState } from '../src/core/state';
+import { createInitialState, deserializeState, GameStateStore, type GameState } from '../src/core/state';
 import type { QuestProgress } from '../src/rpg/types';
 import { createProgressionSlice } from '../src/systems/progression/logic';
 import quests from '../src/systems/quests';
 import { createQuestSlice } from '../src/systems/quests/logic';
 import story from '../src/systems/story';
 import { ENDING_SLOT } from '../src/systems/story/title/actions';
-import { createStorySlice } from '../src/systems/story/engine';
+import { createStorySlice, staysAtHandover } from '../src/systems/story/engine';
+import { HOME } from '../src/systems/story/hub/home';
 import { pauseHooks } from '../src/ui/menus';
 import { pausePages } from '../src/ui/pause-pages';
 
@@ -242,5 +243,99 @@ describe('optional quest windows in the story runtime', () => {
     expect(game.save.load('stale')).toBe(true);
     expect(status()).toBe('failed');
     expect(game.state.state.systems.quests?.tracked).not.toContain(pacht);
+  });
+});
+
+describe('the first time travel in the story runtime (TASK-089)', () => {
+  type Game = Awaited<ReturnType<typeof boot>>;
+  const beat = (game: Game) => `${game.state.state.systems.story?.chapter}/${game.state.state.systems.story?.beat}`;
+  const placed = (game: Game) => game.state.slice('npc', () => ({ placed: {}, said: [] })).placed as Record<string, { x: number; z: number; y?: number; room?: string }>;
+
+  it('touches the water once, keeps the player where they walked and opens „Der Hof“ in 1789', async () => {
+    const initial = createInitialState();
+    initial.systems.story = { ...createStorySlice(), active: true, chapter: 'tour', beat: 't17', unlocked: ['tour'] };
+    initial.flags = { 'quelle.call': true, 'quelle.guide': true, 'story.laub': true, 'story.compass': true, 'combat.disabled': true };
+    const game = await boot(initial);
+    quests.init(game.ctx);
+    Object.assign(game.player.position, { x: HOME.spawn.x, z: HOME.spawn.z });
+    const eras: string[] = [];
+    const teleports: number[][] = [];
+    game.events.on('era:change', ({ to }) => eras.push(to));
+    const teleport = game.player.teleport.bind(game.player);
+    game.player.teleport = (x: number, z: number) => {
+      teleports.push([x, z]);
+      teleport(x, z);
+    };
+    game.events.emit('game:start', { resumed: true });
+    game.tick();
+    expect(beat(game)).toBe('tour/t17');
+    game.events.emit('quelle:touch', { era: 'today' });
+    game.tick();
+    expect(beat(game)).toBe('tour/t18');
+    expect(game.era.current).toBe('1789');
+    // free to walk on during Laub's lines: 80 m down the brook
+    Object.assign(game.player.position, { x: HOME.spawn.x - 70, z: HOME.spawn.z - 40 });
+    for (let i = 0; i < 160 && game.state.state.systems.story?.chapter === 'tour'; i++) game.tick(0.5);
+    expect(game.state.state.systems.story).toMatchObject({ chapter: 'k1', completed: ['tour'] });
+    for (let i = 0; i < 4; i++) game.tick(0.5);
+    expect(beat(game)).toBe('k1/k1_0b');
+    // one journey: never back to the present, never moved back to the spring
+    expect(eras).toEqual(['1789']);
+    expect(teleports).toEqual([]);
+    expect(game.player.position).toMatchObject({ x: HOME.spawn.x - 70, z: HOME.spawn.z - 40 });
+    expect(game.state.state.flags['quelle.call']).toBeUndefined();
+    expect(game.state.state.flags['combat.disabled']).toBeUndefined();
+    // the people of the chapter stand where they belong, nobody on the arriving player
+    const npcs = placed(game);
+    expect(Object.keys(npcs).sort()).toEqual(['diener', 'gaertner', 'gardist', 'gardist-tor', 'hanne', 'hofgaertner', 'jost', 'lakai', 'liese', 'soll']);
+    for (const [id, p] of Object.entries(npcs)) expect(Math.hypot(p.x - HOME.spawn.x, p.z - HOME.spawn.z), id).toBeGreaterThan(40);
+    // the servant waits in the Pfeilersaal; without a storey hint the npc system keeps him in his room
+    expect(npcs.diener).toMatchObject({ room: 'B10.1.s-pfeilersaal', x: 1241.9, z: -967.1 });
+    expect(npcs.diener!.y).toBeUndefined();
+    // Laub's arrival lines, then both opening quests and the coat as the first objective
+    for (let i = 0; i < 120; i++) game.tick(0.5);
+    const book = game.state.state.systems.quests!.quests;
+    expect(book['q.k1.kleider']?.state).toBe('active');
+    expect(book['q.k1.ankunft']?.state).toBe('active');
+    expect(game.state.state.systems.story?.objective).toMatchObject({ id: 'k1.rock' });
+    expect(game.state.state.systems.story?.said).toEqual(expect.arrayContaining(['player.q.wo', 'laub.t.1789', 'laub.t.seite', 'laub.k1.brunnenstube', 'laub.k1.fremde']));
+  });
+
+  it('continues a save that waited for the second touch: 1789 at the spring, the prelude, no touch', async () => {
+    const old = createInitialState();
+    old.era = 'today';
+    old.flags = { 'quelle.call': true, 'quelle.guide': true, 'story.laub': true, 'story.compass': true };
+    old.systems.story = {
+      ...createStorySlice(), active: true, chapter: 'k1', beat: 'k1_0', completed: ['tour'], unlocked: ['tour', 'k1'], look: 'dawn',
+      objective: { id: 'k1.quelle', text: 'An der Quelle: E – das Wasser berühren', x: HOME.spawn.x, z: HOME.spawn.z },
+    };
+    old.systems.quests = { ...createQuestSlice(), tracked: ['q.k1.ankunft'], quests: { 'q.k1.ankunft': { state: 'active', counts: {}, t: 0 } } };
+    const game = await boot(deserializeState(JSON.stringify(old)));
+    quests.init(game.ctx);
+    Object.assign(game.player.position, { x: game.state.state.player.x, z: game.state.state.player.z });
+    expect(game.era.current).toBe('1789');
+    expect(game.player.position).toMatchObject({ x: HOME.spawn.x, z: HOME.spawn.z });
+    game.events.emit('game:start', { resumed: true });
+    game.tick();
+    game.tick();
+    expect(beat(game)).toBe('k1/k1_0b');
+    expect(game.era.current).toBe('1789');
+    expect(game.state.state.flags['quelle.call']).toBeUndefined();
+    expect(game.state.state.systems.story?.look).toBe('day');
+    for (let i = 0; i < 120; i++) game.tick(0.5);
+    expect(game.state.state.systems.story?.objective).toMatchObject({ id: 'k1.rock' });
+    expect(game.state.state.systems.quests!.quests['q.k1.kleider']?.state).toBe('active');
+    expect(game.state.state.systems.quests!.quests['q.k1.ankunft']?.state).toBe('active');
+  });
+
+  it('decides the hand-over place: only a continuing chapter, only from its predecessor', () => {
+    expect(staysAtHandover({ continues: true }, true)).toBe(true);
+    // a replay or debug jump starts at the checkpoint, and so does every other chapter
+    expect(staysAtHandover({ continues: true }, false)).toBe(false);
+    expect(staysAtHandover({}, true)).toBe(false);
+    expect(staysAtHandover({ continues: false }, true)).toBe(false);
+    // only „Der Hof“ continues: chapters 2 to 4 and the endings begin at the Quelle in the present
+    const files = import.meta.glob<{ chapter: string; continues?: boolean }>('../content/story/*.story.json', { eager: true, import: 'default' });
+    expect(Object.values(files).filter((f) => f.continues).map((f) => f.chapter)).toEqual(['k1']);
   });
 });

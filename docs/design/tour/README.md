@@ -32,7 +32,7 @@ define shipped content.
 7. The deer scene is the first wow moment and the sneak tutorial: a roe doe and her fawn (November: no spots, grey winter coat, still following the doe), a good smartphone photo, may be a cinematic. Roe deer, not red deer.
 8. Smartphone photo mode in the present; good photos fill an album and unlock codex cards; no signal in the past (running joke).
 9. Marlene is a forester (Forstamt) along the route; the measuring quests become her optional side quests, during the tour and later in the present.
-10. At the Quelle the player takes a break, the group walks on; the brass compass lies in the water, it talks; the first time travel is the spring touch.
+10. At the Quelle the player takes a break, the group walks on; the brass compass lies in the water, it talks; the first time travel is the spring touch. Since 2026-11-28 that touch is the journey: the visitor stays in 1789 and the tour ends there (see "Travel once and stay" below).
 11. The whole time journey happens during that break. The Quelle is the home base and wake spot (caught respawn, Q-hold return and arrival effects). Pause provides saving and the feature pages.
 12. Season: mid-November, golden leaves, slightly dusky light.
 13. The three endings stay; after each comes a credits party on today's palace plateau at dusk with the guide and the group (cake, mulled wine, fairy lights), the historical characters as their modern doubles; per ending: museum → the guide shows the chronicle, burn → a fire bowl, keep → two dogs at your feet.
@@ -43,6 +43,28 @@ define shipped content.
 The owner confirmed on 2026-11-25 that the Bauwagen belongs at its old spot by the track as a
 hidden present-day easter egg. The guided route, map and campaign omit the trailer. Pause provides
 saving and access to feature pages.
+
+## Travel once and stay (2026-11-28, TASK-089)
+
+Owner feedback: "it does not make sense that we travel in time, then just 'look' and travel back.
+i just want to travel once and stay there. if i travel, tutorials (chapter 1 finishes) and chapter 2
+begins (outside the castle)." The scope below was set by the coordinator while the owner's answers
+are pending; PRD D-012.
+
+- **One touch.** `t17` ends on the touch, `t18` is the arrival: the shift, `player.q.wo`,
+  `laub.t.1789` (without „Für heute genügt ein Blick.“) and `laub.t.seite`, with the player free to
+  move as soon as the shift is done. No fade, no return, no second touch. The hand-over grants are
+  unchanged.
+- **„Der Hof“ continues where the visitor stands** (`continues` in the story file): no teleport, no
+  era change. Its first beat `k1_0` only sets the chapter up; `k1_0b` follows at once with Laub's
+  „Sommer 1789. Kies, Hunde …“ and the coat at the Bleiche as the first objective. Chosen from
+  Pause → Kapitel the chapter starts at the spring in the present, and Q there leads into the summer.
+- **Arrival spot:** the spring itself, the invented Brunnenstube (cx.42), about 310 m from the
+  palace gate. Positions come from the shared home constant (`src/systems/story/hub/home.ts`).
+- **Cut:** the dawn opening, Marlene's radio line and Laub's „Ein zweites Mal also“, the arrival
+  quest's „das Wasser berühren“ step. The next-morning framing also broke the one-afternoon rule.
+- **How far "stay" reaches:** the first jump is one-way. Not built: a chapter or a game without
+  the present (wake in the past, no Q home); see TASK-089, follow-ups.
 
 ## Decisions (owner, 2026-11-20)
 

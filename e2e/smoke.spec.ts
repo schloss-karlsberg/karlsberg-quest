@@ -133,9 +133,14 @@ test('the tour starts with audio and Continue restores the read-only autosave', 
   });
   await resume.click();
   await expect(page.getByTestId('title')).toBeHidden({ timeout: 30_000 });
-  // The v0.8.0 slot migrates from the retired prologue to K1 at the spring.
-  expect(await page.evaluate(() => window.kq!.story!.state())).toMatchObject({ chapter: 'k1', beat: 'k1_0' });
-  expect(await k1Entries.jsonValue()).toEqual([{ beat: 'k1_0', onTitle: false }]);
+  // The v0.8.0 slot migrates from the retired prologue to K1 at the spring, in 1789: the arrival
+  // beat resumes off the title and hands on to the prelude.
+  const resumed = await page.evaluate(() => window.kq!.story!.state());
+  expect(resumed).toMatchObject({ chapter: 'k1', era: '1789' });
+  expect(['k1_0', 'k1_0b']).toContain(resumed.beat);
+  const entries = await k1Entries.jsonValue();
+  expect(entries[0]).toEqual({ beat: 'k1_0', onTitle: false });
+  expect(entries.filter((entry) => entry.onTitle)).toEqual([]);
   expect(await page.evaluate(() => localStorage.getItem('kq.save.v1.auto'))).toBe(stored);
   expect(errors).toEqual([]);
 });
@@ -183,7 +188,9 @@ test('the title asks before replacing an autosave that appears during name entry
   expect(await page.evaluate(() => localStorage.getItem('kq.save.v1.auto'))).toBe(stored);
   await resume.click();
   await expect(title).toBeHidden();
-  expect(await page.evaluate(() => window.kq!.story!.state())).toMatchObject({ chapter: 'k1', beat: 'k1_0', name: 'Mara' });
+  const continued = await page.evaluate(() => window.kq!.story!.state());
+  expect(continued).toMatchObject({ chapter: 'k1', era: '1789', name: 'Mara' });
+  expect(['k1_0', 'k1_0b']).toContain(continued.beat);
 });
 
 for (const view of [

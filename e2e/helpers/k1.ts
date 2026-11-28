@@ -3,13 +3,15 @@ import { ciScale } from './ci';
 import { type PlayOptions, SCREENS } from './common';
 import { waitForHooks } from './pause';
 import { cna, fight, flag, holdHome, installQuestPlay, pickUp, qn, qs, talkQuest, until, untilQuest } from './prolog';
+import { QUELLE } from '../../src/systems/quelle/layout';
+import { HOME } from '../../src/systems/story/hub/home';
 
 /**
  * Chapter 1 "Der Hof" as an action-RPG quest chain (docs/ACTION-RPG.md §11.1), played through
  * headless (`?manual`, driven through window.kq):
  *
- *   Teil A (1789, day → dusk)  dawn at the spring → "Zu Fuß, außer einem" (the Karlsbergquelle: E
- *   at the trough, the shift; in 1789 a jump to the Ehrenhof gate, the guard's echo) → "Der
+ *   Teil A (1789, day → dusk)  the arrival at the spring in 1789 (the tour's touch brought the
+ *   player; no second touch) → "Zu Fuß, außer einem" (the disguise, a jump to the Ehrenhof gate, the guard's echo) → "Der
  *   Kanzlist zählt" (walk into the Registratur, Soll gives the quest, three papers,
  *   six Mahnbriefe in the Küchenhof, the turn-in with its history and sources) → "Matthes' Lohn"
  *   (Hanne, the mason's mark, Soll asked, the Schuldbuch at dusk on the Bauplatz, the wage slip,
@@ -299,12 +301,12 @@ export async function giverShot(page: Page, npc: string, from: [number, number],
   await cna(page, name);
 }
 
-/** In front of the Karlsbergquelle's trough, facing the water (the touch reaches 2.1 m from it; prologue spot). */
-export const SPRING = { x: 1059.3, z: -833.1, yaw: 204 } as const;
+/** In front of the Karlsbergquelle's trough, facing the water (the touch reaches 2.1 m from it): the shared home spot. */
+export const SPRING = HOME.spawn;
 /** The chapter's checkpoint and the k1_0b wake (story 01-kapitel-1): the same spot, within reach of the water. */
 export const K1_START = SPRING;
 /** The water in the trough (what the player faces for the E prompt). */
-export const SPRING_WATER = { x: 1058.5, z: -831 } as const;
+export const SPRING_WATER = { x: QUELLE.x, z: QUELLE.z } as const;
 /** The walk up in 1789: the trail out of the hollow, west of the Orangerie, in through the Ehrenhof gate. */
 export const SPRING_TO_COURT: [number, number][] = [
   [1100, -870],
@@ -321,61 +323,62 @@ export const distTo = (page: Page, x: number, z: number) =>
   page.evaluate(([x, z]) => Math.hypot(window.kq!.ctx.player.position.x - x, window.kq!.ctx.player.position.z - z), [x, z] as const);
 
 /**
- * The touch at the Karlsbergquelle (k1_0). Steps to the trough (unless `stay`: k1 opens within reach), faces the water, expects the
- * spring's E prompt, presses E, runs the ~2.7 s touch scene on game time, jumps past the fx shift
- * transition and expects 1789 with the quest objective counted (`quest`/`objective`, default
- * q.k1.ankunft/quelle).
+ * The arrival (story k1_0 → k1_0b). After the tour „Der Hof“ goes on in 1789 where the touch left
+ * the player. Chosen directly (a chapter replay, the specs' boot) it starts at the spring in the
+ * present, where Q leads back into the summer. Either way there is no dawn and no second touch:
+ * the spring offers no E, the prelude runs (no lantern), Laub's arrival lines play and both
+ * opening quests are on.
  */
-export async function touchSpring(page: Page, o: { stay?: boolean; quest?: string; objective?: string; screenshot?: (name: string) => Promise<void> } = {}): Promise<void> {
-  await page.evaluate(
-    ([spot, water, stay]) => {
-      const k = window.kq!;
-      if (!stay) k.teleport(spot.x, spot.z, spot.yaw, 0);
-      const p = k.ctx.player.position;
-      k.ctx.player.yaw = Math.atan2(-(water.x - p.x), -(water.z - p.z));
-      k.ctx.player.pitch = 0;
-      k.step(4);
-    },
-    [SPRING, SPRING_WATER, !!o.stay] as const,
-  );
-  expect(await page.evaluate(() => window.kq!.quelle!.info().prompt), 'E "Wasser berühren" at the trough').toBe(true);
-  await o.screenshot?.('quelle-heute');
-  await page.evaluate(() => window.kq!.press('KeyE', 1));
-  // the touch scene runs ~2.7 s of game time (fixed updates without renders), then the story shifts
-  await page.evaluate(() => {
-    // fixed updates without a render each (as K1Helpers.upd; the loop's callback is private)
-    const loop = window.kq!.ctx.loop as unknown as { cb: { update(dt: number): void }; dt: number; tick: number };
-    for (let i = 0; i < 200; i++) {
-      loop.cb.update(loop.dt);
-      loop.tick++;
-    }
-    window.kq!.step(1);
-    // the fx transition runs on rendered frames: jump past its end
-    window.kq!.fx!.shiftAt(3.6);
-    for (let i = 0; i < 60; i += 10) window.kq!.step(10);
-  });
-  expect(await page.evaluate(() => window.kq!.ctx.era.current)).toBe('1789');
-  const n = await page.evaluate(
-    ([id, ob]) => (window.kq!.quests!.state().quests[id] ?? { counts: {} as Record<string, number> }).counts[ob] ?? 0,
-    [o.quest ?? 'q.k1.ankunft', o.objective ?? 'quelle'] as const,
-  );
-  expect(n, 'the touch counts the quest objective').toBe(1);
+export async function arriveAtSpring(page: Page, o: { screenshot?: (name: string) => Promise<void> } = {}): Promise<void> {
+  if ((await story(page)).era === 'today') {
+    // the chapter card and its fade; the arrival beat waits for the summer
+    await upd(page, 420);
+    const t = await story(page);
+    expect(t).toMatchObject({ chapter: 'k1', beat: 'k1_0', era: 'today', objective: { id: 'k1.zurueck-q' } });
+    expect(await distTo(page, K1_START.x, K1_START.z), 'k1 starts at the spring').toBeLessThan(30);
+    expect((await flags(page))['quelle.call'], 'no touch is asked for').toBeUndefined();
+    await page.evaluate(
+      ([spot]) => {
+        window.kq!.teleport(spot.x, spot.z, spot.yaw, 0);
+        window.kq!.step(4);
+      },
+      [SPRING] as const,
+    );
+    expect(await page.evaluate(() => window.kq!.quelle!.info().prompt), 'no E at the water').toBe(false);
+    await o.screenshot?.('quelle-heute');
+    await shiftToPast(page);
+  }
+  // the first tick of the prelude
+  for (let i = 0; i < 12 && (await beat(page)) !== 'k1_0b'; i++) await upd(page, 60);
+  const s = await story(page);
+  expect(s).toMatchObject({ chapter: 'k1', era: '1789', beat: 'k1_0b' });
+  expect(await distTo(page, K1_START.x, K1_START.z), 'k1 starts at the spring').toBeLessThan(30);
+  const f = await flags(page);
+  expect(f['quelle.call'], 'no second touch is asked for').toBeUndefined();
+  expect(f['k1.vorspiel']).toBe(true);
+  await page.evaluate(() => window.kq!.step(4));
+  expect(await page.evaluate(() => window.kq!.quelle!.info().prompt), 'no E at the water in 1789').toBe(false);
+  // the lantern waits for the court
+  expect(!!s.meters.oil, 'no lantern in the prelude').toBe(false);
+  // Laub's arrival lines, with the arrival quest offered between them
+  await flush(page);
+  await upd(page, 30);
+  expect(await qs(page, 'q.k1.kleider')).toBe('active');
+  expect(await qs(page, 'q.k1.ankunft')).toBe('active');
+  expect((await story(page)).objective?.id).toBe('k1.rock');
+  await o.screenshot?.('quelle-1789');
 }
 
 /**
- * The chapter's opening the long way (story k1_0 → k1_0b → k1_1): the touch at the spring, then the
- * walk up to the court on foot with the real controller. Returns the nearest enemy seen on the way (m).
+ * The chapter's opening the long way (story k1_0 → k1_0b → k1_1): the arrival at the spring in
+ * 1789, then the walk up to the court on foot with the real controller. Returns the nearest enemy
+ * seen on the way (m).
  */
 export async function openAtSpring(page: Page, o: { shots?: boolean } = {}): Promise<number> {
   await ensureHelpers(page);
-  expect(await page.evaluate(() => window.kq!.state().flags['quelle.call'])).toBe(true);
-  await touchSpring(page, { screenshot: o.shots === false ? undefined : (n) => shot(page, `00-${n}`) });
+  await arriveAtSpring(page, { screenshot: o.shots === false ? undefined : (n) => shot(page, `00-${n}`) });
   let s = await story(page);
-  expect(s).toMatchObject({ era: '1789', beat: 'k1_0b' });
-  // the lantern waits for the court (the fresh drop carries the walk)
-  expect(!!s.meters.oil).toBe(false);
   await upd(page, 60);
-  if (o.shots !== false) await shot(page, '00-quelle-1789');
   // the walk up passes the Bleiche and the Orangerie: the disguise (coat, letter, the Musterung)
   let near = 1e9;
   const track = async () => {
@@ -563,27 +566,24 @@ export async function playK1(page: Page, o: PlayOptions = {}): Promise<void> {
   await ensureHelpers(page);
   await installQuestPlay(page);
   let s = await story(page);
-  expect(s).toMatchObject({ chapter: 'k1', beat: 'k1_0', era: 'today' });
-  // the chapter opens at the Karlsbergquelle at dawn (its checkpoint), not in the station bed
+  // after the tour the chapter goes on in 1789 where the touch left the player; booted directly it
+  // starts at the Karlsbergquelle in the present (its checkpoint)
+  expect(s.chapter).toBe('k1');
   expect(await distTo(page, K1_START.x, K1_START.z), 'k1 starts at the spring').toBeLessThan(30);
   await expect(page.getByTestId('story-card')).toContainText('Der Hof');
   await o.at?.('k1:start');
   await ensureHelpers(page);
   await installQuestPlay(page);
   const npcs = await page.evaluate(() => window.kq!.npc!.list().map((n) => `${n.npc}@${n.era}`));
-  expect(npcs.sort()).toEqual(['diener@1789', 'gaertner@1789', 'hanne@1789', 'jost@1789', 'soll@1789']);
+  // the chapter's people (after the tour the arrival beat has handed on: the prelude's people stand too)
+  expect(npcs).toEqual(expect.arrayContaining(['diener@1789', 'gaertner@1789', 'hanne@1789', 'jost@1789', 'soll@1789']));
   await upd(page, 400);
-  expect(await qs(page, 'q.k1.ankunft')).toBe('active');
   // the Messstab comes along from the tour (a K1 boot hands it over quietly)
   expect(await page.evaluate(() => window.kq!.progression!.state().equipped.weapon)).toBeTruthy();
 
   // ======================= Teil A: the day =======================================================
-  // ---- "Zu Fuß, außer einem": the Karlsbergquelle, the guard at the gate ---------------------------
-  // the checkpoint is within reach of the water: no step forward
-  await touchSpring(page, { stay: true, screenshot: (n) => shot(page, `00-${n}`) });
-  s = await story(page);
-  expect(s).toMatchObject({ era: '1789', beat: 'k1_0b' });
-  expect(!!s.meters.oil, 'no lantern in the prelude').toBe(false);
+  // ---- "Zu Fuß, außer einem": the Karlsbergquelle in 1789, the guard at the gate ------------------
+  await arriveAtSpring(page, { screenshot: (n) => shot(page, `00-${n}`) });
   // the walk up is e2e/chapter-k1-quelle.spec.ts's: here the disguise with short jumps between its
   // places (coat, paper, letter, the Musterung at the gitter)
   await playDisguise(page, { shots: o.shots });

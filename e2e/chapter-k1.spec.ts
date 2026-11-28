@@ -24,7 +24,9 @@ test('chapter 1 "Der Hof": the whole chapter as quests, both parts', async ({ pa
   const confirm = page.getByRole('dialog').filter({ hasText: '„Der Hof“ (neu) beginnen?' });
   await confirm.getByRole('button', { name: 'Ja', exact: true }).click();
   await upd(page, 420);
-  expect(await story(page)).toMatchObject({ chapter: 'k1', beat: 'k1_0', era: 'today' });
+  // a replay starts at the spring in the present; Q there leads back into the summer (no touch)
+  expect(await story(page)).toMatchObject({ chapter: 'k1', beat: 'k1_0', era: 'today', objective: { id: 'k1.zurueck-q' } });
+  expect(await page.evaluate(() => window.kq!.state().flags['quelle.call'])).toBeUndefined();
   expect(await page.evaluate(() => Object.keys(window.kq!.combat!.groups()))).not.toContain('k1.enge');
   expect(await page.evaluate(() => Object.keys(window.kq!.combat!.groups()))).not.toContain('k1.enge.2');
   expect(await qs(page, 'q.k1.karlslust')).toBe('done');

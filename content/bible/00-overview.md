@@ -31,8 +31,8 @@ _Alles in diesem Abschnitt ist Fiktion, soweit es nicht ausdrücklich als FAKT m
 den Karlsbergweiher zur Karlsbergquelle. Einige Leute aus der Gruppe kommen dir später bekannt vor.
 Marlene leiht dir am Weiher ihren Messstab. An der Quelle geht die Gruppe zum Plateau voraus.
 Im Trog liegt eine Messing-Bussole. Darin spricht **Geometer Quirin Laub**, seit November 1840
-„verwaltungstechnisch verschollen“. Du berührst das Wasser, und es ist 1789. Die Zeitreise beginnt
-in der Pause. Für die Gruppe vergeht derselbe Nachmittag.
+„verwaltungstechnisch verschollen“. Du berührst das Wasser, und es ist 1789. Du bleibst dort: Die
+Zeitreise beginnt in der Pause, mit dieser einen Berührung. Für die Gruppe vergeht derselbe Nachmittag.
 
 **Die Frage.** Am 28. Juli 1793 brannte der Karlsberg (FAKT). *Was hat das Feuer nicht gefressen?* Laub kennt eine Antwort, die er nicht sagt: eine **Chronik**, die nie die Chronik des Hofes war. Der Kanzlist **Gottlob Soll** begann sie 1787 als Gegenbuch zu den Hofrechnungen (Fiktion; angeregt davon, dass der Finanzpräsident Creuzer vor seiner Flucht Papiere „sicheren Händen“ übergab, FAKT nach Mannlich). Soll schrieb auf, **was der Hof schuldig blieb**: Löhne, die Kasse der Witwen und Waisen, Versprechen. Die Steinhauerwitwe **Hanne** schrieb die Namen dazu. Der Hundejunge **Jost** schrieb die Namen der Hunde hinein, weil sie sonst niemand kannte. Im Februar 1793 versteckte Soll das Buch unter dem Boden der Bildergalerie (bei der geheimen Falltür, die nach Mannlich aus der Bildergalerie in die Werkstatt des herzoglichen Büchsenmachers führte; FAKT, M1910 S. 431). Das Feuer zerriss es, die Steinkarren verstreuten die Seiten. 1840 fand Laub eine Seite in einem ausgebrochenen Mauergraben und wollte den Rest vermessen. In der Nacht holte ihn die Meute.
 
@@ -102,7 +102,7 @@ vorbei hinauf zum Schloss.
 | Fotomodus und Album | Handy im Heute, Einführung bei Ricke und Kitz (`t10`) |
 | Messstab | Marlenes Leihgabe am Weiher (`t13`) |
 | Bussole, Laub, erster Zeitwechsel | Fund am Trog und „Wasser berühren“ (`t17`) |
-| Relief 3, Kartograf 1, Ausrüstung und Stufe 3 | Übergabe nach dem ersten Blick auf 1789 (`t18`) |
+| Relief 3, Kartograf 1, Ausrüstung und Stufe 3 | Übergabe nach der Ankunft in 1789 (`t18`); „Der Hof“ beginnt dort |
 | Weitere Fähigkeiten und Kapitel | Quests und Story. Siehe [Questkatalog und Freischaltungen](../../docs/ACTION-RPG.md#11-quest-catalogue). |
 
 ---

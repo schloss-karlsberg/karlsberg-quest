@@ -117,6 +117,8 @@ export function validateStories(files: { file: string; story: StoryFile }[], ref
     if (s.next !== undefined && !chapters.has(s.next)) err(file, ch, `next: unknown chapter '${s.next}'`);
     for (const u of s.unlocks ?? []) if (!chapters.has(u)) err(file, ch, `unlocks: unknown chapter '${u}'`);
     if (s.checkpoint) checkPoint(s.checkpoint, file, ch, err);
+    if (s.continues !== undefined && typeof s.continues !== 'boolean') err(file, ch, 'continues must be true or false');
+    if (s.continues === true && !s.checkpoint) err(file, ch, 'continues: the chapter needs a checkpoint for replays and jumps');
     if (s.leave !== undefined) lines += checkActions(s.leave, file, `${ch}:leave`, err, warn, refs, chapters);
     if (s.wake !== undefined) {
       checkPoint(s.wake, file, `${ch}:wake`, err);

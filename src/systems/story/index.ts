@@ -25,7 +25,7 @@ import { VoiceClips, type VoiceClipStats } from './dialogue/voiceClips';
 import { sayLineIds } from './dialogue/voiceManifest';
 import { DialoguePresenter, holdSeconds, substituteName } from './dialogue/presenter';
 import { speakerMeta } from './dialogue/speakers';
-import { DEFAULT_VISITOR_NAME, type MeterState, StoryEngine, type StoryEnv, type StorySlice, createStorySlice, evaluate, runTeleport, runsOnResume, waitsForChapterCard } from './engine';
+import { DEFAULT_VISITOR_NAME, type MeterState, StoryEngine, type StoryEnv, type StorySlice, createStorySlice, evaluate, runTeleport, runsOnResume, staysAtHandover, waitsForChapterCard } from './engine';
 import { composeEpilogue, type Epilogue } from './endings/epilogue';
 import { endingScenes } from './endings/scenes';
 import { EndingStage } from './endings/stage';
@@ -675,7 +675,7 @@ class StoryRuntime {
     }
   }
 
-  private chapterEntered(f: StoryFile, { resume, replay }: { resume: boolean; replay?: readonly string[] }): void {
+  private chapterEntered(f: StoryFile, { resume, replay, handover }: { resume: boolean; replay?: readonly string[]; handover?: boolean }): void {
     const ctx = this.ctx;
     ctx.events.emit('story:chapter', { id: f.chapter, ...(resume ? { resume: true as const } : {}), ...(replay ? { replay } : {}) });
     if (resume) {
@@ -704,7 +704,7 @@ class StoryRuntime {
     this.choiceAction = null;
     if (ctx.state.state.flags['chronik.noLoss'] !== undefined) ctx.state.update((st) => delete st.flags['chronik.noLoss'], 'story');
     const cp = f.checkpoint;
-    if (cp) {
+    if (cp && !staysAtHandover(f, handover === true)) {
       if (cp.era && ctx.era.current !== cp.era) ctx.era.set(cp.era);
       const p = ctx.player.position;
       if (Math.hypot(p.x - cp.x, p.z - cp.z) > 30) this.teleport(cp.x, cp.z, cp.yaw);
@@ -850,7 +850,9 @@ class StoryRuntime {
     }
     // in a room: its centre and storey (resolved by the npc system); else at the player, on the player's storey
     const anchor = a.room ? ctx.world.roomAnchor?.(a.room) ?? null : null;
-    const atPlayer = a.x === undefined && a.z === undefined && !anchor;
+    // a room the interiors cannot answer for yet (placed from the present, the palace still loading):
+    // no storey hint, so the npc system moves the figure into its room once they can
+    const atPlayer = a.x === undefined && a.z === undefined && !a.room;
     const p: NpcPlacement = { npc: a.npc, x: a.x ?? anchor?.x ?? ctx.player.position.x, z: a.z ?? anchor?.z ?? ctx.player.position.z, era: a.era ?? ctx.era.current };
     if (a.room) p.room = a.room;
     if (atPlayer) p.y = ctx.player.position.y;
