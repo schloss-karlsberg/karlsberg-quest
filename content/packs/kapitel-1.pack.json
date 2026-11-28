@@ -1495,6 +1495,8 @@
         "npc": "liese",
         "chapter": "k1",
         "topic": "rock",
+        "flag": "quest.q.k1.kleider",
+        "value": "active",
         "step": 1
       },
       "once": false
@@ -1508,6 +1510,8 @@
         "npc": "liese",
         "chapter": "k1",
         "topic": "rock",
+        "flag": "quest.q.k1.kleider",
+        "value": "active",
         "step": 2
       },
       "once": false

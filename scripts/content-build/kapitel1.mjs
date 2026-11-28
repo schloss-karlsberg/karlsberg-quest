@@ -311,7 +311,7 @@ const dialogue = [
   say('liese.k1.01', 'liese', 'Jesses, wie sieht Er denn aus? Wie ein Feuersalamander.', talk('liese', 'greet'), { once: true }),
   say('liese.k1.dank.greet', 'liese', 'Steht Ihm besser als Kaspar. Sag Er keinem, woher.', { ...talk('liese', 'greet'), flag: 'flag.k1_kleid', value: 'geliehen' }, { priority: 5 }),
   say('liese.k1.weg.greet', 'liese', 'Kaspars Rock ist weg. Der Wind war’s, sagt der Wind. Ich sag nichts. Ich wasch.', { ...talk('liese', 'greet'), flag: 'flag.k1_kleid', value: 'genommen' }, { priority: 5 }),
-  ...seq(talk('liese', 'rock'), [
+  ...seq({ ...talk('liese', 'rock'), flag: 'quest.q.k1.kleider', value: 'active' }, [
     ['liese.k1.02', 'liese', 'Einen Rock? Auf der hinteren Leine hängt Kaspars. Der Lakai liegt seit drei Wochen mit Fieber, der braucht ihn grad nicht.'],
     ['liese.k1.03', 'liese', 'Aber erst helf Er mir. Die Zettel da fliegen mir in die Wäsche, und sie beißen. Wäschelohn: angewiesen. Steht auf allen.'],
   ], { once: false }),

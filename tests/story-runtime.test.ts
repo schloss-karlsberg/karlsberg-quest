@@ -17,6 +17,7 @@ import type { QuestProgress } from '../src/rpg/types';
 import { createProgressionSlice } from '../src/systems/progression/logic';
 import { SHIFT_DURATION, SHIFT_DURATION_REDUCED, SHIFT_MID, SHIFT_MID_REDUCED } from '../src/systems/fx/shift/timeline';
 import { arrivalSpot } from '../src/systems/quelle/layout';
+import { availableTopics, talkLines } from '../src/systems/npc/logic';
 import quests from '../src/systems/quests';
 import { createQuestSlice } from '../src/systems/quests/logic';
 import story from '../src/systems/story';
@@ -504,6 +505,45 @@ describe('the first time travel in the story runtime (TASK-089)', () => {
     game.tick();
     expect(game.state.state.inventory.clues).toContain('clue.k1.rock');
     expect(game.state.state.flags['disguise.coat']).toBe(true);
+  });
+
+  it.each(['genommen', 'geliehen'])('hides Liese’s coat topic after the coat is obtained (%s)', async (route) => {
+    const initial = createInitialState();
+    initial.era = '1789';
+    initial.systems.story = { ...createStorySlice(), active: true, chapter: 'k1', beat: 'k1_0', unlocked: ['tour', 'k1'] };
+    const game = await boot(initial, { withChronik: true });
+    game.dialogue();
+    quests.init(game.ctx);
+    game.events.emit('game:start', { resumed: true });
+    for (let i = 0; i < 200 && beat(game) !== 'k1/k1_0b'; i++) game.tick(0.25);
+    expect(beat(game)).toBe('k1/k1_0b');
+
+    const lines = talkLines(game.ctx.content.dialogue.values(), 'liese', 'k1');
+    const topics = () => availableTopics(lines, 'liese', 'k1', {
+      era: game.era.current, chapter: 'k1', beat: null,
+      flags: game.state.state.flags, clues: game.state.state.inventory.clues,
+    });
+    expect(topics()).toContain('rock');
+
+    if (route === 'genommen') {
+      game.player.teleport(COAT_REACH.x, COAT_REACH.z);
+      game.tick(0.25);
+      expect(window.kq!.chronik!.target()).toBe('clue.k1.rock');
+      game.pressInteract();
+    } else {
+      game.events.emit('npc:talk', { npc: 'liese', chapter: 'k1', topic: 'rock' });
+      for (let i = 0; i < 3; i++) {
+        game.events.emit('enemy:killed', {
+          id: `zettel.${i}`, group: 'q.k1.kleider.zettel', kind: 'mahnbrief',
+          quest: 'q.k1.kleider', objective: 'zettel', era: '1789', boss: false, by: 'light', x: 0, z: 0,
+        });
+      }
+    }
+    game.tick();
+
+    expect(game.state.state.flags['flag.k1_kleid']).toBe(route);
+    expect(game.state.state.systems.quests?.quests['q.k1.kleider']).toMatchObject({ state: 'done', counts: { rock: 1 } });
+    expect(topics()).not.toContain('rock');
   });
 
   it.each(['stand', 'crouch'])('gives a player already inside Liese’s circle time to react (%s)', async (stance) => {

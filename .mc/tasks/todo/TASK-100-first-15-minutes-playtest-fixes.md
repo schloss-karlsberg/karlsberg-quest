@@ -67,3 +67,4 @@ Address the fresh-game playtest on main at db8b1b8d, through the first visit to 
 - Exercise the sprint from the jump with actual movement, collision and audio playback. The unit test drives position and checks when the dialogue presenter starts the brief.
 - Exercise saving and resuming the arrival just after the chapter card with the card mounted. The runtime fixture does not render a connected card.
 - Review Laub’s „In Rot“ and coat instruction when loading a branch save with the disguise already applied. The regular arrival plays those lines before coat pickup is available.
+- Reproduce early access to Liese’s favour using a save from an unmerged PR #151 revision with her NPC placement saved in `t18`, and use an exact filtered-list assertion in `tests/tour-handover.test.ts` to require exactly one resumable shift.
