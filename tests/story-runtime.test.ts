@@ -147,31 +147,49 @@ describe('beat retirement in the story runtime', () => {
     });
     game.tick(0.25);
     expect(game.dialogue.state()).toMatchObject({ chapter: 'enden', beat: 'e1' });
-    if (ms === 8000) expect(game.dialogue.state().dialogue?.id).toBe('laub.k4.nur_steine');
-    else expect(game.dialogue.state().pendingLines).toBe(1);
+    if (ms === 8000) {
+      expect(game.dialogue.state().dialogue?.id).toBe('laub.k4.nur_steine');
+      game.tick(0.25);
+      expect(game.dialogue.state().dialogue?.id).toBe('laub.k4.nur_steine');
+    } else expect(game.dialogue.state().pendingLines).toBe(1);
     for (let i = 0; i < 24 && !game.dialogue.shown().includes('laub.k4.nur_steine'); i++) game.tick(0.25);
     expect(game.dialogue.shown().filter((id) => id === 'laub.k4.nur_steine')).toHaveLength(1);
     expect(game.dialogue.shown()).not.toContain('marlene.k4.foto');
   });
 
-  it.each(['k4', 'enden'])('restores the unshown completing reaction from the %s autosave', async (chapter) => {
+  it('keeps the story save format while a completing reaction is waiting', async () => {
+    const game = await dawn(15000);
+    game.find('clue.k4.foto');
+    game.find('clue.k4.nur_steine');
+    const saved = rawAuto(game.storage).systems.story;
+    expect(saved).toMatchObject({ chapter: 'k4', beat: 'k4_15', said: expect.arrayContaining(['laub.k4.nur_steine']) });
+    expect(saved).not.toHaveProperty('pendingCompletingDialogue');
+    expect(game.dialogue.shown()).toEqual(['test.long']);
+  });
+
+  it.each([['k4', 'k4_15'], ['enden', 'e1']])('ignores the retired pending reaction field at %s/%s', async (chapter, beat) => {
     const game = await dawn(15000);
     game.find('clue.k4.foto');
     game.find('clue.k4.nur_steine');
     if (chapter === 'enden') for (let i = 0; i < 36; i++) game.tick(0.25);
-    expect(rawAuto(game.storage).systems.story).toMatchObject({
+    const saved = rawAuto(game.storage);
+    expect(saved.systems.story).toMatchObject({
       chapter,
-      beat: chapter === 'k4' ? 'k4_15' : 'e1',
-      pendingCompletingDialogue: ['laub.k4.nur_steine'],
+      beat,
+      said: expect.arrayContaining(['laub.k4.nur_steine']),
     });
     expect(game.dialogue.shown()).toEqual(['test.long']);
+    const branchSave = {
+      ...saved,
+      systems: { ...saved.systems, story: { ...saved.systems.story, pendingCompletingDialogue: ['laub.k4.nur_steine'] } },
+    };
+    game.storage.setItem(SAVE_KEY('auto'), JSON.stringify(branchSave));
     expect(game.save.load('auto')).toBe(true);
     game.tick(0.25);
-    expect(game.dialogue.shown()).toEqual(['test.long', 'laub.k4.nur_steine']);
+    expect(game.dialogue.shown()).not.toContain('laub.k4.nur_steine');
+    expect(game.dialogue.state().said).toContain('laub.k4.nur_steine');
     game.save.save('auto');
-    expect(game.save.load('auto')).toBe(true);
-    game.tick(0.25);
-    expect(game.dialogue.shown()).toEqual(['test.long', 'laub.k4.nur_steine']);
+    expect(rawAuto(game.storage).systems.story).not.toHaveProperty('pendingCompletingDialogue');
   });
 
   it('still expires the earlier clue reaction when it did not complete the beat', async () => {

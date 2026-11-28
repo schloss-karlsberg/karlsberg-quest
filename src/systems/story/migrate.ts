@@ -18,7 +18,7 @@ const ENDINGS = allOf<EndingId>()(['museum', 'burn', 'keep']);
 
 /** Fill missing legacy fields and reject malformed values used when restoring the story. */
 export function readStorySlice(saved: Record<string, unknown>): StorySlice {
-  for (const key of ['fired', 'unlocked', 'completed', 'doneBeats', 'said', 'pendingCompletingDialogue']) {
+  for (const key of ['fired', 'unlocked', 'completed', 'doneBeats', 'said']) {
     const value = saved[key];
     if (value !== undefined && (!Array.isArray(value) || !value.every((id) => typeof id === 'string'))) {
       throw new Error(`save: story.${key} must be a list of strings`);
@@ -51,7 +51,9 @@ export function readStorySlice(saved: Record<string, unknown>): StorySlice {
     throw new Error('save: invalid story ending');
   }
 
-  const story = { ...createStorySlice(), ...saved };
+  // Discard the temporary branch-only field so a later save uses the regular format.
+  const { pendingCompletingDialogue: _pending, ...progress } = saved;
+  const story = { ...createStorySlice(), ...progress };
   migrateStorySlice(story);
   return story;
 }

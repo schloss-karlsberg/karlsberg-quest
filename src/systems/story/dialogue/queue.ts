@@ -62,7 +62,6 @@ export class LineQueue<T extends QueuedLine> {
     /** Whether a group is playing or waiting to resume after an urgent line. */
     private readonly protectsGroup: (group: number) => boolean,
     private readonly valid?: (item: T) => boolean,
-    private readonly onDrop?: (item: T) => void,
   ) {}
 
   get length(): number {
@@ -85,7 +84,8 @@ export class LineQueue<T extends QueuedLine> {
       for (let i = this.items.length - 1; i >= 0; i--) {
         const waiting = this.items[i]!;
         if (waiting.priority === 'low' && !this.started(waiting)) {
-          this.drop(i);
+          this.items.splice(i, 1);
+          this.dropped++;
         }
       }
       let at = 0;
@@ -93,7 +93,6 @@ export class LineQueue<T extends QueuedLine> {
       if (playImmediately && at === 0) {
         if (this.fresh(item)) return item;
         this.dropped++;
-        this.onDrop?.(item);
         return undefined;
       }
       this.items.splice(at, 0, item);
@@ -111,7 +110,8 @@ export class LineQueue<T extends QueuedLine> {
       if (i < 0) i = this.items.findIndex((q) => q.priority !== 'now' && q !== item && !this.started(q));
       if (i < 0 && item.priority !== 'now' && !this.started(item)) i = this.items.indexOf(item);
       if (i < 0) i = this.items.findIndex((q) => !this.started(q));
-      this.drop(Math.max(0, i));
+      this.items.splice(Math.max(0, i), 1);
+      this.dropped++;
     }
     return undefined;
   }
@@ -121,16 +121,8 @@ export class LineQueue<T extends QueuedLine> {
     this.items.unshift(item);
   }
 
-  keepCompletingGroup(group: number): T[] {
-    const waiting = this.items.filter((item) => item.group === group);
-    for (const item of waiting) item.completesBeat = true;
-    return waiting;
-  }
-
-  private drop(index: number): void {
-    const [item] = this.items.splice(index, 1);
-    this.dropped++;
-    if (item) this.onDrop?.(item);
+  keepCompletingGroup(group: number): void {
+    for (const item of this.items) if (item.group === group) item.completesBeat = true;
   }
 
   /** A beat began: waiting lines of other beats are stale (see above). */
@@ -139,7 +131,8 @@ export class LineQueue<T extends QueuedLine> {
       const q = this.items[i]!;
       if (q.beat === undefined || q.beat === null || q.beat === beat || q.completesBeat || this.started(q)) continue;
       if (q.priority === 'low') {
-        this.drop(i);
+        this.items.splice(i, 1);
+        this.dropped++;
       } else q.staleAt = Math.min(q.staleAt ?? Infinity, this.clock + STALE_GRACE);
     }
   }
@@ -152,7 +145,8 @@ export class LineQueue<T extends QueuedLine> {
     for (let i = 0; i < this.items.length; ) {
       const item = this.items[i]!;
       if (!this.fresh(item)) {
-        this.drop(i);
+        this.items.splice(i, 1);
+        this.dropped++;
         continue;
       }
       if (held?.(item)) {
@@ -190,7 +184,8 @@ export class LineQueue<T extends QueuedLine> {
     for (let i = this.items.length - 1; i >= 0; i--) {
       const q = this.items[i]!;
       if (q.expired?.()) {
-        this.drop(i);
+        this.items.splice(i, 1);
+        this.dropped++;
       }
     }
   }
