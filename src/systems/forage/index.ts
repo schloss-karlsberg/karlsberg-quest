@@ -20,11 +20,13 @@ import './strings';
 import './forage.css';
 import { Vector3 } from 'three';
 import type { GameContext } from '../../core/context';
+import type { GameEvents } from '../../core/events';
 import { defineSystem } from '../../core/systems';
 import { t } from '../../i18n';
 import { actionLabel } from '../../ui/actionLabel';
 import { h, svg } from '../../ui/dom';
 import { addControlKeys } from '../../ui/menus';
+import { segmentCylinderEntry } from '../../world/collision';
 import { CROWD_LEVEL_TOLERANCE, DOG_RADIUS } from '../../world/crowd';
 import { CUT, plantCuts } from '../../world/vegetation/cuts';
 import { BRUSH_MAX } from '../../world/vegetation/groundcover';
@@ -257,7 +259,7 @@ class Forage {
     const { ctx } = this;
     const pl = ctx.player;
     const f = ctx.state.state.flags;
-    if (!ctx.input.enabled || ctx.ui.modals.count > 0 || pl.flying || pl.frozen || this.talking || pl.stance === 'prone') return false;
+    if (!ctx.input.enabled || ctx.input.muted.has('throw') || ctx.ui.modals.count > 0 || pl.flying || pl.frozen || this.talking || pl.stance === 'prone') return false;
     if (f['tools.measuring'] === true) return false;
     // a scene that lowers the staff keeps the hands still too; the guided tour does not
     return f['combat.disabled'] !== true || forageOnly(f);
@@ -367,9 +369,13 @@ class Forage {
   private tickThrow(dt: number): void {
     const inp = this.ctx.input;
     this.cooldown = Math.max(0, this.cooldown - dt);
+    if (inp.wasCancelled('throw') || !this.allowed()) {
+      this.holding = false;
+      this.buffered = 0;
+      return;
+    }
     if (this.holding) {
-      if (inp.wasCancelled('throw') || !this.allowed()) this.holding = false;
-      else if (!inp.isDown('throw')) {
+      if (!inp.isDown('throw')) {
         this.holding = false;
         if (this.cooldown > 0) this.buffered = THROW_BUFFER;
         else this.throwNow();
@@ -379,10 +385,6 @@ class Forage {
     // a tap just before the arm is free again is kept and thrown as soon as it is
     this.buffered = Math.max(0, this.buffered - dt);
     const pressed = inp.wasPressed('throw');
-    if (!this.allowed()) {
-      this.buffered = 0;
-      return;
-    }
     if (!pressed) {
       if (this.buffered > 0 && this.cooldown <= 0) {
         this.buffered = 0;
@@ -434,68 +436,50 @@ class Forage {
   /** Something upright on the way from a to the chestnut's new place? It turns back and is spent. */
   private strike(n: Nut, ax: number, ay: number, az: number): boolean {
     const { ctx } = this;
-    const speed = Math.hypot(n.vx, n.vz) || 1;
-    const back = (): void => deflectNut(n, n.x + n.vx / speed, n.z + n.vz / speed);
-    // an enemy
-    const q = { ax, ay, az, bx: n.x, by: n.y, bz: n.z, receipt: { hit: false } as { hit: boolean; x?: number; y?: number; z?: number } };
-    ctx.events.emit('combat:pelt', q);
-    if (q.receipt.hit) {
-      n.x = q.receipt.x ?? n.x;
-      n.y = q.receipt.y ?? n.y;
-      n.z = q.receipt.z ?? n.z;
-      back();
-      this.impact(n, 'enemy');
-      return true;
+    const { x: bx, y: by, z: bz } = n;
+    let first: { at: number; on: 'wall' | 'wood' | 'body'; x?: number; z?: number; npc?: string } | undefined;
+    const col = ctx.world.collider;
+    if (col.enabled && !ctx.state.state.flags['interior.room']) {
+      const at = col.footprintEntry(ax, az, bx, bz);
+      if (at !== null) first = { at, on: 'wall' };
     }
-    // a placed person (a watcher, a giver): it bounces off; the court takes a struck watcher from the impact
-    const who = { ax, ay, az, bx: n.x, by: n.y, bz: n.z, receipt: { hit: false } as { hit: boolean; x?: number; z?: number; npc?: string } };
+    ctx.world.forest.trunksNear(bx, bz, Math.hypot(bx - ax, bz - az) + THROW.radius, (x, z, r, top) => {
+      const at = segmentCylinderEntry(ax, ay, az, bx, by, bz, x, z, r + THROW.radius, -Infinity, top);
+      if (at !== null && at < (first?.at ?? Infinity)) first = { at, on: 'wood', x, z };
+    });
+    const who: GameEvents['world:pelt'] = { ax, ay, az, bx, by, bz, receipt: { hit: false } };
     ctx.events.emit('world:pelt', who);
-    if (who.receipt.hit) {
-      n.x = ax;
-      n.y = ay;
-      n.z = az;
-      deflectNut(n, who.receipt.x ?? n.x + n.vx / speed, who.receipt.z ?? n.z + n.vz / speed);
-      this.impact(n, 'body', who.receipt.npc);
-      return true;
-    }
-    // the tour's people and dogs
+    const { at, x, z, npc } = who.receipt;
+    if (who.receipt.hit && at !== undefined && at < (first?.at ?? Infinity)) first = { at, on: 'body', x, z, npc };
     if (ctx.era.current === 'today') {
       for (const [list, top] of [[ctx.tourCrowd.visitors?.(), 1.75], [ctx.tourCrowd.dogs?.(), 0.65]] as const) {
         for (const c of list ?? []) {
           if (Math.abs(c.y - ay) > CROWD_LEVEL_TOLERANCE + 2) continue;
-          const at = segmentHitsBody(ax, ay, az, n.x, n.y, n.z, c.x, c.y, c.z, Math.max(c.radius, DOG_RADIUS) + THROW.radius, top);
-          if (at === null) continue;
-          n.x = ax + (n.x - ax) * at;
-          n.y = ay + (n.y - ay) * at;
-          n.z = az + (n.z - az) * at;
-          deflectNut(n, c.x, c.z);
-          this.impact(n, 'body');
-          return true;
+          const at = segmentHitsBody(ax, ay, az, bx, by, bz, c.x, c.y, c.z, Math.max(c.radius, DOG_RADIUS) + THROW.radius, top);
+          if (at !== null && at < (first?.at ?? Infinity)) first = { at, on: 'body', x: c.x, z: c.z };
         }
       }
     }
-    // a trunk
-    let trunk: { x: number; z: number } | null = null;
-    ctx.world.forest.trunksNear(n.x, n.z, 1, (tx, tz, tr, top) => {
-      if (trunk || n.y > top) return;
-      if (Math.hypot(n.x - tx, n.z - tz) <= tr + THROW.radius) trunk = { x: tx, z: tz };
-    });
-    if (trunk) {
-      const tk = trunk as { x: number; z: number };
-      deflectNut(n, tk.x, tk.z);
-      this.impact(n, 'wood');
+
+    // Combat applies damage when queried, so it can only hit before the nearest other contact.
+    const q: GameEvents['combat:pelt'] = { ax, ay, az, bx, by, bz, before: first?.at, receipt: { hit: false } };
+    ctx.events.emit('combat:pelt', q);
+    const speed = Math.hypot(n.vx, n.vz) || 1;
+    if (q.receipt.hit) {
+      n.x = q.receipt.x ?? bx;
+      n.y = q.receipt.y ?? by;
+      n.z = q.receipt.z ?? bz;
+      deflectNut(n, n.x + n.vx / speed, n.z + n.vz / speed);
+      this.impact(n, 'enemy');
       return true;
     }
-    // a wall (outside: the palace's footprints stand solid)
-    const col = ctx.world.collider;
-    if (col.enabled && !ctx.state.state.flags['interior.room'] && col.footprintAt(n.x, n.z) >= 0 && col.footprintAt(ax, az) < 0) {
-      n.x = ax;
-      n.z = az;
-      back();
-      this.impact(n, 'wall');
-      return true;
-    }
-    return false;
+    if (!first) return false;
+    n.x = ax + (bx - ax) * first.at;
+    n.y = ay + (by - ay) * first.at;
+    n.z = az + (bz - az) * first.at;
+    deflectNut(n, first.x ?? n.x + n.vx / speed, first.z ?? n.z + n.vz / speed);
+    this.impact(n, first.on, first.npc);
+    return true;
   }
 
   private tickNuts(dt: number): void {

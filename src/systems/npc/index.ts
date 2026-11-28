@@ -182,7 +182,7 @@ class NpcRuntime {
           bz = b.z;
         }
       }
-      if (best) Object.assign(q.receipt, { hit: true, npc: best, x: bx, z: bz });
+      if (best) Object.assign(q.receipt, { hit: true, npc: best, at: bestT, x: bx, z: bz });
     });
     // a kneeling figure asked about the hounds' names scratches the one at his knee
     ev.on('npc:talk', ({ npc, topic }) => {

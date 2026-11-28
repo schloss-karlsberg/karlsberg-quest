@@ -316,17 +316,28 @@ test('court: running and the staff are tells; in the coat walking is not', async
   back = (await page.evaluate(() => window.kq!.court!.watchers()))[0]!;
   expect(back.distract).toBe('glance');
   expect(await phases()).toEqual(['turn', 'walk', 'look', 'back', 'post', 'glance']);
-  // a chestnut that strikes him is no distraction: he looks for the thrower
+  // a real chestnut fired from behind hits him and makes him look for the thrower
   await step(page, 60 * 3);
-  await page.evaluate(() => {
+  await place(page, back.postX + 3, back.postZ, 270);
+  const direct = await page.evaluate(() => {
     const k = window.kq!;
     const w = k.court!.watchers()[0]!;
-    k.ctx.events.emit('forage:impact', { x: w.x, y: 0, z: w.z, on: 'body', npc: w.npc });
+    const fig = k.npc!.list().find((n) => n.npc === w.npc)!;
+    const stopAim = k.ctx.events.on('combat:aim', ({ receipt }) =>
+      Object.assign(receipt, { found: true, x: fig.x, y: fig.y + 0.9, z: fig.z }));
+    let impact: { on: string; npc?: string } | undefined;
+    const stopImpact = k.ctx.events.on('forage:impact', (p) => { impact ??= p; });
+    const thrown = k.forage!.throw();
+    stopAim();
+    for (let i = 0; i < 90 && !impact; i++) k.step(1);
+    stopImpact();
     k.step(2);
+    return { thrown, impact, watcher: k.court!.watchers()[0]! };
   });
-  back = (await page.evaluate(() => window.kq!.court!.watchers()))[0]!;
-  expect(back).toMatchObject({ distract: 'alert', tell: 'throw' });
-  expect(back.level).toBeGreaterThan(0.5);
+  expect(direct.thrown).toBe(true);
+  expect(direct.impact).toMatchObject({ on: 'body', npc: back.npc });
+  expect(direct.watcher).toMatchObject({ distract: 'alert', tell: 'throw' });
+  expect(direct.watcher.level).toBeGreaterThan(0.5);
   expect(errors).toEqual([]);
 });
 

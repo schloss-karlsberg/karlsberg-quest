@@ -218,7 +218,7 @@ declare module '../core/events' {
      * when a placed person stands in its way (it bounces off; `npc` = who). Nobody is hurt; the
      * court takes a struck watcher from 'forage:impact'.
      */
-    'world:pelt': { ax: number; ay: number; az: number; bx: number; by: number; bz: number; receipt: { hit: boolean; x?: number; z?: number; npc?: string } };
+    'world:pelt': { ax: number; ay: number; az: number; bx: number; by: number; bz: number; receipt: { hit: boolean; at?: number; x?: number; z?: number; npc?: string } };
 
     // ---- interiors (owner: interiors) -----------------------------------------------------
     /**

@@ -80,11 +80,11 @@ describe('campaign NPC encounters', () => {
     npc.update(1 / 60);
     events.emit('player:caught', { by: 'pack' });
     const pelt = (x: number) => {
-      const q = { ax: x, ay: 11.2, az: -1, bx: x, by: 11.1, bz: 1, receipt: { hit: false } as { hit: boolean; npc?: string; x?: number; z?: number } };
+      const q = { ax: x, ay: 11.2, az: -1, bx: x, by: 11.1, bz: 1, receipt: { hit: false } };
       events.emit('world:pelt', q);
       return q.receipt;
     };
-    expect(pelt(6)).toEqual({ hit: true, npc: 'soll', x: 6, z: 0 });
+    expect(pelt(6)).toEqual({ hit: true, npc: 'soll', at: expect.closeTo(0.32), x: 6, z: 0 });
     expect(pelt(8).hit).toBe(false);
     // over his head: no hit
     const high = { ax: 6, ay: 13.5, az: -1, bx: 6, by: 13.4, bz: 1, receipt: { hit: false } };

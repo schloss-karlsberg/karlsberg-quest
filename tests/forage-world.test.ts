@@ -83,7 +83,7 @@ describe('a thrown chestnut and an enemy (CombatSim.pelt)', () => {
   it('finds the body on its way, and misses over its head or beside it', () => {
     // a body 0.5 m wide and 1.6 m tall at (0, 0, -5)
     const hit = segmentHitsBody(0, 1.2, -4, 0, 1.0, -6, 0, 0, -5, 0.5, 1.6);
-    expect(hit).toBeCloseTo(0.5, 5);
+    expect(hit).toBeCloseTo(0.25, 5);
     expect(segmentHitsBody(0, 3.2, -4, 0, 3.0, -6, 0, 0, -5, 0.5, 1.6)).toBeNull();
     expect(segmentHitsBody(1.2, 1.2, -4, 1.2, 1.0, -6, 0, 0, -5, 0.5, 1.6)).toBeNull();
     expect(segmentHitsBody(0, 1.2, -1, 0, 1.1, -2, 0, 0, -5, 0.5, 1.6)).toBeNull();
