@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { PIECES, TRAIL, toLocal, toWorld, trailLine } from '../src/systems/quelle/layout';
 import { SetBuilder } from '../src/systems/scenery/builder';
-import { FERN_NEAR, FERN_TRAIL, HOLLOW_FERNS, fernDetailed, fernFarHeight, quelleSet } from '../src/systems/scenery/quelle';
+import { FERN_BEHIND, FERN_NEAR, FERN_TRAIL, HOLLOW_FERNS, fernDetailed, fernFarHeight, quelleSet } from '../src/systems/scenery/quelle';
 import { loadPalaceData } from './interiors-fixture';
 
 const { h2025 } = loadPalaceData();
@@ -37,7 +37,7 @@ describe('Quelle fern LOD', () => {
     // the forecourt and the trail up to the spring
     for (const p of trailLine(TRAIL[0]!, 0.5)) {
       const [u, w] = toLocal(p.x, p.z);
-      if (Math.hypot(u - T.u, w - T.w) <= 12) expect(fernDetailed(u, w + FERN_TRAIL * 0.8), `${u}/${w}`).toBe(true);
+      if (Math.hypot(u - T.u, w - T.w) <= 12 && w > 0) expect(fernDetailed(u, w + FERN_TRAIL * 0.8), `${u}/${w}`).toBe(true);
     }
   });
 
@@ -54,11 +54,18 @@ describe('Quelle fern LOD', () => {
     // 18 in the hollow + the brook banks
     expect(all.length).toBeGreaterThanOrEqual(28);
     for (const f of all) expect(f.id, `${f.u.toFixed(1)}/${f.w.toFixed(1)} at ${f.d.toFixed(1)} m`).toBe(fernDetailed(f.u, f.w) ? 'nature.fern.02' : 'nature2.ferns#fern');
-    // every clump within 8 m of the trough is detailed; the brook's far banks are not
-    expect(all.filter((f) => f.d <= 8).every((f) => f.id === 'nature.fern.02')).toBe(true);
+    // every clump within 8 m of the trough is detailed, but for the slope behind the wall; the
+    // brook's far banks are not
+    const behind = (f: { w: number }) => f.w < PIECES.wall.w - FERN_BEHIND;
+    expect(all.filter((f) => f.d <= 8 && !behind(f)).every((f) => f.id === 'nature.fern.02')).toBe(true);
+    expect(all.filter(behind).every((f) => f.id === 'nature2.ferns#fern')).toBe(true);
+    expect(all.filter(behind).length).toBeGreaterThanOrEqual(6);
     const far = all.filter((f) => f.id === 'nature2.ferns#fern');
     expect(far.length).toBeGreaterThanOrEqual(5);
-    expect(Math.min(...far.map((f) => f.d))).toBeGreaterThan(FERN_NEAR);
+    expect(Math.min(...far.filter((f) => !behind(f)).map((f) => f.d))).toBeGreaterThan(FERN_NEAR);
+    // TASK-087: at most 14 scanned clumps in the hollow (20 before), so the ten big ferns, the
+    // boulders and the overflow cost nothing net
+    expect(all.length - far.length).toBeLessThanOrEqual(14);
     const near = all.length - far.length;
     // the triangle sum of the clumps drops by a quarter or more (the brook's banks up the ravine)
     expect(near * 5624 + far.length * 288).toBeLessThan(all.length * 5624 * 0.75);
