@@ -6,7 +6,8 @@
  *
  * What the deer do is said once in a sound caption each time (TASK-080): the head coming up, a
  * noise she turns to (`world:noise`: a thrown chestnut landing near her), the flight. A chestnut
- * that strikes a deer (`combat:pelt`) bounces off and sends the pair running (`animal:fled` by 'hit').
+ * that strikes a deer bounces off (`world:pelt`) and sends the pair running (`forage:impact` →
+ * `animal:fled` by 'hit').
  *
  * Story → animals: 'animal:request' AnimalAction (spawn / despawn / run / lie / follow); also
  *                  'story:cue' {id: 'animal', data: AnimalAction} until the story's dispatch lands.

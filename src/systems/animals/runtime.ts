@@ -51,15 +51,17 @@ export const LOS_MIN = 0.15;
 /** Photo `at`: body centre at this fraction of the shoulder height. */
 const CENTRE_FRAC = 0.7;
 /**
- * A thrown chestnut against a deer (`combat:pelt`): the body as an upright cylinder around its
+ * A thrown chestnut against a deer (`world:pelt`): the body as an upright cylinder around its
  * middle, half the body's length wide and up to the raised head.
  */
 const PELT_RADIUS = 0.5;
 const PELT_TOP = 0.4;
 /** A chestnut that comes down this close to a deer (m) has struck it, or as good as. */
 const PELT_FEET = 0.9;
+/** How a struck deer is named on `forage:impact { npc }` (the follow-ref form). */
+const PELT_REF = 'animal:';
 
-/** forage → whoever stands in the way: the chestnut flew from a to b this tick (`combat:pelt`, src/systems/combat). */
+/** forage → whoever stands in the way: the chestnut flew from a to b this tick (`world:pelt`, src/systems/contracts.ts). */
 interface PeltQuery {
   ax: number;
   ay: number;
@@ -67,9 +69,15 @@ interface PeltQuery {
   bx: number;
   by: number;
   bz: number;
-  /** Something else already stops it at this fraction of the way (when the sender says so). */
-  before?: number;
-  receipt: { hit: boolean; result?: 'hit' | 'glance'; x?: number; y?: number; z?: number; kind?: string };
+  receipt: { hit: boolean; at?: number; x?: number; z?: number; npc?: string };
+}
+
+/** forage: a thrown chestnut's first impact (`forage:impact`); `npc` = the body `world:pelt` named. */
+interface NutImpact {
+  x: number;
+  z: number;
+  on: string;
+  npc?: string;
 }
 
 export type FaunaLike = Pick<FaunaApi, 'spawn'>;
@@ -190,15 +198,12 @@ export class AnimalsRuntime {
     });
     deps.bus.on('save:loaded', () => this.restore());
     // a thrown chestnut lands (forage): the deer prick up, or bolt when it is close
-    deps.bus.on('world:noise', (n: DeerNoise & { by?: string }) => {
-      if (!this.active || !this.deer.length) return;
-      // at a deer's feet it is a hit all the same (on a slope the arc often ends a step short of the body)
-      const at = n.by === 'kastanie' ? this.deer.find((d) => d.state !== 'gone' && this.slots.get(d.id)?.visible && Math.hypot(d.x - n.x, d.z - n.z) <= PELT_FEET) : undefined;
-      if (at) this.struck(at);
-      else if (this.noises.length < 8) this.noises.push({ x: n.x, z: n.z, loud: n.loud });
+    deps.bus.on('world:noise', (n: DeerNoise) => {
+      if (this.active && this.deer.length && this.noises.length < 8) this.noises.push({ x: n.x, z: n.z, loud: n.loud });
     });
-    // … and one that strikes a deer bounces off it and sends the pair running
-    deps.bus.on('combat:pelt', (q: PeltQuery) => this.pelt(q));
+    // … and one that strikes a deer bounces off it (`world:pelt`) and sends the pair running (`forage:impact`)
+    deps.bus.on('world:pelt', (q: PeltQuery) => this.pelt(q));
+    deps.bus.on('forage:impact', (hit: NutImpact) => this.impact(hit));
     deps.bus.on('group:relocated', (relocation: GroupRelocation) => this.relocateFollowers(relocation));
     this.active = deps.world.era() === ANIMAL_ERA;
   }
@@ -222,15 +227,15 @@ export class AnimalsRuntime {
   }
 
   /**
-   * A chestnut in flight: the first deer body on its way this tick takes it (the receipt makes it
-   * bounce off, as off an enemy), and its herd bolts, cause 'hit'. Combat answers the same event
-   * for enemies; whoever answered first keeps the nut.
+   * A chestnut in flight asks who stands in its way this step: the nearest deer body answers
+   * (a placed person nearer along the step keeps the answer). Forage then decides what the nut
+   * reaches first; nothing happens to the deer until its `forage:impact` says so.
    */
   private pelt(q: PeltQuery): void {
-    if (!this.active || !this.deer.length || !q?.receipt || q.receipt.hit) return;
+    if (!this.active || !this.deer.length || !q?.receipt) return;
     const w = this.deps.world;
     let best: Deer | null = null;
-    let bestT = q.before ?? Infinity;
+    let bestT = q.receipt.hit ? (q.receipt.at ?? 0) : Infinity;
     for (const d of this.deer) {
       const s = this.slots.get(d.id);
       if (!s || !s.visible || d.state === 'gone') continue;
@@ -241,9 +246,20 @@ export class AnimalsRuntime {
         best = d;
       }
     }
-    if (!best) return;
-    Object.assign(q.receipt, { hit: true, result: 'hit', kind: 'reh', x: q.ax + (q.bx - q.ax) * bestT, y: q.ay + (q.by - q.ay) * bestT, z: q.az + (q.bz - q.az) * bestT });
-    this.struck(best);
+    if (best) Object.assign(q.receipt, { hit: true, npc: PELT_REF + best.id, at: bestT, x: best.x, z: best.z });
+  }
+
+  /**
+   * A chestnut's first impact: on a deer's body (the answer above was the nearest thing), or on the
+   * ground at a deer's feet (on a slope the arc often ends a step short of the body), is a hit.
+   */
+  private impact(hit: NutImpact): void {
+    if (!this.active || !this.deer.length || !hit) return;
+    const up = (d: Deer): boolean => d.state !== 'gone' && this.slots.get(d.id)?.visible === true;
+    let d: Deer | undefined;
+    if (hit.on === 'body' && hit.npc?.startsWith(PELT_REF)) d = this.deer.find((e) => e.id === hit.npc!.slice(PELT_REF.length) && up(e));
+    else if (hit.on === 'ground') d = this.deer.find((e) => up(e) && Math.hypot(e.x - hit.x, e.z - hit.z) <= PELT_FEET);
+    if (d) this.struck(d);
   }
 
   /** A chestnut struck this deer: its herd bolts away from the thrower (the doe leads, her fawn mirrors her). */

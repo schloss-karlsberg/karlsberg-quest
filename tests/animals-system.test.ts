@@ -391,7 +391,7 @@ describe('animals runtime (C5)', () => {
   });
 
   it('a chestnut that strikes a deer bounces off and both bolt, cause "hit"; a miss is only heard (TASK-080)', () => {
-    type Pelt = { ax: number; ay: number; az: number; bx: number; by: number; bz: number; before?: number; receipt: { hit: boolean; result?: string; x?: number; y?: number; z?: number; kind?: string } };
+    type Pelt = { ax: number; ay: number; az: number; bx: number; by: number; bz: number; receipt: { hit: boolean; at?: number; x?: number; z?: number; npc?: string } };
     // thrown from the north, at the doe's chest (the fawn stands behind her, to the south)
     const nut = (o: Partial<Pelt> = {}): Pelt => ({ ax: 0, ay: 300.6, az: -1.2, bx: 0, by: 300.4, bz: -0.3, receipt: { hit: false }, ...o });
     const { bus, rt, step, player, world } = setup();
@@ -400,33 +400,39 @@ describe('animals runtime (C5)', () => {
     bus.emit('animal:request', RICKE);
     bus.emit('animal:request', KITZ);
     step(1);
-    // over her back, beside her, stopped by something else first, or already taken by an enemy: nothing
-    const over = nut({ ay: 302.5, by: 302.3 });
-    const beside = nut({ ax: 3, bx: 3 });
-    const blocked = nut({ bz: 1, before: 0.1 });
-    const taken = nut({ receipt: { hit: true, kind: 'nebeling' } });
-    for (const q of [over, beside, blocked]) {
-      bus.emit('combat:pelt', q);
+    // `world:pelt`: who stands in the chestnut's way this step? Over her back or beside her: nobody
+    for (const q of [nut({ ay: 302.5, by: 302.3 }), nut({ ax: 3, bx: 3 })]) {
+      bus.emit('world:pelt', q);
       expect(q.receipt).toEqual({ hit: false });
     }
-    bus.emit('combat:pelt', taken);
-    expect(taken.receipt).toEqual({ hit: true, kind: 'nebeling' });
-    expect(bus.of('animal:fled')).toEqual([]);
+    // a placed person nearer along the step keeps the answer; one farther along loses it to the doe
+    const nearer = nut({ receipt: { hit: true, at: 0.1, npc: 'gardist', x: 0, z: -1.1 } });
+    bus.emit('world:pelt', nearer);
+    expect(nearer.receipt).toMatchObject({ npc: 'gardist', at: 0.1 });
+    const farther = nut({ receipt: { hit: true, at: 1.5, npc: 'gardist', x: 0, z: 0.5 } });
+    bus.emit('world:pelt', farther);
+    expect(farther.receipt).toMatchObject({ hit: true, npc: 'animal:ricke', x: 0, z: 0 });
     // in another era the deer are not there
     world.era = '1789';
     step(DT);
     const elsewhere = nut();
-    bus.emit('combat:pelt', elsewhere);
+    bus.emit('world:pelt', elsewhere);
     expect(elsewhere.receipt.hit).toBe(false);
     world.era = 'today';
     step(DT);
-    // a hit: the receipt says where, the doe bolts at once, the fawn with her
+    // the answer alone does nothing: a trunk may still be nearer, forage decides
     const hit = nut();
-    bus.emit('combat:pelt', hit);
-    expect(hit.receipt).toMatchObject({ hit: true, result: 'hit', kind: 'reh' });
-    expect(hit.receipt.z!).toBeLessThan(0);
-    expect(hit.receipt.z!).toBeGreaterThanOrEqual(-1.2);
-    // (dist: how far the thrower stood)
+    bus.emit('world:pelt', hit);
+    expect(hit.receipt).toMatchObject({ hit: true, npc: 'animal:ricke', x: 0, z: 0 });
+    expect(hit.receipt.at!).toBeGreaterThan(0);
+    expect(hit.receipt.at!).toBeLessThanOrEqual(1);
+    expect(bus.of('animal:fled')).toEqual([]);
+    // an impact on something else (a trunk, a watcher of the court) is not hers
+    bus.emit('forage:impact', { x: 0, y: 300.5, z: -0.5, on: 'wood' });
+    bus.emit('forage:impact', { x: 0, y: 300.5, z: -0.5, on: 'body', npc: 'gardist' });
+    expect(bus.of('animal:fled')).toEqual([]);
+    // `forage:impact` on her body: the doe bolts at once, the fawn with her (dist: how far the thrower stood)
+    bus.emit('forage:impact', { x: 0, y: 300.5, z: -0.5, on: 'body', npc: 'animal:ricke' });
     expect(bus.of('animal:fled')).toEqual([{ id: 'ricke', by: 'hit', dist: 14 }]);
     expect(rt.deer[0]!.state).toBe('flee');
     step(0.1);
@@ -443,23 +449,25 @@ describe('animals runtime (C5)', () => {
     f.step(3);
     const kitz = f.rt.deer[1]!;
     const atFawn = nut({ ax: kitz.x + 0.9, az: kitz.z + 0.9, bx: kitz.x, bz: kitz.z });
-    f.bus.emit('combat:pelt', atFawn);
-    expect(atFawn.receipt.hit).toBe(true);
+    f.bus.emit('world:pelt', atFawn);
+    expect(atFawn.receipt).toMatchObject({ hit: true, npc: 'animal:kitz' });
+    f.bus.emit('forage:impact', { x: kitz.x, y: 300.5, z: kitz.z, on: 'body', npc: 'animal:kitz' });
     expect(f.bus.of('animal:fled')[0]).toMatchObject({ id: 'ricke', by: 'hit' });
-    // on a slope the arc often ends a step short of the body: at her feet counts, two metres off is only heard
+    // on a slope the arc often ends a step short of the body: the ground at her feet counts, two metres off is only heard
     const g = setup();
     g.player.z = 14;
     g.player.stance = 'crouch';
     g.bus.emit('animal:request', RICKE);
     g.bus.emit('animal:request', KITZ);
     g.step(1);
+    g.bus.emit('forage:impact', { x: 2.2, y: 300, z: -0.4, on: 'ground' });
     g.bus.emit('world:noise', { x: 2.2, z: -0.4, loud: 0.7, by: 'kastanie' });
     g.step(DT * 2);
     expect(g.bus.of('animal:fled')).toEqual([]);
     expect(g.bus.of('animal:heard')).toHaveLength(1);
-    g.bus.emit('world:noise', { x: 0.5, z: -0.5, loud: 0.7, by: 'kastanie' });
+    g.bus.emit('forage:impact', { x: 0.5, y: 300, z: -0.5, on: 'ground' });
     expect(g.bus.of('animal:fled')).toEqual([{ id: 'ricke', by: 'hit', dist: 14 }]);
-    // any other noise that close is only a noise
+    // a noise that close without a chestnut's impact is only a noise
     const o = setup();
     o.player.z = 200;
     o.bus.emit('animal:request', RICKE);

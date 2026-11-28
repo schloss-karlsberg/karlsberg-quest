@@ -581,6 +581,7 @@ lies for a second and is gone. Water swallows it.
 | Any enemy | It wakes: one can be pulled out of a pack. It never takes the last point of Lebenskraft: the last blow is the staff's |
 | A tree trunk, a palace wall, a placed person, a person or a dog of the tour | It bounces off and drops. Nobody is hurt (`world:pelt`: the npc system answers for placed people) |
 | A court watcher | It is alerted, not distracted (below) |
+| A roe deer of the tour, or the ground within 0.9 m of one | It bounces off and both deer bolt (`animal:fled` by `hit`, TASK-080) |
 | The ground | A noise (`world:noise`, loudness 0.7; half of that off a body, 0.5 in water) |
 | Within 2 m of a hanging Fläschchen (trunk, wall or ground) | The bottle falls, as after a Wuchthieb |
 
@@ -589,8 +590,8 @@ The noise is what animals and the pack hear. The tour's roe deer add it to their
 a chestnut that lands within about 13 m of them makes them look toward it and keep watching the
 spot for 8 s (`animal:heard`, caption „[Die Ricke horcht auf]“), time to raise the phone for the
 photo with the doe's head up. Noises never fill the meter, however many (TASK-080). A chestnut
-that strikes a deer, or comes down within 0.9 m of one, bounces off and sends both running
-(`animal:fled` by `hit`, „[Die Rehe springen ab]“); they stop on open ground and graze again as
+that strikes a deer (`world:pelt`), or comes down within 0.9 m of one, bounces off and sends both
+running (`forage:impact` → `animal:fled` by `hit`, „[Die Rehe springen ab]“); they stop on open ground and graze again as
 after any flight. The first time the player stalks calm deer with a chestnut in the pack, one
 toast says so („Wirf eine Kastanie neben die Rehe …“).
 A pack on patrol that is calm or only suspicious sends its

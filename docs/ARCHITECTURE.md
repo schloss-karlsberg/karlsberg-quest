@@ -1675,9 +1675,10 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   0.95 m to the stance's `TARGET_HEIGHT`, transmittance > 0.15) at 5 Hz, only inside notice + 2 m;
   `walkable` = no water, no footprint, slope < 35°; `clutter` = cuttable plants within 2.2 m
   (where a flight should not end); noises from `world:noise` (a thrown chestnut landing; one
-  within 0.9 m of a deer is a hit), mask 0. `combat:pelt`: a chestnut whose flight step passes
-  through a deer (a cylinder of 0.5 m up to the raised head) gets the receipt, bounces off, and
-  the herd bolts by `hit`. Then `stepDeerHerd`, `stepDogs`. Per drawn frame the bodies follow: root at `world.heightAt`, `face`,
+  landing), mask 0. `world:pelt`: a chestnut whose flight step passes through a deer (a cylinder
+  of 0.5 m up to the raised head) gets the nearest deer as its receipt (`npc: 'animal:<id>'`) and
+  bounces off. `forage:impact` on that body, or on the ground within 0.9 m of a deer, makes the
+  herd bolt by `hit`. Then `stepDeerHerd`, `stepDogs`. Per drawn frame the bodies follow: root at `world.heightAt`, `face`,
   `setSpeed` on change, `play(clip)` only when the clip hint changes.
 - Dog leaders: `npc:double.*` / `npc:extra.*` / `npc:guide` → the live person with that `specId`
   (`ctx.people.list()`, `root.position`, `root.rotation.y`), other `npc:<id>` → `kq.npc.list()`,
