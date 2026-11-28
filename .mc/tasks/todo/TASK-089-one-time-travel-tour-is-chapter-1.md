@@ -350,6 +350,12 @@ objective, Pause → Kapitel.
   moves a save of the old beat (`quelle.call` set or the objective `k1.quelle`): a save of
   today's `k1_0` waiting in the present for Q (chapter chosen from Pause → Kapitel) loads as
   written, because there the player decides when to cross.
+- Slice 2 (`feat/task-089-chapter-numbers`): the five chapter cards, `ui.keys.measure`, a unit test for
+  the labels, the id table in `content/story/README.md` and AGENTS.md. `?kapitel=2…5` waits for
+  TASK-086's PR (#133), which moves the flag into `src/systems/story/devstart.ts`.
+- Slice 3 (`feat/task-089-first-stay`): no oil meter in the day part (`oel-tag` stops an old save's
+  meter, `lauf-zurueck` moved to the night), and the coat: marker on the coat, „Rock nehmen“
+  (`prompt_de` on clues), Liese sees an upright walk between her lines (`k1.rock.frei`).
 - Voice: the raw take of `laub.t.1789` (`.voice-raw/raw-service/laub.t.1789.wav`, sha256 as in the
   manifest) is silent below −50 dB from 7.51 s to 8.01 s, between „Atmen Sie.“ and the last
   sentence. Cut at 7.70 s with an 80 ms fade-out and run through `processClip`

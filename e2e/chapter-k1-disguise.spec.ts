@@ -72,8 +72,8 @@ test('k1 disguise: orange is refused at the gitter; coat taken unseen, letter, M
   expect((await subs(page)).some((l) => l.includes('Hofrat Amsel'))).toBe(true);
   const f = await flags(page);
   expect(f['flag.k1_kleid']).toBe('genommen');
-  // the gate stands open; the lantern burns from the court on
-  expect(!!(await story(page)).meters.oil).toBe(true);
+  // the gate stands open; the day at the court has no oil timer (the first stay is not cut short)
+  expect(!!(await story(page)).meters.oil).toBe(false);
   await shot(page, '0c-eingelassen');
   expect(errors).toEqual([]);
 });

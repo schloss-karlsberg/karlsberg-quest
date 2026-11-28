@@ -218,7 +218,13 @@
           "cx.46"
         ]
       },
+      "requires": {
+        "flags": [
+          "k1.rock.frei"
+        ]
+      },
       "fiction": true,
+      "prompt_de": "Rock nehmen",
       "chapter": "k1"
     },
     {

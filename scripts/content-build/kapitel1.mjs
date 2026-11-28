@@ -19,6 +19,8 @@ export const DISGUISE = {
   bleiche: [1001.5, -876.5],
   liese: [1004.85, -870.3],
   coatReach: [1001.08, -880.9],
+  // Kaspar's coat on line B (COAT_XZ in src/systems/bleiche/layout.ts): where the marker points
+  coat: [1001.9, -880.4],
   // the Mahnbriefe blown out of Liese's linen (the favour): on the meadow north of the green, 21 m
   // from her (her talk bubble must not touch the fight, quests validator ≥ 19.4 m)
   zettel: [998, -890],
@@ -43,6 +45,8 @@ const clues = [
   // the disguise opening (k1_0b): the coat, the paper, the letter
   clue('clue.k1.rock', {
     title: 'Kaspars Rock', kind: 'object', at: DZ.coatReach, r: 1.4, era: E, chapter: ch, fiction: true,
+    // „Rock nehmen“, and only while Liese has not caught you at her lines (story k1_0b sets `k1.rock.frei`)
+    prompt: 'Rock nehmen', req: { flags: ['k1.rock.frei'] },
     text: 'Auf der hinteren Leine, zwischen Laken und Hemden, hängt ein dunkelblauer Rock mit Messingknöpfen, an den Ärmeln etwas zu lang. Liese schaut zum Weg. Hinter der zweiten Leine sieht sie dich nicht. (Fiktion: Liese, Kaspar und sein Rock sind erfunden.)',
     facts: ['cx.46'],
   }),
@@ -487,8 +491,8 @@ const k1Quests = {
       history: [ln('laub', 'Fußnote: Wie man sich bei Hof zu kleiden hatte und wie die Wache am Gitter prüfte, steht nirgends. Liese, Kaspar und sein Rock sind erfunden. Die Wäsche, die irgendwer für den Hof gebleicht hat, nicht.', { fact: 'cx.46' })],
       objectives: [
         // set by the story (k1_0b): the coat taken from the line (clue.k1.rock) or Liese's favour done
-        { id: 'rock', type: 'manual', text_de: 'Ein Rock, der nicht leuchtet: Kaspars Rock auf Lieses Bleiche', where: place(...DZ.bleiche, 12),
-          hint_de: 'Die Bleiche liegt unten am Bach, westlich der Quelle. Hinter der zweiten Leine stehen und E drücken, solange Liese zum Weg schaut. Oder mit ihr reden.' },
+        { id: 'rock', type: 'manual', text_de: 'Ein Rock, der nicht leuchtet: Kaspars Rock auf Lieses Bleiche', where: place(...DZ.coat, 6),
+          hint_de: 'Die Bleiche liegt unten am Bach, westlich der Quelle. Der Rock hängt auf der hinteren Leine. Geduckt oder außen herum hinter die Leine, dort E. Wer aufrecht zwischen die Leinen läuft, den sieht Liese. Oder mit ihr reden.' },
         { id: 'bitte', type: 'talk', npc: 'liese', topic: 'rock', optional: true, noMarker: true, text_de: 'Oder: Liese nach dem Rock fragen' },
         {
           id: 'zettel', type: 'kill', enemy: 'mahnbrief', count: 3, optional: true, after: ['bitte'],

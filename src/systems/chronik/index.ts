@@ -386,7 +386,7 @@ function updatePrompt(ctx: GameContext): void {
       // an echo close by as well → offer both
       const p = ctx.player.position;
       const echoNear = ctx.content.cluesAt(p.x, p.z, ctx.era.current).some((c) => c.kind === 'echo' && content.clues.has(c.id) && statusOf(ctx, c as ChronikClue) === 'available');
-      text = ctx.t(echoNear ? 'chronik.prompt.both' : 'chronik.prompt.examine');
+      text = echoNear ? ctx.t('chronik.prompt.both') : target.clue.prompt_de ?? ctx.t('chronik.prompt.examine');
     }
   }
   const k = `${key}|${text}`;

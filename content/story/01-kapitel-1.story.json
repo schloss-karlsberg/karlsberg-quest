@@ -15,7 +15,7 @@
   "continues": true,
   "on": [
     {
-      "id": "oel-a",
+      "id": "oel-tag",
       "when": {
         "all": [
           {
@@ -25,26 +25,14 @@
             "not": {
               "flag": "k1.b"
             }
-          },
-          {
-            "not": {
-              "flag": "k1.vorspiel"
-            }
           }
         ]
       },
-      "repeat": true,
       "do": [
         {
           "do": "meter",
           "id": "oil",
           "active": false
-        },
-        {
-          "do": "meter",
-          "id": "oil",
-          "active": true,
-          "seconds": 360
         }
       ]
     },
@@ -139,7 +127,7 @@
             "era": "1789"
           },
           {
-            "chapterTimer": 75
+            "flag": "k1.b"
           },
           {
             "not": {
@@ -162,8 +150,9 @@
         },
         {
           "do": "toast",
-          "text": "Halte [Q], um ins Heute zurückzukehren. Die Laterne brennt nicht ewig: ist das Öl leer, lässt dich die Erinnerung los.",
-          "ms": 6500
+          "text": "Die Laterne brennt nicht ewig: Ist das Öl leer, lässt dich die Erinnerung los. Halte [Q], um vorher ins Heute zurückzukehren.",
+          "ms": 6500,
+          "delay": 8
         }
       ]
     },
@@ -1128,8 +1117,8 @@
               "do": "objective",
               "id": "k1.rock",
               "text": "Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach",
-              "x": 1001.5,
-              "z": -876.5
+              "x": 1001.9,
+              "z": -880.4
             },
             {
               "do": "say",
@@ -1187,7 +1176,8 @@
           "do": "flag",
           "set": {
             "k1.vorspiel": true,
-            "npc.owns.clue.k1.papier": true
+            "npc.owns.clue.k1.papier": true,
+            "k1.rock.frei": true
           }
         },
         {
@@ -1356,8 +1346,8 @@
               "do": "objective",
               "id": "k1.rock",
               "text": "Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach",
-              "x": 1001.5,
-              "z": -876.5
+              "x": 1001.9,
+              "z": -880.4
             }
           ]
         },
@@ -1392,6 +1382,106 @@
               "text": "Papier und Siegel: zum Hofgärtner vor der Orangerie (langsam, Stab weg)",
               "x": 1221,
               "z": -993
+            }
+          ]
+        },
+        {
+          "id": "k1_0b.liese-sieht",
+          "when": {
+            "all": [
+              {
+                "enter": {
+                  "x": 1003.6,
+                  "z": -875.7,
+                  "r": 3.6,
+                  "era": "1789"
+                }
+              },
+              {
+                "stance": "stand"
+              },
+              {
+                "flag": "k1.rock.frei"
+              },
+              {
+                "not": {
+                  "flag": "disguise.coat"
+                }
+              },
+              {
+                "not": {
+                  "talked": {
+                    "npc": "liese",
+                    "topic": "rock"
+                  }
+                }
+              }
+            ]
+          },
+          "repeat": true,
+          "do": [
+            {
+              "do": "flag",
+              "set": {
+                "k1.rock.frei": null
+              }
+            },
+            {
+              "do": "say",
+              "id": "liese.k1.sieht",
+              "speaker": "liese",
+              "variants": [
+                "He! Finger von der Wäsche! Die ist für den Hof, nicht für Feuersalamander.",
+                "Ich seh Ihn doch. Da vorn zwischen den Leinen hat Er nichts verloren."
+              ],
+              "repeat": true
+            },
+            {
+              "do": "objective",
+              "id": "k1.rock",
+              "text": "Liese hat dich gesehen. Erst weg von der Bleiche, dann geduckt oder außen herum hinter die zweite Leine. Oder frag sie",
+              "x": 1001.9,
+              "z": -880.4
+            }
+          ]
+        },
+        {
+          "id": "k1_0b.liese-ruhig",
+          "when": {
+            "all": [
+              {
+                "not": {
+                  "flag": "k1.rock.frei"
+                }
+              },
+              {
+                "not": {
+                  "flag": "disguise.coat"
+                }
+              },
+              {
+                "leave": {
+                  "x": 1001.5,
+                  "z": -876.5,
+                  "r": 14
+                }
+              }
+            ]
+          },
+          "repeat": true,
+          "do": [
+            {
+              "do": "flag",
+              "set": {
+                "k1.rock.frei": true
+              }
+            },
+            {
+              "do": "objective",
+              "id": "k1.rock",
+              "text": "Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach",
+              "x": 1001.9,
+              "z": -880.4
             }
           ]
         },
