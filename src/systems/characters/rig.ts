@@ -181,6 +181,9 @@ export class Rig {
   private readonly actions = new Map<string, AnimationAction>();
   current: AnimationAction | null = null;
   currentName = '';
+  /** Bones turned after the mixer (`turnBone`), each with the pose the mixer had left it in. */
+  private readonly turned = new Map<Bone, Quaternion>();
+  private readonly spare: Quaternion[] = [];
 
   constructor(src: LoadedModel, height: number) {
     this.info = rigInfo(src);
@@ -277,18 +280,36 @@ export class Rig {
   }
 
   update(dt: number): void {
+    this.restoreTurns();
     this.mixer.update(dt);
+  }
+
+  /**
+   * Put every bone turned since the last update back into the pose the mixer left it in. The mixer
+   * writes a bone only when its blended value changed, and never one without a track, so a turn
+   * on a bone that holds still in the playing clips (a constant track: the MPFB player's spine_01)
+   * would otherwise stay and the next frame's turn pile on top of it (TASK-091).
+   */
+  private restoreTurns(): void {
+    for (const [b, q] of this.turned) {
+      b.quaternion.copy(q);
+      this.spare.push(q);
+    }
+    this.turned.clear();
   }
 
   /**
    * Turn a bone after the mixer: `yaw` about the world vertical, `pitch` about the root's right
    * axis (radians). Uses last frame's parent matrices (a frame late, invisible at these speeds).
+   * The turn lasts until the next `update`, which starts from the mixer's pose again: call it
+   * every frame, after `update`.
    */
   turnBone(name: string | null, yaw: number, pitch = 0): void {
     if (!name) return;
     const b = this.bone(name);
     const p = b?.parent;
     if (!b || !p) return;
+    if (yaw || pitch) this.remember(b);
     p.getWorldQuaternion(_q).invert();
     if (yaw) {
       _axis.set(0, 1, 0).applyQuaternion(_q).normalize();
@@ -299,6 +320,25 @@ export class Rig {
       _axis.set(1, 0, 0).applyQuaternion(_q2).applyQuaternion(_q).normalize();
       b.quaternion.premultiply(_q2.setFromAxisAngle(_axis, pitch));
     }
+  }
+
+  /**
+   * Turn a bone after the mixer by a rotation given in world space (leg IK). Like `turnBone` it
+   * lasts until the next `update`. The parent's world matrix is brought up to date first, so
+   * turning a chain from the hip down in one frame composes.
+   */
+  rotateBone(b: Bone, world: Quaternion): void {
+    const p = b.parent;
+    if (!p) return;
+    this.remember(b);
+    // world' = q · parent · local  ⇒  local' = parent⁻¹ · q · parent · local
+    p.getWorldQuaternion(_q);
+    b.quaternion.premultiply(_q2.copy(_q).invert().multiply(world).multiply(_q));
+  }
+
+  /** Keep the pose the mixer left a bone in, once per frame, for `restoreTurns`. */
+  private remember(b: Bone): void {
+    if (!this.turned.has(b)) this.turned.set(b, (this.spare.pop() ?? new Quaternion()).copy(b.quaternion));
   }
 
   /** World position of a point given in a bone's local frame (eyes). */

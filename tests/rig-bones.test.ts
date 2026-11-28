@@ -1,4 +1,4 @@
-import { Bone, BoxGeometry, Float32BufferAttribute, Group, Mesh, type Object3D, PropertyBinding, Quaternion, Skeleton, SkinnedMesh, Uint16BufferAttribute } from 'three';
+import { AnimationClip, Bone, BoxGeometry, Float32BufferAttribute, Group, Mesh, type Object3D, PropertyBinding, Quaternion, QuaternionKeyframeTrack, Skeleton, SkinnedMesh, Uint16BufferAttribute, Vector3, VectorKeyframeTrack } from 'three';
 import { describe, expect, it } from 'vitest';
 import type { AssetLoader, LoadedModel } from '../src/assets/loader';
 import { PIKEUR_RIG } from '../src/systems/characters/catalog';
@@ -134,5 +134,73 @@ describe('rig bones: GLTF-sanitized names', () => {
       expect(b!.quaternion.angleTo(rest)).toBeGreaterThan(1);
     }
     rigs.dispose();
+  });
+});
+
+describe('rig: bone turns after the mixer (TASK-091)', () => {
+  /**
+   * pelvis → spine_01 → neck_01 → head, 0.3 m apart, with an idle clip like the packed MPFB
+   * player's: the pelvis bobs, the head nods, spine_01 holds still (two equal STEP keys) and
+   * neck_01 has no track at all. three's mixer writes a bone only when its blended value changed.
+   */
+  function player(): LoadedModel {
+    const m = skeleton([
+      ['pelvis', null],
+      ['spine_01', 'pelvis'],
+      ['neck_01', 'spine_01'],
+      ['head', 'neck_01'],
+    ]);
+    m.scene.getObjectByName('pelvis')!.position.y = 0.9;
+    for (const n of ['spine_01', 'neck_01', 'head']) m.scene.getObjectByName(n)!.position.y = 0.3;
+    const still = new QuaternionKeyframeTrack('spine_01.quaternion', [0, 1], [0, 0, 0, 1, 0, 0, 0, 1]);
+    const bob = new VectorKeyframeTrack('pelvis.position', [0, 0.5, 1], [0, 0.9, 0, 0, 0.91, 0, 0, 0.9, 0]);
+    const nod = new QuaternionKeyframeTrack('head.quaternion', [0, 0.5, 1], [0, 0, 0, 1, 0.01, 0, 0, 0.99995, 0, 0, 0, 1]);
+    return { scene: m.scene, animations: [new AnimationClip('Idle', 1, [still, bob, nod])] };
+  }
+
+  const rest = new Quaternion();
+  const up = new Vector3();
+
+  function bend(rig: Rig, frames: number, pitch: number, dt = 1 / 60): void {
+    for (let i = 0; i < frames; i++) {
+      rig.update(dt);
+      rig.turnBone('spine_01', 0, pitch);
+      rig.turnBone('neck_01', 0.2, 0);
+      rig.root.updateMatrixWorld(true);
+    }
+  }
+
+  it('a turn on a bone that holds still in the clip is one turn, however many frames pass', () => {
+    const rig = new Rig(player(), 1.8);
+    rig.play('Idle', { fade: 0 });
+    bend(rig, 1, 0.42);
+    expect(rig.bone('spine_01')!.quaternion.angleTo(rest)).toBeCloseTo(0.42, 5);
+    bend(rig, 240, 0.42);
+    expect(rig.bone('spine_01')!.quaternion.angleTo(rest)).toBeCloseTo(0.42, 5);
+    // a bone without a track (never written by the mixer) keeps to one turn too
+    expect(rig.bone('neck_01')!.quaternion.angleTo(rest)).toBeCloseTo(0.2, 5);
+    // the head stays above the hips: 0.42 rad of lean, not a body folded in half
+    const head = rig.bone('head')!.getWorldPosition(up).y;
+    expect(head).toBeGreaterThan(rig.bone('pelvis')!.getWorldPosition(new Vector3()).y + 0.3);
+    rig.dispose();
+  });
+
+  it('frames without game time (pause, bullet time: dt 0) do not pile the turn up either', () => {
+    const rig = new Rig(player(), 1.8);
+    rig.play('Idle', { fade: 0 });
+    bend(rig, 3, 0.42);
+    bend(rig, 120, 0.42, 0);
+    expect(rig.bone('spine_01')!.quaternion.angleTo(rest)).toBeCloseTo(0.42, 5);
+    rig.dispose();
+  });
+
+  it('a turn ends with the frame it was asked for: the next update starts from the clip pose', () => {
+    const rig = new Rig(player(), 1.8);
+    rig.play('Idle', { fade: 0 });
+    bend(rig, 30, 0.42);
+    rig.update(1 / 60);
+    expect(rig.bone('spine_01')!.quaternion.angleTo(rest)).toBeCloseTo(0, 6);
+    expect(rig.bone('neck_01')!.quaternion.angleTo(rest)).toBeCloseTo(0, 6);
+    rig.dispose();
   });
 });
