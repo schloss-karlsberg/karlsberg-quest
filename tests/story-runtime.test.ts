@@ -9,8 +9,12 @@ import type { Era } from '../src/core/era';
 import { EventBus } from '../src/core/events';
 import { MemoryStorage, SAVE_KEY, SaveManager } from '../src/core/save';
 import { createInitialState, deserializeState, GameStateStore, type GameState } from '../src/core/state';
+import { STANCES } from '../src/player/stance';
+import { COAT_REACH } from '../src/systems/bleiche/layout';
 import type { QuestProgress } from '../src/rpg/types';
 import { createProgressionSlice } from '../src/systems/progression/logic';
+import { SHIFT_DURATION, SHIFT_DURATION_REDUCED, SHIFT_MID, SHIFT_MID_REDUCED } from '../src/systems/fx/shift/timeline';
+import { arrivalSpot } from '../src/systems/quelle/layout';
 import quests from '../src/systems/quests';
 import { createQuestSlice } from '../src/systems/quests/logic';
 import story from '../src/systems/story';
@@ -408,6 +412,56 @@ describe('the first time travel in the story runtime (TASK-089)', () => {
     expect(book['q.k1.ankunft']?.state).toBe('active');
     expect(game.state.state.systems.story?.objective).toMatchObject({ id: 'k1.rock' });
     expect(game.state.state.systems.story?.said).toEqual(expect.arrayContaining(['player.q.wo', 'laub.t.1789', 'laub.t.seite', 'laub.k1.brunnenstube', 'laub.k1.fremde']));
+  });
+
+  it.each([false, true])('starts the Bleiche brief before a continuous run reaches the sheets (reduced motion: %s)', async (reducedMotion) => {
+    const initial = createInitialState();
+    initial.systems.story = { ...createStorySlice(), active: true, chapter: 'tour', beat: 't17', unlocked: ['tour'] };
+    const game = await boot(initial, { withFx: true, reducedMotion });
+    Object.assign(game.player.position, { x: HOME.spawn.x, z: HOME.spawn.z });
+    game.events.on('shift:request', ({ to }) => game.events.emit('shift:begin', { to, from: 'today' }));
+    game.events.emit('game:start', { resumed: true });
+    const dialogue = game.dialogue();
+    game.tick();
+    game.events.emit('quelle:touch', { era: 'today' });
+    game.tick();
+    expect(beat(game)).toBe('tour/t18');
+    const midpoint = reducedMotion ? SHIFT_MID_REDUCED : SHIFT_MID;
+    const duration = reducedMotion ? SHIFT_DURATION_REDUCED : SHIFT_DURATION;
+    const tickFor = (seconds: number) => {
+      for (let i = 0; i < Math.round(seconds * 60); i++) game.tick();
+    };
+    tickFor(midpoint);
+    game.era.set('1789');
+    Object.assign(game.player.position, arrivalSpot(HOME.spawn.x, HOME.spawn.z));
+    tickFor(duration - midpoint);
+    game.events.emit('shift:done', { from: 'today', to: '1789', reason: 'quelle' });
+
+    // Follow the trail down the brook and round the right end of line B at standing sprint speed.
+    const p = game.player.position;
+    const runTo = (x: number, z: number) => {
+      const start = { x: p.x, z: p.z };
+      const duration = Math.hypot(x - start.x, z - start.z) / STANCES.stand.sprint;
+      const steps = Math.ceil(duration * 60);
+      for (let i = 1; i <= steps; i++) {
+        p.x = start.x + (x - start.x) * i / steps;
+        p.z = start.z + (z - start.z) * i / steps;
+        game.tick(duration / steps);
+      }
+    };
+    const trail = [
+      [1055.6, -838.1], [1047, -845], [1035.7, -855.1], [1018, -866],
+      [1013.9, -867.5], [1010.5, -879], [1008.6, -882.8],
+    ] as const;
+    for (const [x, z] of trail) runTo(x, z);
+    expect(dialogue.shown()).toContain('laub.k1.bleiche');
+    runTo(1003.9, -883.8);
+    runTo(COAT_REACH.x, COAT_REACH.z);
+    expect(p).toMatchObject({ x: COAT_REACH.x, z: COAT_REACH.z });
+
+    tickFor(60);
+    expect(beat(game)).toBe('k1/k1_0b');
+    expect(dialogue.shown().filter((id) => id === 'laub.k1.bleiche')).toHaveLength(1);
   });
 
   it('queues Laub’s Bleiche brief on the approach even during the spring arrival beat', async () => {

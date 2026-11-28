@@ -839,7 +839,7 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   expect(await page.evaluate(() => window.kq!.walk!.stats().visible)).toBe(0);
   expect(await page.evaluate(() => window.kq!.animals!.stats().visible)).toBe(0);
   await shot(page, '12-1789');
-  // the arrival lines in 1789, then the hand-over into chapter 1 right there: no fade, no way
+  // the arrival lines in 1789, then the hand-over into chapter 2 right there: no fade, no way
   // back to the present, no „Fortsetzung folgt“
   const fades = await page.evaluate(() => {
     const k = window.kq!;
@@ -863,6 +863,7 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   expect(s1.era).toBe('1789');
   expect(s1.objective).toMatchObject({ id: 'k1.rock' });
   await expect(page.getByTestId('story-card')).toContainText('Kapitel 2 · Sommer 1789');
+  expect(await page.evaluate(() => window.kq!.story!.shown())).toContain('laub.k1.bleiche');
   // the chapter card stands alone: no quest banner on it
   expect(await page.evaluate(() => window.kq!.quests!.state().quests['q.k1.kleider']?.state ?? 'hidden')).toBe('hidden');
   expect(await page.evaluate(() => window.kq!.quelle!.info().prompt), 'no second touch').toBe(false);

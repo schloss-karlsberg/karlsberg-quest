@@ -417,7 +417,8 @@
       "title_de": "Sommer 1789",
       "enter": [
         { "do": "shift", "to": "1789", "reason": "quelle", "onResume": true },
-        { "do": "say", "id": "player.q.wo", "speaker": "player", "text": "Wo sind die alle hin?", "delay": 3.5, "onResume": true },
+        { "do": "say", "id": "laub.k1.bleiche", "speaker": "laub", "text": "Die Bleiche. Die Wäscherin schaut zum Weg, nicht auf die Leine. Hinten herum, hinter der zweiten Leine, sieht sie Sie nicht. Oder Sie fragen sie. Fragen soll auch eine Methode sein.", "delay": 3.5, "wait": true, "onResume": true },
+        { "do": "say", "id": "player.q.wo", "speaker": "player", "text": "Wo sind die alle hin?", "delay": 0.2, "onResume": true },
         { "do": "say", "id": "laub.t.1789", "speaker": "laub", "text": "Nicht fort. Nur zweihundert Jahre weiter, je nachdem, wie man rechnet. Sommer 1789. Atmen Sie.", "delay": 0.6, "onResume": true },
         { "do": "say", "id": "laub.t.seite", "speaker": "laub", "text": "Und im Deckel der Bussole steckt ein Blatt. Unten steht meine Handschrift. Sie finden es später unter Ausrüstung.", "delay": 0.8, "onResume": true },
         { "do": "flag", "set": { "tour.ende": true }, "delay": 1.6, "onResume": true }
