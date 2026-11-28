@@ -58,6 +58,8 @@ Chronik echoes and the people system's twins.
       beyond the people draw limit; a capsule if the model fails to load.
 - [x] `npc/rigged.ts` `RiggedNpc` draws either look; the ghost path is unchanged.
 - [x] Marlene gets a roster figure with the body and colours of her party stand-in.
+- [x] The costumes colour the stand-ins' bare limbs: coat sleeves for officials and livery, a linen
+      fichu with sleeves and white stockings for the maids (`characters/catalog.ts`).
 - [x] Story: the `npc` action passes `look`; the validator checks it and rejects a kneeling solid
       person. The one deliberate ghost keeps its look: the old Pikeur at the kennel today (k4_13).
 - [x] Tests: `tests/npc-look.test.ts` (look rule, fade maths, materials of every roster figure on
@@ -74,7 +76,38 @@ Chronik echoes and the people system's twins.
 - [x] The Pikeur's ghost at the kennel still reads as a ghost and still kneels.
 - [x] The four gates pass; the hosted e2e run on the PR is green.
 
+## Measured cost
+
+Apple M5 Pro, ANGLE Metal, 1280×720, uncapped, 240 frames per row, same camera in the Ehrenhof in
+1789, `main` against this branch (full table: `docs/PERFORMANCE.md` §3.9). Chapter 1 places ten
+people; four stand within 60 m of the Ehrenhof.
+
+| Preset | Scene | Draw calls before → after | CPU ms before → after | Frame ms before → after |
+| --- | --- | --- | --- | --- |
+| Niedrig | court, k1 people | 132 → 136 | 1.37 → 1.49 | 1.58 → 1.69 |
+| Mittel | court, k1 people | 384 → 207 | 2.08 → 2.00 | 2.39 → 2.36 |
+| Niedrig | 16 figures in view (not a story scene) | 156 → 279 | 1.40 → 1.56 | 1.60 → 1.78 |
+| Mittel | 16 figures in view (not a story scene) | 548 → 420 | 2.53 → 3.01 | 2.79 → 3.30 |
+
+Budget: 300 draw calls and 8 ms CPU per frame. Niedrig stays inside it at the busiest story scene,
+so the figures are not made cheaper there. Mittel got cheaper: the ghost look drew every part
+twice for all ten figures at any distance. Sixteen figures in view on Mittel peak over 300 draws
+with the shadow pass (538; the ghost look: 570); the story never places that many together.
+
+## Open points for the owner
+
+- The CC0 bodies are modern cuts (bare arms, a sleeveless knee-length dress, no mob cap on the
+  woman model, a wide flat tricorn). The smoke hid that. Sleeves, fichu and stockings are now laid
+  over the bare limbs by colour; real period bodies are an art task.
+- The Ehrenhof's set dressing still has ghost figures of its own in 1789 (crowd silhouettes, the
+  coach and its horse). They come from other systems and were left as they are.
+
 ## Progress
 
 - 2026-11-28: reproduced on a real GPU (ANGLE Metal); cause found; solid look implemented; tests
   added.
+- 2026-11-28: real-GPU review (ANGLE Metal, 1280×720, Hoch and Niedrig, build + preview), before
+  from main and after: Marlene at the pond beside two tour members, the Hofgärtner on the Orangerie
+  lawn, all 16 roster figures in two rows, the chapter 1 court, the kneeling Pikeur today (still a
+  ghost). After: every drawn part of a solid figure is a standard material, not transparent,
+  opacity 1. `e2e/npc.spec.ts` passes locally on SwiftShader (Niedrig).

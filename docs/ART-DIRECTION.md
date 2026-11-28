@@ -197,7 +197,9 @@ low tier (SwiftShader, e2e) keeps the procedural forest and draws no props.
 - **Implemented (TASK-092, 2026-11-28), every tier:** a solid NPC is the rigged CC0 Quaternius
   human of its outfit with the costume colours on cloned, world-lit material slots
   (`src/systems/npc/solid.ts`, `rigged.ts`), hat, prop and pike on the bones; it dithers in over
-  0.35 s and is then fully opaque.
+  0.35 s and is then fully opaque. The CC0 bodies are modern cuts (bare arms, a sleeveless
+  knee-length dress); the costumes lay coat sleeves, a linen fichu with sleeves and white stockings
+  over those meshes by colour (`catalog.ts`). Period bodies are still to be authored.
 - **Implemented (characters track, 2026-11-19), medium / high tiers:** NPC ghosts are rigged CC0
   Quaternius humans (`public/assets/models/characters/`: adventurer, farmer, animated woman; 0.5–0.6 MB
   each, meshopt, lazy on first sight) dressed per outfit by recolouring the model's material slots
