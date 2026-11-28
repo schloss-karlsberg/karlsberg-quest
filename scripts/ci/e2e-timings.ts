@@ -4,9 +4,9 @@
  *   node scripts/ci/e2e-timings.ts <playwright-report.json> <out.tsv>
  *
  * Writes one line per spec file to the TSV (spec, minutes, tests, failed, flaky, slowest test,
- * its minutes), and prints GitHub annotations: a warning for each test that passed only on its
- * retry. The workflow's last job joins the TSVs of all shards into the "Spec timings" table,
- * the source for scripts/ci/e2e-minutes.ts.
+ * its minutes, titles of the flaky tests), and prints GitHub annotations: a warning for each test
+ * that passed only on its retry. The workflow's last job joins the TSVs of all shards into the
+ * "Spec timings" table, the source for scripts/ci/e2e-minutes.ts, and repeats the flaky tests.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 
@@ -64,7 +64,9 @@ export function specTimings(report: { suites?: Suite[] }): SpecTiming[] {
 const cell = (text: string) => text.replace(/[\t\n|]/g, ' ').slice(0, 90);
 
 export function toTsv(timings: SpecTiming[]): string {
-  return timings.map((t) => [t.spec, t.minutes, t.tests, t.failed, t.flaky.length, cell(t.slowest), t.slowestMinutes].join('\t')).join('\n') + '\n';
+  return timings
+    .map((t) => [t.spec, t.minutes, t.tests, t.failed, t.flaky.length, cell(t.slowest), t.slowestMinutes, t.flaky.map(cell).join('; ')].join('\t'))
+    .join('\n') + '\n';
 }
 
 if (import.meta.main) {

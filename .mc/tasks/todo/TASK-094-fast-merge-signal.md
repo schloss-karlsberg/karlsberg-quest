@@ -137,7 +137,7 @@ queue. The pull request lists the exact settings.
 | Pull request, only docs / `.mc/` / unit tests / tooling | Gates. "End-to-end tests" passes without running a spec. | 2 small jobs |
 | Pull request, feature system / content / spec / helper | Gates, the covering specs plus smoke | 1–12, about 8 min of estimated work per shard, never more shards than the longest spec needs |
 | Pull request, shared code or a path without a rule | Gates, the full suite | 12 |
-| Pull request with the `full-e2e` label | Gates, the full suite | 12 |
+| Pull request with the `full-e2e` label, or from a fork | Gates, the full suite | 12 |
 | Merge queue (`merge_group`) | Gates, the full suite | 12 |
 | Push to `main` | the full suite, unless the same commit already passed it in the queue or in a manual full run | 8, one run at a time and one waiting |
 | `workflow_dispatch` | the listed specs, or the full suite | up to 12 |
@@ -148,8 +148,14 @@ queue. The pull request lists the exact settings.
 - The campaign runs only with the full suite. Rules never list it.
 - Specs import some game modules in Node (save format, layouts). A change to such a module also
   selects the importing specs.
-- One retry per failed test on hosted runners, none for the campaign. A test that passes on its
-  retry is a warning and a count in the "Flaky" column of the run summary.
+- One retry per failed test on hosted runners, none for the campaign and none in the run on
+  `main` after a merge, where a flaky test turns `main` red. On a pull request a test that passes
+  on its retry leaves the check green; the result job then raises the warning "Flaky e2e tests"
+  and the run summary lists the tests.
+- A file that a spec imports or reads with `new URL('../x', import.meta.url)` selects that spec,
+  also below a `none` rule (the save fixtures in `tests/fixtures/`).
+- A run that a newer push cancelled ends without a failure for the old commit. Only the check
+  on the latest commit counts.
 - Each shard writes per-spec minutes; the result job prints one "Spec timings" table per run.
 - 12 shards instead of 16 for a full run: the campaign sets the wall time, and 12 + 8 (a run on
   `main`) fit the pool of 20.
@@ -206,6 +212,22 @@ then runs once per batch branch.
   manual `chapter-k2 smoke` run (2 shards).
 - The unit test that walks the build's imports caught `content/examples/`, which the first draft
   treated as docs: the example pack is bundled by `import.meta.glob`.
+
+### Review fixes · 2026-11-28
+
+- Fail-open hole: `tests/**` ran nothing, but `e2e/smoke.spec.ts` and `e2e/chapter-prolog.spec.ts`
+  read `tests/fixtures/saves/v0.8.0.json`. The import graph now follows
+  `new URL('../x', import.meta.url)` and is asked before a `none` rule applies, and
+  `tests/fixtures/**` has its own rule. No other hosted spec or helper reads a file outside
+  `e2e/` and `src/` (the campaign's saves are its own output below `test-results/`); a unit test
+  fails when a spec names such a path relative to the working directory.
+- Pull requests from a fork always run the full suite.
+- `src/systems/characters/**` and the model and texture rule now include the fight specs:
+  `characters/rig.ts` drives the enemy rigs too.
+- Flaky tests: warning from the result job, list in the run summary, no retry on `main`.
+- The workflow YAML and its expressions were checked by reading, a YAML parse and `bash -n` only:
+  `actionlint` is installed neither here nor at the reviewer's. The pull request's hosted run is
+  the first real check of the expressions.
 
 ## Follow-ups
 

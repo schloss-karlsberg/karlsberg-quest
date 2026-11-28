@@ -3,6 +3,7 @@
  *
  * Pull requests run the specs that their changed paths can affect (e2e-areas.ts) plus smoke, the
  * full suite when shared code changed, and nothing when only docs, tasks or unit tests changed.
+ * A pull request from a fork always runs the full suite.
  * The merge queue, pushes to main and manual runs without a spec list run the full suite.
  *
  * Try it on your branch (no install needed, Node 24):
@@ -45,6 +46,8 @@ export type SelectInput = {
   changed?: readonly string[] | null;
   /** pull_request: label names. */
   labels?: readonly string[];
+  /** pull_request: the branch lives in another repository. */
+  fork?: boolean;
   /** pull_request: `quick` runs QUICK_SPECS instead of the full suite when shared code changed. */
   sharedCode?: string;
   /** push: URL of a full run that already passed on this exact commit. */
@@ -84,13 +87,20 @@ export function findRule(path: string, rules: readonly AreaRule[] = AREA_RULES):
 }
 
 /**
- * Relative imports of a TypeScript source that load a module at run time, resolved against the
- * importing file. `import type` and `export type` are erased, so they are left out.
+ * Files a TypeScript source loads at run time through a relative path, resolved against that
+ * source: imports, and files read with `new URL('../x', import.meta.url)` (save fixtures).
+ * `import type` and `export type` are erased, so they are left out.
  */
 export function relativeImports(path: string, source: string): string[] {
   const found: string[] = [];
-  const pattern = /\b(?:import|export)\s+(?!type\b)[^'";]*?\bfrom\s*['"](\.{1,2}\/[^'"]+)['"]|\bimport\s*\(?\s*['"](\.{1,2}\/[^'"]+)['"]/g;
-  for (const match of source.matchAll(pattern)) found.push(posix.normalize(posix.join(posix.dirname(path), match[1] ?? match[2])));
+  const pattern = new RegExp([
+    /\b(?:import|export)\s+(?!type\b)[^'";]*?\bfrom\s*['"](\.{1,2}\/[^'"]+)['"]/,
+    /\bimport\s*\(?\s*['"](\.{1,2}\/[^'"]+)['"]/,
+    /\bnew\s+URL\(\s*['"](\.{1,2}\/[^'"]+)['"]\s*,\s*import\.meta\.url/,
+  ].map((part) => part.source).join('|'), 'g');
+  for (const match of source.matchAll(pattern)) {
+    found.push(posix.normalize(posix.join(posix.dirname(path), match[1] ?? match[2] ?? match[3])));
+  }
   return found;
 }
 
@@ -103,7 +113,7 @@ function resolveModule(path: string, repo: RepoView): string | null {
 
 const dependencies = new WeakMap<RepoView, Map<string, Set<string>>>();
 
-/** Every repository file each spec loads in Node: helpers, and the `src/` modules some specs import. */
+/** Every repository file each spec loads in Node: helpers, `src/` modules and fixtures some specs read. */
 function specDependencies(repo: RepoView): Map<string, Set<string>> {
   let bySpec = dependencies.get(repo);
   if (bySpec) return bySpec;
@@ -131,7 +141,7 @@ function specDependencies(repo: RepoView): Map<string, Set<string>> {
   return bySpec;
 }
 
-/** Specs that import a file, directly or through other files. */
+/** Specs that import or read a file, directly or through other files. */
 export function specsImporting(target: string, repo: RepoView): string[] {
   return [...specDependencies(repo)].filter(([, files]) => files.has(target)).map(([name]) => name);
 }
@@ -140,12 +150,13 @@ type PathResult = { run: 'none' | 'full' | string[]; why: string };
 
 function classify(path: string, repo: RepoView): PathResult {
   const rule = findRule(path);
-  // Local-only suites and docs below e2e/ are ruled out before the import graph is asked.
-  if (rule && typeof rule.run === 'string') return { run: rule.run, why: rule.why };
+  if (rule?.run === 'full') return { run: 'full', why: rule.why };
+  const importers = specsImporting(path, repo);
+  // A file that a spec loads is never "none", whatever its directory says (tests/fixtures).
+  if (rule?.run === 'none') return importers.length ? { run: importers, why: 'loaded by these specs' } : { run: 'none', why: rule.why };
 
   const spec = /^e2e\/([^/]+)\.spec\.ts$/.exec(path)?.[1];
   if (spec) return repo.specs.includes(spec) ? { run: [spec], why: 'the spec itself' } : { run: 'none', why: 'spec removed' };
-  const importers = specsImporting(path, repo);
   if (path.startsWith('e2e/') && path.endsWith('.ts')) {
     if (repo.read(path) === null) return { run: 'full', why: 'e2e helper removed or renamed' };
     return importers.length ? { run: importers, why: 'specs that import this helper' } : { run: 'none', why: 'no spec imports it' };
@@ -179,6 +190,8 @@ export function selectE2e(input: SelectInput): Selection {
   }
   if (event !== 'pull_request') return full(event === 'merge_group' ? 'merge queue' : `event ${event}`);
 
+  // A fork can change the rules and the selection script it is tested with.
+  if (input.fork) return full('pull request from a fork');
   if (input.labels?.includes(FULL_LABEL)) return full(`the pull request has the ${FULL_LABEL} label`);
   if (!input.changed) return full('the changed files could not be determined');
 
@@ -288,6 +301,7 @@ function main(argv: string[]): void {
     requested: flag('specs') ?? env.KQ_E2E_SPECS,
     changed,
     labels: (flag('labels') ?? env.KQ_E2E_LABELS ?? '').split(',').map((label) => label.trim()).filter(Boolean),
+    fork: env.KQ_E2E_FORK === 'true' || argv.includes('--fork'),
     sharedCode: flag('shared-code') ?? env.KQ_E2E_SHARED_CODE,
     verifiedBy: env.KQ_E2E_VERIFIED_BY || undefined,
     repo,

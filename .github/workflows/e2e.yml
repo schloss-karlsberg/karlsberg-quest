@@ -93,6 +93,8 @@ jobs:
         id: select
         env:
           KQ_E2E_SPECS: ${{ inputs.specs }}
+          # A fork can change the rules it is tested with, so it always gets the full suite.
+          KQ_E2E_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
           # Unset: shared code runs the full suite on the pull request. `quick`: a cross-section,
           # for when the full suite passes before every merge anyway (CONTRIBUTING.md).
           KQ_E2E_SHARED_CODE: ${{ vars.E2E_SHARED_CODE }}
@@ -168,6 +170,8 @@ jobs:
         env:
           SPEC_FILES: ${{ matrix.specs }}
           KQ_E2E_CAMPAIGN: ${{ matrix.campaign && '1' || '0' }}
+          # No retry after a merge: a flaky test turns main red and opens the issue.
+          KQ_E2E_RETRIES: ${{ github.event_name == 'push' && '0' || '1' }}
         run: |
           printf '%s\n' "$SPEC_FILES" > "$RUNNER_TEMP/e2e-specs.txt"
           # Resource trace: hosted runners have been lost mid-run ("shutdown signal"); log memory and
@@ -255,6 +259,20 @@ jobs:
               echo
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+          # A test that passed only on its retry must not go unnoticed behind a green check.
+          flaky=
+          if compgen -G 'timings/*.tsv' > /dev/null; then
+            flaky=$(cat timings/*.tsv | awk -F '\t' '$5 > 0 { printf "%s%s: %s", sep, $1, $8; sep = " | " }')
+          fi
+          if [[ -n "$flaky" ]]; then
+            echo "::warning title=Flaky e2e tests::Passed only on the retry: $flaky. Fix them or file a task."
+            {
+              echo "#### Flaky tests (passed only on the retry)"
+              echo
+              cat timings/*.tsv | awk -F '\t' '$5 > 0 { printf "- **%s**: %s\n", $1, $8 }'
+              echo
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
           if [[ "$PLAN" != success ]]; then
             echo "::error::Selecting the specs or building the game did not succeed ($PLAN)."
             exit 1

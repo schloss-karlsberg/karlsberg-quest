@@ -72,8 +72,11 @@ Both render with SwiftShader (software). For the real-GPU look, `e2e/gpu/*.gpu.t
    - **Gates** (the four gates) reports in about a minute.
    - **End-to-end tests** runs the specs the changed paths can affect: nothing for docs, task files
      and unit tests (green at once), a few specs plus smoke for a feature system (5–20 min), the
-     full suite for shared code such as `src/boot.ts`, `src/core/` or the build (30–45 min). The
-     summary of its job "Select specs and build" says which and why.
+     full suite for shared code such as `src/boot.ts`, `src/core/` or the build, and for every
+     pull request from a fork (30–45 min). The summary of its job "Select specs and build" says
+     which and why.
+   - Green with the warning "Flaky e2e tests"? A test passed only on its retry. Name it in the PR
+     and fix it or file a task.
    - Red? Read the failed shard (`gh run view <run-id> --log-failed`), fix it and push; the new push
      cancels the old run. A failure that is not yours: `gh run rerun <run-id> --failed` repeats
      only the failed shards. Say so in the PR.

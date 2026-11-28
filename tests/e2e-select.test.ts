@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { ALWAYS_SPECS, AREA_RULES, FULL_LABEL, FULL_ONLY_SPECS, QUICK_SPECS } from '../scripts/ci/e2e-areas';
 import { SPEC_MINUTES } from '../scripts/ci/e2e-minutes';
 import { specTimings, toTsv } from '../scripts/ci/e2e-timings';
-import { findRule, globToRegExp, planSelection, relativeImports, selectE2e, specsImporting, type RepoView } from '../scripts/ci/select-e2e';
+import { checkout, findRule, globToRegExp, planSelection, relativeImports, selectE2e, specsImporting, type RepoView } from '../scripts/ci/select-e2e';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -20,6 +20,9 @@ const repo = fakeRepo({
   'e2e/minimap.spec.ts': `import { openPause } from './helpers/pause';`,
   'e2e/photo.spec.ts': `import { ready } from './helpers/common';\nimport { openPause } from './helpers/pause';`,
   'e2e/quelle.spec.ts': `import { ready } from './helpers/common';\nimport { TROUGH } from '../src/systems/quelle/layout';`,
+  'e2e/photo-fixture.spec.ts': `const save = readFileSync(new URL('../tests/fixtures/saves/v1.json', import.meta.url), 'utf8');`,
+  'tests/fixtures/saves/v1.json': '{}',
+  'tests/fixtures/saves/v0.json': '{}',
   'e2e/fx.spec.ts': '',
   'e2e/skills.spec.ts': '',
   'e2e/animals.spec.ts': '',
@@ -81,6 +84,29 @@ describe('e2e selection for a pull request', () => {
     expect(pr(null)).toMatchObject({ mode: 'full' });
   });
 
+  it('runs the full suite for every pull request from a fork', () => {
+    const fork = (changed: string[] | null, sharedCode?: string) => selectE2e({ event: 'pull_request', changed, fork: true, sharedCode, repo });
+    expect(fork(['docs/PRD.md'])).toMatchObject({ mode: 'full', specs: [], reason: 'pull request from a fork' });
+    expect(fork(['src/systems/minimap/draw.ts'])).toMatchObject({ mode: 'full' });
+    expect(fork(['src/boot.ts'], 'quick')).toMatchObject({ mode: 'full' });
+    expect(fork([])).toMatchObject({ mode: 'full' });
+    expect(selectE2e({ event: 'pull_request', changed: ['docs/PRD.md'], fork: false, repo })).toMatchObject({ mode: 'none' });
+  });
+
+  it('runs the specs that read a fixture, although unit tests run nothing', () => {
+    expect(specsImporting('tests/fixtures/saves/v1.json', repo)).toEqual(['photo-fixture']);
+    // Read by a spec: that spec, plus the rule's specs that exist here, plus smoke.
+    expect(pr(['tests/fixtures/saves/v1.json']).specs).toEqual(['photo-fixture', 'smoke']);
+    // Not read by any spec: the fixtures rule still runs smoke.
+    expect(pr(['tests/fixtures/saves/v0.json'])).toMatchObject({ mode: 'selected', specs: ['smoke'] });
+    expect(pr(['tests/photo.test.ts'])).toMatchObject({ mode: 'none' });
+    // A `none` rule never hides a file that a spec loads.
+    const reads = fakeRepo({ 'e2e/smoke.spec.ts': '', 'e2e/a.spec.ts': '', 'e2e/b.spec.ts': '', 'e2e/c.spec.ts': `import data from '../docs/numbers.json';`, 'docs/numbers.json': '{}' });
+    const selection = selectE2e({ event: 'pull_request', changed: ['docs/numbers.json', 'docs/PRD.md'], repo: reads });
+    expect(selection).toMatchObject({ mode: 'selected', specs: ['c', 'smoke'] });
+    expect(selection.rows[0]).toMatchObject({ run: 'c', why: 'loaded by these specs' });
+  });
+
   it('runs a cross-section for shared code only when the repository opts in', () => {
     const quick = (changed: string[], labels: string[] = []) => selectE2e({ event: 'pull_request', changed, labels, sharedCode: 'quick', repo });
     const selection = quick(['src/boot.ts', 'src/systems/ambience/index.ts']);
@@ -139,9 +165,11 @@ describe('e2e selection for a pull request', () => {
       `import a from './a';`, `import type { T } from './types';`, `import { type U, b } from "../b";`, `export { c } from './c.ts';`,
       `export type { V } from './more-types';`, `const d = await import('./d');`, `import './e';`, `import x from 'vitest';`,
       `import {\n  f,\n  g,\n} from './f';`,
+      `const save = readFileSync(new URL('../../tests/fixtures/saves/v0.8.0.json', import.meta.url), 'utf8');`,
+      `const page = new URL('./?nosave', baseURL);`,
     ].join('\n');
     expect(relativeImports('e2e/helpers/k1.ts', source))
-      .toEqual(['e2e/helpers/a', 'e2e/b', 'e2e/helpers/c.ts', 'e2e/helpers/d', 'e2e/helpers/e', 'e2e/helpers/f']);
+      .toEqual(['e2e/helpers/a', 'e2e/b', 'e2e/helpers/c.ts', 'e2e/helpers/d', 'e2e/helpers/e', 'e2e/helpers/f', 'tests/fixtures/saves/v0.8.0.json']);
   });
 });
 
@@ -254,6 +282,29 @@ describe('scripts/ci/e2e-areas.ts against the repository', () => {
     expect([...loaded].filter(isNone)).toEqual([]);
   });
 
+  it('selects the specs that read the save fixtures', () => {
+    const real = checkout(root);
+    const selection = selectE2e({ event: 'pull_request', changed: ['tests/fixtures/saves/v0.8.0.json', 'tests/core.test.ts'], repo: real });
+    expect(selection.mode).toBe('selected');
+    expect(selection.specs).toEqual(expect.arrayContaining(['smoke', 'chapter-prolog']));
+    expect(selectE2e({ event: 'pull_request', changed: ['tests/fixtures/saves/v0.6.0.json'], repo: real }).specs).toContain('smoke');
+  });
+
+  it('loads outside files in specs only in ways the selection can follow', () => {
+    // An import or `new URL('../x', import.meta.url)` is followed. A path relative to the working
+    // directory (readFileSync('tests/…')) is not, and a change to that file would run no spec.
+    const hosted = files.filter((path) => /^e2e\/[^/]+\.spec\.ts$/.test(path) || path.startsWith('e2e/helpers/'));
+    const hidden = hosted.flatMap((path) => [...source(path).matchAll(/['"`](?:\.\/)?((?:tests|content|scripts|public|docs|src)\/[^'"`\s]*)['"`]/g)].map((match) => `${path}: ${match[1]}`));
+    expect(hidden, 'Read these through new URL(..., import.meta.url) or an import.').toEqual([]);
+  });
+
+  it('runs fight specs for the shared character rig and the enemy models', () => {
+    const specsFor = (path: string) => findRule(path)?.run;
+    expect(specsFor('src/systems/characters/rig.ts')).toEqual(expect.arrayContaining(['combat', 'combat-variety', 'fun-combat', 'npc']));
+    expect(specsFor('public/assets/models/chars/enemy.glb')).toEqual(expect.arrayContaining(['combat', 'combat-variety']));
+    expect(specsFor('src/assets/manifests/enemies.ts')).toEqual(expect.arrayContaining(['combat', 'combat-variety']));
+  });
+
   it('keeps the timing table in step with the specs', () => {
     expect(Object.keys(SPEC_MINUTES).filter((name) => !specs.includes(name))).toEqual([]);
   });
@@ -278,7 +329,7 @@ describe('spec timings', () => {
     };
     const timings = specTimings(report);
     expect(timings).toEqual([{ spec: 'smoke', minutes: 3.1, tests: 3, failed: 1, flaky: ['walks | far'], slowest: 'walks | far', slowestMinutes: 2 }]);
-    expect(toTsv(timings)).toBe('smoke\t3.1\t3\t1\t1\twalks   far\t2\n');
+    expect(toTsv(timings)).toBe('smoke\t3.1\t3\t1\t1\twalks   far\t2\twalks   far\n');
     expect(specTimings({})).toEqual([]);
   });
 });

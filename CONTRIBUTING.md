@@ -90,6 +90,7 @@ decides:
 | Only docs, `.mc/` task files, unit tests or developer tooling | Nothing. The check passes at once. | under 1 min |
 | A feature system, content, a spec or an e2e helper | The specs that cover those paths, plus smoke, on as many runners as the work needs | 5–20 min |
 | Shared code (boot, core, player, render, world, shared strings, content builders, the build, the Playwright config, the workflow itself) or a path without a rule | The full suite on 12 runners | 30–45 min |
+| Anything, from a fork | The full suite on 12 runners | 30–45 min |
 
 - See what your branch will run, before you push: `node scripts/ci/select-e2e.ts` (committed
   changes against `origin/main`; `--base <ref>` picks another base). On the pull request, the
@@ -98,6 +99,11 @@ decides:
   (`gh run rerun <run-id>`). Or start it by hand on the branch: `gh workflow run e2e.yml --ref <branch>`.
 - The release campaign (`e2e/campaign.spec.ts`) only runs with the full suite.
 - A changed spec selects itself. A changed file in `e2e/helpers/` selects every spec that imports it.
+  A file that a spec imports or reads with `new URL('../…', import.meta.url)` (a game module, a
+  save fixture in `tests/fixtures/`) selects that spec too. Load files in specs only in these two
+  ways, never by a path relative to the working directory: the selection cannot see those.
+- Only the check on the latest commit counts. A run that a newer push cancelled ends without a
+  failure, so an older commit can show a green "End-to-end tests" that it never earned.
 - A new directory needs no rule to be safe: an unknown path runs the full suite. New files below
   `src/` need a rule (`tests/e2e-select.test.ts` says which), so that later changes stay cheap.
 - A failed shard: `gh run rerun <run-id> --failed` repeats only the failed shards.
@@ -132,8 +138,10 @@ code runs the full suite on the pull request.
   commits since the previous push. Later red runs comment on it, and the first green run closes it.
 - Find the merge in that commit range, then fix forward or revert it. Until `main` is green, merge
   only the fix or the revert.
-- A test that failed and then passed on its retry does not turn `main` red. It shows as a warning
-  and in the "Flaky" column of the run summary. Treat it as a bug: fix it or file a task.
+- The run on `main` does not retry: a flaky test turns `main` red, and the issue links its shard.
+  On a pull request a test that failed and then passed on its retry leaves the check green, but
+  the run carries the warning "Flaky e2e tests" and its summary lists them. Treat each as a bug:
+  fix it or file a task, and say so in the pull request.
 
 ### End-to-end tests
 
@@ -151,8 +159,9 @@ seconds on a hosted runner, and each wait or screenshot otherwise queues behind 
 A newer run cancels the previous run for the same PR. Failed shards upload their HTML report,
 traces with DOM snapshots, and still screenshots as an `e2e-results-*` artifact.
 
-A failed test gets one retry on hosted runners; the campaign gets none. A test that passes on its
-retry is reported as flaky (see "When main is red"). Local runs never retry. The default test and
+A failed test gets one retry on hosted runners; the campaign and the run on `main` after a merge
+get none. A test that passes on its retry is reported as flaky (see "When main is red"). Local
+runs never retry. The default test and
 assertion timeouts and explicit test and screenshot timeouts are tripled through `ciScale` in
 `e2e/helpers/ci.ts`. The campaign runs alone with a 240-minute Playwright deadline in a 270-minute
 job. Other shards have 180 minutes inside a 205-minute job.

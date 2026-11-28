@@ -12,7 +12,9 @@
  *   `full-e2e` label and manual full runs).
  *
  * `e2e/*.spec.ts` and `e2e/helpers/**` are handled in select-e2e.ts: a spec selects itself, and a
- * helper selects every spec that imports it.
+ * helper selects every spec that imports it. A file that a spec imports or reads (a game module,
+ * a save fixture) also selects that spec, even below a `none` rule.
+ * A pull request from a fork always runs the full suite.
  *
  * tests/e2e-select.test.ts checks the names and globs here against the repository.
  */
@@ -58,7 +60,11 @@ const fights = [
   'combat', 'combat-variety', 'fun-combat', 'readability', 'camera', 'pilot', 'progression', 'enge-save', 'jaguar-quest',
   'pikeur-credit', 'world', 'pacing', 'touch', 'chapter-k1', 'chapter-k4',
 ];
-const models = ['art', 'polish-art', 'scenery', 'perf', 'avatar-mpfb', 'interiors', 'flaschen', 'readability', 'animals', 'world', 'party', 'walk'];
+const models = [
+  'art', 'polish-art', 'scenery', 'perf', 'avatar-mpfb', 'interiors', 'flaschen', 'readability', 'animals', 'world', 'party', 'walk',
+  // enemy models
+  'combat', 'combat-variety', 'fun-combat',
+];
 
 export const AREA_RULES: readonly AreaRule[] = [
   // --- Bundled into the game although it looks like documentation -------------------------------
@@ -68,6 +74,7 @@ export const AREA_RULES: readonly AreaRule[] = [
   { paths: ['.mc/**', 'docs/**', 'research/**', '.claude/**', '.agents/**'], run: 'none', why: 'tasks, docs and agent notes' },
   { paths: ['**/*.md', 'LICENSE', '.gitignore', '.env.example'], run: 'none', why: 'text files outside the build' },
   { paths: ['content/bible/**', 'content/schema/**'], run: 'none', why: 'story bible and schemas (not bundled)' },
+  { paths: ['tests/fixtures/**'], run: ['chapter-prolog'], why: 'save fixtures that specs load' },
   { paths: ['tests/**'], run: 'none', why: 'unit tests (Gates)' },
   { paths: ['e2e/gpu/**', 'e2e/mobile/**', 'playwright.gpu.config.ts'], run: 'none', why: 'local-only Playwright configs' },
   { paths: ['.github/workflows/e2e.yml'], run: 'full', why: 'the e2e workflow itself' },
@@ -134,7 +141,13 @@ export const AREA_RULES: readonly AreaRule[] = [
   { paths: ['src/systems/animals/**', 'src/systems/fauna/**'], run: ['animals', 'tour-slice', 'party', 'photo', 'cinematic', 'hunt-ext'], why: 'animals' },
   { paths: ['src/systems/barks/**'], run: ['npc', 'tour-slice', 'walk'], why: 'barks' },
   { paths: ['src/systems/bleiche/**'], run: ['chapter-k1-quelle', 'quelle', 'chapter-k1'], why: 'Bleiche' },
-  { paths: ['src/systems/characters/**', 'src/systems/people/**'], run: ['polish-art', 'avatar-mpfb', 'npc', 'party', 'walk', 'readability', 'tour-slice'], why: 'characters and people' },
+  // characters/rig.ts also drives the enemy rigs (combat/rigged.ts), court props and the scenery.
+  {
+    paths: ['src/systems/characters/**'],
+    run: ['polish-art', 'avatar-mpfb', 'npc', 'party', 'walk', 'readability', 'tour-slice', 'court', 'scenery', 'animals', ...fights],
+    why: 'character rigs and shaders',
+  },
+  { paths: ['src/systems/people/**'], run: ['polish-art', 'avatar-mpfb', 'npc', 'party', 'walk', 'readability', 'tour-slice'], why: 'people' },
   { paths: ['src/systems/chronik/**'], run: ['chronik', 'twins-echo', 'stage-k2k4', 'bauwagen', 'npc', 'pacing', 'minimap', 'integration'], why: 'Chronik' },
   { paths: ['src/systems/cinematic/**'], run: ['cinematic', 'animals', 'party', 'tour-slice', 'photo'], why: 'cinematics' },
   { paths: ['src/systems/combat/**'], run: fights, why: 'combat' },

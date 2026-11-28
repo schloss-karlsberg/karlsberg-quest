@@ -17,8 +17,10 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   // One retry on hosted runners: a test that passes on its retry is reported as flaky (a warning
-  // in the run summary) without failing the shard. The campaign runs for too long to repeat.
-  retries: isCI && process.env.KQ_E2E_CAMPAIGN !== '1' ? 1 : 0,
+  // on the run and in its summary) without failing the shard. The campaign runs for too long to
+  // repeat, and the run after a merge (KQ_E2E_RETRIES=0) does not retry: a flaky test turns
+  // main red there.
+  retries: isCI && process.env.KQ_E2E_CAMPAIGN !== '1' && process.env.KQ_E2E_RETRIES !== '0' ? 1 : 0,
   forbidOnly: isCI,
   // Keep setup and artifact upload headroom in the corresponding e2e.yml job budgets.
   globalTimeout: isCI ? shardMinutes * 60_000 : 0,

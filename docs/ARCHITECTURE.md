@@ -734,14 +734,15 @@ placement against terrain water and room/footprint polygons). UI texts from the 
   `scripts/ci/select-e2e.ts` decides what a run needs. A pull request runs the specs that its
   changed paths can affect (`scripts/ci/e2e-areas.ts`: the first matching rule decides, a spec
   selects itself, a helper selects the specs that import it), the full suite for shared code or a
-  path without a rule, and nothing for docs, task files and unit tests. The merge queue, pushes
+  path without a rule or a pull request from a fork, and nothing for docs, task files and unit
+  tests. The merge queue, pushes
   to `main` and manual runs without a spec list run the full suite. The job "End-to-end tests"
   reports the result in every case, so it can be a required check.
   `scripts/dev/plan-e2e-shards.ts` assigns whole files by the minutes in `scripts/ci/e2e-minutes.ts`
   (`scripts/ci/e2e-timings.ts` prints the measured minutes of every run) and sizes a selected run
   to its work. The campaign runs alone with a 240-minute suite deadline and only with the full
   suite. Other shards have 180 minutes. A failed test gets one retry on CI, except in the
-  campaign. Failed jobs upload `test-results/` with the HTML report, traces and screenshots.
+  campaign and in the run on `main` after a merge. Failed jobs upload `test-results/` with the HTML report, traces and screenshots.
   `.github/workflows/gates.yml` runs the four gates on every pull request.
 - E2E (`e2e/smoke.spec.ts`, Chromium + SwiftShader WebGL): title → content note → name → paper map → "Tour starten" → game
   starts; every era and scan mode render with no console errors / failed requests; walking,
