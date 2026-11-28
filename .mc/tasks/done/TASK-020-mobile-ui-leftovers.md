@@ -4,7 +4,7 @@ aliases:
 - TASK-020
 title: Mobile UI leftovers
 slug: mobile-ui-leftovers
-status: todo
+status: done
 priority: 2
 owner: ''
 projects: []
@@ -33,8 +33,8 @@ with 667×375 landscape as the tightest playable viewport.
 - [x] Phone credits reserve the safe width and hide gameplay touch controls, including reduced motion.
 - [x] The standalone skill card uses the reserved band below dialogue and supports tap dismissal.
 - [x] The MR 9 hints and callouts have explicit clearance. Unit tests cover the hidden and obstructing pause overlap cases. The visual checklist is documented.
-- [ ] Measure credits and skill unlock in the mobile tour and check phone portrait and tablets.
-- [ ] Pass the four gates and report the locked browser runs or their blocker.
+- [x] Measure credits and skill unlock in the mobile tour and check phone portrait and tablets.
+- [x] Pass the four gates and report the locked browser runs or their blocker.
 
 ## Plan
 
@@ -166,4 +166,10 @@ The code shipped in PR #107. The merge review ran party, smoke, skills, touch an
 `small-landscape` mobile tour subset with no failed states. Left: run the other device subsets of
 `scripts/dev/mobile-tour.ts` (phone portrait and the tablets, MOBILE-UI-PASS §8.5) for the credits
 and skill-unlock states, and fix anything that fails.
+## Closed (2026-11-28)
+
+The remaining device subsets ran with PR #145 (TASK-085): the mobile tour on a real GPU had 0 failed
+states for `skill-unlock` and `credits` on all four portrait and tablet units, and for the HUD states
+on the three landscape units. The four gates passed there and on the combined branch `integrate/all`.
+
 %% mc-links: [[SPR-001]] %%

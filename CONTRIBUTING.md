@@ -77,9 +77,71 @@ pnpm validate     # content validation (packs, quests, story)
 pnpm build        # production build
 ```
 
+### How a pull request merges
+
+Nobody merges by hand, and nobody waits for the project owner. A pull request reaches `main`
+through GitHub's merge queue as soon as it is ready.
+
+**As an outside contributor, this is all you do:**
+
+1. Open the pull request against `main` with a Conventional Commits title (see below). Open it as
+   a draft while you are still working on it.
+2. Wait for the checks. On your first pull request a maintainer has to approve the workflows
+   before they run; GitHub asks for that for new contributors. "Gates" then takes about a minute.
+   "End-to-end tests" runs the full suite for a pull request from a fork: about 45 minutes when
+   runners are free.
+3. A maintainer reviews it. Push fixes to the same branch; each push runs the checks again.
+4. When the review has passed and both checks are green, a maintainer queues it. You are done.
+
+**What happens on its own after that:**
+
+- The merge queue puts your change together with `main` and the pull requests queued ahead of
+  it, and runs "Gates" and the full end-to-end suite on that result. This takes about 50 minutes.
+- If it passes, `main` moves to exactly the commit that was tested, the game is deployed, and
+  your pull request shows as merged.
+- If it fails, your pull request leaves the queue and stays open. The failed run says why. Push a
+  fix and it is queued again, or say in the pull request that the failure is not yours.
+
+From "ready" to merged takes about an hour when the queue is short. Two queue entries are tested
+at a time, so the queue manages about two and a half merges an hour.
+
+**The label `full-e2e`** makes a pull request run the full suite on the pull request itself,
+before it is queued. A maintainer adds it when the selected specs look too narrow for a change.
+Pull requests from forks run the full suite anyway.
+
+**Rules for maintainers and agents:**
+
+- **Ready** means: "Gates" and "End-to-end tests" are green on the latest commit, and a reviewer
+  other than the author has passed it.
+- **Review.** A pull request from an outside contributor is reviewed and approved on GitHub by a
+  maintainer. A pull request written by an agent gets an independent review, posted on the pull
+  request as a comment that ends with a verdict, by another agent session or Codex and never by
+  the session that wrote the change. All agents use the owner's GitHub account, and GitHub does
+  not let an account approve its own pull request, so no setting can check this. It is a rule of
+  the project.
+- **Queue it** with `gh pr merge <number> --auto --merge`. If the checks are still running, GitHub
+  queues it when they are green. The reviewer queues it; a session never queues its own change.
+- **What GitHub enforces on `main`** (ruleset "main: tested merges"): both checks are required,
+  merges go through the queue, and nobody can push, force-push or delete `main`. Organisation
+  admins can merge one pull request past these rules. That exists for the release pull request:
+  the Actions bot opens it, so its workflows wait for "Approve workflows to run". Agents never use
+  it (`gh pr merge --admin` is off limits).
+- **Few open pull requests.** Bundle related changes into one pull request. Open a pull request
+  when it is ready for review, and as a draft before that. About five agent pull requests are open
+  at once at most: before you open another, get an open one merged by reviewing it.
+- **A pile of ready pull requests** goes in as one train. Branch `integrate/<name>` from
+  `origin/main`, merge each reviewed head with a merge commit
+  (`git merge --no-ff -m "Merge pull request #N from schloss-karlsberg/<branch>" <head-sha>`),
+  resolve the seams, run the four gates, push, and open one pull request from that branch. It is
+  one queue entry with one full run, and GitHub marks every pull request in it as merged.
+- **A failed queue run is never re-run.** Its branch is gone, so the result would count for
+  nothing. Fix the pull request and queue it again. GitHub removes the failing entry and rebuilds
+  the entries behind it, so the first one that fails is the one to look at.
+
 ### What runs on a pull request
 
-**The merge bar: the checks "Gates" and "End-to-end tests" are green on the latest commit.** Both
+**The checks "Gates" and "End-to-end tests" must be green on the latest commit before a pull
+request can be queued.** Both
 report on every pull request, also when no spec had to run, so there is never a check to wait for
 that does not arrive. Gates takes about a minute. How much "End-to-end tests" runs depends on the
 changed paths. `scripts/ci/e2e-areas.ts` holds the rules, and the first rule that matches a path
@@ -124,32 +186,31 @@ It would run all 16 shards for a commit nobody waits for. After such a push, loo
 run on the branch (`gh run list --workflow e2e.yml --branch <branch>`) and cancel the older one
 (`gh run cancel <run-id>`). Each pull request that was open at the merge needs this at most once.
 
-The full suite still runs before or right after every merge:
+The full suite runs before every merge:
 
-- **On every push to `main`**, on 8 runners. Runs on `main` are never cancelled. One runs and one
+- **In the merge queue** (`merge_group`), on 8 runners, once for every queued pull request together
+  with the ones ahead of it. GitHub does not combine these builds: three queued pull requests are
+  three full runs. A train (see "How a pull request merges") is how several pull requests share
+  one run.
+- **On a push to `main`**, on 8 runners, when the commit did not come through the queue (the
+  release pull request, merged by an admin). A commit that already passed in the queue or in a
+  manual full run is not tested again. Runs on `main` are never cancelled. One runs and one
   waits, and the waiting run covers every merge that arrived in the meantime.
-- **In the merge queue** (`merge_group`), when the repository uses one: once for every pull
-  request that enters the queue, together with the ones ahead of it. GitHub does not combine the
-  builds of a group, so a queue does not save runs.
 - **By hand**: `gh workflow run e2e.yml --ref <branch>` without `specs`.
 
-A push to `main` does not repeat the suite when the same commit already passed it in the merge
-queue or in a manual full run. That makes a batch cheap: merge several green pull requests into
-one branch (`integrate/<name>`), run the full suite once on it
-(`gh workflow run e2e.yml --ref integrate/<name>`), and fast-forward `main` to that commit. The
-suite then ran once for the whole batch, before `main` moved.
-
-When the full suite passes before every merge in this way (batch branches, or a merge queue with
-"End-to-end tests" as a required check), the repository variable `E2E_SHARED_CODE=quick` makes a
-pull request that changes shared code run a cross-section of the game (`QUICK_SPECS` in
-`scripts/ci/e2e-areas.ts`) and leaves the full suite to the batch. Without the variable, shared
-code runs the full suite on the pull request.
+Because the queue runs the full suite before every merge, the repository variable
+`E2E_SHARED_CODE=quick` lets a pull request that changes shared code run a cross-section of the
+game on the pull request (`QUICK_SPECS` in `scripts/ci/e2e-areas.ts`) and leaves the full suite to
+the queue. Without the variable, shared code runs the full suite twice: on the pull request and
+in the queue.
 
 #### When main is red
 
 `main` deploys to the live game, so a red run on `main` comes first.
 
-- Whoever merges watches the run of that merge: `gh run list --workflow e2e.yml --branch main --limit 5`.
+- `main` moves only to commits that passed the full suite in the merge queue, so a red `main` is
+  rare: a merge past the queue, or a test that fails only some of the time.
+  `gh run list --workflow e2e.yml --branch main --limit 5` shows the runs.
 - A failed run opens the issue "End-to-end tests are red on main" with the failed shards and the
   commits since the previous push. Later red runs comment on it, and the first green run closes it.
 - Find the merge in that commit range, then fix forward or revert it. Until `main` is green, merge
@@ -371,10 +432,9 @@ docs(release): how to cut a release
 
 ## Pull requests
 
-- Open pull requests against `main`. Keep them focused on one topic, with a Conventional Commits
-  title (see above).
-- A pull request can merge when "Gates" and "End-to-end tests" are green on its latest commit
-  (see "What runs on a pull request"). A maintainer merges it.
+- Open pull requests against `main`, with a Conventional Commits title (see above). Bundle related
+  changes into one pull request, and open it as a draft until it is ready for review.
+- "How a pull request merges" says what happens next: checks, review, the merge queue.
 - Fill in the pull request template: gates, asset credits, FIKTION labels.
 - For bugs, include the browser, GPU and URL flags, and if you can, the F8 note from the game.
 

@@ -33,8 +33,8 @@ pnpm assets:pack <in.glb> public/assets/models/<track>/<name>.glb        # pack 
 On a shared machine, wrap e2e and GPU runs in `scripts/dev/heavy.sh` if present.
 CI on a pull request: "Gates" (the four gates, about a minute) and "End-to-end tests", which picks its
 specs from the changed paths (docs, tasks and unit tests: none; a feature system: its specs plus smoke;
-shared code: the full suite, 12 SwiftShader shards at 640×360). The merge bar is both green on the
-latest commit (`gh pr checks <n>`). `node scripts/ci/select-e2e.ts` shows what your branch will run; the
+shared code: the full suite, 12 SwiftShader shards at 640×360). Both must be green on the
+latest commit (`gh pr checks <n>`) before a PR can be queued. `node scripts/ci/select-e2e.ts` shows what your branch will run; the
 rules are in `scripts/ci/e2e-areas.ts`. Run a subset with `gh workflow run e2e.yml -f specs="chapter-k2 smoke" --ref <branch>`;
 leave `specs` out, or label the pull request `full-e2e`, for the full suite.
 
@@ -42,6 +42,11 @@ leave `specs` out, or label the pull request `full-e2e`, for the full suite.
 
 - **Conventional Commits** (`type(scope): summary`) for commits and PR titles: release-please builds
   the changelog and releases from them. Don't edit `CHANGELOG.md` by hand.
+- **Merging:** a PR is ready when "Gates" and "End-to-end tests" are green on its head and a
+  reviewer other than the session that wrote it has posted a review with a verdict on the PR. The
+  reviewer then queues it (`gh pr merge <n> --auto --merge`); the merge queue runs the full suite
+  and moves `main`. Never `--admin`, never a push to `main`. Bundle related changes, open drafts
+  until ready, keep to about five open agent PRs. Details: CONTRIBUTING.md "How a pull request merges".
 - **Minimise new dependencies.** Prefer a small local helper over a package.
 - **Docs live in the repo** as Markdown (`docs/`, including `docs/PRD.md`); update them with behaviour changes.
 - **Assets:** CC0 from the allowed sites, own work, or AI output whose licence allows redistribution;
