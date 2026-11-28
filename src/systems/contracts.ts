@@ -201,6 +201,13 @@ declare module '../core/events' {
     /** Light / douse the lantern. `refill: true` fills it, a number adds that fraction of a tank. */
     'lantern:request': { lit: boolean; refill?: boolean | number };
 
+    // ---- noises that are not the player (owner: whoever makes one; forage: a chestnut lands) --
+    /**
+     * Something made a noise at x/z (`loud` 0..1). The tour's deer prick up or bolt (animals), a
+     * calm pack on patrol sends a hound to look (hunt). Never emitted for the player's own steps.
+     */
+    'world:noise': { x: number; z: number; loud: number; by: string };
+
     // ---- interiors (owner: interiors) -----------------------------------------------------
     /**
      * The player stepped into / out of a walkable palace room. roomId = catalogue id
@@ -360,8 +367,16 @@ declare module '../core/events' {
     'xp:grant': { amount: number; reason: string; x?: number; z?: number; receipt?: { amount: number } };
     /** Put items into the inventory. Progression fills the optional receipt with the accepted count. */
     'item:grant': { item: string; count?: number; reason?: string; quiet?: boolean; receipt?: { amount: number } };
-    /** Place a glowing pickup in the world (quest collect objectives, lore, story `loot`). Idempotent by id. */
-    'loot:place': { id: string; item: string; x: number; z: number; era: Era; count?: number; y?: number; room?: string; quest?: string };
+    /**
+     * Take items out of the pack (a thrown chestnut). Progression fills the optional receipt with
+     * the count it took (0: there were none).
+     */
+    'item:take': { item: string; count?: number; reason?: string; receipt?: { amount: number } };
+    /**
+     * Place a glowing pickup in the world (quest collect objectives, lore, story `loot`). Idempotent by id.
+     * `drop`: a find that may lie there again later (not remembered as taken, capped like enemy loot).
+     */
+    'loot:place': { id: string; item: string; x: number; z: number; era: Era; count?: number; y?: number; room?: string; quest?: string; drop?: boolean };
     /** Remove pickups placed by id, or all of a quest. */
     'loot:clear': { id?: string; quest?: string };
 

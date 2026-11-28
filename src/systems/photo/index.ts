@@ -215,7 +215,7 @@ export function isAttached(id: string): boolean {
 // ---- the system ------------------------------------------------------------------------------
 
 /** Actions the phone takes over while it is up (their keys are the shutter / put-away). */
-const MUTED: Action[] = ['attack', 'interact', 'bannlicht', 'lockOn', 'dodge', 'skill1', 'skill2', 'skill3', 'quickUse', 'measure', 'listen', 'shift', 'xray', 'plans', 'pause'];
+const MUTED: Action[] = ['attack', 'interact', 'bannlicht', 'lockOn', 'dodge', 'skill1', 'skill2', 'skill3', 'quickUse', 'throw', 'measure', 'listen', 'shift', 'xray', 'plans', 'pause'];
 const THUMB_W = 480;
 /** The targets the `?debug` test deer binds. */
 const DEER_IDS = ['reh.ricke', 'reh.kitz'] as const;

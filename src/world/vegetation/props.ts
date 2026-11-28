@@ -18,6 +18,7 @@ import type { Era } from '../../core/era';
 import type { GraphicsLevel } from '../../core/save';
 import { SEE_FRAG_GLSL, SEE_GLSL, atmosphere } from '../atmosphere';
 import type { GroundCoverSource } from './groundcover';
+import { plantCuts } from './cuts';
 import { DUCK_GLSL, enemyDuck } from './duck';
 import { COVER_LOOKS, type CoverLook, type CoverSample, hash2, valueNoise } from './scatter';
 
@@ -51,6 +52,8 @@ interface PropKind {
   shadow: boolean;
   /** Instances per variant mesh. */
   max: number;
+  /** The staff cuts it down (src/systems/forage) when it is at most this tall (m). */
+  cut?: number;
   /** Chance per 2 m cell (pure density rule); `clump` is a second, finer noise for clusters. */
   chance: (c: CoverSample, slope: number, patch: number, look: CoverLook, clump: number) => number;
 }
@@ -70,6 +73,7 @@ export const PROP_KINDS: PropKind[] = [
     wind: true,
     shadow: false,
     max: 1400,
+    cut: 9,
     chance: (c, slope, patch, look, clump) => (c.forest > 0.4 && c.bare < 0.15 && c.water < 0.02 && slope < 38 ? 0.75 * look.ferns * smoothstep(0.35, 0.7, patch) * smoothstep(0.3, 0.65, clump) * c.forest : 0),
   },
   {
@@ -83,6 +87,8 @@ export const PROP_KINDS: PropKind[] = [
     wind: true,
     shadow: true,
     max: 500,
+    // low bushes only: the tall ones stand
+    cut: 1.25,
     chance: (c, slope, patch, look, clump) =>
       c.bare < 0.12 && c.water < 0.02 && c.lawn < 0.3 && slope < 32 ? (0.05 * c.forest + 0.03 * (1 - c.forest) * (1 - c.lawn)) * look.ferns * smoothstep(0.5, 0.8, clump) * (0.4 + patch) : 0,
   },
@@ -97,6 +103,7 @@ export const PROP_KINDS: PropKind[] = [
     wind: true,
     shadow: false,
     max: 900,
+    cut: 9,
     chance: (c, slope, patch, look, clump) => (c.bare < 0.1 && c.water < 0.02 && slope < 25 ? look.flowers * 4 * (1 - c.forest * 0.85) * (1 - c.lawn * 0.7) * smoothstep(0.55, 0.8, clump) * smoothstep(0.2, 0.6, patch) : 0),
   },
   {
@@ -261,6 +268,33 @@ export class NatureProps {
   }
 
   private era: Era = 'today';
+  private cutVersion = plantCuts.version;
+
+  /**
+   * The plants a staff can cut within `r` m of x/z: ferns, flower clumps and low bushes of the
+   * scatter (the same on every graphics tier: Niedrig only does not draw them). `height` in m.
+   */
+  forEachCuttable(x: number, z: number, r: number, fn: (kind: string, px: number, py: number, pz: number, height: number, variant: number) => void): void {
+    const t0x = Math.floor((x - r) / TILE);
+    const t1x = Math.floor((x + r) / TILE);
+    const t0z = Math.floor((z - r) / TILE);
+    const t1z = Math.floor((z + r) / TILE);
+    for (let tz = t0z; tz <= t1z; tz++)
+      for (let tx = t0x; tx <= t1x; tx++) {
+        const lists = this.tile(tx, tz);
+        for (let k = 0; k < PROP_KINDS.length; k++) {
+          const K = PROP_KINDS[k]!;
+          if (K.cut === undefined) continue;
+          const L = lists[k]!;
+          for (let o = 0; o < L.length; o += 6) {
+            const dx = L[o]! - x;
+            const dz = L[o + 2]! - z;
+            if (dx * dx + dz * dz > r * r || L[o + 4]! > K.cut) continue;
+            fn(K.id, L[o]!, L[o + 1]!, L[o + 2]!, L[o + 4]!, L[o + 5]!);
+          }
+        }
+      }
+  }
 
   /** Circles kept free of props (a built place: the Karlsbergquelle's hollow …), in some eras or all. */
   private readonly clearings: { x: number; z: number; r: number; eras?: readonly Era[] }[] = [];
@@ -410,8 +444,10 @@ export class NatureProps {
   update(camera: PerspectiveCamera): void {
     if (this.level === 'low') return;
     const p = camera.position;
-    if (!this.dirty && Math.hypot(p.x - this.lastX, p.z - this.lastZ) < 6) return;
+    if (!this.dirty && this.cutVersion === plantCuts.version && Math.hypot(p.x - this.lastX, p.z - this.lastZ) < 6) return;
     this.dirty = false;
+    this.cutVersion = plantCuts.version;
+    const cut = plantCuts.count > 0;
     this.lastX = p.x;
     this.lastZ = p.z;
     const rk = this.level === 'high' ? 1 : 0.7;
@@ -445,7 +481,10 @@ export class NatureProps {
             this.e.set((hash2(o, k, 3) - 0.5) * 0.12, L[o + 3]!, (hash2(o, k, 5) - 0.5) * 0.12);
             this.q.setFromEuler(this.e);
             this.v.set(L[o]!, L[o + 1]! - piece.height * sc * K.sink, L[o + 2]!);
-            this.s.setScalar(sc);
+            // cut with the staff: a stub that keeps most of its footprint (cuts.ts)
+            const grown = cut && K.cut !== undefined && L[o + 4]! <= K.cut ? plantCuts.factorAt(L[o]!, L[o + 2]!) : 1;
+            if (grown < 1) this.s.set(sc * (0.7 + 0.3 * grown), sc * grown, sc * (0.7 + 0.3 * grown));
+            else this.s.setScalar(sc);
             this.m4.compose(this.v, this.q, this.s);
             for (const im of piece.meshes) im.setMatrixAt(n, this.m4);
             counts[k]![vi] = n + 1;

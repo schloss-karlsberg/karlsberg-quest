@@ -169,6 +169,37 @@ export function segmentDistance(ax: number, az: number, bx: number, bz: number, 
 export const HITSTOP = { light: 0.06, heavy: 0.11, player: 0.08 } as const;
 export const SHAKE = { light: 0.03, heavy: 0.12, player: 0.15 } as const;
 /** Knockback distance (m) on enemies; the player is pushed 1.2 m. */
+/**
+ * A thrown chestnut (src/systems/forage, `CombatSim.pelt`): a third of a first Hieb, never the
+ * last blow. `glance`: what armour, elites and bosses take. Bodies of at most `staggerHp` base
+ * Lebenskraft lose their footing for `stagger` s, at most once every `staggerEvery` s each.
+ */
+export const PELT = { damage: 4, glance: 1, knock: 0.25, stagger: 0.3, staggerHp: 40, staggerEvery: 4 } as const;
+
+/**
+ * The staff may swing although fighting is off: in the guided tour (`tour.slice`) the borrowed
+ * Messstab cuts ferns and grass, and nothing else is there to hit. Scripted scenes that lower the
+ * staff (`combat.disabled` alone) keep it lowered.
+ */
+export function forageOnly(flags: Readonly<Record<string, unknown>>): boolean {
+  return flags['combat.disabled'] === true && flags['tour.slice'] === true;
+}
+
+/**
+ * Where on the segment a → b (0..1) a small projectile passes through an upright body: a
+ * cylinder of radius `r` standing at c, `top` m tall. Null: it misses. (The closest approach in
+ * plan; the steps of a thrown chestnut are a few decimetres.)
+ */
+export function segmentHitsBody(ax: number, ay: number, az: number, bx: number, by: number, bz: number, cx: number, cy: number, cz: number, r: number, top: number): number | null {
+  const dx = bx - ax;
+  const dz = bz - az;
+  const l2 = dx * dx + dz * dz;
+  const t = l2 > 1e-9 ? Math.min(1, Math.max(0, ((cx - ax) * dx + (cz - az) * dz) / l2)) : 0;
+  if (Math.hypot(ax + dx * t - cx, az + dz * t - cz) > r) return null;
+  const y = ay + (by - ay) * t;
+  return y < cy - 0.15 || y > cy + top + 0.15 ? null : t;
+}
+
 export const KNOCK = { light: 0.4, finisher: 1.2, heavy: 2.6, player: 1.2 } as const;
 
 /** Enemy AI (§4.4). */

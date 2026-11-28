@@ -21,6 +21,7 @@ import {
   stepDeerHerd,
   type Deer,
   type DeerInput,
+  type DeerNoise,
 } from './deer';
 import { applyDogRequest, createDog, DOGS, dogSlot, relocateDog, stepDog, type Dog, type DogTarget } from './dogs';
 import { createCinematicBridge, createPhotoBridge, type CinematicBridge, type P3, type PhotoBridge } from './photoBridge';
@@ -135,6 +136,8 @@ export class AnimalsRuntime {
   readonly photo: PhotoBridge;
   readonly cinematic: CinematicBridge;
   private active = true;
+  /** Noises since the last tick (`world:noise`). */
+  private readonly noises: DeerNoise[] = [];
   private losT = 0;
   private los = true;
   private saveT = 0;
@@ -159,6 +162,10 @@ export class AnimalsRuntime {
       if (c && c.id === 'animal' && c.data) this.request(c.data as unknown as AnimalAction);
     });
     deps.bus.on('save:loaded', () => this.restore());
+    // a thrown chestnut lands (forage): the deer prick up, or bolt when it is close
+    deps.bus.on('world:noise', (n: DeerNoise) => {
+      if (this.active && this.deer.length && this.noises.length < 8) this.noises.push({ x: n.x, z: n.z, loud: n.loud });
+    });
     deps.bus.on('group:relocated', (relocation: GroupRelocation) => this.relocateFollowers(relocation));
     this.active = deps.world.era() === ANIMAL_ERA;
   }
@@ -452,6 +459,7 @@ export class AnimalsRuntime {
       this.los = !p.flying && this.seen(p);
     }
     const input: DeerInput = { player, los: this.los };
+    if (this.noises.length) input.noise = this.noises.splice(0);
     if (w.walkable) input.walkable = (x, z) => w.walkable!(x, z);
     const evs = this.deer.length ? stepDeerHerd(this.deer, dt, input) : [];
     const visitors = this.dogs.length ? w.tourVisitors?.() : undefined;

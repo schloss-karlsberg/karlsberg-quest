@@ -299,6 +299,16 @@ export class ProgressionCore {
     return true;
   }
 
+  /** Take items out of the pack (a thrown chestnut). Returns how many were there to take. */
+  remove(id: string, count = 1): number {
+    const s = this.s;
+    const took = Math.min(this.count(id), Math.max(0, Math.round(count)));
+    if (took <= 0) return 0;
+    s.inventory[id] = this.count(id) - took;
+    if (s.inventory[id]! <= 0) delete s.inventory[id];
+    return took;
+  }
+
   quickItem(): string {
     return this.s.quick ?? DEFAULT_QUICK;
   }

@@ -79,7 +79,8 @@ unfinished group regain their strength).
 ## 3. Controls
 
 The guided tour uses movement, conversation, sneaking and the phone camera. Marlene lends the
-player the Messstab at the Weiher. Combat starts in Chapter 1.
+player the Messstab at the Weiher. Combat starts in Chapter 1; in the tour the Messstab already
+cuts ferns and grass, and chestnuts can be thrown from the first one picked up (§7.1).
 
 | Verb | Desktop (default, remappable) | Notes |
 | --- | --- | --- |
@@ -93,6 +94,7 @@ player the Messstab at the Weiher. Combat starts in Chapter 1.
 | **Ausweichen** (dodge roll, i-frames) | **Space** (+ direction) | Space still stands you up from crouch / prone and climbs while flying |
 | **Bannlicht** (lantern flare) | **RMB** or **G** | Cone; stuns spectral enemies, makes Irrlichter hittable, scatters the pack |
 | **Schnellgegenstand** (quick-use) | **H** | Kräuterbalsam by default. Choose the item in the Ausrüstung section. |
+| **Kastanie werfen** (§7.1) | **F**: hold shows the arc and the landing ring, letting go throws; a tap throws at once | Needs a chestnut in the pack. Touch: the „Kastanie“ button in the thumb arc, shown with the count while there are chestnuts. |
 | **Fähigkeiten** (abilities, §4.2): Ausfall · Erdstoß · Wirbel | **T** · **Z** (Y on a US layout) · **U** | Unlocked at levels 2 · 4 · 6; one row of free keys; a HUD slot each with a cooldown ring |
 | Talk / examine / pick up / listen (hold) | **E** | Accept / turn in quests in the conversation |
 | **Pause** | **Esc** or tap Pause | Aufgaben, Codex, Sammlungen (including Funde), Ausrüstung & Talente, Karte, Album and Kapitel. I opens Ausrüstung & Talente directly. |
@@ -552,6 +554,72 @@ The tour and quests grant survey skills (`skill:grant`, unlock cards and Laub’
   trailer door in reach reveals the examine action on E and touch. The fictional surveyor's note
   unlocks „Die letzte Messung“ in Pause → Codex and appears in the discovery feed. The find grants
   no XP and has no objective, marker or campaign prerequisite.
+
+### 7.1 Foraging: throwing chestnuts, cutting plants (`src/systems/forage`, TASK-090)
+
+The loop is forage → throw → forage: the staff cuts small plants, some hide a chestnut, and a
+chestnut is thrown.
+
+**Throwing** (`THROW` in `forage/logic.ts`). F, or the touch button „Kastanie“. Holding the key
+draws the arc and a ring where it lands; letting go throws. The landing point is where the view
+meets the ground, between 2 and 22 m from the hand, or the body of the locked or soft target when
+it is within 45° of the view. The flight lasts 0.55–1.25 s under a gravity of 16 m/s², so it
+always leaves the hand upwards. One chestnut leaves the pack per throw (`item:take`); the arm is
+free again after 0.55 s, and a tap up to 0.4 s early is kept. The chestnut bounces at most twice,
+lies for a second and is gone. Water swallows it.
+
+| It strikes | What happens |
+| --- | --- |
+| A small enemy (base Lebenskraft ≤ 40, no armour, no guard, not an elite) | 4 damage, a flinch, and 0.3 s off its feet, at most once every 4 s per enemy (`PELT` in `combat/rules.ts`) |
+| Armour, a guard, an elite, a boss, the Pikeur | 1 damage, no flinch |
+| An Irrlicht before the flare, a veiled or warded body | It flies through |
+| Any enemy | It wakes: one can be pulled out of a pack. It never takes the last point of Lebenskraft: the last blow is the staff's |
+| A tree trunk, a palace wall, a person or a dog of the tour | It bounces off and drops. Nobody is hurt or alerted |
+| The ground | A noise (`world:noise`, loudness 0.7) |
+
+The noise is what animals and the pack hear. The tour's roe deer add it to their notice meter:
+one chestnut nearby makes them look up, two right next to them send them off, and they settle
+and graze again as after any flight. A pack on patrol that is calm or only suspicious sends its
+nearest hound within 14 m to the spot (`PackSim.noise`, `NOISE` in `hunt/sim.ts`) and listens for
+about ten seconds; the hound that went stays warier while that fades, so the next glimpse of the
+player counts for more. A pack that is searching or chasing ignores it, and so do the staged
+modes (the chapter 2 chase, the drive, the kennel finale).
+
+No throw in a scene that lowers the staff (`combat.disabled` outside the tour), in photo mode, in
+a conversation, while measuring, in the spirit view or lying flat.
+
+**Cutting.** Every swing reports where the staff came down (`combat:arc`: a Hieb or Wuchthieb
+mows the half-disc ahead, the Erdstoß's ring and the Wirbel the whole disc). Ferns, flower clumps
+and bushes up to 1.25 m in that circle are cut to a stub of a fifth of their height, and grass,
+meadow flowers and reeds are mown with them. They grow back over 75 s of game time, at 45 % from
+41 s and 75 % from 60 s. Rocks, logs, stumps and tall bushes stand. Cut plants are not saved.
+
+A freshly cut plant (not a stub) rolls for a chestnut: 10 %, plus 3 % for every plant in a row
+that gave nothing, at most 34 %; outside the forest the chance is halved (`DROP`,
+`rollDrop`). The roll is seeded by the plant's spot and the number of plants cut so far, so the
+same play finds the same chestnuts. The chestnut is placed as an ordinary pickup a step beyond the
+plant, outside the walk-over radius, and counts like any other.
+
+**In the guided tour** fighting is off (`combat.disabled`). With the Messstab in the pack the
+Hieb and the Wuchthieb still work there and cost no Atem (`forageOnly`: `combat.disabled` and
+`tour.slice`); the dodge, the Bannlicht and the abilities stay off. Scenes that lower the staff
+without the tour (chapter 4, the endings) keep it lowered.
+
+**Teaching.** One toast when the first chestnut is picked up („Kastanien kannst du werfen: F
+drücken. Halten zeigt die Flugbahn.“, on touch it names the button) and one when the staff first
+comes to hand. Each shows once per save, in a gap between spoken lines or after 12 s. While there
+are chestnuts the vitals dock shows a chip with the key and the count; on touch the button
+carries the count.
+
+**Feedback.** Procedural sounds for the throw, the landing (ground, wood, body, water), the cut
+and a find. Cut plants throw leaves in their own colours, a landing chestnut a few shell bits;
+the chestnut draws a short trail. With reduced motion there are no leaves and no trail, and the
+landing ring holds still.
+
+**State and events.** `systems.forage` holds the cut and dry-streak counters, totals and the
+hints shown. `forage:throw`, `forage:impact`, `forage:cut` and `forage:nuts` (the count for the
+touch button) are the system's own events. Debug: `kq.forage` (`state`, `throw`, `aim`, `plants`,
+`cut`, `rig`, `flying`).
 
 ## 8. Quests, Codex and how history is taught
 
@@ -1110,6 +1178,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Chestnuts as a ranged weapon or a free way past the pack (TASK-090, 2026-11-28) | A throw does 4 damage (a third of a first Hieb), 1 against armour, elites and bosses, never the last point, and staggers a small enemy at most once every 4 s. Only a calm or suspicious patrol follows the noise, with one hound, and that hound is warier afterwards. The chapter 2 chase, the drive and the kennel finale ignore it. |
 | The tour guide offers a talk at his stops that opens an empty box (TASK-076, 2026-11-27) | A person takes E only while it has something to say: a greeting that can still play, a menu topic, a quest topic, or a silent figure without any lines. A forced open with nothing to say shows „(Schweigt und sieht dich an.)“. The guide's car-park greetings belong to stop 1 (flag `tour.station1.ready`). `tests/npc-talk-waits.test.ts` keeps beats from waiting for a talk with someone who has nothing to say; `tests/npc-has-words.test.ts`, `tests/npc-encounter.test.ts`, `e2e/tour-slice.spec.ts`. |
 | Photos vanish on reload and cannot be kept (TASK-006, 2026-11-26) | Every shot with signal is stored on the device: IndexedDB `kq-photos` holds a full JPEG (≤ 1920 px), a thumbnail and the shot's metadata, or memory where IndexedDB is blocked. The gallery opens with G on the phone, its „Galerie“ button on touch, or Pause → Album. It shows a grid, a full-size viewer, Löschen, Herunterladen and Teilen (the OS share sheet where files can be shared, else a download). At most 100 photos; beyond that a toast instead of a silent drop. The photos are not in the save, and the gallery says they live only on this device. `tests/photo-gallery.test.ts`, `e2e/photo.spec.ts`. |
 | Talk prompts read „Mit Der Hofgärtner sprechen“ (TASK-078, 2026-11-27) | The prompt takes the speaker's dative form (`dative_de` in the speakers pack, e.g. „dem Hofgärtner“, „einem Gardisten“), else the name. Every speaker named with an article has one; `tests/npc-prompt-name.test.ts` checks the packs and every placed person, `tests/npc-encounter.test.ts` the HUD text. |

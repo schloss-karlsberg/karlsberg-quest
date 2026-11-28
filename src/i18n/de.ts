@@ -134,6 +134,7 @@ export const de: Record<string, string> = {
   'action.lockOn': 'Ziel erfassen / wechseln',
   'action.cameraMode': 'Kamera: über die Schulter / Ich-Sicht',
   'action.photo': 'Fotomodus',
+  'action.throw': 'Kastanie werfen (halten: zielen)',
   'action.regroup.hold': 'Halten: zur Gruppe',
   'action.lookLeft': 'Nach links sehen',
   'action.lookRight': 'Nach rechts sehen',
