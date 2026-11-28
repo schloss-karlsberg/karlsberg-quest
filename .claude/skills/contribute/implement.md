@@ -25,8 +25,9 @@ Goal: every plan step done, tests added, the four gates green. Resumable at any 
 5. **Tests:** add or adjust unit tests (vitest, `tests/`) for the logic you changed; extend an e2e
    spec in `e2e/` when gameplay flow changes. Content changes: `pnpm validate`.
    Pick the specs to run by grepping `e2e/` (specs and `e2e/helpers/`) for every selector, test id,
-   `window.kq` hook and helper you changed or removed, not only the obvious spec. Can't run them
-   (sandbox)? List them all in `## Progress` as unverified.
+   `window.kq` hook and helper you changed or removed, not only the obvious spec.
+   `node scripts/ci/select-e2e.ts` lists the specs the hosted run will pick for your committed
+   changes. Can't run them (sandbox)? List them all in `## Progress` as unverified.
    Renaming a UI string? Grep the key in every `strings.ts` too: systems override `src/i18n/de.ts`
    (e.g. `src/systems/story/strings.ts` overrides `title.*`), so a rename there may never show.
 6. **Gates**, all four:
