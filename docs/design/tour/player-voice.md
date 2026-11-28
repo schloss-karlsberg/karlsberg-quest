@@ -36,7 +36,7 @@ Context column: beat ids of the tour slice (`t1` … `t18`); after the slice end
 | id | Text | Context / trigger | Status |
 | --- | --- | --- | --- |
 | `player.photo.gut` | „Das ist es.“ | t10 Ricke und Kitz, `photo:good` `reh.ricke` (both branches, alert / not alert) | batch 1 queued |
-| `player.photo.weg` | „Und weg.“ | t10 Ricke und Kitz, `animal:fled` `ricke` within 16 m | batch 1 queued |
+| `player.photo.weg` | „Und weg.“ | t10 Ricke und Kitz, `animal:fled` `ricke` by `player` or `hit` (a thrown chestnut), at any distance | batch 1 queued |
 | `player.photo.netz` | „Kein Netz. Natürlich nicht.“ | first `photo:shot { noSignal: true }` in a past era (storyboard shot `t11-brunnenstube`); later times Laub's `laub.bark.netz.*` takes over | new |
 | `player.photo.wackel` | „Verwackelt.“ | first `photo:shot` with targets but `stars: 0`, today only, once | new |
 

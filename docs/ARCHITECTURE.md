@@ -1657,7 +1657,9 @@ stand-ins, the **authored meshes later behind the same interface**.
 Tour contract C5 (`docs/design/tour/systems.md` §4 / C5), the behaviour layer over the fauna bodies.
 Pure core: `types.ts` (`AnimalAction`, `toRequest`, `specIdFor`, events, save types), `deer.ts`
 (shy state machine graze → alert (1.5 s tell) → flee (bound `shy.settle` m) → settled → graze;
-leave → gone; the fawn mirrors the doe within 2 m), `dogs.ts` (follow slots, sniff, sit, the bolt
+leave → gone; the fawn mirrors the doe within 2 m; TASK-080: glances while grazing, the look at
+the player or at a noise (`motion.gaze` → the body's `lookAt`), one step aside, the hold outside
+the flee radius, flights that end on open ground (`clutter`), `hitDeer`), `dogs.ts` (follow slots, sniff, sit, the bolt
 with bark and `back`, lie / sleep), `save.ts`; `runtime.ts` (the system, headless: requests, the
 step, bodies, events, era, save, targets; tests use fakes); `photoBridge.ts` (optional photo and
 cinematic bridges); `index.ts` (wiring, hooks). Runs `after: ['fauna', 'people']`. Animals exist
@@ -1668,8 +1670,11 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
 - Per step (60 Hz): the player as `{x, z, speed: player.stats.speed, stance}` (a flying player is
   unseen); line of sight from each self-led deer (`hunt/perception.ts` `lineOfSight`, deer eye
   0.95 m to the stance's `TARGET_HEIGHT`, transmittance > 0.15) at 5 Hz, only inside notice + 2 m;
-  `walkable` = no water, no footprint, slope < 35°; no noise events yet (none exist), mask 0. Then
-  `stepDeerHerd`, `stepDogs`. Per drawn frame the bodies follow: root at `world.heightAt`, `face`,
+  `walkable` = no water, no footprint, slope < 35°; `clutter` = cuttable plants within 2.2 m
+  (where a flight should not end); noises from `world:noise` (a thrown chestnut landing; one
+  within 0.9 m of a deer is a hit), mask 0. `combat:pelt`: a chestnut whose flight step passes
+  through a deer (a cylinder of 0.5 m up to the raised head) gets the receipt, bounces off, and
+  the herd bolts by `hit`. Then `stepDeerHerd`, `stepDogs`. Per drawn frame the bodies follow: root at `world.heightAt`, `face`,
   `setSpeed` on change, `play(clip)` only when the clip hint changes.
 - Dog leaders: `npc:double.*` / `npc:extra.*` / `npc:guide` → the live person with that `specId`
   (`ctx.people.list()`, `root.position`, `root.rotation.y`), other `npc:<id>` → `kq.npc.list()`,
@@ -1679,8 +1684,11 @@ only in era `today`: other eras hide the bodies and pause the behaviour.
   `group:relocated`. Dogs plant on sharp reversals and turn at up to 5 rad/s, with an
   immediate facing change in reduced motion. The animal save stores an optional `turning` flag
   so a planted dog stays still after loading until it lines up. Older saves default to `false`.
-- Events: the core's `animal:alert {id}`, `animal:fled {id, by, dist}`, `animal:settled {id}`,
-  `animal:returned {id}` go onto the bus 1:1; `bark` / `shake` cues play as one-shots on the body (no
+- Events: the core's `animal:alert {id}`, `animal:heard {id, x, z}`, `animal:fled {id, by, dist}`
+  (`by`: `player`, `cue` or `hit`), `animal:settled {id}`, `animal:returned {id}` go onto the bus
+  1:1. The system says each deer reaction once in a sound caption (the head up, a noise, the
+  flight; 2.5 s apart, the flight always) and gives the chestnut hint once (flag
+  `animals.hint.nut`); `bark` / `shake` cues play as one-shots on the body (no
   dog bark SFX yet).
 - **Calm** is script-only (`kq.animals.calm`): photo mode does not calm the deer (design decision,
   sneaking is the skill).
@@ -2204,8 +2212,21 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
 - An inline story choice or a `say` action with `phoneDown: true` lowers the phone and keeps it
   down until the choice or dialogue ends. Other story captions pause their queue, typing and
   recorded voice while the viewfinder is up.
-- **Judging** (`core.ts`, pure, `tests/photo.test.ts`): geometric, never pixels. Per target of the
-  era: project the bounding sphere; good = centre in the middle third (`centre: 'any'` allowed),
+- **What the lens sees** (`visibility.ts`, TASK-080; `tests/photo-visibility.test.ts`): sight rays
+  do not see plants, so targets with a drawn body (`registerSubject(id, () => Object3D)`: the deer
+  through the animals bridge, the `?debug` test deer) are measured once per shot. Three draws into
+  one target 360 px high: the subjects alone in flat id colours on a private layer (whole
+  silhouettes), the scene without them as it is drawn (its depth), the subjects again against that
+  depth (what nothing hides). `share` = visible ÷ whole pixels per subject; a silhouette under
+  24 px is left to the rays. Glows, shafts and particles write no depth and hide nothing. The
+  judge reads it as `PhotoWorld.seen(id)`: under `SEEN_MIN` (35 %) the target is „Verdeckt“, the
+  third star needs `SEEN_CLEAR` (70 %) and `BIG_STAR` (1.8) × `minFrac` of the frame
+  (`TargetJudgement.short`: cover, size or far), and a `needAll` group takes the stars of its
+  weakest member. Nothing runs per tick: no body in the world, no draw. `shotTip` gives the card
+  one German sentence for a weak shot (`photo-card-tip`). `kq.photo.seen()` runs the test on the
+  current view; `kq.photo.judge(id)` judges as a shot does.
+- **Judging** (`core.ts`, pure, `tests/photo.test.ts`): geometric for targets without a drawn body.
+  Per target of the era: project the bounding sphere; good = centre in the middle third (`centre: 'any'` allowed),
   diameter ≥ `minFrac` of the frame height, and a majority of sample rays clear. The rays aim at
   the top, left and right of the sphere. Animals also sample the centre and bottom, so they
   need three of five clear. Terrain, footprint walls when the palace stands and tree trunks

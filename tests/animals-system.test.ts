@@ -378,7 +378,7 @@ describe('animals runtime (C5)', () => {
     expect(spawned[0]!.looks.at(-1)).toEqual({ x: 4, y: 300 + 0.2, z: -2 });
     expect(spawned[1]!.looks.at(-1)).toEqual({ x: 4, y: 300 + 0.2, z: -2 });
     expect(spawned[0]!.clips.at(-1)).toBe('alert');
-    step(7);
+    step(9);
     expect(bus.of('animal:fled')).toEqual([]);
     expect(spawned[0]!.looks.at(-1)).toBeNull();
     expect(spawned[1]!.looks.at(-1)).toBeNull();

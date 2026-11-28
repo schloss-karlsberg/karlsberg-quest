@@ -131,7 +131,7 @@ export interface PhotoHooks {
   /** A good shot of that target exists (survives the album cap). */
   has(id: string): boolean;
   targets(): { id: string; era: string; label_de: string; placeholder: boolean; inWorld: boolean; at: Vec3 | null }[];
-  /** Judge one target against the current view without shooting (null if unknown). */
+  /** Judge one target against the current view as a shot would, pixel test included, without shooting (null if unknown). */
   judge(id: string): TargetJudgement | null;
   state(): { open: boolean; zoom: number; signal: boolean; steady: number; blocked: string | null; lastShot: ShotResult | null };
   zoom(k: 1 | 2): void;
@@ -774,10 +774,7 @@ class Photo {
           const at = x.at();
           return { id: x.id, era: x.era, label_de: x.label_de, placeholder: !!x.placeholder, inWorld: !!at, at: at ? { ...at } : null };
         }),
-      judge: (id) => {
-        const r = core.judge(this.ctx.era.current, this.view(), this.world);
-        return r.details.find((d) => d.id === id) ?? null;
-      },
+      judge: (id) => this.judgeSeen().details.find((d) => d.id === id) ?? null,
       state: () => ({ open: this.isOpen, zoom: this.zoomK, signal: this.ctx.era.current === 'today', steady: this.steady.speed(performance.now() / 1000), blocked: this.blocked(), lastShot: this.lastShot }),
       zoom: (k) => this.setZoom(k),
       cards: () => [...slice().cards],

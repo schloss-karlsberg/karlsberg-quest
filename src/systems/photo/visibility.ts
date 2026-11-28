@@ -73,8 +73,8 @@ export const TIP_DE: Partial<Record<Verdict, string>> = {
   'nicht-alle': 'Alle müssen frei und mittig im Bild sein.',
 };
 /** A good shot of a measured subject without the third star: part of it was covered, or it was small in the frame. */
-export const TIP_PARTLY_DE = 'Für drei Sterne: freie Sicht auf das ganze Motiv.';
-export const TIP_BIGGER_DE = 'Für drei Sterne: größer ins Bild. Geh näher heran oder nimm den 2×-Zoom.';
+export const TIP_PARTLY_DE = 'Für drei Sterne: freie Sicht aufs ganze Motiv.';
+export const TIP_BIGGER_DE = 'Für drei Sterne: näher heran oder 2×-Zoom.';
 
 /** A miss this many times beyond a target's range is not about that target: no tip. */
 const MEANT_WITHIN = 1.6;

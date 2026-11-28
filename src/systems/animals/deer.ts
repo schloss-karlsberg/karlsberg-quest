@@ -72,8 +72,8 @@ export const DEER = {
   NOISE_CAP: 0.9,
   /** A noise this strong at the deer (loudness × nearness × masking) makes her look toward it … */
   LOOK_GAIN: 0.4,
-  /** … for this long (s): time to raise the phone. */
-  LOOK_S: 6,
+  /** … for this long (s): time to raise the phone, zoom and shoot. */
+  LOOK_S: 8,
   /** Upright and moving between the flee and the notice radius: noticed within about a second. */
   FAR_RISE: 0.6,
   /** Outside the flee radius an unhurried player fills the meter no further: she watches. */

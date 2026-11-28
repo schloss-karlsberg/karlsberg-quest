@@ -58,8 +58,9 @@ See the [guide sources](../../docs/design/tour/sources.md) for historical claims
 
 In the present, photo mode uses the phone (N on desktop). On touch, the deer prompt reads
 „Fotomodus öffnen“ and highlights the camera button. Opening the camera moves the highlight to
-the shutter. A good deer photo needs doe and fawn in frame. If the animals flee nearby the group
-can move on after 45 seconds, with a 180-second fallback.
+the shutter. A good deer photo needs doe and fawn in frame and in the open: an animal hidden behind ferns
+does not count, and the card says so. If the animals flee the group moves on 60 seconds later,
+with a 180-second fallback when they never do.
 The [photo system notes](../../docs/design/tour/systems.md) describe the framing rules and album.
 The [Codex](07-codex.md#tour-karten-und-fotokarten) records additional photo-card ideas.
 
