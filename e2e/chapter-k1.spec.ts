@@ -38,8 +38,12 @@ test('chapter 1: an empty lantern (Teil A) and the pack (Teil B) cost nothing, y
   const errors = trackErrors(page);
   await boot(page);
   await page.evaluate(() => {
-    window.kq!.story!.goto('k1', 'k1_3');
-    window.kq!.step(4);
+    const k = window.kq!;
+    k.story!.goto('k1', 'k1_3');
+    // the chapter opens in the prelude now (`k1.vorspiel`: the lantern is out until the gate). The
+    // jump skips the gate, so end the prelude the way the gate beat (k1_1) does
+    delete k.ctx.state.mutable.flags['k1.vorspiel'];
+    k.step(4);
   });
   expect(await qs(page, 'q.k1.lohn')).toBe('offered');
   await page.evaluate(() => window.kq!.quests!.accept('q.k1.lohn'));
