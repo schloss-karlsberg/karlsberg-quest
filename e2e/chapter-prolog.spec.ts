@@ -2,6 +2,10 @@ import { readFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 import { ciScale } from './helpers/ci';
 import { SAVE_KEY } from '../src/core/save';
+import { createInitialState } from '../src/core/state';
+import { ARRIVAL_PITCH, arrivalSpot } from '../src/systems/quelle/layout';
+import { createStorySlice } from '../src/systems/story/engine';
+import { HOME } from '../src/systems/story/hub/home';
 import { trackErrors } from './helpers/common';
 import { newGame, story } from './helpers/prolog';
 import { waitForHooks } from './helpers/pause';
@@ -37,6 +41,35 @@ async function continueGame(page: Page): Promise<void> {
 
 test.describe('landscape touch Continue with reduced motion', () => {
   test.use({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+
+  test('Continue during the first shift arrives facing the palace and gives back control', async ({ page }) => {
+    const errors = trackErrors(page);
+    const { x, z, yaw } = HOME.spawn;
+    const state = createInitialState();
+    Object.assign(state.player, { x, z, yaw: -yaw * Math.PI / 180 });
+    state.meta.savedAt = new Date().toISOString();
+    state.systems.story = { ...createStorySlice(), active: true, chapter: 'tour', beat: 't18' };
+    await page.addInitScript(({ key, bytes }) => localStorage.setItem(key, bytes), {
+      key: SAVE_KEY('auto'), bytes: JSON.stringify(state),
+    });
+    await page.goto('./?manual&idle&q=low');
+    await continueGame(page);
+    await page.evaluate(() => window.kq!.step(120));
+    await page.waitForFunction(() => {
+      const k = window.kq!;
+      return k.ctx.era.current === '1789' && !k.fx!.state().shift.active && !k.ctx.player.frozen;
+    });
+    const arrived = await page.evaluate(() => {
+      const { position, yaw, pitch, lookLocked } = window.kq!.ctx.player;
+      return { x: position.x, z: position.z, yaw, pitch, lookLocked, scene: window.kq!.quelle!.info().scene };
+    });
+    const expected = arrivalSpot(x, z);
+    expect(Math.hypot(arrived.x - expected.x, arrived.z - expected.z)).toBeLessThan(0.5);
+    expect(arrived.yaw).toBeCloseTo(expected.yaw, 2);
+    expect(arrived.pitch).toBeCloseTo(ARRIVAL_PITCH, 2);
+    expect(arrived).toMatchObject({ lookLocked: false, scene: null });
+    expect(errors).toEqual([]);
+  });
 
   test('a release slot resumes at the K1 spring in 1789, saves and reloads', async ({ page }) => {
     const errors = trackErrors(page);

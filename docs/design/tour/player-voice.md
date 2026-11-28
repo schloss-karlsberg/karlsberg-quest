@@ -15,7 +15,7 @@
 
 ## 2. Line list
 
-Id scheme: `player.<area>.<key>`. Areas: `t` tour (prologue, today), `photo` phone camera, `q` the Quelle and the first shift, `k1` chapter 1, `end` the party, `cue` effort/pain captions. Status: **batch 1 queued** = sent to kq-voice on 2026-11-20 (ids stable; tell kq-voice about any rename) · **new** = not yet sent.
+Id scheme: `player.<area>.<key>`. Areas: `t` tour (prologue, today), `photo` phone camera, `q` the Quelle and the first shift, `k1` chapter 2, `end` the party, `cue` effort/pain captions. Status: **batch 1 queued** = sent to kq-voice on 2026-11-20 (ids stable; tell kq-voice about any rename) · **new** = not yet sent.
 
 Context column: beat ids of the tour slice (`t1` … `t18`); after the slice ends, storyboard shot ids (`storyboard-beats.md`) or the chapter bible sections. Texts of `player.t.*`, `player.photo.*`, `player.q.*` (batch 1) are quoted exactly from the tour slice (`content/story/00-tour.story.json` on the slice branch). The batch-1 texts for `player.k1.mantel`, `player.k1.salamander` and `player.end.fest` exist in no content file yet; they are quoted exactly from the coordinator's batch-1 list as queued at kq-voice (2026-11-20).
 
@@ -49,7 +49,7 @@ Context column: beat ids of the tour slice (`t1` … `t18`); after the slice end
 | `player.q.kalt` | „Eiskalt.“ | `quelle:touch`, hand in the trough, before the shift | new |
 | `player.q.wo` | „Wo sind die alle hin?“ | storyboard shot `t11-brunnenstube`, first arrival in summer 1789 (the group is gone) | new |
 
-### 2.4 Chapter 1 (1789)
+### 2.4 Chapter 2 (1789)
 
 | id | Text | Context / trigger | Status |
 | --- | --- | --- | --- |

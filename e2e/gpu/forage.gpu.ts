@@ -164,6 +164,62 @@ test('forage: plants along the tour path, and what a cut costs', async ({ page }
   console.log(JSON.stringify({ cost, meanWithin12: sum('within12') / density.length, meanWithin5: sum('within5') / density.length, none: density.filter((d) => !d.within12).length }));
 });
 
+/**
+ * TASK-095: a chestnut draws a court watcher off his post. Frames: his fan before, the aim, the
+ * arm in the throw, the head turn, the walk, the look around, the way back.
+ */
+test('forage: a chestnut distracts a court watcher (1789)', async ({ page }) => {
+  const errors = trackErrors(page);
+  await boot(page, 'high');
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.story?.look('day');
+    k.setEra('1789');
+    k.step(4);
+    k.ctx.state.update((s) => (s.flags['disguise.coat'] = true), 'gpu');
+    k.npc!.spawn({ npc: 'gardist', x: 1222, z: -1116, era: '1789', yaw: 270, watch: { fov: 70, range: 14, set: 'test', who: 'Ein Gardist' } } as never);
+    k.court!.on('test');
+    // behind him and to his right, looking level past him: the chestnut lands ten metres beyond him
+    k.teleport(1233, -1111, 300, 0);
+    k.step(60, { draw: true });
+  });
+  const name = (n: number, what: string) => `distract-${n}-${what}`;
+  await shot(page, name(0, 'before'));
+  await page.evaluate(() => window.kq!.ctx.input.simulate('KeyF', true));
+  await draw(page, 12);
+  await shot(page, name(1, 'aim'));
+  await page.evaluate(() => window.kq!.ctx.input.simulate('KeyF', false));
+  await draw(page, 5);
+  await shot(page, name(2, 'arm'));
+  await draw(page, 8);
+  await shot(page, name(3, 'flight'));
+  // step to the landing, then through his search
+  await page.evaluate(() => {
+    const k = window.kq!;
+    for (let i = 0; i < 120 && k.court!.watchers()[0]!.distract === 'post'; i++) k.step(1);
+  });
+  const until = (phase: string) =>
+    page.evaluate((phase) => {
+      const k = window.kq!;
+      for (let i = 0; i < 900 && k.court!.watchers()[0]!.distract !== phase; i++) k.step(1);
+    }, phase);
+  await draw(page, 24);
+  await shot(page, name(4, 'turn'));
+  await until('walk');
+  await draw(page, 100);
+  await shot(page, name(5, 'walk'));
+  await until('look');
+  await draw(page, 100);
+  await shot(page, name(6, 'look'));
+  await until('back');
+  await draw(page, 60);
+  const w = await page.evaluate(() => window.kq!.court!.watchers()[0]!);
+  await shot(page, name(7, 'back'));
+  writeFileSync(`${OUT}/distract.json`, JSON.stringify(w, null, 2));
+  expect(w.distract).toBe('back');
+  expect(errors).toEqual([]);
+});
+
 test('forage: the touch layout with the throw button (844 × 390)', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
   const page = await context.newPage();

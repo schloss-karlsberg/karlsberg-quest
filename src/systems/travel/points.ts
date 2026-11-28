@@ -1,5 +1,5 @@
 /**
- * Vermessungspunkte (survey markers): Laub's tripods across the land. Walk up to one and it is
+ * Vermessungspunkte (survey markers): Laub's present-day tripods. Walk up to one and it is
  * "eingemessen" (a beam rises, rings run over the ground). The map (M or Pause → Karte) then takes
  * you there in a breath. Pure data and rules (no three.js, no DOM), unit-tested in
  * tests/travel.test.ts.
