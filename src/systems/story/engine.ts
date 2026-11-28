@@ -412,6 +412,8 @@ export class StoryEngine {
     const b = this.beat();
     if (!this.s.active || !f || !b) return;
     const target = useCheckpoint && b.checkpoint && f.beats.some((x) => x.id === b.checkpoint) ? b.checkpoint : b.id;
+    // Resume discards pending presentation from the last visit. Re-arm visit-scoped reactions.
+    for (const r of f.on ?? []) if (r.repeat && r.sameEra) this.edges.delete(`c:${r.id}`);
     this.host.chapterEntered(f, { resume: true });
     this.enterBeat(target, true);
   }

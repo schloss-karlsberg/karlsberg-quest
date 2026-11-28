@@ -121,6 +121,8 @@
     },
     {
       "id": "lauf-zurueck",
+      "repeat": true,
+      "sameEra": true,
       "when": {
         "all": [
           {
@@ -136,21 +138,17 @@
           },
           {
             "not": {
-              "flag": "k1.tut.return"
+              "flag": "k1.tut.return.shown"
             }
           }
         ]
       },
       "do": [
         {
-          "do": "flag",
-          "set": {
-            "k1.tut.return": true
-          }
-        },
-        {
           "do": "toast",
-          "text": "Die Laterne brennt nicht ewig: Ist das Öl leer, lässt dich die Erinnerung los. Halte [Q], um vorher ins Heute zurückzukehren.",
+          "text": "Die Laterne brennt nicht ewig: Ist das Öl leer, lässt dich die Erinnerung los. Halte {key}, um vorher ins Heute zurückzukehren.",
+          "action": "shift",
+          "onceFlag": "k1.tut.return.shown",
           "ms": 6500,
           "delay": 8
         }

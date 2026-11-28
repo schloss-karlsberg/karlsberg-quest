@@ -929,11 +929,26 @@ class StoryRuntime {
         this.give(a.clue, a.noun, a.item, a.kind);
         if (a.toast) ctx.ui.toast(a.toast, 4200);
         return;
-      case 'toast':
+      case 'toast': {
+        const { action, onceFlag } = a;
+        if (action || onceFlag) {
+          const gen = this.gen;
+          const visit = this.scope?.eraVisit;
+          ctx.ui.toast(a.text, a.ms, () => {
+            if (gen !== this.gen || (visit !== undefined && visit !== this.eraVisit)) return null;
+            if (onceFlag) {
+              if (ctx.state.state.flags[onceFlag]) return null;
+              ctx.state.update((s) => (s.flags[onceFlag] = true), 'story');
+            }
+            return action ? a.text.replace('{key}', actionLabel(ctx.input, action)) : a.text;
+          });
+          return;
+        }
         // tips wait while a fight or chase is on (playtest round 2: "Halte [Q] …" over a boss kill)
         if (ctx.ui.hud.inAction) this.calmToasts.push({ text: a.text, ms: a.ms });
         else ctx.ui.toast(a.text, a.ms);
         return;
+      }
       case 'teleport':
         runTeleport(a, ctx.state.mutable.flags, (x, z, yaw) => this.teleport(x, z, yaw));
         ctx.player.writeState(ctx.state.mutable.player);

@@ -125,6 +125,13 @@ export function migrateStoryFlags(story: StorySlice, flags: Record<string, boole
   if (flags['e.owner'] === 'festsaal') delete flags['e.owner'];
   if (flags['npc.hush'] === 'hanne') delete flags['npc.hush'];
 
+  // The old marker was set before the tip appeared. Give these saves one confirmed display.
+  if (story.chapter === 'k1') {
+    story.fired = story.fired.filter((id) => id !== 'c:lauf-zurueck');
+    // Hunt can empty a lit lantern before Story's first tick runs the daytime stop reaction.
+    if (!flags['k1.b']) delete story.meters.oil;
+  }
+
   // The room is only known again once interiors have located the restored player.
   story.room = null;
   delete flags['interior.room'];
