@@ -106,16 +106,26 @@ test('gpu: from the spring in 1789 to the Bleiche and towards the gate', async (
     k.skills!.grant('kartograf', 1, true);
     k.story!.goto('k1');
     k.setEra('1789');
-    for (let i = 0; i < 40 && k.story!.state().beat !== 'k1_0b'; i++) {
-      k.story!.flush();
+    // as a player gets there: the card runs out on game time, Laub's two lines, then the quests.
+    // (No `flush()` here: it runs the timeline under the card. And `?manual` steps game time far
+    // ahead of the card's fade, which is CSS on real time: the wait below lets the card leave the
+    // picture, or a still shows it under a quest banner that no player ever sees with it.)
+    for (let i = 0; i < 400 && k.story!.state().beat !== 'k1_0b'; i++) {
+      k.story!.finishTyping();
       k.step(30);
     }
-    k.story!.flush();
-    k.story!.finishTyping();
+    for (let i = 0; i < 40; i++) {
+      k.story!.finishTyping();
+      k.step(30);
+    }
     k.ctx.ui.modals.closeAll();
     k.step(120);
   });
+  await page.waitForTimeout(2500);
+  await page.evaluate(() => window.kq!.step(240));
+  await page.waitForTimeout(1500);
   expect(await page.evaluate(() => window.kq!.story!.state())).toMatchObject({ chapter: 'k1', beat: 'k1_0b', era: '1789', objective: { id: 'k1.rock' } });
+  expect(await page.evaluate(() => !!document.querySelector('.kqs-card')), 'the chapter card has left the picture').toBe(false);
   const objective = await page.evaluate(() => window.kq!.story!.state().objective!);
   const toward = (x: number, z: number, tx: number, tz: number) => (Math.atan2(tx - x, -(tz - z)) * 180) / Math.PI;
   const back = { x: HOME.spawn.x + (HOME.spawn.x - QUELLE.x) * 4, z: HOME.spawn.z + (HOME.spawn.z - QUELLE.z) * 4 };

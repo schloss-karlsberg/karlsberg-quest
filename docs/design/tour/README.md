@@ -62,6 +62,9 @@ are pending; PRD D-012.
   Pause → Kapitel the chapter starts at the spring in the present, and Q there leads into the summer.
 - **Arrival spot:** the spring itself, the invented Brunnenstube (cx.42), about 310 m from the
   palace gate. Positions come from the shared home constant (`src/systems/story/hub/home.ts`).
+- **Arrival view:** during the shift the visitor takes six steps from the water and turns to the
+  palace, so it stands on the horizon when 1789 shows and the camera has room. Place and yaw are
+  computed from the stand to the Corps de logis.
 - **Cut:** the dawn opening, Marlene's radio line and Laub's „Ein zweites Mal also“, the arrival
   quest's „das Wasser berühren“ step. The next-morning framing also broke the one-afternoon rule.
 - **How far "stay" reaches:** the first jump is one-way and the day part of „Der Hof“ has no oil

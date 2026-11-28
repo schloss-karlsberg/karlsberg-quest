@@ -690,7 +690,10 @@ describe('story files', () => {
     expect(all().filter((a) => a.do !== 'meter').map((a) => (a.do === 'say' ? a.id : a.do))).toEqual(['laub.k1.brunnenstube', 'objective', 'laub.k1.fremde', 'flag']);
     expect(all().find((a) => a.do === 'objective')).toMatchObject({ id: 'k1.rock', text: 'Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach' });
     expect(all().at(-1)).toEqual({ do: 'flag', set: { 'k1.angekommen': true } });
+    // … and only once the chapter card has let go (`k1.karte`, set by the entry list after the card)
     step({ era: '1789', ...SPRING, flags: { 'k1.vorspiel': true, 'k1.angekommen': true } });
+    expect(slice.beat).toBe('k1_0');
+    step({ era: '1789', ...SPRING, flags: { 'k1.vorspiel': true, 'k1.angekommen': true, 'k1.karte': true } });
     expect(slice.beat).toBe('k1_0b');
     const k0bTalk = k1.beats.find((b) => b.id === 'k1_0b')!.enter!.filter((a) => a.do === 'say' || a.do === 'quest').map((a) => a.id);
     // the way in first, the coat last: the newest quest leads the tracker, and the coat is the first thing to do
@@ -828,7 +831,7 @@ describe('story files', () => {
     engine.tick(0.5, env({ era: '1789', x: HOME.spawn.x, z: HOME.spawn.z }));
     expect(slice.beat).toBe('k1_0');
     expect(runs.flatMap((r) => r.actions).at(-1)).toEqual({ do: 'flag', set: { 'k1.angekommen': true } });
-    engine.tick(0.5, env({ era: '1789', x: HOME.spawn.x, z: HOME.spawn.z, flags: { 'k1.angekommen': true } }));
+    engine.tick(0.5, env({ era: '1789', x: HOME.spawn.x, z: HOME.spawn.z, flags: { 'k1.angekommen': true, 'k1.karte': true } }));
     expect(slice.beat).toBe('k1_0b');
   });
 
