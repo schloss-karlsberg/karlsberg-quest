@@ -4,7 +4,7 @@ aliases:
 - TASK-090
 title: 'Throw chestnuts; the stick cuts small plants and sometimes finds a chestnut'
 slug: throw-chestnuts-and-cut-plants-with-the-stick
-status: todo
+status: review
 priority: 2
 owner: ''
 projects: []
@@ -97,13 +97,29 @@ without it. Cut plants and chestnuts in flight are not saved.
 5. Deer and pack react to `world:noise`.
 6. Unit tests, `e2e/forage.spec.ts`, real-GPU look, docs.
 
+## Progress
+
+- PR: https://github.com/schloss-karlsberg/karlsberg-quest/pull/140
+- Tests: `tests/forage.test.ts`, `tests/forage-world.test.ts`, the `forage` case of
+  `tests/save-fuzz.test.ts`, `e2e/forage.spec.ts`; real-GPU strips with `e2e/gpu/forage.gpu.ts`.
+- Along the tour's path there are on average 11 plants to cut within 12 m of each of the 24
+  chestnut spots (none without any), so the walk yields roughly two chestnuts per stop for a
+  player who mows what is near.
+
+## Open questions
+
+- The tour's lines for 12 and 24 chestnuts fire on the count in the pack, whatever its source.
+  They are voiced, so the wording was left alone.
+- A chestnut thrown at the 1789 court is not a tell for the watchers.
+- The hanging Fläschchen still need a Wuchthieb; a well-aimed chestnut could shake one down too.
+
 ## Acceptance criteria
 
-- [ ] With a chestnut in the pack, F (or the touch button) throws one where the view points; the
+- [x] With a chestnut in the pack, F (or the touch button) throws one where the view points; the
       count goes down by one; the arc is visible while the key is held.
-- [ ] In the tour, after Marlene lends the Messstab, a swing cuts ferns and grass; a chestnut
+- [x] In the tour, after Marlene lends the Messstab, a swing cuts ferns and grass; a chestnut
       sometimes rolls out and can be picked up.
-- [ ] Cut plants grow back; no frame-time regression with the cut list empty.
-- [ ] The touch button appears only with chestnuts; Pause → Steuerung lists the key.
-- [ ] Saves round-trip; older saves load.
-- [ ] Reduced motion: no flying leaves, no trail.
+- [x] Cut plants grow back; no frame-time regression with the cut list empty.
+- [x] The touch button appears only with chestnuts; Pause → Steuerung lists the key.
+- [x] Saves round-trip; older saves load.
+- [x] Reduced motion: no flying leaves, no trail.
