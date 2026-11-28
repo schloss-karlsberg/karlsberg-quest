@@ -4,7 +4,7 @@ aliases:
 - TASK-005
 title: 'Smartphone: pull-out animation into camera mode'
 slug: smartphone-pull-out-animation-into-camera-mode
-status: in-progress
+status: review
 priority: 3
 owner: ''
 projects: []
@@ -19,7 +19,7 @@ milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-23
-updated: 2026-11-27
+updated: 2026-11-28
 ---
 
 # Smartphone: pull-out animation into camera mode
@@ -148,3 +148,4 @@ _Status: approved 2026-11-27_
 - 2026-11-27: step 6 done - `e2e/photo.spec.ts`: two new tests stepped frame by frame (`?manual&holdvisuals`, booted through `waitForHooks` because the hooks appear only after the first ticks): the move, N skip, shutter skip without a picture, an era change mid-move, reduced motion; the flows that shoot after N or the button wait for `phase` open. The minimap test found a real bug: `photo:close` listeners read `data-kq-photo`, which was still set while the viewfinder faded; closing now brings the HUD back at once. Runs (`--workers=1`): photo 10 of 11, minimap 6 of 6, touch 9 of 11. Red, and red the same way on untouched `main` in a main worktree on this machine: photo „N at the car park“ (the pack catches the player before the shot, line `photo-card` visible), touch „ipad-pro-11“ (a tap times out in Pause), touch „notices on a small landscape phone“ (the modal stays). `animals` uses the instant `kq.photo.open()` hook and was not rerun.
 - 2026-11-27: step 7 done - `docs/ARCHITECTURE.md` (photo: the move, `PhoneRaise`, the glide, `phonePose`, skip and snap rules, the instant hooks), a row in `docs/ACTION-RPG.md` §14 and in the `docs/PRD.md` changelog (placed away from the rows the open PRs #126 / #127 add).
 - 2026-11-27: step 8 done, gates green - `pnpm typecheck`, `pnpm validate` (28 warnings, none new), `pnpm build` green. `pnpm test`: 2,394 passed; failing locally: the known Windows-only files (`content-packs`, `save-fuzz`, `voice-moss`, `voice-assets`, `voice-service`, also on `main`), `i18n-text` (its cold-start timeout), and `camera-palace` / `flaschen`, which ran next to the GPU screenshots and pass alone (12/12). After screenshots (real GPU) in `test-results/contribute/TASK-005/`: `after-f00…f48` (0, 0.2, 0.4, 0.6, 0.8 s after N), `after-surveyor-f24/f36`, `after-first-f01…f12`, `after-phone-landscape-f36/f48`, `after-phone-portrait-f36`.
+- 2026-11-28: PR: https://github.com/schloss-karlsberg/karlsberg-quest/pull/146 (status review)
