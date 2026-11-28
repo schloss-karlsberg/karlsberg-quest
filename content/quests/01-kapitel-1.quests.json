@@ -182,7 +182,7 @@
       "kind": "main",
       "era": "1789",
       "title_de": "Kleider machen Leute",
-      "summary_de": "In Orange kommt niemand an den Hof. Unten am Karlsbergbach bleicht die Wäscherin Liese die Wäsche des Hofes, und auf ihrer hinteren Leine hängt der Rock eines kranken Lakaien. Man kann ihn nehmen, solange sie zum Weg schaut. Oder man fragt.",
+      "summary_de": "In Rot kommt niemand an den Hof. Unten am Karlsbergbach bleicht die Wäscherin Liese die Wäsche des Hofes, und auf ihrer hinteren Leine hängt der Rock eines kranken Lakaien. Man kann ihn nehmen, solange sie zum Weg schaut. Oder man fragt.",
       "giver": {
         "voice": "laub"
       },
@@ -196,7 +196,7 @@
       "turnin_lines": [
         {
           "speaker": "laub",
-          "text": "Dunkelblau. Das Orange ist darunter, aber das weiß nur ich."
+          "text": "Dunkelblau. Die rote Jacke ist darunter, aber das weiß nur ich."
         }
       ],
       "history": [
@@ -210,14 +210,14 @@
         {
           "id": "rock",
           "type": "manual",
-          "text_de": "Ein Rock, der nicht leuchtet: Kaspars Rock auf Lieses Bleiche",
+          "text_de": "Ein Rock, der nicht leuchtet: Kaspars Rock hinter der zweiten Leine",
           "where": {
-            "x": 1001.5,
-            "z": -876.5,
-            "r": 12,
+            "x": 1001.08,
+            "z": -880.9,
+            "r": 1.4,
             "era": "1789"
           },
-          "hint_de": "Die Bleiche liegt unten am Bach, westlich der Quelle. Hinter der zweiten Leine stehen und E drücken, solange Liese zum Weg schaut. Oder mit ihr reden."
+          "hint_de": "Die Bleiche liegt unten am Bach, westlich der Quelle. Der Rock hängt auf der hinteren Leine. Geduckt oder außen herum hinter die Leine, dort E. Wer aufrecht zwischen die Leinen läuft, den sieht Liese. Oder mit ihr reden."
         },
         {
           "id": "bitte",

@@ -165,7 +165,7 @@ describe('real content', () => {
   it('maps the guided tour’s spring beats to their inline lines', () => {
     const of = (b: string) => lines.filter((l) => l.beats.includes(b)).map((l) => l.id);
     expect(of('tour:t17')).toEqual(['laub.t.intro', 'player.q.laub', 'laub.t.intro.b', 'laub.t.quelle', 'laub.t.trog']);
-    expect(of('tour:t18')).toEqual(['player.q.wo', 'laub.t.1789', 'laub.t.seite']);
+    expect(of('tour:t18')).toEqual(['laub.k1.bleiche', 'player.q.wo', 'laub.t.1789', 'laub.t.seite']);
   });
   it('ids are unique; inline story lines and quest lines are included; test chapters are excluded', () => {
     expect(byId.size).toBe(lines.length);
@@ -175,11 +175,12 @@ describe('real content', () => {
   });
   it('the committed priority starts with Laub’s tour lines at the Quelle', () => {
     const sel = selectLines(lines, priority as PriorityConfig);
-    expect(sel.slice(0, 6).map((s) => s.line.id)).toEqual([
+    expect(sel.slice(0, 7).map((s) => s.line.id)).toEqual([
       'laub.t.intro',
       'laub.t.intro.b',
       'laub.t.quelle',
       'laub.t.trog',
+      'laub.k1.bleiche',
       'laub.t.1789',
       'laub.t.seite',
     ]);

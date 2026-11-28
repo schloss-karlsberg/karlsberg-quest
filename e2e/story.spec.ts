@@ -4,6 +4,7 @@ import { ciScale } from './helpers/ci';
 import { SAVE_KEY } from '../src/core/save';
 import { HOME } from '../src/systems/story/hub/home';
 import { throughTour } from './helpers/tour';
+import { story } from './helpers/prolog';
 import { openPause, waitForHooks } from './helpers/pause';
 import { SCREENS } from './helpers/common';
 
@@ -256,8 +257,12 @@ test('story: Pause chapters, objective and Bussole', async ({ page }) => {
   await waitForHooks(page, ['quelle', 'fx', 'quests']);
   await throughTour(page);
   expect(await page.evaluate(() => window.kq!.state().inventory.items)).toContain('item.bussole');
-  // the arrival in 1789: Laub's lines name the first goal (the coat at the Bleiche). Seen from the
-  // spring with the view on that goal, the Bussole glows
+  // Laub finishes the arrival dialogue before the coat gives the Bussole a bearing.
+  expect((await story(page)).objective).toEqual({ id: 'k1.ankunft', text: 'Laub zuhören' });
+  for (let i = 0; i < 80 && (await story(page)).beat !== 'k1_0b'; i++) {
+    await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
+  }
+  expect((await story(page)).beat).toBe('k1_0b');
   const goal = await page.evaluate(([from]) => {
     const k = window.kq!;
     k.story!.flush();
@@ -268,7 +273,7 @@ test('story: Pause chapters, objective and Bussole', async ({ page }) => {
     k.step(4);
     return o.id;
   }, [HOME.spawn] as const);
-  expect(goal, 'the arrival sets a goal with a place').toBe('k1.rock');
+  expect(goal, 'the coat step sets a goal with a place').toBe('k1.rock');
   await expect(page.getByTestId('objective')).toHaveClass(/kqs-show/);
   await expect(page.getByTestId('bussole')).toHaveClass(/kqs-show/);
   await page.waitForTimeout(1500);

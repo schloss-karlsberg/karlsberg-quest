@@ -51,21 +51,42 @@ i just want to travel once and stay there. if i travel, tutorials (chapter 1 fin
 begins (outside the castle)." The scope below was set by the coordinator while the owner's answers
 are pending; PRD D-012.
 
-- **One touch.** `t17` ends on the touch, `t18` is the arrival: the shift, `player.q.wo`,
-  `laub.t.1789` (without „Für heute genügt ein Blick.“) and `laub.t.seite`, with the player free to
-  move as soon as the shift is done. No fade, no return, no second touch. The hand-over grants are
-  unchanged.
-- **„Der Hof“ continues where the visitor stands** (`continues` in the story file): no teleport, no
-  era change. Its first beat `k1_0` sets the chapter up under the card; then Laub says „Sommer 1789.
-  Kies, Hunde …“ and what is needed, and only then `k1_0b` offers the quests, with the coat at the
-  Bleiche as the first objective. The chapter card stands alone. Chosen from
-  Pause → Kapitel the chapter starts at the spring in the present, and Q there leads into the summer.
+- **Chapter numbers.** The tour is chapter 1, „Der Hof“ is chapter 2, and the remaining chapters
+  are numbered 3–5. The testing aid `?kapitel=2…5` follows those numbers.
+- **One touch.** The touch ends `t17`. Laub opens the `t18` arrival with the Bleiche brief, followed
+  by `player.q.wo`, `laub.t.1789` and `laub.t.seite`. The player can move as soon as the shift is
+  done. The tracker switches to „Laub zuhören“ and keeps it through the chapter card and arrival
+  dialogue.
+- **„Der Hof“ continues where the visitor stands** (`continues` in the story file). Its first beat
+  `k1_0` sets up the chapter under the card, then Laub explains what the player needs for the court.
+  `k1_0b` opens the coat quest, the marker and Bussole bearing, the „Rock nehmen“ prompt and
+  Liese’s watch together. Anyone already inside her watch circle has two seconds of game time to
+  crouch or move out before she can spot them. Chosen from Pause → Kapitel, the chapter starts at
+  the spring in the present, where Q leads into the summer.
 - **Arrival spot:** the spring itself, the invented Brunnenstube (cx.42), about 310 m from the
   palace gate. Positions come from the shared home constant (`src/systems/story/hub/home.ts`).
+- **Arrival view:** during the shift the visitor takes six steps from the water and turns to the
+  palace, so it stands on the horizon when 1789 shows and the camera has room. Place and yaw are
+  computed from the stand to the Corps de logis.
 - **Cut:** the dawn opening, Marlene's radio line and Laub's „Ein zweites Mal also“, the arrival
   quest's „das Wasser berühren“ step. The next-morning framing also broke the one-afternoon rule.
-- **How far "stay" reaches:** the first jump is one-way. Not built: a chapter or a game without
-  the present (wake in the past, no Q home); see TASK-089, follow-ups.
+- **How far "stay" reaches:** the first jump is one-way and the day part of „Der Hof“ has no oil
+  eviction, so the first return is the story's own („Gehen wir erst nach Hause“ after the Zwinger).
+  Holding Q and waking at the Quelle after a defeat work as before. Not built: a chapter or a game
+  without the present (wake in the past, no Q home); see TASK-089, follow-ups.
+- **Survey tripods (owner, 2026-11-28).** The eleven tripods, their beams and walk-up discovery
+  belong to the present. Known survey points still serve as map destinations. Story and quest
+  markers in the past come from their own objectives.
+
+## First 15 minutes (2026-11-28, TASK-100)
+
+- The car-park gathering leaves room to pass between visitors from either side of the arcs. On the path, the goal line and its world marker both measure to the moving group waypoint.
+- The first chestnut pickup shows the throw hint beside the vitals, with the bound key or the Kastanie touch control.
+- At the trough, the tour hands over the Bussole when the visitor approaches after the pause or presses E during „Untersuchen“.
+- The glass clink at the 1789 spring is captioned on its first sound and at least 30 seconds apart thereafter.
+- The full goal is visible as soon as it changes. Laub gives the Bleiche brief as the first line
+  after the jump. Chapter 2 has a 30 m fallback for arrivals that missed it. The coat marker
+  points to the reachable side behind the second washing line. Liese can lend the coat through her favour.
 
 ## Decisions (owner, 2026-11-20)
 
@@ -83,7 +104,7 @@ The owner's answers to the open questions, plus the earlier rulings:
 - **Photo mode:** N toggles the viewfinder in every era. It shows „Kein Netz“ in the past. Good photos in the present unlock codex cards. Photos give no XP.
 - **Storyboard:** 66–68 shots accepted; the budget is raised.
 - **Party drinks (Q12):** mulled wine plus children's punch, nobody drunk, no brands, no fireworks; fairy lights; a fire bowl in the burn ending.
-- **Jacket (Q13):** a bright outdoor jacket (orange or red), so „Feuersalamander“ and `laub.k1.orange` survive; costume by kq-characters (WP-13).
+- **Jacket (Q13):** the default visitor wears a bright red outdoor jacket. Laub and the coat quest refer to that colour.
 - **Messstab (Q14):** Marlene lends it and says „Ach, behalt ihn“ at the party. **Return leg (Q15):** the group goes uphill to the plateau. **cx.32 (Q16):** the brewery / villa sentence is dropped.
 
 All open questions are resolved.

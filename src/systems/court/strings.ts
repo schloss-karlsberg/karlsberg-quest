@@ -17,6 +17,7 @@ addStrings('de', {
   'court.tell.running': 'du rennst',
   'court.tell.staff': 'der Stab in deiner Hand',
   'court.tell.take': 'du nimmst etwas',
+  'court.tell.throw': 'du wirfst mit Kastanien',
   'court.tell.dodge': 'du springst zur Seite',
   'court.tell.lantern': 'die Laterne am Tag',
   'court.tell.lawn': 'du gehst übers Beet',
@@ -28,6 +29,16 @@ addStrings('de', {
   'court.cap.blick': '[{who} sieht herüber – {tell}]',
   'court.cap.misstrauen': '[{who} wird misstrauisch – {tell}]',
   'court.cap.aufgefallen': '[{who} kommt auf dich zu – {tell}]',
+  // a noise that is not you (a thrown chestnut lands): the watcher goes to look, or only glances
+  'court.cap.noise': '[{who} horcht auf und geht nachsehen]',
+  'court.cap.glance': '[{who} dreht nur kurz den Kopf]',
+  'court.cap.struck': '[Getroffen! {who} sucht, wer geworfen hat]',
+  'court.cap.back': '[{who} geht zurück auf den Posten]',
+  'court.noise.bark.1': 'Was war das?',
+  'court.noise.bark.2': 'Wer da?',
+  'court.noise.bark.3': 'Hm. Da hinten.',
+  'court.struck.bark.1': 'He! Wer wirft da?',
+  'court.struck.bark.2': 'Au! Zeig Er sich!',
   // Misstrauen: a barked line
   'court.bark.1': 'He, Er da!',
   'court.bark.2': 'Moment mal …',
@@ -49,6 +60,7 @@ addStrings('de', {
   'court.hint.how.running': 'Geh langsam: Umschalttaste loslassen, wenn dich jemand sieht.',
   'court.hint.how.running.touch': 'Geh langsam: Schieb den Bewegungsregler nicht ganz nach vorn, wenn dich jemand sieht.',
   'court.hint.how.staff': 'Kein Stab, kein Zielen, kein Schlag, wo eine Wache hinsieht.',
+  'court.hint.how.throw': 'Wirf nur, wenn dich keine Wache sieht, und nie auf die Wache selbst. Eine Kastanie, die abseits aufschlägt, lockt sie weg.',
   'court.hint.how.take': 'Nimm nichts, solange dich jemand sieht: Warte, bis der Blick wegschwenkt.',
   // inspection (Musterung)
   'court.inspect.prompt': 'Brief vorzeigen (halten)',

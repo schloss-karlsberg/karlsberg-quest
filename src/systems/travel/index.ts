@@ -29,6 +29,7 @@ import type { Era } from '../../core/era';
 import { defineSystem } from '../../core/systems';
 import { PLAYER_RADIUS, WADE_LIMIT_M } from '../../player/player';
 import type { QuestDef, QuestObjective, QuestSlice } from '../../rpg/types';
+import { actionLabel } from '../../ui/actionLabel';
 import { h } from '../../ui/dom';
 import { addPageSection, addPausePage, openPausePage, pausePageHandle } from '../../ui/pause-pages';
 import { loadBundledQuests, questsInPlay } from '../quests/data';
@@ -59,6 +60,8 @@ export interface TravelSlice {
   shrineT: Record<string, number>;
   /** One-time tips shown. */
   tips: string[];
+  /** First point whose map instructions have yet to appear. */
+  mapTipPoint?: string;
 }
 
 declare module '../../core/state' {
@@ -181,7 +184,9 @@ class Travel {
   private cardT = 0;
   /** The card up is the activation banner (it shares the centre-card slot: ui/cards.ts). */
   private cardBanner = false;
-  private readonly pendingActivations: { name: string; first: boolean }[] = [];
+  private mapTipText: HTMLElement | null = null;
+  private mapTipFrame?: number;
+  private readonly pendingActivations: SurveyPoint[] = [];
   private time = 0;
   /** 'world:quiet' (the party): tripods, POIs and the trail hidden, no activation, no announcement. */
   private readonly quiet: QuietGate;
@@ -283,6 +288,7 @@ class Travel {
   // ---- survey points -----------------------------------------------------------------------
 
   activate(id: string, quiet = false): void {
+    if (this.ctx.era.current !== 'today') return;
     const p = pointById(id);
     if (!p || this.slice.activated.includes(id)) return;
     this.slice.activated.push(id);
@@ -295,16 +301,15 @@ class Travel {
     const ctx = this.ctx;
     chimeActivate(ctx.audio);
     // the first one says what the map is for, on the banner itself (a toast would sit under it)
-    const first = !this.slice.tips.includes('map');
-    if (first) this.slice.tips.push('map');
-    if (this.quiet.photoOpen || this.pendingActivations.length) this.pendingActivations.push({ name: p.name, first });
-    else this.showActivation(p.name, first);
+    if (!this.slice.tips.includes('map')) this.slice.mapTipPoint ??= id;
+    this.pendingActivations.push(p);
     ctx.events.emit('travel:activated', { id });
     ctx.save.autosave('travel');
   }
 
   private syncTripods(): void {
     const ctx = this.ctx;
+    if (ctx.era.current !== 'today') return;
     const p = ctx.player.position;
     const known = new Set(this.known().map((k) => k.id));
     for (const sp of SURVEY_POINTS) {
@@ -313,7 +318,7 @@ class Travel {
       // a found point's beam is a landmark: keep it within 1.4 km
       const range = known.has(sp.id) ? 1400 : 260;
       if (!t && d < range) {
-        const y = ctx.world.heightfields[ctx.era.current === 'today' ? '2025' : '1789'].heightAt(sp.x, sp.z);
+        const y = ctx.world.heightfields['2025'].heightAt(sp.x, sp.z);
         t = buildTripod(sp.x, y - 0.03, sp.z, SURVEY_POINTS.indexOf(sp) + TRIPOD_SEED_BASE);
         t.lit = known.has(sp.id) ? 1 : 0;
         this.tripods.set(sp.id, t);
@@ -628,11 +633,13 @@ class Travel {
 
   // ---- the found-card (activation, Fundstück) ---------------------------------------------------
 
-  private showActivation(name: string, first: boolean): void {
-    this.showCard(TRAVEL_DE.activated(name), first ? TRAVEL_DE.firstMap : TRAVEL_DE.activatedSub, null, first ? 6 : 4.5, 'travel-card-activated');
+  private showActivation(point: SurveyPoint): void {
+    const first = this.slice.mapTipPoint === point.id;
+    const text = this.showCard(TRAVEL_DE.activated(point.name), first ? '' : TRAVEL_DE.activatedSub, null, first ? 6 : 4.5, 'travel-card-activated');
+    if (first) this.mapTipText = text;
   }
 
-  showCard(title: string, text: string, from: string | null, seconds: number, testid: string): void {
+  showCard(title: string, text: string, from: string | null, seconds: number, testid: string): HTMLParagraphElement {
     this.hideCard();
     const c = document.createElement('div');
     c.className = testid === 'travel-card-lore' ? 'kqt-card' : 'kqt-card kqt-banner';
@@ -666,28 +673,53 @@ class Travel {
     this.cardT = seconds;
     this.cardBanner = testid !== 'travel-card-lore';
     if (this.cardBanner) c.classList.toggle('kqt-aside', this.bannerAside());
+    return p;
   }
 
   hideCard(): void {
+    if (this.mapTipFrame !== undefined) cancelAnimationFrame(this.mapTipFrame);
+    this.mapTipFrame = undefined;
     this.card?.remove();
     this.card = null;
     if (this.cardBanner) this.ctx.ui.cards.release(BANNER_TOKEN);
     this.cardBanner = false;
+    this.mapTipText = null;
+  }
+
+  private waitForMapTipPaint(card: HTMLElement): void {
+    if (this.mapTipFrame !== undefined) return;
+    const visible = () => !document.hidden && !this.quiet.photoOpen && !this.ctx.ui.cards.held &&
+      !card.classList.contains('kqt-aside') &&
+      (card.checkVisibility?.({ opacityProperty: true, visibilityProperty: true }) ?? true);
+
+    // A fixed-step batch and the first animation-frame callback both run before paint.
+    this.mapTipFrame = requestAnimationFrame(() => {
+      this.mapTipFrame = undefined;
+      if (!visible()) return;
+      this.mapTipFrame = requestAnimationFrame(() => {
+        this.mapTipFrame = undefined;
+        if (!visible()) return;
+        this.mapTipText = null;
+        this.slice.tips.push('map');
+        delete this.slice.mapTipPoint;
+        this.ctx.save.autosave('travel-map-tip', true);
+      });
+    });
   }
 
   /**
    * M-18 (docs/MOBILE-UI-PASS.md): the activation banner never stacks on another centre card (the
    * skill card, a level or reward card, a field-book page). It takes the slot when it is free, so a
    * card that comes later waits for it; while another card holds the slot, the banner waits (or
-   * steps aside) and its clock stops. A spoken line or a fight does not keep it back: it is short.
+   * steps aside) and its clock stops.
    * On a landscape phone it shares the top band with the dialogue card, so there it waits while a
    * line is up (touch.css places it).
    */
   private bannerAside(): boolean {
     const cards = this.ctx.ui.cards;
     if (phoneBand() && document.querySelector('.kqs-dlg.kqs-show')) return true;
-    if (cards.claim(BANNER_TOKEN)) return false;
-    return cards.showing !== null;
+    if (cards.held) return true;
+    return !cards.claim(BANNER_TOKEN);
   }
 
   // ---- Laufschritt -------------------------------------------------------------------------------
@@ -904,9 +936,17 @@ class Travel {
       this.cardT -= dt;
       if (this.cardT <= 0 || (ctx.input.wasPressed('listen') && this.cardT < 11 && cardMayTakeE(ctx.state.state.flags))) this.hideCard();
     }
-    if (!this.card) {
+    if (!this.card && ctx.era.current === 'today' && !this.quiet.quiet && !ctx.player.frozen) {
+      // After an era change or load the ordinary banners are gone. Restore the unseen tutorial.
+      const tip = this.slice.mapTipPoint ? pointById(this.slice.mapTipPoint) : undefined;
+      if (tip && this.pendingActivations[0] !== tip) this.pendingActivations.unshift(tip);
       const next = this.pendingActivations.shift();
-      if (next) this.showActivation(next.name, next.first);
+      if (next) this.showActivation(next);
+    }
+    if (this.card && this.mapTipText && !this.card.classList.contains('kqt-aside')) {
+      const text = TRAVEL_DE.firstMap(actionLabel(ctx.input, 'map'));
+      if (this.mapTipText.textContent !== text) this.mapTipText.textContent = text;
+      this.waitForMapTipPaint(this.card);
     }
   }
 
@@ -971,6 +1011,8 @@ class Travel {
       this.goalStory = typeof x === 'number' && typeof z === 'number' ? { x, z } : null;
     });
     ev.on('era:change', () => {
+      this.pendingActivations.length = 0;
+      if (this.cardBanner) this.hideCard();
       this.wayBlocked = false;
       this.setWayMarker(null);
       this.dropAllVisuals();
@@ -1084,7 +1126,8 @@ export default defineSystem({
   init(ctx) {
     injectTravelCss();
     travel = new Travel(ctx);
-    registerEraMaterials('travel.poi', '*', () => [buildTripod(0, 0, 0, TRIPOD_SEED_BASE).group, buildShrine(0, 0, 0, 0, 1).group]);
+    registerEraMaterials('travel.tripod', 'today', () => buildTripod(0, 0, 0, TRIPOD_SEED_BASE).group);
+    registerEraMaterials('travel.poi', '*', () => buildShrine(0, 0, 0, 0, 1).group);
     travel.wire();
     hooks = travel.hooks();
     travel.registerPages();

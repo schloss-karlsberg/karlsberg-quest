@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { COAT_REACH } from '../src/systems/bleiche/layout';
 import { ciScale } from './helpers/ci';
 import { trackErrors } from './helpers/common';
 import { fight, qn, qs, untilQuest } from './helpers/prolog';
@@ -6,7 +7,7 @@ import { DISGUISE_SPOTS, boot, flags, playDisguise, shot, story, talk, upd } fro
 
 /**
  * Chapter 1's disguise opening (story k1_0b → k1_0c, docs/IDEAS-ROUND11.md §2, the court system
- * src/systems/court): in orange the Gardist at the gitter sends you out; Kaspar's coat lifted off
+ * src/systems/court): the Gardist at the gitter sends you out in modern clothes; Kaspar's coat lifted off
  * Liese's line unseen, the paper from the Hofgärtner, the letter, the Musterung → admitted; and the
  * other way to the coat: Liese asked, three Mahnbriefe chased out of her linen.
  * Screenshots: test-results/screens/ch-k1-0b-*.png, ch-k1-0c-*.png.
@@ -43,13 +44,22 @@ const recordSubs = (page: import('@playwright/test').Page) =>
   });
 const subs = (page: import('@playwright/test').Page) => page.evaluate(() => (window as unknown as SubW).__subs ?? []);
 
-test('k1 disguise: orange is refused at the gitter; coat taken unseen, letter, Musterung → admitted', async ({ page }) => {
+test('k1 disguise: modern clothes are refused at the gitter; coat taken unseen, letter, Musterung → admitted', async ({ page }) => {
   const errors = trackErrors(page);
   await startInSummer(page);
   await recordSubs(page);
+  expect((await story(page)).objective).toMatchObject({ id: 'k1.rock', x: COAT_REACH.x, z: COAT_REACH.z });
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.teleport(1023, -864, 0, 0);
+    k.step(6);
+  });
+  for (let i = 0; i < 10 && !(await page.evaluate(() => window.kq!.story!.shown().includes('laub.k1.bleiche'))); i++) await upd(page, 60);
+  expect(await page.evaluate(() => window.kq!.story!.shown())).toContain('laub.k1.bleiche');
+  await page.evaluate(() => window.kq!.teleport(1059.3, -833.1, 204, 0));
   const npcs = await page.evaluate(() => window.kq!.npc!.list().map((n) => n.npc));
   for (const id of ['liese', 'hofgaertner', 'gardist-tor', 'gardist', 'lakai']) expect(npcs).toContain(id);
-  // in the hi-vis vest at the gate: the Gardist sees the costume and escorts you to the forecourt
+  // in the modern jacket at the gate: the Gardist sees the costume and escorts you to the forecourt
   await page.evaluate((g) => {
     const k = window.kq!;
     k.teleport(g.x, g.z, 0, 0);
@@ -72,8 +82,8 @@ test('k1 disguise: orange is refused at the gitter; coat taken unseen, letter, M
   expect((await subs(page)).some((l) => l.includes('Hofrat Amsel'))).toBe(true);
   const f = await flags(page);
   expect(f['flag.k1_kleid']).toBe('genommen');
-  // the gate stands open; the lantern burns from the court on
-  expect(!!(await story(page)).meters.oil).toBe(true);
+  // the gate stands open; the day at the court has no oil timer (the first stay is not cut short)
+  expect(!!(await story(page)).meters.oil).toBe(false);
   await shot(page, '0c-eingelassen');
   expect(errors).toEqual([]);
 });

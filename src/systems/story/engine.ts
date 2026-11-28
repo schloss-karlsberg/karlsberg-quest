@@ -147,6 +147,7 @@ export interface StoryHost {
   /** `handover`: the story ran into the chapter from the one before it (not a replay, jump or resume). */
   chapterEntered(file: StoryFile, opts: { resume: boolean; replay?: readonly string[]; handover?: boolean }): void;
   beatEntered(chapter: string, beat: Beat, opts: { resume: boolean }): void;
+  keepCompletingDialogue?(group: number): void;
   chapterCompleted(file: StoryFile): void;
 }
 
@@ -355,6 +356,8 @@ export class StoryEngine {
   private readonly edges = new Map<string, boolean>();
   /** Last firing time (chapter seconds) of repeatable reactions with a cooldown (not persisted). */
   private readonly lastFired = new Map<string, number>();
+  /** Events since the last completion check that can affect completion, with any pack dialogue group. */
+  private completionEvents: { group?: number; name: string; id: unknown; latches: string[] }[] = [];
 
   constructor(
     files: StoryFile[],
@@ -412,6 +415,8 @@ export class StoryEngine {
     const b = this.beat();
     if (!this.s.active || !f || !b) return;
     const target = useCheckpoint && b.checkpoint && f.beats.some((x) => x.id === b.checkpoint) ? b.checkpoint : b.id;
+    // Resume discards pending presentation from the last visit. Re-arm visit-scoped reactions.
+    for (const r of f.on ?? []) if (r.repeat && r.sameEra) this.edges.delete(`c:${r.id}`);
     this.host.chapterEntered(f, { resume: true });
     this.enterBeat(target, true);
   }
@@ -420,6 +425,7 @@ export class StoryEngine {
     const f = this.chapter()!;
     const b = f.beats.find((x) => x.id === id)!;
     const s = this.s;
+    this.completionEvents = [];
     s.beat = id;
     s.beatTime = 0;
     for (const k of Object.keys(s.latched)) if (!k.startsWith('c:')) delete s.latched[k];
@@ -462,7 +468,7 @@ export class StoryEngine {
   }
 
   /** Feed every game event (latches event conditions of the running beat and reactions). */
-  onEvent(name: string, payload: unknown): void {
+  onEvent(name: string, payload: unknown, dialogueGroup?: number): void {
     const s = this.s;
     const f = this.chapter();
     const b = this.beat();
@@ -470,7 +476,15 @@ export class StoryEngine {
     const bump = (ev: EventCond, key: string) => {
       if (eventMatches(ev, name, payload)) s.latched[key] = (s.latched[key] ?? 0) + 1;
     };
-    walkEvents(b.complete, `b:${b.id}`, bump);
+    const latches: string[] = [];
+    walkEvents(b.complete, `b:${b.id}`, (ev, key) => {
+      if (!eventMatches(ev, name, payload)) return;
+      s.latched[key] = (s.latched[key] ?? 0) + 1;
+      latches.push(key);
+    });
+    if (latches.length || name === 'clue:found' || name === 'quest:completed') {
+      this.completionEvents.push({ group: dialogueGroup, name, id: (payload as { id?: unknown } | null)?.id, latches });
+    }
     for (const r of b.on ?? []) walkEvents(r.when, `br:${r.id}`, bump);
     for (const r of f.on ?? []) walkEvents(r.when, `c:${r.id}`, bump);
   }
@@ -501,7 +515,32 @@ export class StoryEngine {
     if (this.s.beat !== b.id || this.s.chapter !== f.chapter) return; // a reaction switched beats
     this.react(b.on ?? [], 'b', env, s.beatTime);
     if (this.s.beat !== b.id || this.s.chapter !== f.chapter) return;
-    if (evaluate(b.complete, env, s.latched, `b:${b.id}`, s.beatTime)) this.completeBeat();
+    const completionEvents = this.completionEvents;
+    this.completionEvents = [];
+    const key = `b:${b.id}`;
+    if (!evaluate(b.complete, env, s.latched, key, s.beatTime)) return;
+    // Undo the tick's events in reverse order to find the one that made the completion
+    // condition true. A silent event can finish the beat after an earlier voiced event.
+    const latched = completionEvents.length ? { ...s.latched } : s.latched;
+    let beforeEvent = env;
+    for (const event of completionEvents.reverse()) {
+      for (const latch of event.latches) latched[latch] = (latched[latch] ?? 0) - 1;
+      // These producers update state before emitting the event, so their completion
+      // conditions can read inventory or a quest flag instead of an event latch.
+      if (event.name === 'clue:found') {
+        const { inventory } = beforeEvent;
+        beforeEvent = { ...beforeEvent, inventory: { ...inventory, clues: inventory.clues.filter((id) => id !== event.id) } };
+      } else if (event.name === 'quest:completed' && typeof event.id === 'string') {
+        const flags = { ...beforeEvent.flags };
+        delete flags[`quest.${event.id}`];
+        beforeEvent = { ...beforeEvent, flags };
+      }
+      if (!evaluate(b.complete, beforeEvent, latched, key, s.beatTime)) {
+        if (event.group !== undefined) this.host.keepCompletingDialogue?.(event.group);
+        break;
+      }
+    }
+    this.completeBeat();
   }
 
   private react(list: Reaction[], scope: 'b' | 'c', env: StoryEnv, time: number): void {

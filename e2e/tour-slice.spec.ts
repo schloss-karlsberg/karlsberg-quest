@@ -119,9 +119,9 @@ async function viewGroup(page: Page, d = 10): Promise<void> {
   }, d);
 }
 
-async function expectObjectiveFits(page: Page): Promise<void> {
+async function expectObjectiveFits(page: Page, text: string): Promise<void> {
   const objective = page.getByTestId('objective');
-  await expect(objective).toContainText('Gerold Imhoff zuhören');
+  await expect(objective).toContainText(text);
   await expect.poll(() => objective.locator('.kqs-obj-text').evaluate((text) => {
     const column = text.closest('.kq-tl')!.getBoundingClientRect();
     const range = document.createRange();
@@ -152,7 +152,15 @@ test.describe('landscape phone', () => {
         k.step(60);
       }
     });
-    await expectObjectiveFits(page);
+    await expectObjectiveFits(page, 'Gerold Imhoff zuhören');
+    await page.evaluate(() => {
+      const k = window.kq!;
+      k.ctx.events.emit('item:grant', { item: 'item.kastanie', count: 1, reason: 'loot' });
+      k.step(1);
+    });
+    await expect(page.getByTestId('first-throw-hint')).toBeVisible();
+    await expect(page.getByTestId('first-throw-hint')).toContainText('Tippe auf die Kastanie');
+
   });
 });
 
@@ -298,6 +306,7 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   const s0 = await page.evaluate(() => window.kq!.story!.state());
   expect(s0.chapter).toBe('tour');
   expect(s0.beat).toBe('t1');
+  await expect(page.getByTestId('story-card')).toContainText('Kapitel 1 · heute, ein Novembernachmittag');
   // the animals system is the real one (main's animals system, kq.animals.ready), with the dogs at Jost's heels
   expect(await page.evaluate(() => window.kq!.animals?.ready)).toBe(true);
   await page.evaluate(() => window.kq!.step(120));
@@ -316,7 +325,7 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
     const k = window.kq!;
     for (let i = 0; i < 30 && !k.ctx.state.state.flags['tour.station1.ready']; i++) k.step(60);
   });
-  await expectObjectiveFits(page);
+  await expectObjectiveFits(page, 'Gerold Imhoff zuhören');
   await page.evaluate(() => {
     const k = window.kq!;
     const g = k.walk!.list().find((n) => n.npc === 'imhoff')!;
@@ -630,8 +639,13 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
     k.step(60);
     // the compass and the lead refresh at 10 Hz: settle them at the new position
     k.ctx.loop.renderOnce(0.1);
+    // Story reads the resolved quest waypoint on the following frame.
+    k.ctx.loop.renderOnce(0);
     return { guide: { x: g.x, z: g.z }, spot, waiting: k.walk!.walker('imhoff')!.waiting, lead: k.quests!.lead() };
   }, { points: fuehrung.points, stop: { x: quelleStop.x, z: quelleStop.z } });
+  const groupDistance = Math.round(Math.hypot(strayAt.lead!.x! - strayAt.spot.x, strayAt.lead!.z! - strayAt.spot.z));
+  await expect(page.getByTestId('objective').locator('.kqs-obj-dist')).toHaveText(`· ${groupDistance} m`);
+  await expect(page.getByTestId('waymark').locator('.kq-wm-dist')).toHaveText(`${groupDistance} m`);
   console.log(`[tour] stray lead: ${JSON.stringify(strayAt)}`);
   // the objective sits on the route at the group, not on the Quelle stop
   expect(strayAt.waiting).toBe(true);
@@ -813,11 +827,28 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
     console.log(`[tour] no shift: era ${era}, ctx era ${await page.evaluate(() => window.kq!.ctx.era.current)}; last events ${tail.join(' | ')}`);
   }
   expect(era).toBe('1789');
+  const arrivalGoal = await page.evaluate(() => {
+    window.kq!.step(1);
+    const objective = document.querySelector<HTMLElement>('[data-testid="objective"]')!;
+    return {
+      text: objective.textContent,
+      clipPath: getComputedStyle(objective).clipPath,
+      target: window.kq!.ctx.ui.hud.objectiveTarget,
+      coat: window.kq!.chronik!.status('clue.k1.rock'),
+    };
+  });
+  expect(arrivalGoal.text).toContain('Laub zuhören');
+  expect(arrivalGoal.text).not.toContain('das Wasser berühren');
+  expect(arrivalGoal.target).toBeNull();
+  expect(arrivalGoal.coat).toBe('hidden');
+  await expect(page.locator('.kq-prompt')).not.toContainText('Rock nehmen');
+  expect(arrivalGoal.clipPath).toBe('none');
+  await expectObjectiveFits(page, 'Laub zuhören');
   await page.evaluate(() => window.kq!.step(300));
   expect(await page.evaluate(() => window.kq!.walk!.stats().visible)).toBe(0);
   expect(await page.evaluate(() => window.kq!.animals!.stats().visible)).toBe(0);
   await shot(page, '12-1789');
-  // the arrival lines in 1789, then the hand-over into chapter 1 right there: no fade, no way
+  // the arrival lines in 1789, then the hand-over into chapter 2 right there: no fade, no way
   // back to the present, no „Fortsetzung folgt“
   const fades = await page.evaluate(() => {
     const k = window.kq!;
@@ -839,6 +870,9 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   expect(s1.chapter).toBe('k1');
   expect(s1.beat).toBe('k1_0');
   expect(s1.era).toBe('1789');
+  expect(s1.objective).toEqual({ id: 'k1.ankunft', text: 'Laub zuhören' });
+  await expect(page.getByTestId('story-card')).toContainText('Kapitel 2 · Sommer 1789');
+  expect(await page.evaluate(() => window.kq!.story!.shown())).toContain('laub.k1.bleiche');
   // the chapter card stands alone: no quest banner on it
   expect(await page.evaluate(() => window.kq!.quests!.state().quests['q.k1.kleider']?.state ?? 'hidden')).toBe('hidden');
   expect(await page.evaluate(() => window.kq!.quelle!.info().prompt), 'no second touch').toBe(false);

@@ -218,7 +218,13 @@
           "cx.46"
         ]
       },
+      "requires": {
+        "flags": [
+          "k1.rock.frei"
+        ]
+      },
       "fiction": true,
+      "prompt_de": "Rock nehmen",
       "chapter": "k1"
     },
     {
@@ -1489,6 +1495,8 @@
         "npc": "liese",
         "chapter": "k1",
         "topic": "rock",
+        "flag": "quest.q.k1.kleider",
+        "value": "active",
         "step": 1
       },
       "once": false
@@ -1502,6 +1510,8 @@
         "npc": "liese",
         "chapter": "k1",
         "topic": "rock",
+        "flag": "quest.q.k1.kleider",
+        "value": "active",
         "step": 2
       },
       "once": false
@@ -1651,7 +1661,7 @@
     {
       "id": "laub.k1.brunnenstube",
       "speaker": "laub",
-      "text_de": "Sommer 1789. Kies, Hunde, irgendwo eine Geige. Und mittendrin Sie. In Orange.",
+      "text_de": "Sommer 1789. Kies, Hunde, irgendwo eine Geige. Und mittendrin Sie. In Rot.",
       "trigger": {
         "event": "story:beat",
         "chapter": "k1",

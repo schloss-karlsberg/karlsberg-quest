@@ -113,11 +113,11 @@ describe('the tour hands over into chapter 1', () => {
     expect(t17.complete).toEqual({ event: 'quelle:touch' });
     // the shift belongs to the arrival beat, so a Continue from its autosave (era still today) finishes it
     expect(t17.exit!.some((a) => a.do === 'shift')).toBe(false);
-    expect(t18.enter![0]).toEqual({ do: 'shift', to: '1789', reason: 'quelle', onResume: true });
+    expect(t18.enter!.find((a) => a.do === 'shift')).toEqual({ do: 'shift', to: '1789', reason: 'quelle', onResume: true });
     expect(t18.enter!.some((a) => a.do === 'fade')).toBe(false);
     expect(t18.complete).toEqual({ all: [{ flag: 'tour.ende' }, { era: '1789' }] });
     const says = t18.enter!.filter((a) => a.do === 'say');
-    expect(says.map((a) => a.id)).toEqual(['player.q.wo', 'laub.t.1789', 'laub.t.seite']);
+    expect(says.map((a) => a.id)).toEqual(['laub.k1.bleiche', 'player.q.wo', 'laub.t.1789', 'laub.t.seite']);
     expect(says.every((a) => a.onResume === true)).toBe(true);
     expect(JSON.stringify(t18)).not.toContain('genügt ein Blick');
     // nothing after the tour sends the player back or asks for the water again before the court

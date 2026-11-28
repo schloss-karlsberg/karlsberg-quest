@@ -2,7 +2,7 @@
   "chapter": "k1",
   "order": 1,
   "title_de": "Der Hof",
-  "sub_de": "Kapitel 1 · Sommer 1789",
+  "sub_de": "Kapitel 2 · Sommer 1789",
   "era": "1789",
   "start": "k1_0",
   "next": "k2",
@@ -15,7 +15,39 @@
   "continues": true,
   "on": [
     {
-      "id": "oel-a",
+      "id": "k1_0b.bleiche",
+      "when": {
+        "all": [
+          {
+            "flag": "k1.vorspiel"
+          },
+          {
+            "enter": {
+              "x": 1001.5,
+              "z": -876.5,
+              "r": 30,
+              "era": "1789"
+            }
+          },
+          {
+            "not": {
+              "flag": "disguise.coat"
+            }
+          }
+        ]
+      },
+      "do": [
+        {
+          "do": "say",
+          "id": "laub.k1.bleiche",
+          "speaker": "laub",
+          "text": "Die Bleiche. Die Wäscherin schaut zum Weg, nicht auf die Leine. Hinten herum, hinter der zweiten Leine, sieht sie Sie nicht. Oder Sie fragen sie. Fragen soll auch eine Methode sein."
+        }
+      ],
+      "sameEra": true
+    },
+    {
+      "id": "oel-tag",
       "when": {
         "all": [
           {
@@ -25,26 +57,14 @@
             "not": {
               "flag": "k1.b"
             }
-          },
-          {
-            "not": {
-              "flag": "k1.vorspiel"
-            }
           }
         ]
       },
-      "repeat": true,
       "do": [
         {
           "do": "meter",
           "id": "oil",
           "active": false
-        },
-        {
-          "do": "meter",
-          "id": "oil",
-          "active": true,
-          "seconds": 360
         }
       ]
     },
@@ -62,16 +82,19 @@
             "not": {
               "flag": "k1.vorspiel"
             }
+          },
+          {
+            "not": {
+              "meter": {
+                "id": "oil",
+                "gte": 0
+              }
+            }
           }
         ]
       },
       "repeat": true,
       "do": [
-        {
-          "do": "meter",
-          "id": "oil",
-          "active": false
-        },
         {
           "do": "meter",
           "id": "oil",
@@ -133,13 +156,15 @@
     },
     {
       "id": "lauf-zurueck",
+      "repeat": true,
+      "sameEra": true,
       "when": {
         "all": [
           {
             "era": "1789"
           },
           {
-            "chapterTimer": 75
+            "flag": "k1.b"
           },
           {
             "not": {
@@ -148,22 +173,19 @@
           },
           {
             "not": {
-              "flag": "k1.tut.return"
+              "flag": "k1.tut.return.shown"
             }
           }
         ]
       },
       "do": [
         {
-          "do": "flag",
-          "set": {
-            "k1.tut.return": true
-          }
-        },
-        {
           "do": "toast",
-          "text": "Halte [Q], um ins Heute zurückzukehren. Die Laterne brennt nicht ewig: ist das Öl leer, lässt dich die Erinnerung los.",
-          "ms": 6500
+          "text": "Die Laterne brennt nicht ewig: Ist das Öl leer, lässt dich die Erinnerung los. Halte {key}, um vorher ins Heute zurückzukehren.",
+          "action": "shift",
+          "onceFlag": "k1.tut.return.shown",
+          "ms": 6500,
+          "delay": 8
         }
       ]
     },
@@ -957,7 +979,10 @@
             "quelle.call": null,
             "k1.vorspiel": true,
             "npc.owns.clue.k1.papier": true,
-            "k1.angekommen": null
+            "k1.rock.frei": null,
+            "k1.rock.grace": false,
+            "k1.angekommen": null,
+            "k1.karte": null
           }
         },
         {
@@ -1097,6 +1122,13 @@
           "data": {
             "set": "k1"
           }
+        },
+        {
+          "do": "flag",
+          "set": {
+            "k1.karte": true
+          },
+          "delay": 0.2
         }
       ],
       "complete": {
@@ -1106,6 +1138,9 @@
           },
           {
             "flag": "k1.angekommen"
+          },
+          {
+            "flag": "k1.karte"
           }
         ]
       },
@@ -1117,19 +1152,17 @@
           },
           "do": [
             {
+              "do": "objective",
+              "id": "k1.ankunft",
+              "text": "Laub zuhören"
+            },
+            {
               "do": "say",
               "id": "laub.k1.brunnenstube",
               "speaker": "laub",
               "delay": 1,
               "wait": true,
-              "text": "Sommer 1789. Kies, Hunde, irgendwo eine Geige. Und mittendrin Sie. In Orange."
-            },
-            {
-              "do": "objective",
-              "id": "k1.rock",
-              "text": "Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach",
-              "x": 1001.5,
-              "z": -876.5
+              "text": "Sommer 1789. Kies, Hunde, irgendwo eine Geige. Und mittendrin Sie. In Rot."
             },
             {
               "do": "say",
@@ -1187,7 +1220,8 @@
           "do": "flag",
           "set": {
             "k1.vorspiel": true,
-            "npc.owns.clue.k1.papier": true
+            "npc.owns.clue.k1.papier": true,
+            "k1.rock.frei": true
           }
         },
         {
@@ -1356,8 +1390,8 @@
               "do": "objective",
               "id": "k1.rock",
               "text": "Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach",
-              "x": 1001.5,
-              "z": -876.5
+              "x": 1001.08,
+              "z": -880.9
             }
           ]
         },
@@ -1396,30 +1430,108 @@
           ]
         },
         {
-          "id": "k1_0b.bleiche",
+          "id": "k1_0b.liese-sieht",
           "when": {
             "all": [
               {
                 "enter": {
-                  "x": 1001.5,
-                  "z": -876.5,
-                  "r": 18,
+                  "x": 1003.6,
+                  "z": -875.7,
+                  "r": 3.6,
                   "era": "1789"
+                }
+              },
+              {
+                "any": [
+                  { "not": { "flag": "k1.rock.grace" } },
+                  { "timer": 2 }
+                ]
+              },
+              {
+                "stance": "stand"
+              },
+              {
+                "flag": "k1.rock.frei"
+              },
+              {
+                "not": {
+                  "flag": "disguise.coat"
+                }
+              },
+              {
+                "not": {
+                  "talked": {
+                    "npc": "liese",
+                    "topic": "rock"
+                  }
+                }
+              }
+            ]
+          },
+          "repeat": true,
+          "do": [
+            {
+              "do": "flag",
+              "set": {
+                "k1.rock.frei": null
+              }
+            },
+            {
+              "do": "say",
+              "id": "liese.k1.sieht",
+              "speaker": "liese",
+              "variants": [
+                "He! Finger von der Wäsche! Die ist für den Hof, nicht für Feuersalamander.",
+                "Ich seh Ihn doch. Da vorn zwischen den Leinen hat Er nichts verloren."
+              ],
+              "repeat": true
+            },
+            {
+              "do": "objective",
+              "id": "k1.rock",
+              "text": "Liese hat dich gesehen. Erst weg von der Bleiche, dann geduckt oder außen herum hinter die zweite Leine. Oder frag sie",
+              "x": 1001.08,
+              "z": -880.9
+            }
+          ]
+        },
+        {
+          "id": "k1_0b.liese-ruhig",
+          "when": {
+            "all": [
+              {
+                "not": {
+                  "flag": "k1.rock.frei"
                 }
               },
               {
                 "not": {
                   "flag": "disguise.coat"
                 }
+              },
+              {
+                "leave": {
+                  "x": 1001.5,
+                  "z": -876.5,
+                  "r": 14
+                }
               }
             ]
           },
+          "repeat": true,
           "do": [
             {
-              "do": "say",
-              "id": "laub.k1.bleiche",
-              "speaker": "laub",
-              "text": "Die Bleiche. Die Wäscherin schaut zum Weg, nicht auf die Leine. Hinten herum, hinter der zweiten Leine, sieht sie Sie nicht. Oder Sie fragen sie. Fragen soll auch eine Methode sein."
+              "do": "flag",
+              "set": {
+                "k1.rock.frei": true
+              }
+            },
+            {
+              "do": "objective",
+              "id": "k1.rock",
+              "text": "Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach",
+              "x": 1001.08,
+              "z": -880.9
             }
           ]
         },
@@ -1433,9 +1545,15 @@
                 }
               },
               {
-                "not": {
-                  "flag": "disguise.coat"
-                }
+                "any": [
+                  { "not": { "flag": "disguise.coat" } },
+                  {
+                    "all": [
+                      { "flag": "flag.k1_kleid", "eq": "genommen" },
+                      { "quest": { "id": "q.k1.kleider", "state": "active" } }
+                    ]
+                  }
+                ]
               }
             ]
           },

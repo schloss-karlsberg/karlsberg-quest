@@ -3,7 +3,7 @@ import { ciScale } from './helpers/ci';
 import { trackErrors } from './helpers/common';
 import { boot } from './helpers/k1';
 import { QUELLE_STAND, flag, holdHome, story } from './helpers/prolog';
-import { PIECES, QUELLE, REACH, toLocal, toWorld, touchLocal } from '../src/systems/quelle/layout';
+import { ARRIVAL_STEP, PIECES, QUELLE, REACH, yawToPalace, toLocal, toWorld, touchLocal } from '../src/systems/quelle/layout';
 import { HOME } from '../src/systems/story/hub/home';
 
 /**
@@ -136,15 +136,22 @@ test('Karlsbergquelle: E at the trough, the still moment, the one shift to 1789,
   expect(await qlog()).toEqual(['quelle:dip:today', 'quelle:touch:today', 'shift:begin']);
   expect(await flag(page, 'quelle.call')).toBeUndefined();
 
-  // past the midpoint: 1789, still held (game time goes on, the shift is not done)
+  // Past the midpoint the player is still held and facing the palace.
+  const atWater = await page.evaluate(() => {
+    const { x, z } = window.kq!.ctx.player.position;
+    return { x, z };
+  });
   const mid = await page.evaluate(() => {
     const k = window.kq!;
     k.fx!.shiftAt(2.2);
     k.step(30);
-    return { era: k.story!.state().era, beat: k.story!.state().beat, frozen: k.ctx.player.frozen, scene: k.quelle!.info().scene, active: k.fx!.state().shift.active, built: k.quelle!.info().built };
+    const { x, z } = k.ctx.player.position;
+    return { x, z, yaw: k.ctx.player.yaw, era: k.story!.state().era, beat: k.story!.state().beat, frozen: k.ctx.player.frozen, scene: k.quelle!.info().scene, active: k.fx!.state().shift.active, built: k.quelle!.info().built };
   });
   expect(mid).toMatchObject({ era: '1789', beat: 't18', frozen: true, active: true, built: '1789' });
   expect(mid.scene).not.toBeNull();
+  expect(Math.hypot(mid.x - atWater.x, mid.z - atWater.z)).toBeCloseTo(ARRIVAL_STEP, 1);
+  expect(mid.yaw).toBeCloseTo(yawToPalace(mid.x, mid.z), 2);
   // the shift is done: let go
   const done = await page.evaluate(() => {
     const k = window.kq!;
@@ -164,6 +171,7 @@ test('Karlsbergquelle: E at the trough, the still moment, the one shift to 1789,
     return Math.hypot(k.ctx.player.position.x - p0.x, k.ctx.player.position.z - p0.z);
   });
   expect(moved).toBeGreaterThan(0.3);
+  await expect(page.getByTestId('objective')).toContainText('Laub zuhören');
   // the arrival lines, then „Der Hof“ begins where the player stands: no way back, no second touch
   for (let i = 0; i < 80 && (await story(page)).beat !== 'k1_0b'; i++) await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
   expect(await story(page)).toMatchObject({ chapter: 'k1', beat: 'k1_0b', era: '1789' });

@@ -25,7 +25,7 @@ import { VoiceClips, type VoiceClipStats } from './dialogue/voiceClips';
 import { sayLineIds } from './dialogue/voiceManifest';
 import { DialoguePresenter, holdSeconds, substituteName } from './dialogue/presenter';
 import { speakerMeta } from './dialogue/speakers';
-import { DEFAULT_VISITOR_NAME, type MeterState, StoryEngine, type StoryEnv, type StorySlice, createStorySlice, evaluate, runTeleport, runsOnResume, staysAtHandover, waitsForChapterCard } from './engine';
+import { DEFAULT_VISITOR_NAME, type MeterState, StoryEngine, type StoryEnv, type StorySlice, createStorySlice, evaluate, runTeleport, runsOnResume, staysAtHandover, waitsForChapterCard, whereOf } from './engine';
 import { composeEpilogue, type Epilogue } from './endings/epilogue';
 import { endingScenes } from './endings/scenes';
 import { EndingStage } from './endings/stage';
@@ -217,6 +217,7 @@ const ASSEMBLED_EVENTS = new Set(['epilog:line', 'story:ending']);
 interface RunScope {
   beat: string | null;
   where: { x: number; z: number; r: number } | null;
+  dialogueGroup?: number;
   /** The era visit a `sameEra` reaction belongs to. */
   eraVisit?: number;
 }
@@ -322,6 +323,7 @@ class StoryRuntime {
       run: (actions, o) =>
         this.run(actions, o.resume, { beat: o.beat ?? null, where: o.where ?? null, eraVisit: o.sameEra ? this.eraVisit : undefined }, o.source),
       chapterEntered: (f, o) => this.chapterEntered(f, o),
+      keepCompletingDialogue: (group) => this.presenter.keepCompletingGroup(group),
       beatEntered: (ch, b, o) => {
         if (ch === 'enden' && b.id === 'e1' && !o.resume) {
           const finaleLines = new Set(sayLineIds(this.engine.chapter()));
@@ -345,6 +347,18 @@ class StoryRuntime {
         this.gatePending = false;
         // the beat's spoken lines: fetch and decode their clips now (never waits)
         this.clips?.preload(sayLineIds(b).map((id) => ({ id })));
+        if (ch === 'k1' && b.id === 'k1_0b') {
+          const watch = b.on?.find((r) => r.id === 'k1_0b.liese-sieht');
+          const circle = watch && whereOf(watch.when);
+          const { x, z } = ctx.player.position;
+          // Only the player already in Liese's circle gets the opening grace.
+          const inside = !!circle && ctx.era.current === '1789' && Math.hypot(x - circle.x, z - circle.z) <= circle.r;
+          ctx.state.mutable.flags['k1.rock.grace'] = inside;
+          // Beat reactions start on the following tick. Set the arrival marker now, with the pickup.
+          const arrival = b.on?.find((r) => r.id === 'k1_0b.damals');
+          const goal = arrival?.do.find((a) => a.do === 'objective');
+          if (arrival && goal && this.holds(arrival.when)) this.exec(goal);
+        }
         ctx.events.emit('story:beat', { chapter: ch, beat: b.id, ...(o.resume ? { resume: true as const } : {}) });
         if (!o.resume) this.pendingAutosave = true;
         this.clearPrompt();
@@ -689,15 +703,17 @@ class StoryRuntime {
       }
       return;
     }
-    // the previous chapter's queued lines and delayed actions end with it: the new title card
-    // starts clean (in a campaign Laub's prologue rules ran on into "Der Hof")
+    // Ordinary lines and delayed actions end with the chapter. Completing reactions carry
+    // through a natural handoff, including a line that is already on screen.
     this.cancelScheduled();
-    this.presenter.clear();
+    this.presenter.clear(handover);
     // a new chapter (a new day) starts on your feet, not still prone from the last chase
     if (ctx.player.stance !== 'stand') ctx.player.setStance('stand');
-    // … and with the new chapter's own objective, not the last one of the previous chapter
-    this.slice.objective = null;
-    this.objectives.set(null);
+    // Keep the listening goal through the title card.
+    if (!(handover && f.chapter === 'k1' && this.slice.objective?.id === 'k1.ankunft')) {
+      this.slice.objective = null;
+      this.objectives.set(null);
+    }
     // switch threats of the previous chapter off
     for (const [kind, cfg] of Object.entries(this.slice.threats)) {
       if (cfg.active) this.configureThreat({ kind: kind as ThreatKind, active: false });
@@ -929,11 +945,26 @@ class StoryRuntime {
         this.give(a.clue, a.noun, a.item, a.kind);
         if (a.toast) ctx.ui.toast(a.toast, 4200);
         return;
-      case 'toast':
+      case 'toast': {
+        const { action, onceFlag } = a;
+        if (action || onceFlag) {
+          const gen = this.gen;
+          const visit = this.scope?.eraVisit;
+          ctx.ui.toast(a.text, a.ms, () => {
+            if (gen !== this.gen || (visit !== undefined && visit !== this.eraVisit)) return null;
+            if (onceFlag) {
+              if (ctx.state.state.flags[onceFlag]) return null;
+              ctx.state.update((s) => (s.flags[onceFlag] = true), 'story');
+            }
+            return action ? a.text.replace('{key}', actionLabel(ctx.input, action)) : a.text;
+          });
+          return;
+        }
         // tips wait while a fight or chase is on (playtest round 2: "Halte [Q] …" over a boss kill)
         if (ctx.ui.hud.inAction) this.calmToasts.push({ text: a.text, ms: a.ms });
         else ctx.ui.toast(a.text, a.ms);
         return;
+      }
       case 'teleport':
         runTeleport(a, ctx.state.mutable.flags, (x, z, yaw) => this.teleport(x, z, yaw));
         ctx.player.writeState(ctx.state.mutable.player);
@@ -1326,23 +1357,14 @@ class StoryRuntime {
   private onEvent(name: string, payload: unknown): void {
     if (QUIET_EVENTS.has(name)) return;
     if (name === 'room:enter' || name === 'room:leave') this.onRoom(name, payload);
-    this.engine.onEvent(name, payload);
-    // ContentDB dialogue triggers (echo lines are played by the Chronik's echo director itself)
-    if (ECHO_EVENTS.has(name) || ASSEMBLED_EVENTS.has(name)) return;
-    const sys = this.ctx.systems;
-    // the npc feature plays its conversations, the barks feature its barks (rules: barks/rules.ts)
-    if (name === 'npc:talk' && sys.get('npc')) return;
-    const barks = !!sys.get('barks');
-    if (barks && name.startsWith('bark:')) return;
-    const lines = this.ctx.content.dialogueFor(name).filter((l) => !this.mutedLines.has(l.id) && !(barks && isBarkLine(l.id)));
-    if (!lines.length) return;
+    const seq = this.dialogueSequence(name, payload);
+    const group = seq.length ? ++this.lineGroup : undefined;
+    this.engine.onEvent(name, payload, this.caughtBusy ? undefined : group);
+    if (group === undefined) return;
     const s = this.slice;
-    const st = this.ctx.state.state;
-    const seq = pickSequence(lines, name, payload, { era: this.ctx.era.current, flags: st.flags, chapter: s.chapter, beat: s.beat, clues: st.inventory.clues }, new Set(s.said), this.lastSaid, this.time);
-    // a trigger's lines are about what just happened, here: one group, bound to this spot
+    // A trigger's lines are about what just happened here and share one queue group.
     const p = this.ctx.player.position;
-    const scope: RunScope = { beat: s.beat, where: { x: p.x, z: p.z, r: 0 } };
-    this.lineGroup++;
+    const scope: RunScope = { beat: s.beat, where: { x: p.x, z: p.z, r: 0 }, dialogueGroup: group };
     for (const line of seq) {
       this.lastSaid.set(line.id, this.time);
       if (line.once && !s.said.includes(line.id)) s.said.push(line.id);
@@ -1351,7 +1373,22 @@ class StoryRuntime {
       if (this.caughtBusy) this.wakeLines.push(say);
       else this.withScope(scope, () => this.ctx.events.emit('dialogue:say', say));
     }
-    if (seq.length) this.lineGroup++;
+    this.lineGroup++;
+  }
+
+  private dialogueSequence(name: string, payload: unknown) {
+    // ContentDB dialogue triggers (echo lines are played by the Chronik's echo director itself)
+    if (ECHO_EVENTS.has(name) || ASSEMBLED_EVENTS.has(name)) return [];
+    const sys = this.ctx.systems;
+    // the npc feature plays its conversations, the barks feature its barks (rules: barks/rules.ts)
+    if (name === 'npc:talk' && sys.get('npc')) return [];
+    const barks = !!sys.get('barks');
+    if (barks && name.startsWith('bark:')) return [];
+    const lines = this.ctx.content.dialogueFor(name).filter((l) => !this.mutedLines.has(l.id) && !(barks && isBarkLine(l.id)));
+    if (!lines.length) return [];
+    const s = this.slice;
+    const st = this.ctx.state.state;
+    return pickSequence(lines, name, payload, { era: this.ctx.era.current, flags: st.flags, chapter: s.chapter, beat: s.beat, clues: st.inventory.clues }, new Set(s.said), this.lastSaid, this.time);
   }
 
   /**
@@ -1404,7 +1441,7 @@ class StoryRuntime {
       beat: p.keep ? null : sc ? sc.beat : this.slice.beat,
       where,
       priority: p.priority ?? (low ? 'low' : 'normal'),
-      group: sc ? this.lineGroup : ++this.lineGroup,
+      group: sc ? sc.dialogueGroup ?? this.lineGroup : ++this.lineGroup,
       expired: this.expiry(p, line?.trigger?.event),
       // sourced lines teach history: they wait out a fight (and are dropped if it lasts too long)
       lore: p.lore || !!src || undefined,

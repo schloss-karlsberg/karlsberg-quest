@@ -291,7 +291,7 @@ test.describe('photo mode', () => {
     expect(await page.evaluate(() => window.kq!.tools!.measure.state())).toEqual(before);
   });
 
-  test('survey activation stays live and its banner waits for the phone to close', async ({ page }) => {
+  test('the first map tutorial survives a shift while the photo phone hides it', async ({ page }) => {
     await boot(page);
     await standAtBoard(page);
     const point = await page.evaluate(() => window.kq!.travel!.points().find((p) => p.id === 'taleingang')!);
@@ -307,9 +307,17 @@ test.describe('photo mode', () => {
     await expect.poll(() => page.evaluate((id) => window.kq!.travel!.state().activated.includes(id), point.id)).toBe(true);
     expect(await page.evaluate(() => window.kq!.photo!.state().open)).toBe(true);
     await expect(banner).toHaveCount(0);
-    await page.evaluate(() => window.kq!.photo!.close());
+    await page.evaluate(() => {
+      const k = window.kq!;
+      k.setEra('1789');
+      k.photo!.close();
+      k.step(2);
+    });
+    await expect(banner).toHaveCount(0);
+    await page.evaluate(() => window.kq!.setEra('today'));
     await expect(banner).toBeVisible();
     await expect(banner).toContainText(point.name);
+    await expect(banner).toContainText('Zu entdeckten Reisepunkten kannst du direkt reisen.');
   });
 });
 

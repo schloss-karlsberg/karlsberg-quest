@@ -115,14 +115,53 @@ describe('the opening beat timeline waits for the chapter card', () => {
     const file = story('01-kapitel-1.story.json');
     const k1 = opening(file);
     expect(k1.length).toBeGreaterThan(10);
-    expect(k1.filter((x) => x.waits).map((x) => x.a.do)).toEqual(['cue']);
+    expect(k1.filter((x) => x.waits).map((x) => x.a.do)).toEqual(['cue', 'flag']);
     expect(k1.some((x) => ['say', 'sound', 'objective', 'quest', 'toast', 'prompt'].includes(x.a.do))).toBe(false);
     const arrival = file.beats[0]!.on!.find((r) => r.id === 'k1_0.damals')!;
     expect(arrival.when).toEqual({ era: '1789' });
-    // the place, then the first objective while he says what is needed, then the hand-on
-    expect(arrival.do.map((a) => (a.do === 'say' ? a.id : a.do))).toEqual(['laub.k1.brunnenstube', 'objective', 'laub.k1.fremde', 'flag']);
+    // the first objective, then Laub’s arrival lines and the hand-on
+    expect(arrival.do.map((a) => (a.do === 'say' ? a.id : a.do))).toEqual(['objective', 'laub.k1.brunnenstube', 'laub.k1.fremde', 'flag']);
     expect(arrival.do.filter((a) => a.do === 'say').every((a) => a.wait === true)).toBe(true);
-    expect(file.beats[0]!.complete).toEqual({ all: [{ era: '1789' }, { flag: 'k1.angekommen' }] });
+    expect(file.beats[0]!.complete).toEqual({ all: [{ era: '1789' }, { flag: 'k1.angekommen' }, { flag: 'k1.karte' }] });
+  });
+
+  it('kapitel 1: no quest banner can share the screen with the chapter card, whichever way the chapter is entered', () => {
+    // The quests of chapter 2 are offered by k1_0b. On a fresh arrival Laub's lines hold k1_0 past
+    // the card, but on a replay (Pause → Kapitel, `?kapitel`) they are already said and cost no
+    // time, and a quick Q at the spring would hand on while the card still shows. So k1_0 also
+    // waits for `k1.karte`, which only its own entry list sets, in an action the card holds back.
+    const file = story('01-kapitel-1.story.json');
+    const k0 = file.beats[0]!;
+    const writers = (flag: string) => {
+      const out: { where: string; a: Action; at: number }[] = [];
+      for (const b of file.beats) {
+        const lists: [string, Action[]][] = [[`${b.id}:enter`, b.enter ?? []], [`${b.id}:exit`, b.exit ?? []], ...(b.on ?? []).map((r): [string, Action[]] => [`${b.id}:${r.id}`, r.do])];
+        for (const [where, list] of lists) {
+          let at = 0;
+          for (const a of list) {
+            at += a.delay ?? 0;
+            if (a.do === 'flag' && a.set[flag] === true) out.push({ where, a, at });
+          }
+        }
+      }
+      for (const r of file.on ?? []) for (const a of r.do) if (a.do === 'flag' && a.set[flag] === true) out.push({ where: `chapter:${r.id}`, a, at: 0 });
+      return out;
+    };
+    const card = writers('k1.karte');
+    expect(card.map((w) => w.where)).toEqual(['k1_0:enter']);
+    expect(waitsForChapterCard(card[0]!.a, card[0]!.at)).toBe(true);
+    // the entry clears it first, so a replay waits for its own card again
+    expect(k0.enter!.find((a) => a.do === 'flag')).toMatchObject({ set: { 'k1.karte': null, 'k1.angekommen': null } });
+    // nothing before k1_0b offers, starts or pays a quest
+    const early = [...(k0.enter ?? []), ...(k0.exit ?? []), ...(k0.on ?? []).flatMap((r) => r.do)];
+    expect(early.filter((a) => a.do === 'quest')).toEqual([]);
+    // and a beat entered directly (a debug jump) is the opening beat itself: its offers wait for the card
+    const k0b = file.beats.find((b) => b.id === 'k1_0b')!;
+    let at = 0;
+    for (const a of k0b.enter ?? []) {
+      at += a.delay ?? 0;
+      if (a.do === 'quest') expect(waitsForChapterCard(a, at), `${a.id}`).toBe(true);
+    }
   });
 });
 

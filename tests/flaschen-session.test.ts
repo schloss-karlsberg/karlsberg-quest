@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import type { GameContext } from '../src/core/context';
 import { cosmetics, FLASCHENGRUEN } from '../src/player/cosmetics';
 import { newMemory } from '../src/systems/barks/rules';
-import bottles from '../src/systems/flaschen';
+import bottles, { NUT_R } from '../src/systems/flaschen';
 import { FLASCHEN, type FlaschenSpot, countByEra } from '../src/systems/flaschen/spots';
 import { explorationSession } from './exploration-fixture';
 
@@ -20,12 +20,14 @@ function setup() {
   const look = { disc: 'sun' };
   const setSolids = vi.fn();
   const keys = new Set<string>();
+  const subtitle = vi.fn();
+  const settings = { state: { subtitles: false } };
   const ctx = {
     events, state, save, era, player, scene: new Scene(), audio: { bus: () => null },
-    ui: { toast: vi.fn(), hud: { prompt: vi.fn(), subtitle: vi.fn() }, modals: { count: 0 } },
+    ui: { toast: vi.fn(), hud: { prompt: vi.fn(), subtitle }, modals: { count: 0 } },
     world: { look, heightAt: () => 0, heightfield: { heightAt: () => 0 }, collider: { setSolids } },
     input: { enabled: true, wasPressed: (key: string) => keys.has(key) },
-    settings: { state: { subtitles: false } },
+    settings,
   } as unknown as GameContext;
   bottles.init(ctx);
   const step = () => { bottles.update(1 / 60); keys.clear(); };
@@ -37,7 +39,7 @@ function setup() {
     step();
   };
   const spotState = (id: string) => hooks.spots().find(s => s.id === id)!;
-  return { events, state, save, era, player, look, keys, setSolids, hooks, visit, step, spotState };
+  return { events, state, save, era, player, look, keys, setSolids, hooks, visit, step, spotState, subtitle, settings };
 }
 
 afterEach(() => {
@@ -72,6 +74,23 @@ it('builds only the local era and checks the lantern and night before offering a
   player.stats.lanternLit = true;
   step();
   expect(spotState(fire.id).visible).toBe(false);
+});
+
+it('a thrown chestnut that strikes right by a hanging bottle shakes it down (TASK-095)', () => {
+  const { events, hooks, visit, step, spotState } = setup();
+  const apple = FLASCHEN.find(s => s.id === 'fl.1789.allee')!;
+  visit(apple);
+  expect(spotState(apple.id).hanging).toBe(true);
+  const at = { x: apple.hang!.x, y: 1, z: apple.hang!.z };
+  // too far off, or not the tree: it stays
+  events.emit('forage:impact', { ...at, x: at.x + NUT_R + 0.5, on: 'ground' });
+  events.emit('forage:impact', { ...at, on: 'body', npc: 'gardist' });
+  events.emit('forage:impact', { ...at, on: 'water' });
+  expect(hooks.state().dropped).toEqual([]);
+  // the trunk it hangs on
+  events.emit('forage:impact', { ...at, x: at.x + 0.6, on: 'wood' });
+  step();
+  expect(hooks.state().dropped).toEqual([apple.id]);
 });
 
 it('restores a shaken bottle on the ground after a mid-fall save and takes it only once', () => {
@@ -275,4 +294,25 @@ it('reuses the held spots between steps until a memorial or an arena changes', (
   events.emit('memorial:set', { id: 'near', active: true, x: spot.x, z: spot.z });
   step();
   expect(hooks.prompt()).toBeNull();
+});
+
+it('captions the first spring clink and waits at least 30 seconds before repeating it', () => {
+  vi.spyOn(Math, 'random').mockReturnValue(0);
+  const { player, visit, step, subtitle, settings } = setup();
+  settings.state.subtitles = true;
+  const spring = FLASCHEN.find((s) => s.id === 'fl.1789.quelle')!;
+  visit(spring);
+  player.position.z += 2;
+  const captionTimes: number[] = [];
+  for (let tick = 0; tick < 60 * 80; tick++) {
+    const count = subtitle.mock.calls.length;
+    step();
+    if (subtitle.mock.calls.length > count) captionTimes.push(tick / 60);
+  }
+  expect(subtitle.mock.calls.every(([, text]) => text === '[Glas klirrt leise, vorn]')).toBe(true);
+  expect(captionTimes).toHaveLength(3);
+  expect(captionTimes[0]).toBeLessThanOrEqual(4);
+  for (let i = 1; i < captionTimes.length; i++) {
+    expect(captionTimes[i]! - captionTimes[i - 1]!).toBeGreaterThanOrEqual(30);
+  }
 });

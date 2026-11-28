@@ -5,6 +5,7 @@
  */
 import { h, svg } from '../../ui/dom';
 import type { Hud } from '../../ui/hud';
+import { waymarkDistance } from '../../ui/waymark';
 import type { AnimalSave } from '../animals/types';
 import { ensurePortraitDefs } from './dialogue/portraits';
 import type { ObjectiveState } from './engine';
@@ -92,7 +93,6 @@ export class ObjectiveView {
   }
 
   set(o: ObjectiveState | null): void {
-    const changed = (o?.text ?? null) !== (this.obj?.text ?? null);
     this.obj = o;
     if (!o) {
       this.el.classList.remove('kqs-show');
@@ -102,11 +102,6 @@ export class ObjectiveView {
     }
     this.textEl.textContent = o.text;
     this.el.classList.add('kqs-show');
-    if (changed) {
-      this.el.classList.remove('kqs-new');
-      void this.el.offsetWidth;
-      this.el.classList.add('kqs-new');
-    }
     if (o.x === undefined) this.hud.setMarker('objective', null);
   }
 
@@ -185,13 +180,20 @@ export class ObjectiveView {
       this.distEl.textContent = '';
       target = angleDiff(bearingDeg(px, pz, opts.questTarget.x, opts.questTarget.z), heading);
     } else if (o && o.x !== undefined && o.z !== undefined) {
-      // the Bussole keeps pointing even when the line steps back; only the compass-strip mark goes
-      const b = bearingDeg(px, pz, o.x, o.z);
-      const d = Math.hypot(o.x - px, o.z - pz);
-      // In the full game quests can already show this target (rounded to decimetres).
-      const trackedHere = opts.questTarget && Math.hypot(opts.questTarget.x - o.x, opts.questTarget.z - o.z) < 0.08;
-      this.hud.setMarker('objective', dup || trackedHere ? null : b, '#e9c46a', { kind: 'obj' });
-      this.distEl.textContent = d < 8 ? '' : ` · ${d < 1000 ? `${Math.round(d / 5) * 5} m` : `${(d / 1000).toFixed(1).replace('.', ',')} km`}`;
+      const lead = this.hud.questLead?.story === o ? this.hud.questLead : null;
+      // Door routes can draw the marker in the doorway while navigation leads to the steps.
+      const x = lead?.target?.x ?? o.x;
+      const z = lead?.target?.z ?? o.z;
+      const b = bearingDeg(px, pz, x, z);
+      const d = Math.hypot(x - px, z - pz);
+      this.hud.setMarker('objective', dup || lead?.target ? null : b, '#e9c46a', { kind: 'obj' });
+      const waymark = lead?.movingGroup ? this.hud.waymark.target : null;
+      if (waymark) {
+        // The tour's moving lead can be close. Use the world marker's range and rounding.
+        this.distEl.textContent = d <= waymark.r * 0.7 ? '' : ` · ${waymarkDistance(d)}`;
+      } else {
+        this.distEl.textContent = d < 8 ? '' : ` · ${d < 1000 ? `${Math.round(d / 5) * 5} m` : waymarkDistance(d)}`;
+      }
       target = angleDiff(b, heading);
     } else this.distEl.textContent = '';
     if (!opts.compass && !cueing) return;

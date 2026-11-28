@@ -4,6 +4,8 @@
  * Headings use the walker convention (`yaw = atan2(-dx, -dz)`, 0 = facing −z).
  */
 
+import { PLAYER_RADIUS, VISITOR_RADIUS } from '../../world/crowd';
+
 export interface XZ { x: number; z: number }
 export interface Slot { x: number; z: number; yaw: number }
 
@@ -107,16 +109,15 @@ export function straightBehind(leader: { x: number; z: number; yaw: number }): P
   return (d) => ({ x: leader.x - fx * d, z: leader.z - fz * d, dirX: fx, dirZ: fz });
 }
 
-/** Slot pitch along a gathering arc and the gap between rings. */
-const ARC_PITCH = 1.1;
-const RING_GAP = 1.3;
+/** Space for a player between two visitors, with room for slot settling. */
+const GATHER_PITCH = 2 * (PLAYER_RADIUS + VISITOR_RADIUS) + 0.25;
 /** Half-angle of the gathering arc (a little less than a half circle). */
 const ARC_HALF = (80 * Math.PI) / 180;
 
 /**
  * A half circle in front of the guide: `center` is the guide (its heading picks the side), the
- * members stand in arcs of radius r[0], r[0] + 1.3, … and face `face` (default the guide).
- * Slot pitch ≥ 1.1 m, so slots are ≥ 0.6 m apart; outer rings take the rest when n is large.
+ * members stand in arcs starting at radius r[0] and face `face` (default the guide).
+ * Each gap fits the player, including between rings; outer rings take the rest when n is large.
  */
 export function gatherSlots(n: number, center: { x: number; z: number; yaw: number }, face?: XZ, r: [number, number] = [3, 7]): Slot[] {
   const out: Slot[] = [];
@@ -124,8 +125,10 @@ export function gatherSlots(n: number, center: { x: number; z: number; yaw: numb
   const base = center.yaw;
   let left = n;
   for (let ring = 0; left > 0; ring++) {
-    const R = r[0] + ring * RING_GAP;
-    const cap = Math.max(1, Math.floor((2 * ARC_HALF * R) / ARC_PITCH) + 1);
+    const R = Math.max(r[0], GATHER_PITCH) + ring * GATHER_PITCH;
+    // Use the chord, the straight gap the player actually moves through.
+    const angle = 2 * Math.asin(GATHER_PITCH / (2 * R));
+    const cap = Math.floor((2 * ARC_HALF) / angle) + 1;
     const c = Math.min(left, cap);
     for (let j = 0; j < c; j++) {
       const t = c === 1 ? 0 : -ARC_HALF + (2 * ARC_HALF * j) / (c - 1);

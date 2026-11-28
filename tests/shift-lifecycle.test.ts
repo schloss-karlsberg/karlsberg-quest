@@ -5,6 +5,8 @@ import { WebGLGeometries } from 'three/src/renderers/webgl/WebGLGeometries.js';
 import { WebGLInfo } from 'three/src/renderers/webgl/WebGLInfo.js';
 import { WebGLObjects } from 'three/src/renderers/webgl/WebGLObjects.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import tour from '../content/story/00-tour.story.json';
+import { createInitialState, deserializeState } from '../src/core/state';
 import type { GameContext } from '../src/core/context';
 import type { Era } from '../src/core/era';
 import { EventBus } from '../src/core/events';
@@ -14,6 +16,11 @@ import { ShiftEffect } from '../src/systems/fx/shift/shift';
 import { SHIFT_DURATION, SHIFT_DURATION_REDUCED, SHIFT_MID, SHIFT_MID_REDUCED } from '../src/systems/fx/shift/timeline';
 import { ShiftWarmer } from '../src/systems/fx/shift/warm';
 import type { FxUI } from '../src/systems/fx/ui';
+import quelle from '../src/systems/quelle';
+import { ARRIVAL_PITCH, arrivalSpot } from '../src/systems/quelle/layout';
+import { createStorySlice, runsOnResume, StoryEngine } from '../src/systems/story/engine';
+import { HOME } from '../src/systems/story/hub/home';
+import type { StoryFile } from '../src/systems/story/types';
 import { Heightfield } from '../src/world/heightfield';
 import { disposalCounts } from './disposal-counts';
 
@@ -56,7 +63,7 @@ describe('reduced-motion shift lifecycle', () => {
     expect(effect.t).toBeCloseTo(SHIFT_MID_REDUCED - 0.01);
     effect.frozen = false;
     effect.setTime(SHIFT_MID_REDUCED);
-    expect(phases[1]).toEqual(['shift:midpoint', 'today', true, 7, journey]);
+    expect(phases[1]).toEqual(['shift:midpoint', 'today', true, 7, { ...journey, reason: 'return' }]);
     expect(effect.holdRadius).toBe(0);
     effect.setTime(0);
     effect.setTime(SHIFT_MID_REDUCED);
@@ -81,6 +88,64 @@ describe('reduced-motion shift lifecycle', () => {
     expect(meta.shifts).toBe(7);
     effect.dispose();
   });
+});
+
+it.each([false, true])('Continue at tour/t18 faces the palace and releases movement (reduced motion: %s)', (reduced) => {
+  vi.spyOn(performance, 'now').mockReturnValue(0);
+  const { ctx, events, effect, era, player } = setup();
+  const saved = createInitialState();
+  Object.assign(saved.player, HOME.spawn);
+  saved.systems.story = { ...createStorySlice(), active: true, chapter: 'tour', beat: 't18' };
+  const restored = deserializeState(JSON.stringify(saved));
+  era.set(restored.era);
+  const { x, z } = restored.player;
+  player.position.set(x, 0, z);
+  const teleport = vi.fn((x: number, z: number) => player.position.set(x, 0, z));
+  Object.assign(player, { teleport, pitch: 0, lookLocked: false });
+  const clearing = { addClearing: vi.fn() };
+  Object.assign(ctx.world.forest, clearing);
+  Object.assign(ctx.world, { nature: { props: clearing, cover: clearing } });
+  quelle.init(ctx as unknown as GameContext);
+  try {
+    const dip = vi.fn();
+    events.on('quelle:dip', dip);
+    const engine = new StoryEngine([tour as StoryFile], () => restored.systems.story!, {
+      run: (actions, { resume }) => {
+        for (const a of actions) if (a.do === 'shift' && (!resume || runsOnResume(a))) void effect.start(a.to, { reduced, reason: a.reason });
+      },
+      chapterEntered: () => {},
+      beatEntered: () => {},
+      chapterCompleted: () => {},
+    });
+
+    engine.resume();
+    const midpoint = reduced ? SHIFT_MID_REDUCED : SHIFT_MID;
+    effect.setTime(midpoint - 0.01);
+    expect(era.current).toBe('today');
+    expect(player.frozen).toBe(true);
+    expect(teleport).not.toHaveBeenCalled();
+
+    effect.setTime(midpoint);
+    const arrival = arrivalSpot(x, z);
+    expect(era.current).toBe('1789');
+    expect(player.frozen).toBe(true);
+    expect(teleport).toHaveBeenCalledExactlyOnceWith(arrival.x, arrival.z, arrival.yaw);
+    expect(player).toMatchObject({ pitch: ARRIVAL_PITCH });
+
+    effect.setTime(reduced ? SHIFT_DURATION_REDUCED : SHIFT_DURATION);
+    expect(dip).not.toHaveBeenCalled();
+    expect(player).toMatchObject({ frozen: false, lookLocked: false });
+    expect(teleport).toHaveBeenCalledTimes(1);
+
+    // A later ordinary trip into 1789 does not restage the spring arrival.
+    era.set('today');
+    void effect.start('1789', { reduced, reason: 'key' });
+    effect.finish();
+    expect(teleport).toHaveBeenCalledTimes(1);
+  } finally {
+    effect.dispose();
+    quelle.dispose();
+  }
 });
 
 it('retires the point clouds on full shifts and releases reusable passes only at teardown', async () => {

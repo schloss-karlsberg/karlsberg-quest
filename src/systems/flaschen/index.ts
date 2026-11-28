@@ -4,7 +4,7 @@
  *
  *  - no glow, no map mark, no Bussole marker, not shown by the Spürsinn talent (it only senses the
  *    progression system's world pickups; the bottles are not among them);
- *  - a soft glass clink within 6 m every 8–12 s, captioned with its side; a glint only while the
+ *  - a soft glass clink within 6 m every 8–12 s, with a directional caption at most every 30 s; a glint only while the
  *    camera faces a bottle within 15° and 12 m, and the spot is lit (day or the lantern);
  *  - some need a verb (spots.ts): a Wuchthieb shakes one out of a tree / the ice, one is only seen
  *    with the lantern lit at night, one only with the lantern OFF (the fire's reflection);
@@ -87,7 +87,11 @@ const CLINK_R = 6;
 const GLINT_R = 12;
 const GLINT_COS = Math.cos((15 * Math.PI) / 180);
 const WUCHT_R = 3.5;
+/** A thrown chestnut shakes a hanging bottle down when it strikes within this distance of it (m, in plan). */
+export const NUT_R = 2;
 const OWNER = 'flaschen';
+/** Match the recurring birdsong caption gap without slowing the sound itself. */
+const CLINK_CAPTION_GAP = 30;
 
 interface Live {
   spot: FlaschenSpot;
@@ -113,6 +117,7 @@ class Flaschen {
   private holds: Set<string> | null = null;
   private bossUp = false;
   private clinkT = 4;
+  private clinkCaptionWait = 0;
   private promptFor: string | null = null;
   private solidsKey = '';
   private readonly tmp = new Vector3();
@@ -282,6 +287,7 @@ class Flaschen {
     }
     // the clink
     this.clinkT -= dt;
+    this.clinkCaptionWait -= dt;
     if (clinkFrom && this.clinkT <= 0) {
       this.clinkT = 8 + Math.random() * 4;
       this.playClink(clinkFrom, clinkD);
@@ -335,7 +341,8 @@ class Flaschen {
     const fwd = (dx * -Math.sin(yaw) + dz * -Math.cos(yaw)) / Math.max(0.01, d);
     const right = (dx * Math.cos(yaw) + dz * -Math.sin(yaw)) / Math.max(0.01, d);
     clink(ctx.audio, right, 0.5 + 0.5 * (1 - d / CLINK_R));
-    if (ctx.settings.state.subtitles === false) return;
+    if (this.clinkCaptionWait > 0 || ctx.settings.state.subtitles === false) return;
+    this.clinkCaptionWait = CLINK_CAPTION_GAP;
     const S = FLASCHEN_DE.side;
     const side = Math.abs(right) > Math.abs(fwd) ? (right > 0 ? S.right : S.left) : fwd > 0 ? S.front : S.back;
     ctx.ui.hud.subtitle(null, FLASCHEN_DE.clink(side), 2200);
@@ -475,9 +482,19 @@ class Flaschen {
           if (Math.hypot(s.hang.x - x, s.hang.z - z) < WUCHT_R) this.drop(s.id);
         }
       }),
+      // a thrown chestnut (src/systems/forage) that strikes the trunk, the wall or the ground
+      // right by a hanging bottle shakes it down too
+      ev.on('forage:impact', ({ x, z, on }) => {
+        if (on === 'water' || on === 'enemy' || on === 'body') return;
+        for (const s of FLASCHEN) {
+          if (!s.hang || s.era !== this.ctx.era.current || this.slice.dropped.includes(s.id)) continue;
+          if (Math.hypot(s.hang.x - x, s.hang.z - z) < NUT_R) this.drop(s.id);
+        }
+      }),
     );
     const reload = (): void => {
       this.slice = this.loadSlice();
+      this.clinkCaptionWait = 0;
       this.dropAll();
       this.restoreReward();
     };

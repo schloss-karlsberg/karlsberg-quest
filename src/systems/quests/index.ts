@@ -98,6 +98,7 @@ interface Lead {
   target: WayPoint | null;
   label: string;
   story?: { x?: number; z?: number };
+  movingGroup?: boolean;
 }
 
 /** The waymark's label: the objective in a few words (up to the first colon or 46 characters). */
@@ -678,7 +679,7 @@ class QuestRuntime {
     // (playtest 2026-11-28: walking at the stop's marker got the player stuck on a bank)
     const groupAt = so && typeof so.x === 'number' && typeof so.z === 'number' ? this.ctx.tourCrowd?.lead?.(so.x, so.z) ?? null : null;
     const storyLead = (q: QuestDefIn | null, obj: Lead['obj']): Lead | null =>
-      so && typeof so.x === 'number' && typeof so.z === 'number' && so.text ? { quest: q, obj, target: { x: groupAt?.x ?? so.x, z: groupAt?.z ?? so.z, r: groupAt ? 3 : 6, kind: 'zone' }, label: so.text, story: so } : null;
+      so && typeof so.x === 'number' && typeof so.z === 'number' && so.text ? { quest: q, obj, target: { x: groupAt?.x ?? so.x, z: groupAt?.z ?? so.z, r: groupAt ? 3 : 6, kind: 'zone' }, label: so.text, story: so, movingGroup: !!groupAt } : null;
     for (const q of tracked) {
       // the story's own line (the main path between two main quests: „VAT (3): die Kante im Wald
       // ansehen“) comes before any side quest
