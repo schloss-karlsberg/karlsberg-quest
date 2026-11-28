@@ -4,7 +4,7 @@ aliases:
 - TASK-021
 title: Palace interior and Festsaal fire performance
 slug: palace-interior-and-festsaal-fire-performance
-status: in-progress
+status: todo
 priority: 2
 owner: ''
 projects: []
@@ -18,7 +18,7 @@ milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-26
-updated: 2026-11-26
+updated: 2026-11-28
 ---
 
 # Palace interior and Festsaal fire performance
@@ -146,3 +146,14 @@ pnpm install && pnpm build && PERF_LABEL=after KQ_E2E_PORT=5361 scripts/dev/heav
   documented in PERFORMANCE §3.8. Record paired p95 values, compare the held stills on Hoch
   and Mittel, and verify Niedrig on a physical phone. If p95 still exceeds 16.7 ms, isolate
   the smoke and fullscreen passes and the remaining sun-shadow cost before changing effect quality.
+
+## Remaining (audit 2026-11-28)
+
+The rendering work shipped in PR #64 and the interiors and smoke specs pass in the hosted e2e suite
+on main (`f8a75ff7`). Left, as in "Hardware acceptance" above:
+
+- Run the paired `e2e/gpu/palace-fire.gpu.ts` benchmark (PERFORMANCE §3.8) on the §3.1a reference
+  GPU on an idle machine, in the exclusive heavy lane, fill the §3.8 table and compare the held
+  stills on Hoch and Mittel. If p95 is above 16.7 ms, isolate the smoke, fullscreen and sun-shadow
+  passes.
+- Owner: check Niedrig on a physical phone (touch, reduced motion) for a p95 or visual regression.

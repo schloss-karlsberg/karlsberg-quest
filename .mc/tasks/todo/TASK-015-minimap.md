@@ -4,7 +4,7 @@ aliases:
 - TASK-015
 title: Minimap
 slug: minimap
-status: in-progress
+status: todo
 priority: 2
 owner: ''
 projects: []
@@ -18,7 +18,7 @@ milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-26
-updated: 2026-11-26
+updated: 2026-11-28
 ---
 
 # Minimap
@@ -96,3 +96,10 @@ _Status: approved 2026-11-26_
     KQ_E2E_PORT=5401 scripts/dev/heavy.sh --max-hold 15 -- pnpm exec playwright test "e2e/$spec.spec.ts" --workers=1 --reporter=line
   done
   ```
+
+## Remaining (audit 2026-11-28)
+
+The minimap shipped in PR #54 and its specs pass in the hosted e2e suite on main (`f8a75ff7`). Left:
+run `e2e/minimap.spec.ts` once in a browser, read the logged Canvas 2D calls and redraw times
+(car park and the 667 × 375 era change), and replace the "browser timings are pending" sentence in
+`docs/PERFORMANCE.md` §3.8 Minimap with the figures.
