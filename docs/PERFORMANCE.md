@@ -622,6 +622,42 @@ limit. The story also keeps the departing group
 drawn during the Bussole beat while it is still within range. Phone frame times need a rendered
 run.
 
+### 3.9 Placed people, solid (TASK-092, 2026-11-28)
+
+Story NPCs (`src/systems/npc/`) are drawn as solid rigged bodies on every preset instead of smoke
+figures. Measured on the Apple M5 Pro (ANGLE Metal, headless Chromium, 1280×720, pixel ratio 1,
+„Bildrate: unbegrenzt“, vsync off), 240 frames per row from `kq.perf()`, the same camera in the
+Ehrenhof in 1789 (1226 / −1112, looking west) on `main` (f8a75ff; later commits
+up to a1eba05 change docs only) and on the branch. „k1 people“
+are all ten chapter 1 placements at their story positions; four of them stand within 60 m (the
+Gardist at 14 m, the Lakai at 17 m, the gate Gardist at 31 m, Soll at 49 m). The last row is not a
+story scene: all 16 roster figures in two rows 9 to 12 m ahead, as an upper bound.
+
+| Preset | Scene | Draw calls before → after (peak) | Triangles before → after | CPU ms avg before → after | Frame ms avg / p95 before → after |
+|---|---|---|---|---|---|
+| Niedrig | court, no people | 89 → 89 | 387,508 → 387,508 | 1.34 → 1.35 | 1.51 / 2.4 → 1.52 / 2.5 |
+| Niedrig | court, k1 people | 132 → 136 | 486,056 → 423,064 | 1.37 → 1.49 | 1.58 / 2.5 → 1.69 / 2.6 |
+| Niedrig | 16 figures in view | 156 → 279 | 542,336 → 509,970 | 1.40 → 1.56 | 1.60 / 2.6 → 1.78 / 2.1 |
+| Mittel | court, no people | 136 (158) → 136 (158) | 648,440 → 648,440 | 1.98 → 1.97 | 2.21 / 3.4 → 2.21 / 3.3 |
+| Mittel | court, k1 people | 384 (406) → 207 (254) | 798,435 → 701,090 | 2.08 → 2.00 | 2.39 / 3.2 → 2.36 / 3.3 |
+| Mittel | 16 figures in view | 548 (570) → 420 (538) | 891,755 → 829,366 | 2.53 → 3.01 | 2.79 / 3.2 → 3.30 / 4.3 |
+
+- **Niedrig, the busiest story scene:** 136 draw calls against the budget of 300, +0.12 ms CPU and
+  +0.11 ms frame time on this machine. The four people in range add 47 draws (about 12 each: the
+  model's material slots plus hat and prop); the smoke figures added 43, because all ten were drawn
+  at any distance (about 4 draws each). A solid body is not drawn beyond 60 m.
+- **Mittel:** the scene is cheaper than before (384 → 207 draws, the peak back under 300). The ghost
+  look drew every part twice (colour pass and depth pre-pass twin) for all ten figures at any
+  distance; the solid look draws each part once, plus the shadow pass, within 60 m only.
+- **Upper bound:** 16 solid figures in view cost about 190 draws per pass, the same as the 16 tour
+  bodies (§2, `GROUP_BUDGET`). On Mittel with the shadow pass that peaks over the 300-call budget
+  (538), as the ghost look did (570). The story places at most four people within 60 m of each
+  other; a scene with more needs merged bodies or a tighter range first.
+- A solid figure keeps the alpha-hash shader path (its 0.35 s fade); the tour stand-ins do not.
+  Their meshes are not frustum-culled within 60 m (`Rig` switches culling off).
+- Not measured: a mid-range laptop GPU and a phone. GPU time was not available (no timer query in
+  this run). SwiftShader frame times are not meaningful (§2).
+
 ### 3.9 Hosted e2e memory (TASK-075, 2026-11-27)
 
 The hosted e2e shards ran out of memory (16 GB) with two `chrome-headless` processes at 9 + 6 GB,

@@ -186,10 +186,20 @@ low tier (SwiftShader, e2e) keeps the procedural forest and draws no props.
   a translucent body (fresnel rim, soft alpha, drifting particles); a family colour per kind
   (mist = pale blue-white, paper = ink + parchment glow, stone = ember-orange cracks, hounds =
   cold green eyes). Silhouettes read at 30 m; the core never fills more than ~15 % of the body.
-- **NPCs / ghosts of people:** stylized low-poly-but-smooth humans (smooth shading, simple
-  faces, period costume shapes: tricorn, coat tails, aprons, bonnets), slightly translucent
-  edges and a soft inner glow so they read as memories, not living people.
+- **NPCs:** stylized low-poly-but-smooth humans (smooth shading, simple faces, period costume
+  shapes: tricorn, coat tails, aprons, bonnets). The people the player meets are **solid**: matte,
+  opaque, lit by the world and casting shadows, in their own time (Marlene today, the court in
+  1789) like the tour group (principle 4: everything real is matte and solid). **Ghosts of
+  people** are a deliberate effect a placement asks for (`look: 'ghost'`, the old Pikeur at the
+  kennel today): slightly translucent edges and a soft inner glow so they read as memories, not
+  living people.
 - **Animation:** readable anticipation and follow-through; idle breathing; no T-poses.
+- **Implemented (TASK-092, 2026-11-28), every tier:** a solid NPC is the rigged CC0 Quaternius
+  human of its outfit with the costume colours on cloned, world-lit material slots
+  (`src/systems/npc/solid.ts`, `rigged.ts`), hat, prop and pike on the bones; it dithers in over
+  0.35 s and is then fully opaque. The CC0 bodies are modern cuts (bare arms, a sleeveless
+  knee-length dress); the costumes lay coat sleeves, a linen fichu with sleeves and white stockings
+  over those meshes by colour (`catalog.ts`). Period bodies are still to be authored.
 - **Implemented (characters track, 2026-11-19), medium / high tiers:** NPC ghosts are rigged CC0
   Quaternius humans (`public/assets/models/characters/`: adventurer, farmer, animated woman; 0.5–0.6 MB
   each, meshopt, lazy on first sight) dressed per outfit by recolouring the model's material slots
@@ -704,5 +714,6 @@ Two real men of the court have roster ids: **Johann Christian von Mannlich** (`m
 API (`rosterId`, `TWINS`, `isTwin`, `NpcPlacement.look`, `twinEcho()` in `src/systems/npc/twins.ts`)
 is in place. Their own look is being rebuilt on an authored-mesh pipeline, after the public-domain
 portraits in `docs/reference/people/`. Until then they wear the generic official's look (powdered
-wig, bareheaded), every figure is a ghost, and `twinEcho()` returns null, so the Chronik echoes keep
-their smoke silhouette.
+wig, bareheaded), and `twinEcho()` returns null, so the Chronik echoes keep their smoke silhouette.
+Placed through the npc system they are solid like everyone else unless the placement asks for
+`look: 'ghost'` (§6).

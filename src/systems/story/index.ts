@@ -843,7 +843,7 @@ class StoryRuntime {
     }
   }
 
-  /** Place / remove a ghostly NPC (the npc system's placements; the tour's walk ops go elsewhere). */
+  /** Place / remove an NPC (the npc system's placements; the tour's walk ops go elsewhere). */
   private placeNpc(a: NpcAction): void {
     const ctx = this.ctx;
     const s = this.slice;
@@ -864,6 +864,7 @@ class StoryRuntime {
     if (a.topics) p.topics = a.topics;
     if (a.mood) p.mood = a.mood;
     if (a.pose) p.pose = a.pose;
+    if (a.look) p.look = a.look;
     if (a.watch) p.watch = { ...a.watch };
     ctx.events.emit('npc:spawn', p);
   }

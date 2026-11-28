@@ -1,11 +1,12 @@
 import { mkdirSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
+import type { Material, Mesh, Object3D, Points } from 'three';
 import { ciScale } from './helpers/ci';
 import { waitForHooks } from './helpers/pause';
 import { SCREENS } from './helpers/common';
 
 /**
- * Round 2: ghostly NPCs (Hanne at the building site 1789), conversations, story conditions and
+ * Round 2: NPCs (Hanne at the building site 1789; solid people, one ghost), conversations, story conditions and
  * actions (talked, inline + modal choices, meters, readings, rooms, memorials, lossless capture,
  * epilogue assembly), and barks (idle, gap, memorial quiet).
  * Runs the test chapter content/story/99-test.story.json (`?storytest`).
@@ -54,13 +55,13 @@ async function shot(page: Page, name: string): Promise<void> {
 const flags = (page: Page) => page.evaluate(() => window.kq!.state().flags);
 const story = (page: Page) => page.evaluate(() => window.kq!.story!.state());
 
-test('npc: Hanne at the building site (1789) – ghost, conversation, clue; story conditions and actions', async ({ page }) => {
+test('npc: Hanne at the building site (1789) – figure, conversation, clue; story conditions and actions', async ({ page }) => {
   const errors = trackErrors(page);
   await boot(page, '&storytest');
   const shiftsBefore = await page.evaluate(() => window.kq!.state().meta.shifts);
   await page.evaluate(() => {
     const k = window.kq!;
-    // clean screenshots of the ghost: no barks for now (flag barks.quiet)
+    // clean screenshots of the figure: no barks for now (flag barks.quiet)
     k.ctx.state.mutable.flags['barks.quiet'] = true;
     k.story!.start('Mara');
     k.story!.goto('test');
@@ -75,7 +76,7 @@ test('npc: Hanne at the building site (1789) – ghost, conversation, clue; stor
   expect(lantern).toMatchObject({ lit: true, seconds: 90 });
   expect(Object.keys(await page.evaluate(() => window.kq!.story!.meters()))).toContain('oil');
 
-  // ---- the ghost -----------------------------------------------------------------------------
+  // ---- the figure ----------------------------------------------------------------------------
   const list = await page.evaluate(() => window.kq!.npc!.list());
   expect(list).toEqual([expect.objectContaining({ npc: 'hanne', x: 1287, z: -1228, era: '1789', visible: true })]);
   // her talk clue belongs to the conversation now (no Chronik marker / E for it)
@@ -226,6 +227,114 @@ test('npc: Hanne at the building site (1789) – ghost, conversation, clue; stor
   // told from deeds: no side quest done here → the open sentence of the slot
   expect(ep!.variants.hof).toBe('offen');
   expect(ep!.intro).toMatch(/^(Karlsberg bei Homburg|Dieses Feldbuch)/);
+  expect(errors).toEqual([]);
+});
+
+/** How one placed NPC is drawn right now: the materials of every mesh / point cloud that is visible. */
+interface Drawn {
+  look: string;
+  alpha: number;
+  parts: number;
+  /** Parts drawn with blending or without depth write (a ghost's shader, mist, motes). */
+  blended: number;
+  /** Lowest opacity over the parts (`uAlpha` on a ghost's shader material). */
+  opacity: number;
+}
+
+async function drawnNpc(page: Page, npc: string): Promise<Drawn | null> {
+  return page.evaluate((id) => {
+    const k = window.kq!;
+    const info = k.npc!.list().find((n) => n.npc === id);
+    const root = k.ctx.scene.getObjectByName(`npc-${id}`);
+    if (!info || !root) return null;
+    const out = { look: info.look, alpha: info.alpha, parts: 0, blended: 0, opacity: 1 };
+    const walk = (o: Object3D) => {
+      if (!o.visible) return;
+      const m = o as Mesh;
+      if (m.isMesh || (o as Points).isPoints) {
+        const mat = (Array.isArray(m.material) ? m.material[0]! : m.material) as Material & { uniforms?: Record<string, { value: unknown }> };
+        out.parts++;
+        if (mat.transparent || !mat.depthWrite) out.blended++;
+        const a = mat.uniforms?.uAlpha;
+        out.opacity = Math.min(out.opacity, a ? (a.value as number) : mat.opacity);
+      }
+      for (const c of o.children) walk(c);
+    };
+    walk(root);
+    return out;
+  }, npc);
+}
+
+test('npc: people are drawn solid (Marlene today, the Hofgärtner in 1789); a ghost only where it is asked for', async ({ page }) => {
+  const errors = trackErrors(page);
+  await boot(page, '&x=893&z=-849');
+  // Marlene at the pond, where tour beat t13 puts her
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.ctx.state.mutable.flags['barks.quiet'] = true;
+    k.npc!.spawn({ npc: 'marlene', x: 895.5, z: -843.5, era: 'today', chapter: 'tour' });
+    k.teleport(895.2, -847.6, 5, -6);
+  });
+  /** Game time for the fade (0.35 s) on a fixed tick budget, once the model is in. */
+  const settle = async (npc: string) => {
+    await page.waitForFunction((id) => (window.kq!.ctx.scene.getObjectByName(`npc-${id}`)?.children.length ?? 0) > 0, npc, { timeout: 60_000 });
+    await page.evaluate(() => {
+      for (let i = 0; i < 60; i++) window.kq!.step(1);
+    });
+  };
+  await settle('marlene');
+  const marlene = await drawnNpc(page, 'marlene');
+  expect(marlene).toMatchObject({ look: 'solid', alpha: 1, blended: 0, opacity: 1 });
+  expect(marlene!.parts).toBeGreaterThan(3);
+  await shot(page, 'marlene-solid');
+  // she stays solid: ten more seconds of game time
+  await page.evaluate(() => {
+    for (let i = 0; i < 10; i++) window.kq!.step(60);
+  });
+  expect(await drawnNpc(page, 'marlene')).toMatchObject({ alpha: 1, blended: 0, opacity: 1 });
+
+  // the Hofgärtner on the Orangerie lawn in 1789 (story beat k1_0b)
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.npc!.despawn('*');
+    k.setEra('1789');
+    k.npc!.spawn({ npc: 'hofgaertner', x: 1221, z: -993, era: '1789', chapter: 'k1', yaw: 110 });
+    k.teleport(1223.6, -996.2, 320, -6);
+  });
+  await settle('hofgaertner');
+  const gardener = await drawnNpc(page, 'hofgaertner');
+  expect(gardener).toMatchObject({ look: 'solid', alpha: 1, blended: 0, opacity: 1 });
+  expect(gardener!.parts).toBeGreaterThan(3);
+  await shot(page, 'hofgaertner-solid');
+
+  // leaving his era he is gone, not a shade; back in 1789 he is solid again
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.setEra('today');
+    for (let i = 0; i < 60; i++) k.step(1);
+  });
+  expect(await drawnNpc(page, 'hofgaertner')).toMatchObject({ alpha: 0, parts: 0 });
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.setEra('1789');
+    for (let i = 0; i < 60; i++) k.step(1);
+  });
+  expect(await drawnNpc(page, 'hofgaertner')).toMatchObject({ alpha: 1, blended: 0, opacity: 1 });
+
+  // the deliberate ghost: the old Pikeur kneeling at the kennel today (story beat k4_13)
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.npc!.despawn('*');
+    k.setEra('today');
+    k.npc!.spawn({ npc: 'pikeur', x: 1219, z: -1566, era: 'today', yaw: 210, chapter: 'k4', mood: 'warm', pose: 'kneel', look: 'ghost' });
+    k.teleport(1221.2, -1562.6, 215, -8);
+    k.step(2);
+  });
+  await page.waitForFunction(() => window.kq!.npc!.list()[0]!.alpha > 0.95, null, { timeout: 30_000 });
+  const ghost = await drawnNpc(page, 'pikeur');
+  expect(ghost!.look).toBe('ghost');
+  expect(ghost!.parts).toBeGreaterThan(1);
+  expect(ghost!.blended).toBe(ghost!.parts);
   expect(errors).toEqual([]);
 });
 

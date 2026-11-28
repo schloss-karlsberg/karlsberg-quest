@@ -439,11 +439,13 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
         if (!isNpcPlacement(a)) break;
         if (a.op !== 'spawn' && a.op !== 'despawn') err(file, where, "npc needs op 'spawn', 'despawn' or a walk op (walk, group, follow, gather, hold, release, warp)");
         if (!isStr(a.npc)) err(file, where, 'npc needs an npc id');
-        else if (a.npc !== '*' && !NPCS.has(a.npc) && !PEOPLE.has(a.npc)) warn(file, where, `npc: '${a.npc}' has no roster entry (generic ghost)`);
+        else if (a.npc !== '*' && !NPCS.has(a.npc) && !PEOPLE.has(a.npc)) warn(file, where, `npc: '${a.npc}' has no roster entry (generic figure)`);
         if (a.op === 'spawn' && ((a.x === undefined) !== (a.z === undefined) || (a.x !== undefined && (!isNum(a.x) || !isNum(a.z))))) err(file, where, 'npc spawn needs both numeric x and z (or neither: at the player)');
         if (a.era !== undefined && !isEra(a.era)) err(file, where, `npc: unknown era '${String(a.era)}'`);
         if (a.mood !== undefined && !['warm', 'eerie', 'neutral'].includes(a.mood)) err(file, where, `npc: unknown mood '${String(a.mood)}'`);
         if (a.pose !== undefined && a.pose !== 'kneel') err(file, where, `npc: unknown pose '${String(a.pose)}'`);
+        if (a.look !== undefined && a.look !== 'ghost' && a.look !== 'solid') err(file, where, `npc: unknown look '${String(a.look)}'`);
+        if (a.pose === 'kneel' && a.look !== 'ghost') err(file, where, "npc: pose 'kneel' needs look 'ghost' (a solid person does not kneel)");
         if (a.room !== undefined && (!isRoomId(a.room) || !a.room.includes('.'))) err(file, where, `npc: room needs a room id (not a building): '${String(a.room)}'`);
         if (a.watch !== undefined) checkWatch(a.watch, file, where, err);
         break;

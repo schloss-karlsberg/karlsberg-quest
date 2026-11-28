@@ -740,7 +740,7 @@
         { "do": "quest", "op": "progress", "id": "q.k4.stellen", "objective": "zwinger", "onResume": true },
         { "do": "quest", "op": "progress", "id": "q.k4.stellen", "objective": "hinlegen", "onResume": true },
         { "do": "cue", "id": "hunt:tableau", "data": { "kind": "rest", "n": 5, "x": 1216, "z": -1571, "r": 5, "face": 30, "near": { "x": 1218.4, "z": -1565.2 }, "nearHeading": 120 }, "onResume": true },
-        { "do": "npc", "op": "spawn", "npc": "pikeur", "x": 1219, "z": -1566, "era": "today", "yaw": 210, "chapter": "k4", "mood": "warm", "pose": "kneel", "delay": 1.5 }
+        { "do": "npc", "op": "spawn", "npc": "pikeur", "x": 1219, "z": -1566, "era": "today", "yaw": 210, "chapter": "k4", "mood": "warm", "pose": "kneel", "look": "ghost", "delay": 1.5 }
       ],
       "on": [
         { "id": "erkannt", "when": { "talked": { "npc": "pikeur", "chapter": "k4" } }, "do": [{ "do": "grant", "clue": "clue.k4.jost" }] },

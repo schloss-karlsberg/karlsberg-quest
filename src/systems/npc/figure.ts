@@ -1,5 +1,6 @@
 /**
- * A ghostly NPC: a translucent 18th-century silhouette built procedurally (no models). Costume
+ * A ghostly NPC (`NpcPlacement.look: 'ghost'`, ./look.ts; people are solid, ./solid.ts): a
+ * translucent 18th-century silhouette built procedurally (no models). Costume
  * shapes per outfit (roster.ts): justaucorps with flared, pleated skirts open at the front over a
  * long buttoned waistcoat, turned-back cuffs, jabot, tricorn, powdered wig with side rolls and a
  * queue; Hanne's bodice, fichu, full skirt, linen apron and mob cap; hunting livery with
@@ -39,6 +40,7 @@ import {
 import { ATMOS_GLSL, atmosphere } from '../../world/atmosphere';
 import { ghostMaterials, ghostShared, linHex } from '../characters/shaders';
 import { PIKE_BESIDE, pikeGeometry } from '../court/props';
+import type { FigureLook } from './look';
 import { ERA_TINT, type NpcLook } from './roster';
 
 /** sRGB hex → linear colour (the world renders linear HDR before tone mapping). */
@@ -834,13 +836,46 @@ void main() {
 /** A rigged body that can stand in for the procedural one (rigged.ts). */
 export interface RiggedBody {
   readonly rig: { root: Group };
+  /** Solid look: how opaque the body is drawn now (1 = fully). */
+  readonly opacity?: number;
   setTint(c: Color): void;
   frame(f: { dt: number; alpha: number; talk: number; motion: number; stutter: number; reducedMotion: boolean; lookAt: Vector3 | null }): void;
   dispose(): void;
 }
 
+/** What a figure needs each frame. `px` = pixels per metre at distance 1 (point sizes); `dist` = metres from the camera. */
+export interface FigureFrame {
+  reducedMotion: boolean;
+  reducedFlash?: boolean;
+  px: number;
+  face: number;
+  lookAt?: Vector3 | null;
+  dist?: number;
+}
+
+/** A placed NPC's figure as the npc runtime drives it: a ghost (`GhostFigure`) or a solid person (solid.ts). */
+export interface NpcFigure {
+  readonly kind: FigureLook;
+  readonly object: Group;
+  readonly look: NpcLook;
+  /** Current and target presence (fade in / out); a solid figure ends at exactly 0 or 1. */
+  alpha: number;
+  target: number;
+  talk: number;
+  kneel: number;
+  readonly tint: Color;
+  readonly isRigged: boolean;
+  setEra(era: string): void;
+  setRigged(r: RiggedBody | null): void;
+  /** Solid only: the model failed to load. */
+  fail?(): void;
+  frame(dt: number, o: FigureFrame): void;
+  dispose(): void;
+}
+
 /** A ghost figure in the world. */
-export class GhostFigure {
+export class GhostFigure implements NpcFigure {
+  readonly kind = 'ghost' as const;
   readonly object = new Group();
   readonly look: NpcLook;
   private readonly mats: ShaderMaterial[];
@@ -994,7 +1029,7 @@ export class GhostFigure {
    * Per frame: fade, talking gesture, reduced motion, face the player (yaw radians in world).
    * `px` = pixels per metre at distance 1 (point sizes).
    */
-  frame(dt: number, o: { reducedMotion: boolean; reducedFlash?: boolean; px: number; face: number; lookAt?: Vector3 | null }): void {
+  frame(dt: number, o: FigureFrame): void {
     const k = Math.min(1, dt * 1.6);
     this.alpha += (this.target - this.alpha) * k;
     if (Math.abs(this.target - this.alpha) < 0.002) this.alpha = this.target;

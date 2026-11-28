@@ -434,7 +434,7 @@ export interface ChoiceAction extends ActionBase {
   /** Small handwritten note under the prompt. */
   note?: string;
 }
-/** Place / remove a ghostly NPC (npc system). The tour's walk ops are `NpcWalkAction`. */
+/** Place / remove an NPC (npc system). The tour's walk ops are `NpcWalkAction`. */
 export interface NpcAction extends ActionBase {
   do: 'npc';
   op: 'spawn' | 'despawn';
@@ -447,8 +447,10 @@ export interface NpcAction extends ActionBase {
   chapter?: string;
   topics?: string[];
   mood?: 'warm' | 'eerie' | 'neutral';
-  /** 'kneel': down on one knee by something on the ground (npc system). */
+  /** 'kneel': down on one knee by something on the ground (npc system; needs `look: 'ghost'`). */
   pose?: 'kneel';
+  /** 'ghost': a translucent apparition instead of a solid, living person (the default). */
+  look?: 'ghost' | 'solid';
   /**
    * A walkable palace room (catalogue id 'B01.2.og-festsaal' or full id): x/z default to its
    * centre and the ghost stands on that room's storey (upper floors too).
