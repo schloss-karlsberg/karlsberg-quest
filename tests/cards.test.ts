@@ -242,6 +242,31 @@ describe('toast vs the subtitle box (TASK-085)', () => {
     d.tick(0.6);
     expect(toast()).toBeNull();
   });
+
+  it('keeps an interrupted toast hidden and the slot free until subtitles clear', () => {
+    const { d, toast } = rig();
+    let caption = false;
+    d.toastHold = () => caption;
+    d.enqueueToast('Laufschritt', 2000);
+    d.tick(0);
+    expect(toast()).toBe('Laufschritt');
+    d.tick(0.5);
+    expect(d.claim('level')).toBe(true);
+    expect(toast()).toBeNull();
+    caption = true;
+    d.release('level');
+    d.tick(5);
+    expect(toast()).toBeNull();
+    expect(d.showing).toBeNull();
+    expect(d.dismissNotice()).toBe(false);
+    caption = false;
+    d.tick(5);
+    expect(toast()).toBe('Laufschritt');
+    d.tick(1.25);
+    expect(toast()).toBe('Laufschritt');
+    d.tick(0.25);
+    expect(toast()).toBeNull();
+  });
 });
 
 describe('CardDirector soft holds (playtest round 5)', () => {
