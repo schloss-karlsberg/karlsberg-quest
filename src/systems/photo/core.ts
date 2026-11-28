@@ -31,8 +31,9 @@
  * **Stars** (story contract C3): 0 = not in the frame, 1 = in the frame but not good, 2 = good,
  * 3 = good and closer than 0.6 × `maxDist`. A measured target also needs `SEEN_CLEAR` of its
  * silhouette in the open and `BIG_STAR` × its `minFrac` of the frame: a half-covered subject, or
- * two specks in a wide picture, are never „Perfekt!“ (`TargetJudgement.short` says which). "Good" means ≥ 2, everywhere: a fallback shot gets
- * `fallbackStars` (default 2), and with 1 it is not good (no `photo:good`, no album, no `has()`).
+ * two specks in a wide picture, are never „Perfekt!“ (`TargetJudgement.short` says which).
+ * "Good" means ≥ 2, everywhere: a fallback shot gets `fallbackStars` (default 2), and with 1 it
+ * is not good (no `photo:good`, no album, no `has()`).
  *
  * In any era but today the phone has no signal: nothing is judged, the image comes out white.
  */

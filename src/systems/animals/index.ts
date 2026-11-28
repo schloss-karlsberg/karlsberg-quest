@@ -106,6 +106,8 @@ class AnimalsSystem {
   private said: 'alert' | 'heard' | 'fled' | null = null;
   private saidAt = -Infinity;
   private nutHintT = 0;
+  /** The phone is up: the HUD is behind the viewfinder, so captions and the hint wait or are skipped. */
+  private phoneUp = false;
   private readonly offs: (() => void)[] = [];
 
   constructor(private readonly ctx: GameContext) {
@@ -160,6 +162,8 @@ class AnimalsSystem {
       ctx.events.on('animal:alert', ({ id }) => say('alert', id)),
       ctx.events.on('animal:heard', ({ id }) => say('heard', id)),
       ctx.events.on('animal:fled', ({ id }) => say('fled', id)),
+      ctx.events.on('photo:open', () => (this.phoneUp = true)),
+      ctx.events.on('photo:close', () => (this.phoneUp = false)),
     );
     this.rt.restore();
   }
@@ -181,7 +185,7 @@ class AnimalsSystem {
     const pl = ctx.player;
     const near = this.rt.deer.some((d) => (d.state === 'graze' || d.state === 'alert') && Math.hypot(d.x - pl.position.x, d.z - pl.position.z) <= NUT_HINT_R);
     const nuts = ctx.state.state.systems.progression?.inventory?.[NUT] ?? 0;
-    if (!near || nuts <= 0 || pl.frozen || pl.flying || ctx.ui.modals.count > 0) {
+    if (!near || nuts <= 0 || this.phoneUp || pl.frozen || pl.flying || ctx.ui.modals.count > 0) {
       this.nutHintT = 0;
       return;
     }
@@ -197,7 +201,8 @@ class AnimalsSystem {
     if (!what) return;
     this.said = null;
     const now = this.ctx.loop.time;
-    if (what !== 'fled' && now - this.saidAt < CAPTION_GAP) return;
+    // through the viewfinder the player sees her head come up; a caption queued behind it would be stale
+    if (what !== 'fled' && (this.phoneUp || now - this.saidAt < CAPTION_GAP)) return;
     this.saidAt = now;
     this.ctx.ui.hud.subtitle(null, t(`animals.cap.${what}`), 2800);
   }

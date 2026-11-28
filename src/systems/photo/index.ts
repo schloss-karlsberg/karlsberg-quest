@@ -774,7 +774,10 @@ class Photo {
           const at = x.at();
           return { id: x.id, era: x.era, label_de: x.label_de, placeholder: !!x.placeholder, inWorld: !!at, at: at ? { ...at } : null };
         }),
-      judge: (id) => this.judgeSeen().details.find((d) => d.id === id) ?? null,
+      judge: (id) => {
+        const r = this.judgeSeen();
+        return r.details.find((d) => d.id === id) ?? null;
+      },
       state: () => ({ open: this.isOpen, zoom: this.zoomK, signal: this.ctx.era.current === 'today', steady: this.steady.speed(performance.now() / 1000), blocked: this.blocked(), lastShot: this.lastShot }),
       zoom: (k) => this.setZoom(k),
       cards: () => [...slice().cards],
