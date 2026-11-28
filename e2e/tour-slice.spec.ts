@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { type Page, expect, test } from '@playwright/test';
 import { ciScale } from './helpers/ci';
 import { trackErrors } from './helpers/common';
@@ -595,18 +595,43 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   });
   expect(wait).toMatchObject({ wasWaiting: false, quiet: null, waiting: true, called: false });
   expect(wait.delivered).toContainEqual({ speaker: 'imhoff', id: expect.stringMatching(/^imhoff\.bark\.wait\./) });
-  await page.evaluate(() => {
+  // 45 m from the waiting guide, off the route and 5 m ahead of him along it, on the side away from
+  // the Quelle (so not "ahead" for the leash). The follow objective leads back onto the
+  // route, to its nearest point but never past the guide (src/systems/walk/find.ts
+  // groupLeadPoint): here that is the guide himself, so both real markers share a bearing.
+  const strayAt = await page.evaluate((points) => {
     const k = window.kq!;
     const g = k.walk!.walker('imhoff')!;
-    const next = k.quests!.lead();
-    if (next?.x == null || next.z == null) throw new Error('Missing Quelle waypoint');
-    // 45 m out, on the line from the stop through the guide, so both real markers share a bearing.
-    const dx = next.x - g.x, dz = next.z - g.z;
-    const dist = Math.hypot(dx, dz);
-    const heading = (Math.atan2(dx, -dz) * 180) / Math.PI;
-    k.teleport(g.x - dx * 45 / dist, g.z - dz * 45 / dist, heading + 120, -4);
+    // the route direction at the guide's arc length
+    let s = g.s;
+    let dir = { x: 1, z: 0 };
+    for (let i = 0; i < points.length - 1; i++) {
+      const [ax, az] = points[i]!, [bx, bz] = points[i + 1]!;
+      const len = Math.hypot(bx - ax, bz - az);
+      if (s <= len || i === points.length - 2) {
+        dir = { x: (bx - ax) / len, z: (bz - az) / len };
+        break;
+      }
+      s -= len;
+    }
+    // the side away from the Quelle (on the other one the spot would be nearer the stop than the
+    // guide, which the leash counts as ahead): there it is the Karlsbergweiher's edge
+    const stop = { x: 1062, z: -836.7 };
+    const spots = [1, -1].map((sd) => ({ x: g.x + dir.x * 5 - dir.z * 44.7 * sd, z: g.z + dir.z * 5 + dir.x * 44.7 * sd }));
+    const spot = spots.reduce((a, b) => (Math.hypot(b.x - stop.x, b.z - stop.z) > Math.hypot(a.x - stop.x, a.z - stop.z) ? b : a));
+    const heading = (Math.atan2(g.x - spot.x, -(g.z - spot.z)) * 180) / Math.PI;
+    k.teleport(spot.x, spot.z, heading + 120, -4);
     k.step(60);
-  });
+    // the compass and the lead refresh at 10 Hz: settle them at the new position
+    k.ctx.loop.renderOnce(0.1);
+    return { guide: { x: g.x, z: g.z }, spot, waiting: k.walk!.walker('imhoff')!.waiting, lead: k.quests!.lead() };
+  }, (JSON.parse(readFileSync('content/routes/p-fuehrung.json', 'utf8')) as { points: [number, number][] }).points);
+  console.log(`[tour] stray lead: ${JSON.stringify(strayAt)}`);
+  // the objective sits on the route at the group, not on the Quelle stop
+  expect(strayAt.waiting).toBe(true);
+  expect(strayAt.lead?.label).toContain('hinauf zur Karlsbergquelle');
+  expect(Math.hypot(strayAt.lead!.x! - strayAt.guide.x, strayAt.lead!.z! - strayAt.guide.z)).toBeLessThan(1.5);
+  expect(Math.hypot(strayAt.lead!.x! - 1059.3, strayAt.lead!.z! - -833.1)).toBeGreaterThan(20);
   for (let i = 0; i < 20 && !(await page.evaluate(() => window.kq!.walk!.find().called)); i++) await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
   const stray = await page.evaluate(() => ({ find: window.kq!.walk!.find(), walker: window.kq!.walk!.walker('imhoff') }));
   console.log(`[tour] stray: ${JSON.stringify(stray)}`);

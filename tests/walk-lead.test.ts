@@ -27,6 +27,8 @@ describe('groupLeadPoint', () => {
 
   it('far off the route: back onto it first', () => {
     expect(groupLeadPoint(line, 100, 6, { x: 40, z: 30 })).toEqual({ x: 40, z: 0 });
+    // off the route level with or beyond the guide: on the guide, never past him
+    expect(groupLeadPoint(line, 100, 6, { x: 105, z: 45 })).toEqual({ x: 100, z: 0 });
   });
 
   it('ahead of the guide: no lead (the stop leads)', () => {

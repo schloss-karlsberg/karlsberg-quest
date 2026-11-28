@@ -182,12 +182,13 @@ export interface LeadLine {
  */
 export function groupLeadPoint(line: LeadLine, guideS: number, tail: number, player: { x: number; z: number }, cfg: typeof LEAD = LEAD): { x: number; z: number } | null {
   const pr = line.project(player.x, player.z);
-  if (pr.s > guideS + 1) return null;
-  const tailS = Math.max(0, guideS - Math.max(0, tail));
+  // off the route first (its projection says little about ahead / behind there)
   if (pr.dist > cfg.offRoute) {
     const p = line.pointAt(Math.min(pr.s, guideS));
     return { x: p.x, z: p.z };
   }
+  if (pr.s > guideS + 1) return null;
+  const tailS = Math.max(0, guideS - Math.max(0, tail));
   const s = pr.s >= tailS ? guideS : Math.min(tailS, pr.s + cfg.lookahead);
   const p = line.pointAt(s);
   return { x: p.x, z: p.z };
