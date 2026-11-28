@@ -4,7 +4,7 @@ aliases:
 - TASK-095
 title: 'Chestnuts distract watchers: they hear it land, walk over, and the player sneaks past'
 slug: chestnuts-distract-watchers
-status: in-progress
+status: review
 priority: 2
 owner: ''
 projects: []
@@ -51,16 +51,17 @@ fan reaches it. The watcher's fan points where it looks throughout.
 - Back at the post the watcher is wary for 20 s: a noise only turns its head for 1.8 s.
 - A watcher busy with one noise ignores further ones.
 - The gate's inspector never leaves the gate (a glance only), nor does a watcher in a Musterung.
-- A watcher that reaches Misstrauen breaks the search off and walks back.
+- A watcher that reaches Misstrauen breaks the search off and walks back. While at Misstrauen,
+  it ignores landing noises and gives no noise feedback.
 - A chestnut that strikes a watcher alerts it: it faces the thrower for 3 s, +0.55 suspicion at
   once (tell „du wirfst mit Kastanien“), wary for 30 s.
 - A throw that a watcher sees is a tell: +0.45 at once.
 
 **How it reads.** The fan on the ground swings to the noise and travels with the figure, which
-walks with its walk clip. Captions through the HUD's caption queue: „[Ein Gardist horcht auf und
-geht nachsehen]“, a short text line from the watcher („Was war das?“), „[… geht zurück auf den
-Posten]“, „[… dreht nur kurz den Kopf]“, „[Getroffen! … sucht, wer geworfen hat]“. No new voiced
-lines.
+walks with its walk clip. The court heading takes priority over the figure looking at a nearby
+player. The HUD queues „[Ein Gardist horcht auf und geht nachsehen]“, a short text line from the
+watcher („Was war das?“), „[… geht zurück auf den Posten]“, „[… dreht nur kurz den Kopf]“, and
+„[Getroffen! … sucht, wer geworfen hat]“.
 
 **Moving a placed NPC.** The placement stays the post (and is what the save holds). The court
 sends the npc system where the figure stands for now (`npc:offset`, transient); the figure, its
@@ -68,14 +69,15 @@ talk range and the chestnut's bounce follow it. Walls, water and steep banks end
 
 **Chestnuts and people.** `world:pelt`: the npc system answers when a placed person stands in a
 chestnut's way; it bounces off, nobody is hurt, and `forage:impact` names the person so the court
-can alert a struck watcher.
+can alert a struck watcher. The chestnut hits the first upright obstacle or body it reaches.
 
 **Fläschchen.** A chestnut that strikes a trunk, a wall or the ground within 2 m of a hanging
 bottle shakes it down, as a Wuchthieb does.
 
 **Avatar.** `react('throw')`: the right arm comes through over the walking legs (0.45 s, the
-punch clip, else the reach), and the body turns to the view. The chestnut still leaves at once,
-so the touch button and the key feel the same as before.
+punch clip, else the reach), and the body turns to the view. The chestnut leaves at once
+on release. Muting the action cancels held aim and buffered throws. The animation expires while
+hidden and clears on teleport.
 
 ## Plan
 
@@ -86,6 +88,13 @@ so the touch button and the key feel the same as before.
 5. `e2e/court.spec.ts` (one extra block in the tells test), real-GPU frames, docs.
 
 ## Progress
+
+- Branch `feat/chestnut-distraction-r1` and PR <https://github.com/schloss-karlsberg/karlsberg-quest/pull/148>.
+- Review follow-up covers first projectile contact, court gaze priority, wariness timed from arrival,
+  Misstrauen noise feedback, throw animation lifetime and input mute cancellation.
+- Four gates passed locally on 2026-11-28.
+- Updated `e2e/court.spec.ts` to exercise a real projectile hitting the watcher. Playwright is
+  pending CI.
 
 - Tests: `tests/court-distract.test.ts`, the „a thrown chestnut“ block of
   `tests/court-system.test.ts`, `tests/npc-encounter.test.ts`, `tests/flaschen-session.test.ts`,

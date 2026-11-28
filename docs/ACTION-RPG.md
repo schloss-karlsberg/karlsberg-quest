@@ -584,6 +584,7 @@ lies for a second and is gone. Water swallows it.
 | The ground | A noise (`world:noise`, loudness 0.7; half of that off a body, 0.5 in water) |
 | Within 2 m of a hanging Fläschchen (trunk, wall or ground) | The bottle falls, as after a Wuchthieb |
 
+Along each flight step, the first wall, trunk or body reached stops the chestnut.
 The noise is what animals and the pack hear. The tour's roe deer add it to their notice meter:
 one chestnut nearby makes them look up, two right next to them send them off, and they settle
 and graze again as after any flight. A pack on patrol that is calm or only suspicious sends its
@@ -602,14 +603,15 @@ court: a watcher that hears one land goes to look, and the player passes behind 
   never more than 8 m from its post and stopping 1.5 m short, looks around for 4 s with its head
   swinging ±40°, and walks back. Walls, water and steep banks end the walk early; a noise less
   than a step away is looked at from the post. Its fan points where it looks the whole time,
-  along its way home on the way back. From the first head turn to the post that is about 9–15 s.
+  along its way home on the way back. The court's heading takes priority over looking at a nearby
+  player. From the first head turn to the post that is about 9–15 s.
 - **How it reads:** the fan on the ground swings away and travels with the figure, which walks
   with its walk clip. Captions: „[Ein Gardist horcht auf und geht nachsehen]“ with a short line
   from the watcher („Was war das?“), „[… geht zurück auf den Posten]“ when the window closes.
 - **Not a free pass.** Back at its post a watcher is wary for 20 s and only turns its head for
   1.8 s („[… dreht nur kurz den Kopf]“). A watcher that is busy with one noise ignores the next.
   The gate's inspector never leaves the gate and only glances. A watcher that reaches Misstrauen
-  breaks the search off and walks back.
+  breaks the search off and walks back. At Misstrauen it ignores landing noises.
 - **A chestnut that strikes a watcher** alerts it: it faces the thrower for 3 s, takes 0.55
   suspicion at once whatever its fan saw (tell „du wirfst mit Kastanien“), and is wary for 30 s.
 - **Throwing in view** is a tell of its own: 0.45 at once for every watcher that sees the throw.
@@ -619,7 +621,9 @@ for now (`npc:offset`), which is never saved. `court:distracted {watcher, phase}
 step (`turn`, `walk`, `look`, `back`, `post`, `glance`, `alert`).
 
 No throw in a scene that lowers the staff (`combat.disabled` outside the tour), in photo mode, in
-a conversation, while measuring, in the spirit view or lying flat.
+a conversation, while measuring, in the spirit view or lying flat. When another input owner mutes
+the throw, any held aim or buffered throw is cancelled. A throw animation expires while the avatar
+is hidden and is cleared on teleport.
 
 **Cutting.** Every swing reports where the staff came down (`combat:arc`: a Hieb or Wuchthieb
 mows the half-disc ahead, the Erdstoß's ring and the Wirbel the whole disc). Ferns, flower clumps
@@ -1215,6 +1219,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| Chestnut distraction review (TASK-095, 2026-11-28) | A chestnut hits the first obstacle or body along its flight. A court heading takes priority over proximity gaze, the 20 s wary period starts on arrival at the post, and Misstrauen suppresses noise feedback. Muting the throw cancels aim and buffered throws. Throw animations expire while hidden and clear on teleport. |
 | A chestnut as a free pass through the court (TASK-095, 2026-11-28) | A distracted watcher is away for 9–15 s, then wary for 20 s and only glances; the gate's inspector never leaves; a throw seen by a watcher and a chestnut that strikes one raise suspicion; a watcher that reaches Misstrauen breaks its search off. |
 | Chestnuts as a ranged weapon or a free way past the pack (TASK-090, 2026-11-28) | A throw does 4 damage (a third of a first Hieb), 1 against armour, elites and bosses, never the last point, and staggers a small enemy at most once every 4 s. Only a calm or suspicious patrol follows the noise, with one hound, and that hound is warier afterwards. The chapter 2 chase, the drive and the kennel finale ignore it. |
 | „The spring is not in the live game anymore … the spring is on the right side of the Schlucht“ (owner, TASK-087, 2026-11-28; with TASK-081) | Nothing had been deleted: the set and the water still built in every era. Three things hid it. **Title:** sets and the spring's water are built in the fixed steps, which stand still under the title, and since the spring is home every save rests there, so „Weiter“ opened on the bare hollow; the title now builds the home set and its water per frame (`TITLE_SETS`). **Side:** the set stood at the OSM node on the north-east flank, on the left of the tour path, its wall end towards the arriving group, the guide's stop behind the wall. OSM puts the node 2.3 m right of the footpath and inside its hairpin, the brook stays on that side, and the 1 m LiDAR shows the spring hollow and the channel at the foot of the south-west bank (1058.5/−830.5). `QUELLE` moved 1061.0/−834.5 facing 234° → 1058.5/−831.0 facing 24°; the trough stand 1059.3/−833.1 stays (yaw 50 → 204), so chapter checkpoints keep their place. The brook leaves the trough to the right, the trail forks off the path to the forecourt and on to the hairpin, the steps reach the path's upper leg, the guide stops on the trail left of the trough and the group stands across it (14 slots). **Water:** the brook's run is a hand wide with moving sky streaks and foam, the trough runs over at its low end in a fall of half a metre, big ferns and mossy boulders dress the shaded hollow. **Find (TASK-081):** during „Nachsehen, was im Trog glänzt“ E „Untersuchen“ is offered anywhere before the trough, whatever the view (`quelle.find` → `quelle:find`); the marker is on the forecourt the arrival trail leads to. `tests/quelle-place.test.ts` holds the side, the registration, the wakes, the stop and the markers; relief re-baked (`pnpm prepare-data --mesh-detail`) |
