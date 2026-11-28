@@ -41,7 +41,7 @@ async function view(page: Page, era: string | null, x: number, z: number, yaw: n
   );
 }
 
-test('ghosts: period costumes by day and by night', async ({ page }) => {
+test('people: period costumes by day and by night', async ({ page }) => {
   const errors = trackErrors(page);
   await boot(page);
   const spawn = async (era: string) =>

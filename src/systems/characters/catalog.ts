@@ -39,6 +39,8 @@ export const COSTUMES: Record<Outfit, Costume> = {
 
 /** Per-NPC accents over the outfit (a gardener in green, a servant with a powdered wig). */
 const ACCENTS: Record<string, Costume> = {
+  // Marlene today: the palette of her party stand-in (people spec extra.7; tests/npc-look.test.ts keeps them equal)
+  marlene: { Brown: 0x5a6a3a, LightBlue: 0x6a6a6a, Beige: 0xd0c8b4, 'mesh:Farmer_Head_2': 0x23304a, Red: 0x26241f, Brown2: 0x2a2420, Eyebrows: 0x4a3a2c },
   gaertner: { LightBlue: 0x4f5e3a, Brown: 0x5e4a2e },
   diener: { Hair: 0xece6da, Green: 0x5e1c1f, LightGreen: 0x6a1f22 },
   pikeur: { Hair: 0x4a3a2a },

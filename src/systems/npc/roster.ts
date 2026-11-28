@@ -1,6 +1,7 @@
 /**
- * The ghostly people of the story (bible 03-figuren): how each one looks as a silhouette of smoke
- * and light, how warm or eerie the figure feels, and the German labels of their topics.
+ * The people of the story (bible 03-figuren): how each one looks (costume, build, headwear, what
+ * they carry), how warm or eerie the figure feels as a ghost, and the German labels of their
+ * topics. They are drawn solid; `tint` and `mood` colour the ghost look only (./look.ts).
  * Most of them are fiction (speakers pack: historical false); the label in the conversation says so.
  * Two are real people, the "historical twins" (`historical: true`, docs/ART-DIRECTION.md §21):
  * Johann Christian von Mannlich (1741–1822), court painter and Baudirektor of the Karlsberg, and
@@ -50,6 +51,10 @@ export interface NpcLook {
 }
 
 export const ROSTER: Record<string, NpcLook> = {
+  // Today: Marlene, the forester on the tour route (fiction). The same body and colours as her
+  // stand-in at the party (party/placements.ts MARLENE_STANDIN, people spec extra.7): olive jacket,
+  // grey trousers, navy cap, on the 'carter' model (catalog.ts ACCENTS.marlene).
+  marlene: { id: 'marlene', name: 'Marlene', mood: 'warm', height: 1.68, build: 1, outfit: 'carter', hat: 'slouch', hair: 'short', prop: 'none', tint: 0xffe2b8, seed: 73 },
   hanne: { id: 'hanne', name: 'Hanne', mood: 'warm', height: 1.62, build: 0.92, outfit: 'maid', hat: 'mobcap', hair: 'none', prop: 'basket', tint: 0xffc477, seed: 3 },
   soll: { id: 'soll', name: 'Kanzlist Gottlob Soll', mood: 'eerie', height: 1.7, build: 0.95, outfit: 'official', hat: 'tricorn', hair: 'wig', prop: 'ledger', tint: 0xa9c8de, seed: 7 },
   jost: { id: 'jost', name: 'Jost', mood: 'eerie', height: 1.5, build: 0.84, outfit: 'livery', hat: 'huntcap', hair: 'queue', prop: 'stick', tint: 0xb7d3c4, seed: 11 },

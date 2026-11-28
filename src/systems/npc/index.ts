@@ -1,6 +1,8 @@
 /**
- * Feature "npc": the ghostly people of the past (Hanne, Kanzlist Soll, the kennel boy Jost,
- * Peter …) as translucent silhouettes of smoke and light, placed by the story and spoken to.
+ * Feature "npc": the people of the story (Marlene today; Hanne, Kanzlist Soll, the kennel boy
+ * Jost, Peter … in their own years), placed by the story and spoken to. They are solid, living
+ * people (./solid.ts); a placement that asks for `look: 'ghost'` is a translucent silhouette of
+ * smoke and light instead (./figure.ts, ./look.ts).
  *
  * Story → npc:  'npc:spawn' {npc, x, z, era?, yaw?, chapter?, topics?, mood?}, 'npc:despawn' {npc}
  *               (story action { "do": "npc", "op": "spawn" | "despawn", … }).
@@ -31,8 +33,10 @@ import { speakerDative, speakerMeta } from '../story/dialogue/speakers';
 import { Voice } from '../story/dialogue/voice';
 import type { LoadedModel } from '../../assets/loader';
 import { modelFor } from '../characters/catalog';
-import { GhostFigure } from './figure';
-import { RiggedGhost } from './rigged';
+import { GhostFigure, type NpcFigure } from './figure';
+import { figureLook, kneels, loadedPlacement } from './look';
+import { RiggedNpc } from './rigged';
+import { SolidFigure } from './solid';
 import { BYE, GREET, IDLE_TURN_S, NEAR_TURN_S, TALK_TURN_S, answer, approachYaw, askedTopics, availableTopics, clueFor, hasWords, sweepYaw, talkLines, talkedFlag, yawToward } from './logic';
 import { lookFor, topicLabel } from './roster';
 import { ConversationView, questCardEl, type TalkLine, type TalkTopic } from './ui';
@@ -68,7 +72,7 @@ declare module '../../core/state' {
 
 export interface NpcHooks {
   /** y = the floor the figure stands on (its storey inside the palace). */
-  list(): { npc: string; x: number; z: number; y: number; era: string; visible: boolean; alpha: number; dist: number; bound: string | null }[];
+  list(): { npc: string; x: number; z: number; y: number; era: string; visible: boolean; alpha: number; dist: number; bound: string | null; look: 'solid' | 'ghost' }[];
   spawn(p: NpcPlacement): void;
   despawn(npc: string): void;
   /** Open the conversation with an NPC (ignores the distance). */
@@ -105,7 +109,7 @@ const NEAR_T = 2.5;
 
 interface Placed {
   p: NpcPlacement & { era: string };
-  fig: GhostFigure;
+  fig: NpcFigure;
   yaw: number;
   nearT: number;
   barked: boolean;
@@ -154,7 +158,7 @@ class NpcRuntime {
     // a kneeling figure asked about the hounds' names scratches the one at his knee
     ev.on('npc:talk', ({ npc, topic }) => {
       const f = this.figs.get(npc);
-      if (f?.p.pose === 'kneel' && topic === 'namen') f.scratch = 7;
+      if (f && kneels(f.p) && topic === 'namen') f.scratch = 7;
     });
     // a story line spoken by a placed person (outside the conversation panel, same turn): it
     // faces the player for the line when the player stands close (frame: d < 10 m)
@@ -185,10 +189,11 @@ class NpcRuntime {
       else this.follow.delete(npc);
     });
     this.glyphs = new GiverGlyphs(ctx.ui.layer('npc-glyphs'));
-    // rigged bodies from medium quality up (the low tier and the e2e run keep the procedural ones)
+    // a ghost's rigged body from medium quality up (the low tier and the e2e run keep the procedural
+    // one); a solid person is the rigged body on every tier
     this.onQuality = (_p, level) => {
       for (const [id, f] of this.figs) {
-        if (level === 'low') f.fig.setRigged(null);
+        if (level === 'low' && f.fig.kind === 'ghost') f.fig.setRigged(null);
         else this.rigFor(id, f.fig);
       }
     };
@@ -199,16 +204,23 @@ class NpcRuntime {
   private readonly onQuality: (p: unknown, level: string) => void;
 
   /** Give a figure its rigged CC0 body once the model is there (characters area, lazy). */
-  private rigFor(id: string, fig: GhostFigure): void {
-    if (this.ctx.quality.level === 'low' || fig.isRigged) return;
+  private rigFor(id: string, fig: NpcFigure): void {
+    const procedural = () => fig.kind === 'ghost' && this.ctx.quality.level === 'low';
+    if (procedural() || fig.isRigged) return;
     const model = modelFor(fig.look);
+    const live = () => this.figs.get(id)?.fig === fig && !fig.isRigged;
     const build = (m: LoadedModel) => {
-      if (this.figs.get(id)?.fig !== fig || fig.isRigged || this.ctx.quality.level === 'low') return;
-      fig.setRigged(new RiggedGhost(fig.look, m, fig.tint));
+      if (!live() || procedural()) return;
+      fig.setRigged(new RiggedNpc(fig.look, m, fig.tint, fig.kind));
+      this.ctx.loop.requestRender(2);
     };
     const ready = this.ctx.assets.peek<LoadedModel>(model);
     if (ready) build(ready);
-    else this.ctx.assets.model(model).then(build, (e: unknown) => console.warn('[npc] model failed', e));
+    else
+      this.ctx.assets.model(model).then(build, (e: unknown) => {
+        console.warn('[npc] model failed', e);
+        if (live()) fig.fail?.();
+      });
   }
 
   get slice(): NpcSlice {
@@ -272,15 +284,17 @@ class NpcRuntime {
       old.p = p;
       old.yaw = yawRad(p.yaw);
       old.barked = false;
-      if (old.fig.look.mood !== (p.mood ?? lookFor(p.npc).mood)) {
+      if (old.fig.look.mood !== (p.mood ?? lookFor(p.npc).mood) || old.fig.kind !== figureLook(p)) {
         old.fig.dispose();
         this.figs.delete(p.npc);
       } else return;
     }
-    const fig = new GhostFigure(lookFor(p.npc, p.mood), this.ctx.era.current);
+    // people are solid; a ghost only where the placement asks for one (./look.ts)
+    const look = lookFor(p.npc, p.mood);
+    const fig: NpcFigure = figureLook(p) === 'ghost' ? new GhostFigure(look, this.ctx.era.current) : new SolidFigure(look);
     fig.alpha = 0;
     this.ctx.scene.add(fig.object);
-    this.figs.set(p.npc, { p, fig, yaw: yawRad(p.yaw), nearT: 0, barked: false, kneel: p.pose === 'kneel' ? 1 : 0 });
+    this.figs.set(p.npc, { p, fig, yaw: yawRad(p.yaw), nearT: 0, barked: false, kneel: kneels(p) ? 1 : 0 });
     this.rigFor(p.npc, fig);
   }
 
@@ -303,7 +317,7 @@ class NpcRuntime {
   private rebuild(): void {
     for (const f of this.figs.values()) f.fig.dispose();
     this.figs.clear();
-    for (const p of Object.values(this.slice.placed)) this.place(p);
+    for (const p of Object.values(this.slice.placed)) this.place(loadedPlacement(p));
   }
 
   private visible(f: Placed): boolean {
@@ -667,7 +681,7 @@ class NpcRuntime {
       f.yaw = approachYaw(f.yaw, want, dt, talkTo ? TALK_TURN_S : nearTo ? NEAR_TURN_S : IDLE_TURN_S, reduced);
       o.rotation.y = f.yaw;
       // kneeling: lower and leaning forward over what lies before him; a scratching hand rocks him
-      const kn = (f.kneel = (f.kneel ?? 0) + ((f.p.pose === 'kneel' ? 1 : 0) - (f.kneel ?? 0)) * Math.min(1, dt * 2.2));
+      const kn = (f.kneel = (f.kneel ?? 0) + ((kneels(f.p) ? 1 : 0) - (f.kneel ?? 0)) * Math.min(1, dt * 2.2));
       if (kn > 0.001) {
         f.scratch = Math.max(0, (f.scratch ?? 0) - dt);
         const sc = f.scratch > 0 && !reduced ? Math.sin(ctx.loop.time * 9) * 0.04 * Math.min(1, f.scratch) : 0;
@@ -682,7 +696,7 @@ class NpcRuntime {
         f.fig.kneel = 0;
       }
       f.fig.talk = this.talking?.npc === id && this.view.busy ? 1 : 0;
-      f.fig.frame(dt, { reducedMotion: reduced, reducedFlash: ctx.settings.state.reducedFlash, px, face: 0, lookAt: d < 9 || this.talking?.npc === id ? face : null });
+      f.fig.frame(dt, { reducedMotion: reduced, reducedFlash: ctx.settings.state.reducedFlash, px, face: 0, lookAt: d < 9 || this.talking?.npc === id ? face : null, dist: cam.position.distanceTo(o.position) });
     }
     // quest glyphs over the heads (hidden while that conversation is open)
     this.glyphs.frame(
@@ -715,6 +729,7 @@ class NpcRuntime {
             alpha: f.fig.alpha,
             dist: Math.hypot(this.ctx.player.position.x - b.x, this.ctx.player.position.z - b.z),
             bound: this.person(npc)?.id ?? null,
+            look: f.fig.kind,
           };
         }),
       spawn: (p) => this.spawn(p),

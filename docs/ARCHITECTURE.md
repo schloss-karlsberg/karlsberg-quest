@@ -1279,7 +1279,18 @@ Round-4 (polish: set dressing) integration rules:
   bone) and `rigInfo` (bind-pose height, eyes, head top). `shaders.ts`: skinned ghost and spectral
   ShaderMaterials (premultiplied, depth pre-pass twins). Models in `src/assets/manifests/characters.ts`.
 
-### npc (`src/systems/npc/`) – ghostly people, conversations
+### npc (`src/systems/npc/`) – the story's people, conversations
+- **Looks** (`look.ts`, pure, `tests/npc-look.test.ts`): a placed person is **solid** unless the
+  placement asks for `look: 'ghost'` (`figureLook`). Solid (`solid.ts` `SolidFigure`) is a living
+  person: the rigged CC0 body in the roster costume with opaque, world-lit materials (`rigged.ts`
+  `RiggedNpc`, the stand-ins' `kqStandard` recipe, shadows cast) on every quality tier, with hat,
+  prop and pike on the bones and nothing of the ghost (no silhouette, mist or motes). It waits
+  until its model is in, dithers in over `SOLID_FADE_S` = 0.35 s (`fadeToward`: linear, ends at
+  exactly 1, alphaHash so depth is written and nothing is sorted), dithers out when the placement
+  leaves or its era ends, and is not drawn beyond the people draw limit (`drawnAt`, 60 m / back at
+  58 m). A model that fails to load is a capsule. Ghost (`figure.ts` `GhostFigure`, below) is the
+  deliberate apparition and the only look that kneels (`kneels`); the story uses it once, for the
+  old Pikeur at the kennel today (k4_13). `kq.npc.list()` reports each figure's `look`.
 - `npc:spawn {npc, x, z, era?, yaw?, chapter?, topics?, mood?, room?, y?, pose?}` / `npc:despawn {npc}`
   (`pose: 'kneel'`: down on one knee — legs folded in the figure shader (`uKneel`), the figure
   lowered by the knee height; asked about `namen` he scratches the hound before him)
@@ -1309,9 +1320,10 @@ Round-4 (polish: set dressing) integration rules:
   `tests/npc-talk-waits.test.ts` checks that no beat or reaction waits for a talk with someone who
   has nothing to say then. The guide's car-park greetings need `tour.station1.ready`, which t2's
   `exit` clears, so they are not offered at a later stop.
-  On medium / high the figure is replaced by a `RiggedGhost` (`rigged.ts`, models from
-  `characters/`) once the model is loaded: same shader look, idle / walk / talk / gesture clips,
-  head look at the player; the procedural figure stays for `low`, while loading and for the kneel pose.
+  On medium / high a ghost's figure is replaced by a `RiggedNpc` in the ghost look (`rigged.ts`,
+  models from `characters/`) once the model is loaded: same shader look, idle / walk / talk / gesture
+  clips, head look at the player; the procedural figure stays for `low`, while loading and for the
+  kneel pose. A solid person is the `RiggedNpc` in the solid look on every tier.
 - E within 2.8 m → conversation (modal page at the bottom; typing on the UI clock; keys 1–n,
   E/Enter/Space advance): `greet`, quest topics first (`npc:topics` from quests, ids `q:<quest>`,
   marked ! / ? / §), topics from the pack's `npc:talk` lines, `bye`. A quest offer shows the quest
@@ -2262,7 +2274,7 @@ card, sound, toast, cue, chronik, ending, echo, grant):
 | `shift` / `anchor` | `to, instant?, reason?` / `to \| null, x, z, r` | era shift now / Q allowed here |
 | `skill` | `id: relief \| kartograf \| baumeister \| roentgen \| spurenleser, tier` | unlock card (+ Laub once `story.laub`) |
 | `give` / `grant` | `clue \| noun \| item, kind?, toast?` / `clue, card?` | inventory (no nouns!) / Chronik discovery (nouns, facts); `card: true` shows the clue card |
-| `npc` | `op: spawn \| despawn, npc (hanne, jost, soll, … \| *), x?, z?, room?, era?, yaw?, chapter?, topics?, mood?` | ghost + conversation from pack `npc:talk` lines |
+| `npc` | `op: spawn \| despawn, npc (hanne, jost, soll, … \| *), x?, z?, room?, era?, yaw?, chapter?, topics?, mood?, pose?, look?` | a person (solid; `look: 'ghost'` for an apparition) + conversation from pack `npc:talk` lines |
 | `meter` | `id: oil \| smoke \| vergessen \| <custom>, active, seconds?, label?, full?: return \| caught \| none, text?, lossless?, still?, intensity?, center?, radius?` | timers on game time |
 | `echo` | `id` | play a Chronik echo |
 | `memorial` | `id, active?, x?, z?, r?, era?, room?` | no barks there |
