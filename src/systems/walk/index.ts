@@ -134,6 +134,7 @@ class WalkSystem {
       },
     });
     ctx.tourCrowd.visitors = () => this.rt.tourVisitors();
+    ctx.tourCrowd.lead = (x, z) => this.rt.leadFor(x, z);
     ctx.events.on('save:loaded', () => this.rt.restore());
     ctx.events.on('cinematic:play', () => (this.cinematic = true));
     ctx.events.on('cinematic:end', () => (this.cinematic = false));
@@ -255,6 +256,7 @@ class WalkSystem {
 
   dispose(): void {
     delete this.ctx.tourCrowd.visitors;
+    delete this.ctx.tourCrowd.lead;
     this.rt.clear();
   }
 

@@ -4,7 +4,7 @@
  * save slice. No three.js: bodies come from a `BodyFactory`, the world from `WalkWorld`, so
  * tests/walk-system.test.ts drives it with fakes. index.ts wires it to the game.
  */
-import { FIND, rejoinArc } from './find';
+import { FIND, LEAD, groupLeadPoint, rejoinArc } from './find';
 import { VISITOR_RADIUS, type CrowdCircle } from '../../world/crowd';
 import { buildRoute, type BuiltRoute } from './route';
 import { MEMBER_SPEEDS, assignSlots, followSlots, gatherSlots, laneSlots, pushOutOfTrunks, separate, stepMember, straightBehind, type MemberSpeeds, type PathBehind, type Slot, type TrunksNear } from './group';
@@ -950,6 +950,30 @@ export class WalkRuntime {
     const back = Math.min(FIND.maxTail, tail) + FIND.behind;
     // headingOf(dx, dz) = atan2(-dx, -dz): forward is (-sin yaw, -cos yaw)
     return { x: lead.x + Math.sin(lead.yaw) * back, z: lead.z + Math.cos(lead.yaw) * back, yaw: lead.yaw };
+  }
+
+  /**
+   * The marker point for a story objective at (x, z): when it is the stop a following group's guide
+   * walks to („Der Gruppe folgen“), the marker leads to the group along the route instead
+   * (groupLeadPoint). Null otherwise (the objective leads as it is).
+   */
+  leadFor(x: number, z: number): { x: number; z: number } | null {
+    if (!this.era) return null;
+    const p = this.o.world.player();
+    for (const g of this.groups.values()) {
+      if (g.implicit || g.mode !== 'follow') continue;
+      const w = this.walkers.get(g.leader);
+      if (!w || w.arrived || !w.rt) continue;
+      const stop = w.rt.stops.find((st) => st.id === w.to);
+      if (!stop || Math.hypot(stop.x - x, stop.z - z) > LEAD.stopMatch) continue;
+      let tail = 0;
+      for (const m of g.members) {
+        const n = this.npcs.get(m);
+        if (n) tail = Math.max(tail, w.s - w.line.project(n.x, n.z).s);
+      }
+      return groupLeadPoint(w.line, w.s, Math.min(FIND.maxTail, tail), p);
+    }
+    return null;
   }
 
   // ---- debug ---------------------------------------------------------------------------------
