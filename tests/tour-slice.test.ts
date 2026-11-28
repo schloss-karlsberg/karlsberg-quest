@@ -36,8 +36,15 @@ function harness(onAction?: (a: Action) => void | false, saved = createInitialSt
   const said: string[] = [];
   let afterLine: Action[] = [];
   let era = 'today';
+  // delayed actions, as the host schedules them: due after `delay` s, or at once when their beat ends
+  let clock = 0;
+  const delayed: { at: number; beat: string | null; a: Action }[] = [];
   const apply = (actions: Action[]) => {
     for (const [i, a] of actions.entries()) {
+      if (a.delay && a.delay >= 30) {
+        delayed.push({ at: clock + a.delay, beat: slice.beat, a: { ...a, delay: 0 } });
+        continue;
+      }
       if (onAction?.(a) === false) continue;
       if (a.do === 'flag') for (const [k, v] of Object.entries(a.set)) v === null ? delete flags[k] : (flags[k] = v);
       else if (a.do === 'say') {
@@ -77,7 +84,16 @@ function harness(onAction?: (a: Action) => void | false, saved = createInitialSt
     lantern: false,
     caseFacts: () => null,
   });
-  const tick = (s = 0.5) => engine.tick(s, env());
+  const tick = (s = 0.5) => {
+    clock += s;
+    for (let i = 0; i < delayed.length; i++) {
+      const d = delayed[i]!;
+      if (d.at > clock && d.beat === slice.beat) continue;
+      delayed.splice(i--, 1);
+      apply([d.a]);
+    }
+    engine.tick(s, env());
+  };
   const ev = (name: string, payload: Record<string, unknown>) => {
     engine.onEvent(name, payload);
     tick(0.1);
@@ -321,19 +337,49 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     expect(a.said).not.toContain('imhoff.t.reh.alert');
     expect(a.beat()).not.toBe('t10');
 
+    // a flight at any distance is answered, and the player has a minute to try again
     const b = harness();
     go(b);
-    b.ev('animal:fled', { id: 'ricke', by: 'player', dist: 9.5 });
+    b.ev('animal:fled', { id: 'ricke', by: 'player', dist: 19.5 });
     expect(b.said).toEqual(expect.arrayContaining(['player.photo.weg', 'imhoff.t.reh.schnell']));
-    b.tick(30);
+    b.tick(55);
     expect(b.beat()).toBe('t10');
-    b.tick(20);
+    b.tick(10);
     expect(b.beat()).not.toBe('t10');
 
     const c = harness();
     go(c);
     c.tick(181);
     expect(c.beat()).not.toBe('t10');
+
+    // a late flight does not end the stop at once (the old 45 s counted from the beat's start)
+    const late = harness();
+    go(late);
+    late.tick(170);
+    late.ev('animal:fled', { id: 'ricke', by: 'player', dist: 19.5 });
+    late.tick(50);
+    expect(late.beat()).toBe('t10');
+    late.photo('graze');
+    late.tick();
+    expect(late.said).toContain('imhoff.t.reh3');
+    expect(late.beat()).not.toBe('t10');
+
+    // a chestnut hit: „Und weg.“, never „Zu schnell.“, and the same minute
+    const hit = harness();
+    go(hit);
+    hit.ev('animal:fled', { id: 'ricke', by: 'hit', dist: 14 });
+    expect(hit.said).toContain('player.photo.weg');
+    expect(hit.said).not.toContain('imhoff.t.reh.schnell');
+    hit.tick(55);
+    expect(hit.beat()).toBe('t10');
+    hit.tick(10);
+    expect(hit.beat()).not.toBe('t10');
+
+    // a scripted startle (a cue) says nothing
+    const cue = harness();
+    go(cue);
+    cue.ev('animal:fled', { id: 'ricke', by: 'cue', dist: 5 });
+    expect(cue.said).not.toContain('player.photo.weg');
   });
 
   it.each([['graze', 'alert', 'imhoff.t.reh3'], ['alert', 'graze', 'imhoff.t.reh.alert']])(

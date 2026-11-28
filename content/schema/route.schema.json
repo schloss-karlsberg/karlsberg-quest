@@ -19,7 +19,17 @@
         "properties": {
           "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
           "x": { "type": "number", "minimum": 150, "maximum": 2300 },
-          "z": { "type": "number", "minimum": -2150, "maximum": 500 }
+          "z": { "type": "number", "minimum": -2150, "maximum": 500 },
+          "slots": {
+            "description": "Hand-staged standing places of the group at this stop: [x, z] each.",
+            "type": "array",
+            "items": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }
+          },
+          "glades": {
+            "description": "Circles [x, z, r] near the stop that stay free of forest-floor props (ferns, bushes) today, so what the stop is about can be seen from the path. r ≤ 12 m, centre ≤ 60 m from the stop.",
+            "type": "array",
+            "items": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }
+          }
         }
       }
     },

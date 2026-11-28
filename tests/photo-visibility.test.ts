@@ -1,8 +1,8 @@
 /** Photo mode, the pixel test of a shot (src/systems/photo/visibility.ts, TASK-080). */
 import { Color, Group, Mesh, MeshBasicMaterial, PerspectiveCamera, Scene, type WebGLRenderTarget, type WebGLRenderer } from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { SEEN_CLEAR, SEEN_MIN, type ShotResult, type TargetJudgement, type Verdict, VERDICT_DE } from '../src/systems/photo/core';
-import { MAX_SUBJECTS, SEEN, ShotVisibility, TIP_DE, TIP_PARTLY_DE, countIds, liveSubjects, registerSubject, seenFrom, shotTip } from '../src/systems/photo/visibility';
+import { type ShotResult, type TargetJudgement, type Verdict, VERDICT_DE } from '../src/systems/photo/core';
+import { MAX_SUBJECTS, SEEN, ShotVisibility, TIP_BIGGER_DE, TIP_DE, TIP_PARTLY_DE, countIds, liveSubjects, registerSubject, seenFrom, shotTip } from '../src/systems/photo/visibility';
 
 /** An RGBA8 buffer with `counts[i]` pixels of subject i and `empty` cleared pixels. */
 function buffer(counts: number[], empty = 5): Uint8Array {
@@ -69,13 +69,19 @@ describe('photo visibility: the tip under a weak shot', () => {
     expect(shotTip(shot('zu-weit', [far, detail({ verdict: 'zu-weit', dist: 36 })]), range)).toBe(TIP_DE['zu-weit']);
   });
 
-  it('a good shot says nothing, unless cover alone cost the third star', () => {
+  it('a perfect shot says nothing; a good one says what the third star needs', () => {
     const clear = detail({ good: true, stars: 3, verdict: 'perfekt', seen: 0.95 });
     expect(shotTip(shot('perfekt', [clear], 3), range)).toBeNull();
-    const partly = detail({ good: true, stars: 2, verdict: 'gut', seen: (SEEN_MIN + SEEN_CLEAR) / 2 });
+    const partly = detail({ good: true, stars: 2, verdict: 'gut', seen: 0.5, short: 'cover' });
     expect(shotTip(shot('gut', [partly], 2), range)).toBe(TIP_PARTLY_DE);
-    const farButClear = detail({ good: true, stars: 2, verdict: 'gut', seen: 0.9, dist: 24 });
-    expect(shotTip(shot('gut', [farButClear], 2), range)).toBeNull();
+    const small = detail({ good: true, stars: 2, verdict: 'gut', seen: 0.9, short: 'size' });
+    expect(shotTip(shot('gut', [small], 2), range)).toBe(TIP_BIGGER_DE);
+    expect(shotTip(shot('gut', [{ ...small, short: 'far' }], 2), range)).toBe(TIP_BIGGER_DE);
+    // cover first: zooming in on half a deer does not help
+    expect(shotTip(shot('gut', [small, { ...partly, id: 'reh.kitz' }], 2), range)).toBe(TIP_PARTLY_DE);
+    // a target without a drawn body (the board) keeps its plain two stars
+    const board = detail({ id: 'photo.parkplatz', good: true, stars: 2, verdict: 'gut', dist: 20 });
+    expect(shotTip(shot('gut', [board], 2), range)).toBeNull();
   });
 
   it('nothing in the frame, or no signal: no tip', () => {

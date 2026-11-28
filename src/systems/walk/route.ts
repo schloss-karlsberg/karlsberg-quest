@@ -12,6 +12,9 @@ export const PLAY_EXTENT: Extent = { x: [150, 2300], z: [-2150, 500] };
 /** Validator limits (contract C2). */
 export const MAX_SEGMENT = 30;
 export const MAX_STOP_OFF = 3;
+/** A stop's glade (a circle kept free of forest-floor props): widest radius, and farthest centre from its stop (m). */
+export const MAX_GLADE = 12;
+export const MAX_GLADE_OFF = 60;
 
 export class Polyline {
   readonly xs: Float64Array;
@@ -193,6 +196,17 @@ export function checkRoute(route: Route, extent: Extent = PLAY_EXTENT): string[]
         if (!Array.isArray(slot) || !Number.isFinite(slot[0]) || !Number.isFinite(slot[1])
           || slot[0] < extent.x[0] || slot[0] > extent.x[1] || slot[1] < extent.z[0] || slot[1] > extent.z[1]) {
           errs.push(`${label}: stop '${st.id}' has a slot outside the playable extent`);
+        }
+      }
+    }
+    if (st.glades !== undefined && !Array.isArray(st.glades)) errs.push(`${label}: stop '${st.id}' glades must be an array`);
+    if (Array.isArray(st.glades)) {
+      for (const g of st.glades) {
+        if (!Array.isArray(g) || !Number.isFinite(g[0]) || !Number.isFinite(g[1]) || !(g[2] > 0 && g[2] <= MAX_GLADE)
+          || g[0] < extent.x[0] || g[0] > extent.x[1] || g[1] < extent.z[0] || g[1] > extent.z[1]) {
+          errs.push(`${label}: stop '${st.id}' has a glade outside the playable extent or wider than ${MAX_GLADE} m`);
+        } else if (Math.hypot(g[0] - st.x, g[1] - st.z) > MAX_GLADE_OFF) {
+          errs.push(`${label}: stop '${st.id}' has a glade more than ${MAX_GLADE_OFF} m from the stop`);
         }
       }
     }

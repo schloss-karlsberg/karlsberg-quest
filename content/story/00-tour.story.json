@@ -267,11 +267,21 @@
         },
         {
           "id": "zu-schnell",
-          "when": { "event": "animal:fled", "match": { "id": "ricke" }, "lte": { "dist": 16 } },
+          "when": { "event": "animal:fled", "match": { "id": "ricke", "by": "player" } },
           "do": [
             { "do": "say", "id": "player.photo.weg", "speaker": "player", "text": "Und weg." },
             { "do": "say", "id": "imhoff.t.reh.schnell", "speaker": "imhoff", "text": "Zu schnell." },
-            { "do": "flag", "set": { "tour.reh.weg": true } }
+            { "do": "flag", "set": { "tour.reh.weg": true } },
+            { "do": "flag", "set": { "tour.reh.aus": true }, "delay": 60 }
+          ]
+        },
+        {
+          "id": "getroffen",
+          "when": { "event": "animal:fled", "match": { "id": "ricke", "by": "hit" } },
+          "do": [
+            { "do": "say", "id": "player.photo.weg", "speaker": "player", "text": "Und weg.", "repeat": true },
+            { "do": "flag", "set": { "tour.reh.weg": true } },
+            { "do": "flag", "set": { "tour.reh.aus": true }, "delay": 60 }
           ]
         }
       ],
@@ -279,7 +289,7 @@
         "any": [
           { "flag": "tour.reh.done" },
           { "all": [
-            { "any": [{ "all": [{ "flag": "tour.reh.weg" }, { "timer": 45 }] }, { "timer": 180 }] },
+            { "any": [{ "flag": "tour.reh.aus" }, { "all": [{ "timer": 180 }, { "not": { "flag": "tour.reh.weg" } }] }] },
             { "not": { "flag": "tour.reh.photo" } }
           ] }
         ]

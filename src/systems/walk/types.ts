@@ -22,7 +22,12 @@ export type WalkRequest = WalkOp | GroupOp | FollowOp | GatherOp | GroupDespawnO
 /** content/routes/<id>.json: named stops along a polyline (local metres, x east, z south). */
 export interface Route {
   id: string;
-  stops: { id: string; x: number; z: number; slots?: [number, number][] }[];
+  /**
+   * `slots`: authored standing places of the group at this stop. `glades`: circles [x, z, r] near the
+   * stop that stay free of forest-floor props (ferns, bushes) today, so what the stop is about can
+   * be seen from the path (the deer's grazing spot, TASK-080).
+   */
+  stops: { id: string; x: number; z: number; slots?: [number, number][]; glades?: [number, number, number][] }[];
   points: [number, number][];
 }
 

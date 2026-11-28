@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { t } from '../src/i18n';
 import '../src/systems/photo';
-import { ALBUM_MAX, type GrantSink, PhotoCore, type PhotoSlice, type PhotoTargetDef, type PhotoView, type PhotoWorld, SEEN_CLEAR, SEEN_MIN, STEADY_RAD_S, SteadyMeter, debugDeerBlocker, emptySlice, goodEvents, judgeShot, judgeTarget, normaliseSlice, project } from '../src/systems/photo/core';
+import { ALBUM_MAX, BIG_STAR, type GrantSink, PhotoCore, type PhotoSlice, type PhotoTargetDef, type PhotoView, type PhotoWorld, SEEN_CLEAR, SEEN_MIN, STEADY_RAD_S, SteadyMeter, debugDeerBlocker, emptySlice, goodEvents, judgeShot, judgeTarget, normaliseSlice, project } from '../src/systems/photo/core';
 import { targetFromData, validatePhotoTargets } from '../src/systems/photo/data';
 import { validateQuests } from '../src/systems/quests/validate';
 import { eventMatches } from '../src/systems/story/engine';
@@ -233,20 +233,36 @@ describe('photo mode: what the lens really sees (TASK-080)', () => {
     expect(goodEvents(shot)).toEqual([]);
   });
 
-  it('clear deer: close and in the open → both good, 3 stars; farther → 2 stars', () => {
+  it('clear deer: in the open, close and big in the frame → both good, 3 stars „Perfekt!“', () => {
     const open = seeing({ 'reh.ricke': 0.96, 'reh.kitz': 0.9 });
-    expect(judgeShot(pair(11), 'today', view(), open)).toMatchObject({ good: ['reh.ricke', 'reh.kitz'], stars: 3, verdict: 'perfekt' });
-    expect(judgeShot(pair(15.5), 'today', view(), open)).toMatchObject({ good: ['reh.ricke', 'reh.kitz'], stars: 3 });
-    expect(judgeShot(pair(17), 'today', view({ fovV: 32 }), open)).toMatchObject({ good: ['reh.ricke', 'reh.kitz'], stars: 2, verdict: 'gut' });
+    // the phone's wide lens from very close, or its 2× from the sneak path
+    expect(judgeShot(pair(8), 'today', view(), open)).toMatchObject({ good: ['reh.ricke', 'reh.kitz'], stars: 3, verdict: 'perfekt' });
+    const shot = judgeShot(pair(15), 'today', view({ fovV: 32 }), open);
+    expect(shot).toMatchObject({ good: ['reh.ricke', 'reh.kitz'], stars: 3, verdict: 'perfekt' });
+    for (const d of shot.details) expect(d.short).toBeUndefined();
+  });
+
+  it('clear deer that are small in the frame, or far: good, 2 stars, and the judgement says what was short', () => {
+    const open = seeing({ 'reh.ricke': 0.96, 'reh.kitz': 0.9 });
+    // the wide lens from 15 m: two specks in the picture
+    const wide = judgeShot(pair(15), 'today', view(), open);
+    expect(wide).toMatchObject({ good: ['reh.ricke', 'reh.kitz'], stars: 2, verdict: 'gut' });
+    expect(wide.details.map((d) => d.short)).toEqual(['size', 'size']);
+    expect(wide.details[0]!.frac).toBeLessThan(BIG_STAR * 0.055);
+    // big enough through the zoom, but beyond 0.6 × maxDist
+    const far = judgeShot(pair(17), 'today', view({ fovV: 25 }), open);
+    expect(far).toMatchObject({ good: ['reh.ricke', 'reh.kitz'], stars: 2, verdict: 'gut' });
+    expect(far.details.map((d) => d.short)).toEqual(['far', 'far']);
   });
 
   it('the limits: under SEEN_MIN hidden, under SEEN_CLEAR good without the third star', () => {
     const one = target({ kind: 'animal', d: 8, maxDist: 27 });
     const at = (share: number) => judgeTarget(one, view(), seeing({ 'reh.ricke': share }), false);
     expect(at(SEEN_MIN - 0.01)).toMatchObject({ good: false, verdict: 'verdeckt', stars: 1 });
-    expect(at(SEEN_MIN)).toMatchObject({ good: true, verdict: 'gut', stars: 2 });
-    expect(at(SEEN_CLEAR - 0.01)).toMatchObject({ good: true, verdict: 'gut', stars: 2 });
+    expect(at(SEEN_MIN)).toMatchObject({ good: true, verdict: 'gut', stars: 2, short: 'cover' });
+    expect(at(SEEN_CLEAR - 0.01)).toMatchObject({ good: true, verdict: 'gut', stars: 2, short: 'cover' });
     expect(at(SEEN_CLEAR)).toMatchObject({ good: true, verdict: 'perfekt', stars: 3, seen: SEEN_CLEAR });
+    expect(at(SEEN_CLEAR).short).toBeUndefined();
   });
 
   it('one animal covered: the other is „Nicht alle im Bild“, the shot is not good', () => {
@@ -256,8 +272,9 @@ describe('photo mode: what the lens really sees (TASK-080)', () => {
   });
 
   it('a pair is one picture: half a doe beside a clear fawn is good, not „Perfekt!“', () => {
-    const shot = judgeShot(pair(11), 'today', view(), seeing({ 'reh.ricke': 0.5, 'reh.kitz': 0.95 }));
+    const shot = judgeShot(pair(8), 'today', view(), seeing({ 'reh.ricke': 0.5, 'reh.kitz': 0.95 }));
     expect(shot).toMatchObject({ good: ['reh.ricke', 'reh.kitz'], stars: 2, verdict: 'gut' });
+    expect(shot.details.map((d) => d.short)).toEqual(['cover', undefined]);
     expect(shot.details.map((d) => [d.stars, d.verdict])).toEqual([[2, 'gut'], [2, 'gut']]);
     expect(goodEvents(shot).map((e) => e.stars)).toEqual([2, 2]);
   });
@@ -277,6 +294,8 @@ describe('photo mode: what the lens really sees (TASK-080)', () => {
     const shot = judgeShot([board], 'today', view(), seeing({ 'reh.ricke': 0 }));
     expect(shot).toMatchObject({ good: ['photo.parkplatz'], stars: 2 });
     expect(shot.details[0]!.seen).toBeUndefined();
+    // … and its third star is the old rule: close is enough
+    expect(judgeShot([target({ id: 'photo.parkplatz', d: 8 })], 'today', view(), flat)).toMatchObject({ stars: 3, verdict: 'perfekt' });
   });
 
   it('the other rules still come first or after as before: too far, off-centre, fleeing', () => {

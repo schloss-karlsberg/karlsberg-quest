@@ -29,8 +29,9 @@
  * picture: every member gets the stars of its weakest member.
  *
  * **Stars** (story contract C3): 0 = not in the frame, 1 = in the frame but not good, 2 = good,
- * 3 = good and closer than 0.6 × `maxDist` (a measured target also needs `SEEN_CLEAR` of its
- * silhouette in the open: a half-covered subject is never „Perfekt!“). "Good" means ≥ 2, everywhere: a fallback shot gets
+ * 3 = good and closer than 0.6 × `maxDist`. A measured target also needs `SEEN_CLEAR` of its
+ * silhouette in the open and `BIG_STAR` × its `minFrac` of the frame: a half-covered subject, or
+ * two specks in a wide picture, are never „Perfekt!“ (`TargetJudgement.short` says which). "Good" means ≥ 2, everywhere: a fallback shot gets
  * `fallbackStars` (default 2), and with 1 it is not good (no `photo:good`, no album, no `has()`).
  *
  * In any era but today the phone has no signal: nothing is judged, the image comes out white.
@@ -162,6 +163,8 @@ export interface TargetJudgement {
   clear: number;
   /** Measured targets only: the share (0..1) of the silhouette that nothing hid. */
   seen?: number;
+  /** A good measured target without the third star: what it fell short of (cover first, then size, then distance). */
+  short?: 'cover' | 'size' | 'far';
   /** Counted only because the fallback distance or framing threshold applied. */
   fallback: boolean;
   /** The target's `state()` at the shot (good targets with a getter only). */
@@ -195,8 +198,10 @@ export const STEADY_WINDOW = 0.3;
 export const ALBUM_MAX = 60;
 /** A measured target is hidden below this share of its silhouette (`PhotoWorld.seen`). */
 export const SEEN_MIN = 0.35;
-/** The third star needs this share in the open. */
+/** The third star needs this share in the open … */
 export const SEEN_CLEAR = 0.7;
+/** … and the subject this many times its `minFrac` of the frame height (the deer: 2× from the sneak path, or very close). */
+export const BIG_STAR = 1.8;
 
 const smooth = (v: number) => (Number.isFinite(v) ? v : 0);
 
@@ -308,7 +313,13 @@ export function judgeTarget(t: PhotoTargetDef, v: PhotoView, w: PhotoWorld, fall
       out.good = out.stars >= 2;
       out.verdict = out.good ? 'weit-ok' : 'zu-weit';
     } else {
-      out.stars = dist < CLOSE_STAR * t.maxDist && !(seen && seen.share < SEEN_CLEAR) ? 3 : 2;
+      const close = dist < CLOSE_STAR * t.maxDist;
+      if (seen) {
+        if (seen.share < SEEN_CLEAR) out.short = 'cover';
+        else if (frac < BIG_STAR * t.minFrac) out.short = 'size';
+        else if (!close) out.short = 'far';
+      }
+      out.stars = close && !out.short ? 3 : 2;
       out.verdict = out.stars === 3 ? 'perfekt' : 'gut';
     }
   }

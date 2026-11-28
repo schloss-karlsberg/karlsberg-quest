@@ -16,7 +16,7 @@
  * state and is tested in tests/photo-visibility.test.ts.
  */
 import { Color, DoubleSide, MeshBasicMaterial, WebGLRenderTarget, type Camera, type Material, type Mesh, type Object3D, type PerspectiveCamera, type Scene, type WebGLRenderer } from 'three';
-import { SEEN_CLEAR, type ShotResult, type Verdict } from './core';
+import type { ShotResult, Verdict } from './core';
 
 /** What a measurement says about one subject. */
 export interface Seen {
@@ -72,8 +72,9 @@ export const TIP_DE: Partial<Record<Verdict, string>> = {
   aufgeschreckt: 'Warte, bis die Tiere wieder ruhig stehen.',
   'nicht-alle': 'Alle müssen frei und mittig im Bild sein.',
 };
-/** A good shot that missed the third star only because something covered part of the subject. */
+/** A good shot of a measured subject without the third star: part of it was covered, or it was small in the frame. */
 export const TIP_PARTLY_DE = 'Für drei Sterne: freie Sicht auf das ganze Motiv.';
+export const TIP_BIGGER_DE = 'Für drei Sterne: größer ins Bild. Geh näher heran oder nimm den 2×-Zoom.';
 
 /** A miss this many times beyond a target's range is not about that target: no tip. */
 const MEANT_WITHIN = 1.6;
@@ -87,8 +88,9 @@ const TIP_ORDER: Verdict[] = ['aufgeschreckt', 'verdeckt', 'zu-weit', 'zu-nah', 
 export function shotTip(r: ShotResult, range: (id: string) => number | undefined): string | null {
   if (!r.signal) return null;
   if (r.good.length) {
-    const partly = r.stars < 3 && r.details.some((d) => d.good && d.seen !== undefined && d.seen < SEEN_CLEAR);
-    return partly ? TIP_PARTLY_DE : null;
+    if (r.stars >= 3) return null;
+    const short = r.details.filter((d) => d.good && d.short).map((d) => d.short);
+    return short.includes('cover') ? TIP_PARTLY_DE : short.length ? TIP_BIGGER_DE : null;
   }
   const meant = r.details.filter((d) => d.inFrame && !d.good && d.dist <= (range(d.id) ?? Infinity) * MEANT_WITHIN);
   if (!meant.length) return null;
