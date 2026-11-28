@@ -58,7 +58,10 @@ addStrings('de', {
   // Laub (FIKTION) – one line per new tier; silent before he has spoken in the story
   'skills.laub.relief.1': 'Schummerung. Licht von Nordwesten, wie es sich gehört. Ich habe dafür 1840 noch Kerzen gebraucht.',
   'skills.laub.relief.2': 'Lokales Relief. Rot ist höher, Blau ist tiefer. Politisch ist das nicht gemeint.',
-  'skills.laub.relief.3': 'VAT. Alles auf einmal sehen ist eine Kunst. Alles auf einmal verstehen ist eine andere.',
+  // „VAT“ is the only name the player cannot look up, so Laub spells it out once (TASK-093). Fact:
+  // Visualization for Archaeological Topography, four relief views blended (hillshade, slope, positive
+  // openness, sky-view factor): Kokalj & Somrak 2019, Remote Sensing 11(7) 747, doi:10.3390/rs11070747.
+  'skills.laub.relief.3': 'VAT heißt Visualisierung für archäologische Topografie: vier Relief-Ansichten übereinander, von der Schummerung bis zur Himmelssicht. Alles auf einmal sehen ist eine Kunst. Alles auf einmal verstehen ist eine andere.',
   'skills.laub.kartograf.1': 'Meine Karte. Fünfzig Meter Versatz am Schloss. Ich bestehe darauf, dass sich der Berg bewegt hat.',
   'skills.laub.kartograf.2': 'Das Messtischblatt. Zehn bis fünfzehn Meter daneben. Mit hundert Jahren Vorsprung ist das keine Kunst.',
   'skills.laub.kartograf.3': 'Messen. Endlich eine Tätigkeit, die ich anerkenne. Anfang, Ende, und dann glauben Sie der Zahl, nicht dem Herzog.',
