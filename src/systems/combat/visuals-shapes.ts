@@ -318,7 +318,9 @@ function limb(): BufferGeometry {
 
 /** A faceted rock: an icosahedron pushed about by a fixed noise, flat-bottomed a little. */
 function rock(seed: number): BufferGeometry {
-  const g = new IcosahedronGeometry(0.5, 1).toNonIndexed();
+  // three's polyhedra are already non-indexed: toNonIndexed() only logged a warning at boot (TASK-093)
+  const g0 = new IcosahedronGeometry(0.5, 1);
+  const g = g0.index ? g0.toNonIndexed() : g0;
   const p = g.getAttribute('position');
   const cache = new Map<string, number>();
   for (let i = 0; i < p.count; i++) {

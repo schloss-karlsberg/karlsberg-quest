@@ -32,6 +32,7 @@ import { Waymark } from '../../ui/waymark';
 import { hideWhileQuiet } from '../../core/quiet';
 import { renderCodex, renderQuests, renderSets, type PageData } from './pages';
 import { type QuestDefIn, type QuestPayout, QuestBook, createQuestSlice, giverId, historyAtTurnin, need, objectiveEvents, normaliseSlice, recordItemDeed, turninOf } from './logic';
+import { viaLine } from './stepText';
 
 declare module '../../core/state' {
   interface SystemStates {
@@ -617,9 +618,9 @@ class QuestRuntime {
           .filter((o, _i, all) => first || (!o.done && o === all.find((x) => !x.done))),
         hint: this.hint?.quest === id ? this.hint.text : undefined,
         here: this.here === id,
-        // the story's own step leads (its place, its words): say it under the quest's goal
-        // (a „Q …“ line the story shows above the tracker itself: story/objectives.ts)
-        via: this.lead?.quest === q && this.lead.obj && this.lead.label !== this.lead.obj.text_de && !/\bQ\b/.test(this.lead.label) ? this.lead.label : undefined,
+        // the story's own step leads (its place, its words): say it under the quest's goal, unless
+        // it only rewords that goal (a „Q …“ line the story shows above the tracker itself: story/objectives.ts)
+        via: this.lead?.quest === q ? viaLine(this.lead.label, this.lead.obj?.text_de) : undefined,
       });
       first = false;
     }
