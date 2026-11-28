@@ -21,20 +21,27 @@ export const HIDDEN_MESHES: Partial<Record<CharacterModel, RegExp>> = {
 };
 
 const SKIN = 0xd9b89a;
+const LINEN = 0xe9e2d0;
 
-/** Costume per outfit (slots of the model the outfit uses, see `modelFor`). */
+/**
+ * Costume per outfit (slots of the model the outfit uses, see `modelFor`). The models are modern
+ * cuts: the adventurer's arms are bare (`mesh:Adventurer_Body_3`: arms and hands), the woman wears a
+ * sleeveless knee-length dress (`mesh:Formal_Body_1`: shoulders, arms and hands; `mesh:Formal_Legs_1`
+ * and `mesh:Formal_Feet_1`: bare legs). A coat's sleeves, a fichu with linen sleeves and stockings
+ * are laid over those meshes by colour, which a solid figure shows plainly (TASK-092).
+ */
 export const COSTUMES: Record<Outfit, Costume> = {
   // Kanzlist: Prussian-blue justaucorps, cream waistcoat, black breeches, white stockings, wig
-  official: { Green: 0x33477a, LightGreen: 0x3d5488, Brown2: 0x27211d, Brown: 0x2e2722, Black: 0x17130f, Grey: 0x9a8a5c, Hair: 0xece6da, Gold: 0xc9a240, Skin: SKIN, Eyebrows: 0x8a8070 },
+  official: { Green: 0x33477a, LightGreen: 0x3d5488, 'mesh:Adventurer_Body_3': 0x33477a, Brown2: 0x27211d, Brown: 0x2e2722, Black: 0x17130f, Grey: 0x9a8a5c, Hair: 0xece6da, Gold: 0xc9a240, Skin: SKIN, Eyebrows: 0x8a8070 },
   // hunting livery: forest green coat, yellow waistcoat, buff breeches, riding boots
-  livery: { Green: 0x2a4428, LightGreen: 0x34532f, Brown2: 0xd6c7a4, Brown: 0x2a1d14, Black: 0x1a1410, Grey: 0x3a2c20, Hair: 0x5a4632, Gold: 0xc9a240, Skin: SKIN },
+  livery: { Green: 0x2a4428, LightGreen: 0x34532f, 'mesh:Adventurer_Body_3': 0x2a4428, Brown2: 0xd6c7a4, Brown: 0x2a1d14, Black: 0x1a1410, Grey: 0x3a2c20, Hair: 0x5a4632, Gold: 0xc9a240, Skin: SKIN },
   // mason: linen shirt, leather apron-brown, grey breeches
   mason: { Green: 0xb3a88f, LightGreen: 0x9d927c, Brown2: 0x4e4438, Brown: 0x5a4636, Black: 0x241b14, Grey: 0x3a3028, Hair: 0x3a2a1e, Gold: 0x8a7650, Skin: SKIN },
   // carter / gardener / villager on the farmer model: linen shirt, brown waistcoat and breeches,
   // a dark felt slouch hat with a red band
   carter: { Brown2: 0x2a1d14, Brown: 0x5b4330, LightBlue: 0x6b5a42, Beige: 0xd6c9a8, 'mesh:Farmer_Head_2': 0x3a3028, Red: 0x7a2a1e, Skin: SKIN, Eyebrows: 0x5a4030 },
-  // maid on the woman model: russet dress, linen trim, brown hair, dark shoes
-  maid: { LimeGreen: 0x8a4b32, Gold: 0xefe6d2, 'mesh:Formad_Head_2': 0x6b4a2e, 'mesh:Formal_Feet_2': 0x3a2a20, Red: 0x6b4a2e, Brown: 0x3a2a20, Skin: SKIN },
+  // maid on the woman model: russet dress, linen fichu and sleeves, white stockings, brown hair, dark shoes
+  maid: { LimeGreen: 0x8a4b32, Gold: 0xefe6d2, 'mesh:Formal_Body_1': LINEN, 'mesh:Formal_Legs_1': LINEN, 'mesh:Formal_Feet_1': LINEN, 'mesh:Formad_Head_2': 0x6b4a2e, 'mesh:Formal_Feet_2': 0x3a2a20, Red: 0x6b4a2e, Brown: 0x3a2a20, Skin: SKIN },
 };
 
 /** Per-NPC accents over the outfit (a gardener in green, a servant with a powdered wig). */
@@ -42,7 +49,7 @@ const ACCENTS: Record<string, Costume> = {
   // Marlene today: the palette of her party stand-in (people spec extra.7; tests/npc-look.test.ts keeps them equal)
   marlene: { Brown: 0x5a6a3a, LightBlue: 0x6a6a6a, Beige: 0xd0c8b4, 'mesh:Farmer_Head_2': 0x23304a, Red: 0x26241f, Brown2: 0x2a2420, Eyebrows: 0x4a3a2c },
   gaertner: { LightBlue: 0x4f5e3a, Brown: 0x5e4a2e },
-  diener: { Hair: 0xece6da, Green: 0x5e1c1f, LightGreen: 0x6a1f22 },
+  diener: { Hair: 0xece6da, Green: 0x5e1c1f, LightGreen: 0x6a1f22, 'mesh:Adventurer_Body_3': 0x5e1c1f },
   pikeur: { Hair: 0x4a3a2a },
   peter: { LightBlue: 0x4a4e5a },
   mann: { LightBlue: 0x5e5240, Beige: 0xc9bea2 },
