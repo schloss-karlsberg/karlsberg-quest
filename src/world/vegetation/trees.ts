@@ -70,6 +70,14 @@ const MAX_IMP_SHADOW = 6000;
 export const TREE_N0 = 30;
 export const TREE_N1 = 72;
 export const TREE_BAND = 5;
+/**
+ * lod1 → impostor ring of the shadow casters (× k, from the camera), cross-faded like the
+ * picture's. Nearer than the picture's ring: an impostor's shadow is the tree's baked outline seen
+ * from the sun's side, and past 60 m it cannot be told from the lod1 shadow (TASK-088 look pairs at
+ * seven views on Mittel and Hoch: 0.03–0.5 of 255 mean difference). It pays for the casters that
+ * the picture leaves out and that now cast: 13–25 % fewer triangles in the shadow pass.
+ */
+export const CAST_N1 = 60;
 
 /**
  * Shadow casters (phase B): the shadow pass draws every model tree with the lod1 geometry (lod0
@@ -906,6 +914,9 @@ export class ModelTrees {
   private readonly lv: number[] = [];
   /** lod1 → impostor ring (× k); `TREE_N1`, a field for look checks. */
   impAt = TREE_N1;
+  /** The casters' own lod1 → impostor ring (× k); `CAST_N1`, a field for look checks. */
+  castAt = CAST_N1;
+  private readonly clv: number[] = [];
   /** Shadow casters per variant (lod1 geometry) and impostors, sorted by distance (`ShadowList`). */
   private readonly shadowLod: ShadowList[] = [];
   private readonly shadowImp: ShadowList;
@@ -1112,7 +1123,7 @@ export class ModelTrees {
       if (!b || b.n >= b.max) continue;
       writeInst(b, b.n++, x, y, z, h, rot, vr, lv[j * 3 + 1]!, lv[j * 3 + 2]!);
     }
-    this.addCaster(n, x, y, z, h, rot, vr, variant);
+    this.addCaster(x, y, z, h, rot, vr, variant, d, k);
   }
 
   /**
@@ -1121,16 +1132,16 @@ export class ModelTrees {
    * camera shades the ground in front of it.
    */
   cast(x: number, y: number, z: number, h: number, rot: number, v: number, variant: number, d: number, k: number): void {
-    const n = treeLevels(d, k, this.lv, this.impAt);
-    this.addCaster(n, x, y, z, h, rot, variant + Math.min(0.999, v), variant);
+    this.addCaster(x, y, z, h, rot, variant + Math.min(0.999, v), variant, d, k);
   }
 
-  /** The shadow-pass instances of a tree whose `n` main levels are in `lv`. */
-  private addCaster(n: number, x: number, y: number, z: number, h: number, rot: number, vr: number, variant: number): void {
-    const lv = this.lv;
-    // shadow casters: lod0 as lod1 (a tree fading lod0 → lod1 is one full lod1 caster)
+  /** The shadow-pass instances of a tree `d` m from the camera (ring scale `k`), if its shadow is in reach. */
+  private addCaster(x: number, y: number, z: number, h: number, rot: number, vr: number, variant: number, d: number, k: number): void {
     const ds = castGap(x, z, h, this.refX, this.refZ, this.sun.x, this.sun.y, this.sun.z);
     if (ds > this.castMax) return;
+    const lv = this.clv;
+    const n = treeLevels(d, k, lv, this.castAt);
+    // shadow casters: lod0 as lod1 (a tree fading lod0 → lod1 is one full lod1 caster)
     if (n === 2 && lv[0] === 0) {
       this.shadowLod[variant]?.add(ds, x, y, z, h, rot, vr, 0, 2);
       return;
