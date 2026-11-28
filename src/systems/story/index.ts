@@ -38,6 +38,7 @@ import { keepsOnBeatExit, retireScheduled, takeDueActions, type Scheduled } from
 import { playStorySound, playStorySoundAction } from './sfx';
 import { acceptTourDeerPhoto, loadBundledStories, missingTourChestnuts, restoreTourDeerPhoto, storiesInPlay } from './stories';
 import { installTitleFlow } from './title/flow';
+import { partyDevVariant, skipsTourRoute } from './devstart';
 import { ENDING_SLOT } from './title/actions';
 import { pauseHooks } from '../../ui/menus';
 import { h } from '../../ui/dom';
@@ -434,7 +435,7 @@ class StoryRuntime {
       stage: (id, done) => this.stage.start(id, done),
     });
 
-    installTitleFlow({ settings: ctx.settings, modals: ctx.ui.modals, onName: (n) => (this.pendingName = n) });
+    installTitleFlow({ settings: ctx.settings, modals: ctx.ui.modals, onName: (n) => (this.pendingName = n), skipRoute: skipsTourRoute(ctx.params) });
     // post-game: the pause menu offers the choice at the table again (the HUD line says so too)
     pauseHooks.extraActions = () =>
       this.slice.finished && ctx.save.has(ENDING_SLOT) ? [{ label: t('ui.menu.ending_again'), testid: 'pause-ending-again', run: () => void ctx.save.load(ENDING_SLOT) }] : [];
@@ -562,6 +563,8 @@ class StoryRuntime {
     if (this.pendingName !== null) {
       const name = this.pendingName;
       this.pendingName = null;
+      // `?party=…` from the title: the party system takes over the new game, no tour under it
+      if (!resumed && partyDevVariant(params)) return;
       this.start(name);
       return;
     }

@@ -2125,7 +2125,8 @@ the placeholder); `strip.ts` (DOM); `index.ts` (wiring, `?party`, hooks). Runs `
   without a party drops the live one.
 - Dev: `?party=museum|burn|keep` (parsed by the party system itself on `game:start`): era today, the
   player at the checkpoint 1200 / −1095 facing TF-01, `kq.story.look('dusk')`, `party:set`, then
-  `party:credits`. Hooks `kq.party`: `set(variant, at?)`, `credits(lines?)`, `skip()`, `clear()`,
+  `party:credits`. A new game from the title skips the tour route card and does not start the tour
+  (`src/systems/story/devstart.ts`). Hooks `kq.party`: `set(variant, at?)`, `credits(lines?)`, `skip()`, `clear()`,
   `state()`, `stats()` → `{bodies, dogs, setDrawCalls, bodyDrawCalls, dogDrawCalls}`. Tests:
   `tests/party.test.ts`, `e2e/party.spec.ts` (`test-results/party/party-*.png`).
 

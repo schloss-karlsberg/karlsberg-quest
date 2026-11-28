@@ -38,6 +38,7 @@ import { TouchControls } from './ui/touch';
 import { SKILL_IDS, skillsForLevel } from './systems/combat/rules';
 import { CameraTakeover, OverrideSlot } from './systems/cinematic/takeover';
 import { endingTitleActions } from './systems/story/title/actions';
+import { kapitelJump } from './systems/story/devstart';
 import { mobileLevel } from './render/mobileDefaults';
 import { UI } from './ui/ui';
 import { atmosphere } from './world/atmosphere';
@@ -788,8 +789,8 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
 
   // Playtesting a later chapter: ?kapitel=2|3|4 turns a NEW game into a start at that chapter,
   // with what the earlier chapters would have left behind (survey skills, a fitting level).
-  const kapitel = Number(params.get('kapitel'));
-  if (kapitel >= 2 && kapitel <= 4) {
+  const kapitel = kapitelJump(params);
+  if (kapitel !== null) {
     const offStart = ctx.events.on('game:start', ({ resumed }) => {
       offStart();
       if (resumed) return;
