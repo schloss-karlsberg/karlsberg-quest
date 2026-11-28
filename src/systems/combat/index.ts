@@ -38,7 +38,7 @@ import { lanternPose } from '../hunt/lantern';
 import { CombatAudio } from './audio';
 import { FightLog, type FightReport, type FightView } from './fightlog';
 import { CombatHud, type PipTarget, type SkillSlot } from './hud';
-import { DODGE, SHAKE, SKILLS, SKILL_IDS, type SafeReason, type SkillId, forwardOf, groupsToReset, safeReason, skillCooldown, skillsForLevel, upsertGroup, wrapAngle, headingOf } from './rules';
+import { DODGE, SHAKE, SKILLS, SKILL_IDS, type SafeReason, type SkillId, forageOnly, forwardOf, groupsToReset, safeReason, segmentHitsBody, skillCooldown, skillsForLevel, upsertGroup, wrapAngle, headingOf } from './rules';
 import { CombatSim, type Enemy, canReform, KINDS, type SimEvent, type SimInput, type TimeOfDay, touchable } from './sim';
 import { BOSS_BOUNCE, BOSS_BOUNCE_AFTER, BOSS_GUARD, BOSS_HINT, BOSS_TITLE, TELL, reformLessonKey } from './strings';
 import { CombatVisuals, type DissolveKind, hullDistance } from './visuals';
@@ -63,6 +63,19 @@ declare module '../../core/events' {
   interface GameEvents {
     /** combat → hunt: a staff swing (the hunt shows a line when it passes through a hound). */
     'combat:swing': { x: number; z: number; yaw: number; reach: number };
+    /**
+     * combat → forage: the staff came down. A swing sweeps `arcDeg` around `yaw` out to `reach`
+     * from x/z; an ability's ring is a full circle (`arcDeg` 360). Plants are cut there.
+     */
+    'combat:arc': { x: number; z: number; yaw: number; reach: number; arcDeg: number; heavy: boolean };
+    /**
+     * forage → combat: a thrown chestnut flew from a to b this tick. Combat fills `receipt` when it
+     * struck an enemy (`CombatSim.pelt`): `result` 'hit' (a sting and a flinch) or 'glance' (armour,
+     * elites, bosses). Mist, lights and veils let it through (no hit).
+     */
+    'combat:pelt': { ax: number; ay: number; az: number; bx: number; by: number; bz: number; receipt: { hit: boolean; result?: 'hit' | 'glance'; x?: number; y?: number; z?: number; kind?: string } };
+    /** forage → combat: where the locked or soft target's body is, for the throw's aim (`receipt.found`). */
+    'combat:aim': { receipt: { found: boolean; x: number; y: number; z: number } };
   }
 }
 
@@ -327,6 +340,30 @@ class Combat {
     });
     ev.on('talent:learned', () => this.applyStats());
     ev.on('item:use', ({ item }) => this.useItem(item));
+    // a thrown chestnut (src/systems/forage): the first body on its way this tick takes it
+    ev.on('combat:pelt', (q) => {
+      if (q.receipt.hit) return;
+      let best: Enemy | null = null;
+      let bestT = Infinity;
+      for (const e of this.sim.enemies) {
+        if (e.state === 'dissolve' || e.state === 'leave') continue;
+        const at = segmentHitsBody(q.ax, q.ay, q.az, q.bx, q.by, q.bz, e.x, e.y, e.z, Math.max(e.radius, 0.3) + 0.12, this.visuals.topOf(e));
+        if (at !== null && at < bestT) {
+          bestT = at;
+          best = e;
+        }
+      }
+      if (!best) return;
+      const result = this.sim.pelt(best, q.ax, q.az);
+      if (result === 'through') return;
+      Object.assign(q.receipt, { hit: true, result, kind: best.kind, x: q.ax + (q.bx - q.ax) * bestT, y: q.ay + (q.by - q.ay) * bestT, z: q.az + (q.bz - q.az) * bestT });
+    });
+    ev.on('combat:aim', ({ receipt }) => {
+      const id = this.targeting.current;
+      const c = id ? this.cands.find((x) => x.id === id) : undefined;
+      if (!c || c.open === false) return;
+      Object.assign(receipt, { found: true, x: c.x, y: c.y + Math.min(c.top * 0.55, 1.4), z: c.z });
+    });
     ev.on('travel:poi', ({ kind }) => {
       // Cache XP can change live HP before the next combat step. Travel still holds saves here.
       if (kind === 'cache') this.syncResources();
@@ -505,12 +542,14 @@ class Combat {
     const moveZ = -fx * s + fz * c;
     this.moving = Math.min(1, pl.stats.speed / 4);
     const disabled = f['combat.disabled'] === true;
-    const blocked = !inp.enabled || ctx.ui.modals.count > 0 || pl.flying || pl.frozen || f['tools.measuring'] === true || disabled || this.talking;
+    // the guided tour: the borrowed staff cuts ferns and grass, nothing else (rules.ts forageOnly)
+    const forage = forageOnly(f) && this.armed();
+    const blocked = !inp.enabled || ctx.ui.modals.count > 0 || pl.flying || pl.frozen || f['tools.measuring'] === true || (disabled && !forage) || this.talking;
     let attackPressed = inp.wasPressed('attack');
     // LMB belongs to the interact target (examine, talk) when there is one
     if (attackPressed && this.mouseTick >= ctx.loop.tick - 1 && this.interactTarget()) attackPressed = false;
-    if ((attackPressed || inp.wasPressed('bannlicht')) && disabled) this.captionOnce('lowered', t('combat.lowered'), 'info', 6);
-    const skill: SkillId | null = inp.wasPressed('skill1') ? 'ausfall' : inp.wasPressed('skill2') ? 'erdstoss' : inp.wasPressed('skill3') ? 'wirbel' : null;
+    if ((attackPressed || inp.wasPressed('bannlicht')) && disabled && !forage) this.captionOnce('lowered', t('combat.lowered'), 'info', 6);
+    const skill: SkillId | null = forage ? null : inp.wasPressed('skill1') ? 'ausfall' : inp.wasPressed('skill2') ? 'erdstoss' : inp.wasPressed('skill3') ? 'wirbel' : null;
     // targeting (third-person camera): Tab / middle mouse locks; swings go at the lock or the soft target
     this.cands = this.candidates();
     if (inp.wasPressed('lockOn') && !blocked) this.targeting.press(this.cands, pl.position.x, pl.position.z, pl.yaw);
@@ -526,8 +565,8 @@ class Combat {
       attackDown: inp.isDown('attack'),
       attackPressed,
       attackCancelled: inp.wasCancelled('attack'),
-      bannPressed: inp.wasPressed('bannlicht'),
-      dodgePressed: inp.wasPressed('dodge'),
+      bannPressed: !forage && inp.wasPressed('bannlicht'),
+      dodgePressed: !forage && inp.wasPressed('dodge'),
       skill,
       running: inp.isDown('sprint') && (fx !== 0 || fz !== 0) && pl.stance === 'stand',
       hunted: this.hunted,
@@ -537,6 +576,13 @@ class Combat {
       era: ctx.era.current,
       time: this.timeOfDay(),
     };
+  }
+
+  /** The equipped staff is in the pack (both camera modes draw it then). */
+  private armed(): boolean {
+    const gear = this.ctx.state.state.systems.progression;
+    const weapon = gear?.equipped?.weapon;
+    return !!weapon && (gear?.inventory?.[weapon] ?? 0) > 0;
   }
 
   /** Enemies the player can target (alive, here, not leaving). */
@@ -713,6 +759,9 @@ class Combat {
       }
       case 'whiff':
         this.audio.whiff();
+        break;
+      case 'arc':
+        this.emit('combat:arc', { x: ev.x, z: ev.z, yaw: ev.yaw, reach: ev.reach, arcDeg: ev.arcDeg, heavy: ev.kind === 'heavy' });
         break;
       case 'hit': {
         const e = ev.e;
@@ -1097,6 +1146,8 @@ class Combat {
         break;
       }
       case 'skillImpact': {
+        // the Erdstoß's ring and the Wirbel mow what stands around
+        if (ev.id !== 'ausfall') this.emit('combat:arc', { x: ev.x, z: ev.z, yaw: inp.yaw, reach: ev.r, arcDeg: 360, heavy: true });
         if (ev.id === 'erdstoss') {
           this.visuals.groundSlam(ev.x, ctx.world.heightAt(ev.x, ev.z), ev.z, ev.r, st.reducedFlash);
           this.audio.groundSlam();
@@ -1325,9 +1376,7 @@ class Combat {
     // the staff
     const f = ctx.state.state.flags;
     const sw = p.swing;
-    const gear = ctx.state.state.systems.progression;
-    const weapon = gear?.equipped?.weapon;
-    const armed = !!weapon && (gear?.inventory?.[weapon] ?? 0) > 0;
+    const armed = this.armed();
     this.viewmodel.frame({
       camera: cam,
       dt,
@@ -1343,7 +1392,7 @@ class Combat {
       moving: this.moving,
       // Both camera modes use the equipped staff once it is in the inventory.
       hidden: pl.flying || ctx.ui.modals.count > 0 || (this.deadT >= 0 && this.caughtSent) || !armed || ctx.pause.reasons.has('title'),
-      lowered: f['combat.disabled'] === true || pl.stance === 'prone',
+      lowered: (f['combat.disabled'] === true && !forageOnly(f)) || pl.stance === 'prone',
       reducedMotion: st.reducedMotion,
       reducedFlash: st.reducedFlash,
       thirdPerson: pl.thirdPerson,

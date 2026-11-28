@@ -14,6 +14,7 @@ import type { Era } from '../../core/era';
 import type { GraphicsLevel } from '../../core/save';
 import { ATMOS_GLSL, atmosphere } from '../atmosphere';
 import { ViewCone } from '../viewCone';
+import { plantCuts } from './cuts';
 import { COVER_LOOKS, type CoverLook, type CoverSample, flowerChance, grassChance, hash2, reedChance, valueNoise } from './scatter';
 
 /** What the nature layers read from the world (current era's terrain and land cover). */
@@ -67,6 +68,9 @@ interface CoverTier {
   flowers: number;
   reeds: number;
 }
+
+/** Undergrowth stand-ins on Niedrig (`setBrush`): at most this many clumps near the player. */
+export const BRUSH_MAX = 48;
 
 const FULL_LIMITS = { grass: 20000, flowers: 2500, reeds: 3000 };
 const TIERS: Record<GraphicsLevel, CoverTier> = {
@@ -354,6 +358,9 @@ export class GroundCover {
   readonly object = new Group();
   readonly material: ShaderMaterial;
   private readonly layers: { grass: Layer; grassFar: Layer; flowers: Layer; reeds: Layer };
+  /** Broad-leaved clumps that stand in for the forest-floor props on Niedrig (`setBrush`). */
+  private readonly brush: Layer;
+  private cutVersion = plantCuts.version;
   private readonly cone = new ViewCone();
   private level: GraphicsLevel = 'low';
   private tier: CoverTier | null = TIERS.low;
@@ -364,6 +371,8 @@ export class GroundCover {
   private dirty = true;
   private readonly cov = new Float32Array(4);
   readonly stats = { grass: 0, grassFar: 0, flowers: 0, reeds: 0, tiles: 0 };
+  /** Stand-in clumps drawn (`setBrush`). */
+  brushCount = 0;
   /** Lake-bed depth of the terrain shader (reeds stand on the sunk bed). */
   bedDepth = 1.6;
 
@@ -402,6 +411,7 @@ export class GroundCover {
       flowers: make(flowerGeometry(), FULL_LIMITS.flowers, 'nature-flowers'),
       reeds: make(reedGeometry(), FULL_LIMITS.reeds, 'nature-reeds'),
     };
+    this.brush = make(tuftGeometry(11, 0, 5, 0.085, 0.62, 4, 0.2), BRUSH_MAX, 'nature-brush');
   }
 
   setLevel(level: GraphicsLevel): void {
@@ -423,7 +433,8 @@ export class GroundCover {
 
   private resetProfile(): void {
     this.tier = this.level === 'low' && this.era !== 'today' ? null : TIERS[this.level];
-    this.object.visible = this.tier !== null;
+    // without a tier the four cover layers are empty; the stand-in clumps keep their own list
+    this.object.visible = this.tier !== null || this.brushCount > 0;
     if (this.tier) this.material.uniforms.uRadius!.value = this.tier.radius;
     this.tiles.clear();
     this.dirty = true;
@@ -454,6 +465,36 @@ export class GroundCover {
       k = Math.min(k, m.keep > 0 ? m.keep + (1 - m.keep) * smoothstep(m.r * 0.72, m.r, d) : 0);
     }
     return k;
+  }
+
+  /**
+   * Undergrowth stand-ins (src/systems/forage): `n` clumps as [x, y, z, height, rotation, variant]
+   * records. Niedrig draws no forest-floor props, so the plants the staff can cut show as these.
+   */
+  setBrush(data: Float32Array, n: number): void {
+    const L = this.brush;
+    const count = Math.min(BRUSH_MAX, n);
+    const ia = L.inst.array as Float32Array;
+    const va = L.vary.array as Float32Array;
+    for (let i = 0; i < count; i++) {
+      ia[i * 4] = data[i * R]!;
+      ia[i * 4 + 1] = data[i * R + 1]!;
+      ia[i * 4 + 2] = data[i * R + 2]!;
+      ia[i * 4 + 3] = data[i * R + 3]!;
+      va[i * 2] = data[i * R + 4]!;
+      va[i * 2 + 1] = data[i * R + 5]!;
+    }
+    L.geo.instanceCount = count;
+    L.mesh.visible = count > 0;
+    this.brushCount = count;
+    this.object.visible = this.tier !== null || count > 0;
+    if (!count) return;
+    L.inst.clearUpdateRanges();
+    L.inst.addUpdateRange(0, count * 4);
+    L.inst.needsUpdate = true;
+    L.vary.clearUpdateRanges();
+    L.vary.addUpdateRange(0, count * 2);
+    L.vary.needsUpdate = true;
   }
 
   /** Force a rebuild (teleports, era / tier change). */
@@ -538,8 +579,12 @@ export class GroundCover {
     const tier = this.tier;
     if (!tier) return;
     const p = camera.position;
-    if (!this.dirty && Math.hypot(p.x - this.lastX, p.z - this.lastZ) < 3 && !this.cone.turned(camera, CONE_MARGIN / 2)) return;
+    // plants cut with the staff (cuts.ts) rebuild the lists once per change
+    const cutsChanged = this.cutVersion !== plantCuts.version;
+    if (!this.dirty && !cutsChanged && Math.hypot(p.x - this.lastX, p.z - this.lastZ) < 3 && !this.cone.turned(camera, CONE_MARGIN / 2)) return;
     this.dirty = false;
+    this.cutVersion = plantCuts.version;
+    const cut = plantCuts.count > 0;
     this.lastX = p.x;
     this.lastZ = p.z;
     this.cone.set(camera, CONE_MARGIN);
@@ -586,7 +631,7 @@ export class GroundCover {
           ia[n * 4] = src[o]!;
           ia[n * 4 + 1] = src[o + 1]!;
           ia[n * 4 + 2] = src[o + 2]!;
-          ia[n * 4 + 3] = src[o + 3]!;
+          ia[n * 4 + 3] = cut ? src[o + 3]! * plantCuts.factorAt(src[o]!, src[o + 2]!) : src[o + 3]!;
           va[n * 2] = src[o + 4]!;
           va[n * 2 + 1] = src[o + 5]!;
           counts[k] = n + 1;

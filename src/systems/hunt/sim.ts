@@ -23,6 +23,13 @@ import { type PlayerSense, type SenseTuning, type SenseWorld, hearRange, hollown
 import { Rng } from './rng';
 import type { TrackField, TrailBreak } from './tracks';
 
+/**
+ * `PackSim.noise`: earshot (m) of a noise of loudness 1, the awareness of the hound that goes to
+ * look (above the 0.3 at which a hound investigates, well below the 1.0 of a chase) and of the
+ * others that heard it (below the 0.22 that makes the pack suspicious by itself).
+ */
+export const NOISE = { range: 20, look: 0.45, heard: 0.2 } as const;
+
 export type PackState = 'calm' | 'suspicious' | 'searching' | 'chasing';
 export type HornSignal = 'search' | 'found' | 'lost' | 'call-off';
 export type PackMode = 'patrol' | 'drive' | 'finale' | 'parforce' | 'follow' | 'stand' | 'kennel';
@@ -1210,6 +1217,37 @@ export class PackSim {
     if (L.phase === 'wind') return { crouch: Math.min(1, L.t / (L.wind * 0.5)), leap: 0 };
     if (L.phase === 'leap') return { crouch: Math.max(0, 1 - L.t / 0.1), leap: Math.min(1, L.t / LUNGE.leap) };
     return { crouch: 0, leap: 0 };
+  }
+
+  /**
+   * A noise that is not the player (`world:noise`: a thrown chestnut lands). Only a pack on patrol
+   * that has not found anyone yet (calm or suspicious) falls for it: the nearest hound in earshot
+   * goes to look, the others prick up. They are warier afterwards (their awareness stays raised
+   * while it fades), so a lure also makes the next glimpse of the player count for more.
+   * Returns how many hounds heard it.
+   */
+  noise(x: number, z: number, loud = 1): number {
+    if ((this.opt.mode ?? 'patrol') !== 'patrol' || this.caught || (this.state !== 'calm' && this.state !== 'suspicious')) return 0;
+    const range = NOISE.range * Math.min(1, Math.max(0, loud));
+    let nearest: Agent | null = null;
+    let nd = Infinity;
+    let n = 0;
+    for (const a of this.agents) {
+      if (a.kind !== 'hound' || a.gone > 0.5) continue;
+      const d = Math.hypot(a.x - x, a.z - z);
+      if (d > range) continue;
+      n++;
+      a.awareness = Math.max(a.awareness, NOISE.heard);
+      if (d < nd) {
+        nd = d;
+        nearest = a;
+      }
+    }
+    if (!nearest) return 0;
+    nearest.awareness = Math.max(nearest.awareness, NOISE.look);
+    this.lastNoise = { x, z };
+    this.packAw = Math.max(this.packAw, nearest.awareness);
+    return n;
   }
 
   /**

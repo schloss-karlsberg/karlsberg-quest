@@ -1,12 +1,13 @@
 import type { EventBus } from './events';
 import { type GameState, type GameStateStore, Store, deserializeState, serializeState } from './state';
-import { migrateSurveyBindings } from '../player/input';
+import { migrateSurveyBindings, yieldNewDefaults } from '../player/input';
 
 /** All localStorage keys of this game start with this prefix (shared origin with the explorer). */
 export const STORAGE_PREFIX = 'kq.';
 export const SAVE_KEY = (slot: string) => `${STORAGE_PREFIX}save.v1.${slot}`;
 export const SETTINGS_KEY = `${STORAGE_PREFIX}settings.v1`;
-const BINDINGS_VERSION = 1;
+/** 1: survey keys moved to the number row. 2: `throw` on F (a custom key on F keeps it). */
+const BINDINGS_VERSION = 2;
 const AUTOSAVE_FAILURE_BACKOFF_MS = 1000;
 
 /** The subset of the Web Storage API we use (lets tests inject a Map-backed fake). */
@@ -136,7 +137,9 @@ export class SettingsStore extends Store<Settings> {
     }
     const { bindingsVersion, ...settings } = loaded;
     const savedBindings = settings.bindings ?? {};
-    const bindings = (bindingsVersion ?? 0) < BINDINGS_VERSION ? migrateSurveyBindings(savedBindings) : { ...savedBindings };
+    const version = bindingsVersion ?? 0;
+    let bindings = version < 1 ? migrateSurveyBindings(savedBindings) : { ...savedBindings };
+    if (version < 2) bindings = yieldNewDefaults(bindings);
     super({ ...base, ...settings, volume: { ...base.volume, ...settings.volume }, bindings });
     this.subscribe((s) => {
       try {

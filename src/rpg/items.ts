@@ -39,7 +39,7 @@ export const ITEMS: readonly ItemDef[] = [
   },
 
   // ---- gathered for the count (TASK-002: the tour's chestnuts, placed by 00-tour.story.json) ----
-  { id: 'item.kastanie', kind: 'collectible', name_de: 'Kastanie', text_de: 'Eine Esskastanie, glatt und glänzend braun, aus der stacheligen Schale gefallen. Einschneiden, rösten, heiß schälen.', stack: 99 },
+  { id: 'item.kastanie', kind: 'collectible', name_de: 'Kastanie', text_de: 'Eine Esskastanie, glatt und glänzend braun, aus der stacheligen Schale gefallen. Einschneiden, rösten, heiß schälen. Oder werfen.', stack: 99 },
 
   // ---- the hunting horn (finale) -------------------------------------------------------
   { id: 'item.horn', kind: 'key', name_de: 'Das Horn', text_de: 'Josts Horn, das Mundstück zuerst gereicht. Kalt und echt.' },

@@ -20,6 +20,7 @@ import { newMemory } from '../src/systems/barks/rules';
 import { createSlice as createChronikSlice } from '../src/systems/chronik/types';
 import { CombatSim } from '../src/systems/combat/sim';
 import { FLASCHEN, readBottleSlice } from '../src/systems/flaschen/spots';
+import { normalizeForage } from '../src/systems/forage/logic';
 import { newLantern } from '../src/systems/hunt/lanternLogic';
 import { PARTY_CREDITS, PARTY_VARIANTS } from '../src/systems/party/types';
 import { normaliseSlice as restorePhoto } from '../src/systems/photo/core';
@@ -102,6 +103,10 @@ const slices = {
       return { found, dropped, said: found.length >= 8 && r.bool() ? ['marlene'] : [] };
     },
     missing: 'said',
+  },
+  forage: {
+    valid: (r) => ({ cuts: r.int(0, 500), dry: r.int(0, 12), found: r.int(0, 80), thrown: r.int(0, 80), hints: r.subset(['throw', 'cut']) }),
+    missing: 'hints',
   },
   fx: {
     valid: (r) => r.bool()
@@ -240,6 +245,7 @@ const owners: { [K in SliceId]?: Owner<K> } = {
     expected: ({ hp, stamina, bann }) => ({ hp, stamina, bann }),
   },
   flaschen: { restore: (s) => readBottleSlice(s) },
+  forage: { restore: (s) => normalizeForage(s) },
   photo: { restore: (s) => restorePhoto(s) },
   progression: {
     restore: (s) => {
@@ -397,6 +403,7 @@ const ownerMalformed: { [K in SliceId]?: Record<string, unknown>[] } = {
   ],
   combat: [{ stamina: 'full' }, { stamina: null }, { bann: -3 }, { hp: '50' }, { hp: 1e9 }, {}],
   flaschen: [{ found: 'fl.heute.quelle' }, { dropped: [1] }, { said: null }],
+  forage: [{ cuts: 'x' }, { dry: -3 }, { found: null }, { hints: [1, 'throw', 'throw'] }, { hints: 'cut' }],
   photo: [{ album: 'x' }, { album: [null, 4] }, { good: [1, 'reh.ricke'] }, { best: [] }, { near: 'far' }],
   progression: [
     { xp: 'lots' }, { level: -4 }, { inventory: null }, { equipped: 'staff' }, { equipped: { weapon: 4, charms: 'x' } },

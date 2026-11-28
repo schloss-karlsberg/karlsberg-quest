@@ -219,6 +219,11 @@ class Progression {
       if (got < want && !quiet) this.refuse(`Kein Platz mehr: ${this.name(item)} (${this.core.count(item)})`);
       this.changed('item');
     });
+    on('item:take', ({ item, count, receipt }) => {
+      const took = this.core.remove(item, count ?? 1);
+      if (receipt) receipt.amount = took;
+      if (took > 0) this.changed('take');
+    });
     on('item:pickup', ({ item, count, total, reason }) => {
       if (!this.core.quietNow) {
         const def = this.item(item);

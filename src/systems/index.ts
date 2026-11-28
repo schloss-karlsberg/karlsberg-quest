@@ -34,6 +34,8 @@ export const SYSTEM_LOADERS: SystemLoader[] = [
   () => import('./travel'),
   // the Fläschchen: 24 hidden bottles, one table, the Journal row and the Regal (after travel)
   () => import('./flaschen'),
+  // throw chestnuts, cut ferns and grass with the staff (after progression / combat: their events)
+  () => import('./forage'),
   // the Karlsbergquelle: its living water and the touch that starts the time travel (prologue p3q)
   () => import('./quelle'),
   // in-game cinematics (camera takeover, skip, reduced motion; contract C1)
