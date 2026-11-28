@@ -43,8 +43,9 @@ runners are shared by all open pull requests, and pull requests wait for hours. 
       with a read-only token and no secrets.
 - [x] Unit tests for the selection and the shard plan; dry run against recent pull requests.
 - [x] CONTRIBUTING, AGENTS, the architecture notes and both copies of the contribute skill describe the flow.
-- [ ] The pull request's own run shows the gates job and the selection (full suite, because it
-      changes the workflow). Record its times and the per-spec timings here.
+- [x] The pull request's own run shows the gates job and the selection (full suite, because it
+      changes the workflow): see "Hosted runs of this pull request".
+- [ ] Record the time of a complete full run and the per-spec timings here.
 - [ ] Replace the estimated minutes in `scripts/ci/e2e-minutes.ts` with the measured ones.
 
 ## Measurements (2026-11-27 and 2026-11-28, `gh run list`, `gh api .../actions/runs/<id>/jobs`)
@@ -247,6 +248,49 @@ then runs once per batch branch.
 - The workflow forces the full suite in shell, before the selection script runs, when the pull
   request changes `scripts/ci/`, the shard planner or a workflow, and checks that a full run's
   matrix contains every spec file.
+
+### Hosted runs of this pull request · 2026-11-28
+
+Commit `a8c18b52`, with 120–126 jobs queued in the organisation:
+
+| Job | Waited for a runner | Ran |
+| --- | ---: | ---: |
+| Gates (run 46099594092) | 20.5 min | 62 s: typecheck 3 s, unit tests 39 s, validate 1 s, build 4 s. Passed. |
+| Select specs and build (run 46099594041) | 23 min | 25 s. "full: the pull request changes the e2e selection or a workflow", 12 shards planned, build shared. |
+| First shard (11) | 29 min | cancelled for the proof below after 3 min, inside "Run Playwright" |
+
+The run of this commit was queued one second after the push; nothing held it back.
+
+**Cancel proof.** Run 46099594041 was cancelled by hand (`gh run cancel`) at 03:40:45 UTC, with
+shard 11 in "Run Playwright" and the other eleven shards waiting for a runner.
+
+| When | Checks API (`commits/a8c18b52/check-runs`) | `gh pr checks 143` |
+| --- | --- | --- |
+| before | shards `queued` or `in_progress`; no "End-to-end tests" check run yet | shards pending |
+| 20 s after | all 12 shards `completed / cancelled`; "End-to-end tests" `queued` | "End-to-end tests" pending, shards fail; exit code 8 |
+| 11 min after (its job got a runner) | "End-to-end tests" `completed / failure`; run conclusion `cancelled` | "End-to-end tests" fail; exit code 1 |
+
+The result job logged "End-to-end tests did not pass (mode full, shards: cancelled)". At no
+point was the check passing, skipped or neutral. The job "Report the state of main", which never
+runs on a pull request, shows as `cancelled` in a cancelled run (it is `skipped` in a normal run).
+
+One more observation, on the earlier `!cancelled()` version (commit `3c6c8ca1`, run 46098490209,
+cancelled before any job had a runner): every job ended `completed / cancelled`, and the result
+job's check run kept its unevaluated name expression, so that commit had no check named
+"End-to-end tests" at all.
+
+Not produced on a real run: a shard that had already failed before the cancel, a shard that
+stops itself after a newer push, and a pull request from a fork.
+
+### Transition when this merges
+
+A run that started with the old workflow is in the old workflow-level group
+(`e2e-pull_request-refs/pull/<n>/merge`). The new workflow's groups have other names, so the
+next push to that pull request does not cancel it, and the old workflow has no self-stop: it
+runs all 16 shards for a superseded commit. This happened on this pull request with run
+46098490209. Integrator, once per pull request that was open at the merge: after its next push,
+list the runs of the branch (`gh run list --workflow e2e.yml --branch <branch>`) and cancel the
+older one (`gh run cancel <run-id>`). CONTRIBUTING carries the same note.
 
 ## Follow-ups
 

@@ -102,10 +102,14 @@ decides:
   A file that a spec imports or reads with `new URL('../…', import.meta.url)` (a game module, a
   save fixture in `tests/fixtures/`) selects that spec too. Load files in specs only in these two
   ways, never by a path relative to the working directory: the selection cannot see those.
-- Only a green "End-to-end tests" on the latest commit counts. A cancelled run is a failed run:
-  the check reports a failure when the run or a shard was cancelled or timed out. A newer push
-  cancels the old run's jobs, and shards that are still running stop themselves within about a
-  minute, so an older commit ends with a red "End-to-end tests".
+- Only a green "End-to-end tests" on the latest commit counts. A cancelled run does not pass.
+  Seen on #143, where a run was cancelled by hand while one shard ran and eleven waited: all
+  shards ended as cancelled within 20 seconds, "End-to-end tests" stayed pending until its job
+  got a runner (11 minutes that night) and then reported a failure. `gh pr checks` exits with 8
+  while it is pending and with 1 afterwards, and the checks API shows `completed / failure`.
+  `gh run rerun <run-id>` runs a cancelled run again.
+- A newer push cancels the old run's jobs, and shards that are still running stop themselves
+  within about a minute, so an older commit ends with a red "End-to-end tests".
 - A pull request that changes `scripts/ci/`, the shard planner or a workflow always runs the full
   suite. The workflow decides that itself, before it runs the selection script, and it checks that
   a full run contains every spec file. A pull request can still edit the workflow file it is
@@ -113,6 +117,12 @@ decides:
 - A new directory needs no rule to be safe: an unknown path runs the full suite. New files below
   `src/` need a rule (`tests/e2e-select.test.ts` says which), so that later changes stay cheap.
 - A failed shard: `gh run rerun <run-id> --failed` repeats only the failed shards.
+
+One-time transition (TASK-094, 2026-11-28): a run that started with the workflow from before this
+change is in another concurrency group, so the next push to that pull request does not cancel it.
+It would run all 16 shards for a commit nobody waits for. After such a push, look for a second
+run on the branch (`gh run list --workflow e2e.yml --branch <branch>`) and cancel the older one
+(`gh run cancel <run-id>`). Each pull request that was open at the merge needs this at most once.
 
 The full suite still runs before or right after every merge:
 
