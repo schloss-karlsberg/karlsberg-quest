@@ -12,7 +12,9 @@
  *    `fallbackMinFrac` once the fallback clock has run out, if set);
  * 3. **not hidden**: at least two of three samples (top, left, right) have a clear sight line.
  *    Animals also sample the centre and bottom and need three of five clear. Terrain, footprint
- *    walls and tree trunks block these rays;
+ *    walls and tree trunks block these rays; plants do not. A target with a drawn body is measured
+ *    by pixels at the shutter instead (`PhotoWorld.seen`, visibility.ts, TASK-080): it is hidden
+ *    when less than `SEEN_MIN` of its silhouette shows, whatever covers it (ferns, grass, a rise);
  * 4. **near enough**: lens → centre ≤ `maxDist`, or ≤ `fallbackDist` once the fallback clock ran out
  *    (see `PhotoCore.tick`: seconds the player has spent within `fallbackDist` of the target);
  * 5. **steady**: the camera turned slower than `STEADY_RAD_S` on average over the last 0.3 s;
@@ -23,10 +25,12 @@
  * (`TargetJudgement.state`, then `photo:good { id, stars, state }`). It changes no stars or verdict.
  *
  * `needAll` binds targets together: a doe that is good alone is not good unless every id in its
- * `needAll` is good in the same shot too (doe and fawn both in the picture).
+ * `needAll` is good in the same shot too (doe and fawn both in the picture). The group is one
+ * picture: every member gets the stars of its weakest member.
  *
  * **Stars** (story contract C3): 0 = not in the frame, 1 = in the frame but not good, 2 = good,
- * 3 = good and closer than 0.6 × `maxDist`. "Good" means ≥ 2, everywhere: a fallback shot gets
+ * 3 = good and closer than 0.6 × `maxDist` (a measured target also needs `SEEN_CLEAR` of its
+ * silhouette in the open: a half-covered subject is never „Perfekt!“). "Good" means ≥ 2, everywhere: a fallback shot gets
  * `fallbackStars` (default 2), and with 1 it is not good (no `photo:good`, no album, no `has()`).
  *
  * In any era but today the phone has no signal: nothing is judged, the image comes out white.
@@ -114,6 +118,11 @@ export interface PhotoWorld {
   blocked?(x: number, z: number): boolean;
   /** Tree trunks near a point: x, z, radius, top (absolute y). */
   trunks?(x: number, z: number, r: number, fn: (tx: number, tz: number, tr: number, top: number) => void): void;
+  /**
+   * What a pixel test saw of that target in this very view (visibility.ts): `share` 0..1 of its
+   * silhouette that nothing hides. Undefined = not measured; the sight rays decide.
+   */
+  seen?(id: string): { share: number } | undefined;
 }
 
 export type Verdict = 'perfekt' | 'gut' | 'weit-ok' | 'leer' | 'unscharf' | 'zu-weit' | 'zu-nah' | 'nicht-mittig' | 'zu-klein' | 'verdeckt' | 'aufgeschreckt' | 'nicht-alle' | 'kein-netz';
@@ -149,8 +158,10 @@ export interface TargetJudgement {
   ndcX: number;
   ndcY: number;
   frac: number;
-  /** Clear sample sight lines (out of 5 for animals, 3 otherwise). */
+  /** Clear sample sight lines (out of 5 for animals, 3 otherwise); measured targets: the share of them. */
   clear: number;
+  /** Measured targets only: the share (0..1) of the silhouette that nothing hid. */
+  seen?: number;
   /** Counted only because the fallback distance or framing threshold applied. */
   fallback: boolean;
   /** The target's `state()` at the shot (good targets with a getter only). */
@@ -182,6 +193,10 @@ export const STEADY_RAD_S = 0.35;
 export const STEADY_WINDOW = 0.3;
 /** Album entries kept in the save. */
 export const ALBUM_MAX = 60;
+/** A measured target is hidden below this share of its silhouette (`PhotoWorld.seen`). */
+export const SEEN_MIN = 0.35;
+/** The third star needs this share in the open. */
+export const SEEN_CLEAR = 0.7;
 
 const smooth = (v: number) => (Number.isFinite(v) ? v : 0);
 
@@ -269,12 +284,17 @@ export function judgeTarget(t: PhotoTargetDef, v: PhotoView, w: PhotoWorld, fall
   ];
   if (t.kind === 'animal') samples.push(c, { x: c.x - up.x * k, y: c.y - up.y * k, z: c.z - up.z * k });
   const lens = { x: v.x, y: v.y, z: v.z };
-  for (const s of samples) if (sightClear(w, lens, s, t.r * 0.7)) out.clear++;
+  const seen = w.seen?.(t.id);
+  if (seen) {
+    out.seen = seen.share;
+    out.clear = Math.round(seen.share * samples.length);
+  } else for (const s of samples) if (sightClear(w, lens, s, t.r * 0.7)) out.clear++;
+  const hidden = seen ? seen.share < SEEN_MIN : out.clear <= samples.length / 2;
   const centred = t.centre === 'any' ? Math.abs(p.x) <= 1 && Math.abs(p.y) <= 1 : Math.abs(p.x) <= MIDDLE && Math.abs(p.y) <= MIDDLE;
   const minFrac = fallbackReady ? (t.fallbackMinFrac ?? t.minFrac) : t.minFrac;
   // the first reason that fails, in the order a player can fix it
   if (dist < (t.minDist ?? 0)) out.verdict = 'zu-nah';
-  else if (out.clear <= samples.length / 2) out.verdict = 'verdeckt';
+  else if (hidden) out.verdict = 'verdeckt';
   else if (!centred) out.verdict = 'nicht-mittig';
   else if (frac < minFrac) out.verdict = 'zu-klein';
   else if (!(v.angularSpeed <= STEADY_RAD_S)) out.verdict = 'unscharf';
@@ -288,7 +308,7 @@ export function judgeTarget(t: PhotoTargetDef, v: PhotoView, w: PhotoWorld, fall
       out.good = out.stars >= 2;
       out.verdict = out.good ? 'weit-ok' : 'zu-weit';
     } else {
-      out.stars = dist < CLOSE_STAR * t.maxDist ? 3 : 2;
+      out.stars = dist < CLOSE_STAR * t.maxDist && !(seen && seen.share < SEEN_CLEAR) ? 3 : 2;
       out.verdict = out.stars === 3 ? 'perfekt' : 'gut';
     }
   }
@@ -319,6 +339,20 @@ export function judgeShot(targets: readonly PhotoTargetDef[], era: Era, v: Photo
       d.verdict = 'nicht-alle';
       changed = true;
     }
+  }
+  // a bound group is one picture, as good as its weakest member: a clear fawn beside a
+  // half-covered doe is not „Perfekt!“
+  const low = new Map<string, number>();
+  for (const t of targets) {
+    if (!good.has(t.id) || !t.needAll?.length) continue;
+    const group = details.filter((d) => d.id === t.id || t.needAll!.includes(d.id));
+    low.set(t.id, Math.min(...group.map((d) => d.stars)));
+  }
+  for (const d of details) {
+    const stars = low.get(d.id);
+    if (stars === undefined || stars >= d.stars) continue;
+    d.stars = stars;
+    if (d.verdict === 'perfekt') d.verdict = 'gut';
   }
   // the subject's state at the moment of the shot (good targets with a getter; opaque string)
   const byId = new Map(targets.map((t) => [t.id, t]));

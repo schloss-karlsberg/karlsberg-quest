@@ -20,6 +20,11 @@ export interface PhotoTargetHooks {
   /** false = the subject is spooked (photo mode judges the shot accordingly). */
   calm?: () => boolean;
   state?: () => string;
+  /**
+   * The drawn body (a three.js Object3D; opaque here): photo mode measures at the shutter how much
+   * of it the lens really sees (`registerSubject`, src/systems/photo/visibility.ts).
+   */
+  body?: () => object | null;
 }
 
 export interface PhotoBridge {
@@ -53,12 +58,20 @@ function asUndo(r: unknown): () => void {
 
 export function createPhotoBridge(mods: Record<string, unknown> = PHOTO_MODS): PhotoBridge {
   const fn = findFn(mods, 'attachTarget') as ((id: string, t: PhotoTargetHooks) => unknown) | null;
+  const subject = findFn(mods, 'registerSubject') as ((id: string, body: () => object | null) => unknown) | null;
   if (!fn) return { active: false, attach: () => noop };
   return {
     active: true,
     attach(id, hooks) {
       try {
-        return asUndo(fn(id, hooks));
+        const { body, ...live } = hooks;
+        const off = asUndo(fn(id, live));
+        if (!body || !subject) return off;
+        const offBody = asUndo(subject(id, body));
+        return () => {
+          off();
+          offBody();
+        };
       } catch (err) {
         console.warn(`[animals] photo attachTarget('${id}') failed`, err);
         return noop;

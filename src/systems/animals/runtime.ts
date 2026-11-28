@@ -290,6 +290,7 @@ export class AnimalsRuntime {
           at: () => this.centreOf(s.id),
           calm: () => this.deer.find((d) => d.id === s.id)?.state !== 'flee',
           state: () => this.deer.find((d) => d.id === s.id)?.state ?? 'gone',
+          body: () => (s.visible ? (s.body?.root ?? null) : null),
         }),
       );
     }

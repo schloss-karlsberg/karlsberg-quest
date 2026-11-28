@@ -282,6 +282,12 @@ html[data-kq-reduced-motion] .kq-photo-card {
   font-size: 13px;
   color: #ffd27a;
 }
+/* why a shot was weak, and what to change (TASK-080) */
+.kq-photo-tip {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.3;
+}
 
 /* album tab */
 .kq-album-grid {
