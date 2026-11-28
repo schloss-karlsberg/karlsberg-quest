@@ -101,8 +101,10 @@ behind the camera) and by the casters' own impostor ring (`CAST_N1` 60 · k inst
 pairs at seven views per tier differ by 0.03–0.5 of 255 on average). Over the seven present-day
 places the frame draws 1.525 M → 1.516 M triangles on Hoch and 1.009 M → 0.999 M on Mittel, the
 shadow pass 446 k → 436 k and 292 k → 282 k; the largest peak is 1.89 M → 1.93 M on Hoch (plateau,
-sun at the back), unchanged on Mittel. Draw calls are the same within one. Frame times could not
-be compared on the shared machine (identical work measured 2.5 and 3.9 ms in two runs).
+sun at the back), unchanged on Mittel. Draw calls are the same within one. Frame time
+(`kq.bench`, uncapped, baseline and branch alternately in one hold): today-forest 4.10 → 4.15 ms
+on Hoch and 2.71 → 2.66 ms on Mittel, GPU timer 10.3 → 10.2 ms and 5.5 → 5.7 ms; the other four
+scenes agree to 0.07 ms.
 
 Not lighting, the same before and after, left as they are: at the Quelle the lens cuts in when
 its boom meets the spring house's wall or the ravine's slope (`src/player/camera.ts`, by design;
@@ -118,7 +120,7 @@ rebuilds (no step with them alone).
 
 Checks: `tests/forest-casters.test.ts` (the reach rule, casters for every yaw, a turn and a walk
 between rebuilds, the sun), `tests/world-canopy.test.ts`, `e2e/turn-light.spec.ts` (haze by yaw on
-Niedrig; on Mittel a rebuild of the tree lists leaves the frame as it was: 0.02 against 27.6 with
+Niedrig; on Mittel a rebuild of the tree lists leaves the frame as it was: 0.03 against 27.5 with
 the old behaviour as the control, SwiftShader). Tool: `e2e/gpu/turn-luma.gpu.ts`
 (`docs/PERFORMANCE.md` §2). Docs: `docs/ARCHITECTURE.md` (forest culling, model trees),
 `docs/PERFORMANCE.md` §3.10.

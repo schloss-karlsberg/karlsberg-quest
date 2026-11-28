@@ -727,10 +727,23 @@ picture's 72 (`CAST_N1`): look pairs at seven views per tier, same instant and c
 side the pictures cannot be told apart. Over the seven present-day places the frame draws 1.525 M →
 1.516 M triangles on Hoch (shadow pass 446 k → 436 k) and 1.009 M → 0.999 M on Mittel (292 k →
 282 k); the largest peak is 1.89 M → 1.93 M on Hoch (plateau, sun at the back) and unchanged on
-Mittel. Niedrig has no shadow pass and draws what it drew. Draw calls are unchanged. Frame and
-GPU times from `kq.bench` (`TURN_BENCH=1`) were not usable on the shared machine that day: a
-scene with identical work (1789 Ehrenhof, 1.06 M triangles in both builds) measured 2.5 ms and
-3.9 ms in two runs, more than any difference the triangle counts allow.
+Mittel. Niedrig has no shadow pass and draws what it drew. Draw calls are the same within one.
+
+Frame time from `kq.bench` (`TURN_BENCH=1`: uncapped, the shadow map every frame), baseline and
+branch alternately inside one hold of the exclusive lane, three rounds on Hoch and two on Mittel
+(mean frame ms / GPU timer ms):
+
+| Scene | Hoch before | after | Mittel before | after |
+|---|---|---|---|---|
+| today-forest (turns 160° in the forest) | 4.10 / 10.3 | 4.15 / 10.2 | 2.71 / 5.5 | 2.66 / 5.7 |
+| today-fly | 3.03 / 9.2 | 2.99 / 8.7 | 2.29 / 6.5 | 2.23 / 6.4 |
+| 1789-fly | 2.40 / 5.6 | 2.43 / 5.4 | 1.99 / 4.7 | 2.03 / 4.9 |
+| 1789-ehrenhof | 2.51 / 5.3 | 2.56 / 5.2 | 1.88 / 3.6 | 1.89 / 3.6 |
+| 1796-ruin | 3.54 / 7.9 | 3.54 / 7.8 | 2.14 / 4.6 | 2.16 / 4.5 |
+
+The rounds of one build agree to about 0.1 ms, and so do the two builds. Runs in separate holds do
+not: the same scene with identical work (1789 Ehrenhof) measured 2.5 ms and 3.9 ms an hour apart
+on the shared machine, so a before / after has to be interleaved like this.
 
 What is left are steps of the scene itself, the same before and after: the lens cutting in
 where its boom meets the spring house's wall or the ravine's slope at the Quelle (up to 30 in
