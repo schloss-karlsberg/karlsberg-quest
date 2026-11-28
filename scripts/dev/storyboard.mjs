@@ -513,7 +513,7 @@ const SHOTS = [
   {
     id: 't9-quelle-gruppe',
     run: (k, h) => {
-      h.place({ era: 'today', x: 1059.3, z: -833.1, tx: 1065.8, tz: -829, pitch: 8, zoom: 3.3 });
+      h.place({ era: 'today', x: 1059.3, z: -833.1, tx: 1066, tz: -829.5, pitch: 8, zoom: 3.3 });
       h.look('pause');
       h.tour('quelle', { gather: false });
       k.walk.go('imhoff', 'p-aufstieg', 'plateau');
@@ -523,26 +523,26 @@ const SHOTS = [
   {
     id: 't10-allein',
     run: (k, h) => {
-      h.place({ era: 'today', x: 1059.3, z: -833.1, yaw: 50 });
+      h.place({ era: 'today', x: 1059.3, z: -833.1, yaw: 204 });
       h.look('pause');
-      h.camera({ x: 1055, z: -830.7, y: 1, tx: 1061, tz: -834.5, ty: 1.4, fov: 56, showAvatar: true });
+      h.camera({ x: 1061.8, z: -837.3, y: 1, tx: 1058.5, tz: -831, ty: 1.4, fov: 56, showAvatar: true });
     },
   },
   {
     id: 't10-bussole',
     ui: '.kqs-bussole',
     run: (k, h) => {
-      h.place({ era: 'today', x: 1059.3, z: -833.1, yaw: 50 });
+      h.place({ era: 'today', x: 1059.3, z: -833.1, yaw: 204 });
       h.look('pause');
       k.ctx.state.mutable.flags['story.compass'] = true;
-      h.camera({ x: 1059, z: -832.7, y: 1.55, tx: 1060.1, tz: -833.8, ty: 0.65 });
+      h.camera({ x: 1059.3, z: -833.6, y: 1.55, tx: 1058.9, tz: -832.1, ty: 0.65 });
     },
   },
   {
     id: 't10-laub',
     ui: '.kqs-dlg, .kqs-bussole',
     run: async (k, h) => {
-      h.place({ era: 'today', x: 1057.7, z: -832.5, tx: 1060.6, tz: -834.4, pitch: -8, zoom: 3 });
+      h.place({ era: 'today', x: 1060.4, z: -834.4, tx: 1058.8, tz: -831.3, pitch: -8, zoom: 3 });
       h.look('pause');
       k.ctx.state.mutable.flags['story.compass'] = true;
       k.ctx.events.emit('story:cue', { id: 'bussole:jolt', data: { hold: 4 } });
@@ -552,7 +552,7 @@ const SHOTS = [
   {
     id: 't10-touch',
     run: (k, h) => {
-      h.place({ era: 'today', x: 1058.2, z: -831.4, tx: 1060.6, tz: -834.4, pitch: -16, zoom: 2.6 });
+      h.place({ era: 'today', x: 1059.4, z: -835.1, tx: 1058.8, tz: -831.3, pitch: -16, zoom: 2.6 });
       h.look('pause');
       k.quelle.touch();
       k.step(60);
@@ -564,7 +564,7 @@ const SHOTS = [
     id: 't11-brunnenstube',
     ui: '.kq-photo-status',
     run: (k, h) => {
-      h.place({ era: '1789', x: 1055.6, z: -831.6, tx: 1061, tz: -834.5, pitch: -6, zoom: 4.5 });
+      h.place({ era: '1789', x: 1061.7, z: -836.2, tx: 1058.5, tz: -831, pitch: -6, zoom: 4.5 });
       h.phone();
       // Keep the established third-person view with just the phone's status overlaid.
       k.ctx.player.rig.setPhoto(false);
@@ -609,7 +609,7 @@ const SHOTS = [
     id: 't14-pause-hub',
     ui: '[data-testid="page-chapters"]',
     run: (k, h) => {
-      h.place({ era: 'today', x: 1058, z: -832.1, tx: 1061, tz: -834.5, pitch: -9, zoom: 3.4 });
+      h.place({ era: 'today', x: 1059.9, z: -834.6, tx: 1058.5, tz: -831, pitch: -9, zoom: 3.4 });
       h.look('pause');
       k.ctx.ui.cards.dismissNotice();
       window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }));
@@ -942,7 +942,7 @@ const SHOTS = [
   {
     id: 'pl-quelle-1793-02',
     run: (k, h) => {
-      h.place({ era: '1793-02', x: 1056.8, z: -831.0, tx: 1061.6, tz: -834.2, pitch: -8, zoom: 3.8 });
+      h.place({ era: '1793-02', x: 1060.4, z: -836.1, tx: 1057.8, tz: -831, pitch: -8, zoom: 3.8 });
       k.lantern.toggle(true);
       k.step(30);
     },
@@ -950,14 +950,14 @@ const SHOTS = [
   {
     id: 'pl-quelle-1793-07',
     run: (k, h) => {
-      h.place({ era: '1793-07', x: 1056.8, z: -831.0, tx: 1061.6, tz: -834.2, pitch: -8, zoom: 3.8 });
+      h.place({ era: '1793-07', x: 1060.4, z: -836.1, tx: 1057.8, tz: -831, pitch: -8, zoom: 3.8 });
       k.step(30);
     },
   },
   {
     id: 'pl-quelle-1796',
     run: (k, h) => {
-      h.place({ era: '1796', x: 1056.8, z: -831.0, tx: 1061.6, tz: -834.2, pitch: -8, zoom: 3.8 });
+      h.place({ era: '1796', x: 1060.4, z: -836.1, tx: 1057.8, tz: -831, pitch: -8, zoom: 3.8 });
       k.step(30);
     },
   },
@@ -1041,7 +1041,7 @@ const SHOTS = [
     id: 'e0-erwachen',
     ui: '.kq-photo-status',
     run: (k, h) => {
-      h.place({ era: 'today', x: 1059.3, z: -833.1, yaw: 50, pitch: -5, zoom: 4.2 });
+      h.place({ era: 'today', x: 1059.3, z: -833.1, yaw: 204, pitch: -5, zoom: 4.2 });
       h.look('dusk');
       h.phone(1, '16:44');
       k.ctx.player.rig.setPhoto(false);

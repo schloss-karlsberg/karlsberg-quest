@@ -661,10 +661,10 @@ describe('story files', () => {
     };
     const all = () => runs.flatMap((r) => r.actions);
     const SPRING = { x: 1059.3, z: -833.1 };
-    const k0bWake = { x: 1059.3, z: -833.1, yaw: 50, era: 'today', text: 'Du kommst an der Quelle zu dir, im Heute. Nichts ist verloren.' };
+    const k0bWake = { x: 1059.3, z: -833.1, yaw: 204, era: 'today', text: 'Du kommst an der Quelle zu dir, im Heute. Nichts ist verloren.' };
     const k1 = files.find((f) => f.story.chapter === 'k1')!.story;
     // the chapter checkpoint is the spring (chapterEntered teleports there from the station bed)
-    expect(k1.checkpoint).toEqual({ x: 1059.3, z: -833.1, yaw: 50, era: 'today' });
+    expect(k1.checkpoint).toEqual({ x: 1059.3, z: -833.1, yaw: 204, era: 'today' });
     expect(k1.beats.slice(0, 4).map((b) => b.id)).toEqual(['k1_0', 'k1_0b', 'k1_0c', 'k1_1']);
     engine.goto('k1');
     expect(slice.beat).toBe('k1_0');
@@ -694,7 +694,7 @@ describe('story files', () => {
     // back to today on the walk: Q at the spring takes you back, never the Ehrenhof
     runs.length = 0;
     step({ era: 'today', x: 1150, z: -1000, flags: { 'k1.vorspiel': true } });
-    expect(all()).toContainEqual({ do: 'anchor', to: '1789', x: 1061, z: -834.5, r: 10 });
+    expect(all()).toContainEqual({ do: 'anchor', to: '1789', x: 1058.5, z: -831, r: 10 });
     expect(all().some((a) => a.do === 'anchor' && a.to !== null && a.x === 1222)).toBe(false);
     step({ era: '1789', x: 1150, z: -1000, flags: { 'k1.vorspiel': true } }, 4);
     expect(slice.beat).toBe('k1_0b');
@@ -730,7 +730,7 @@ describe('story files', () => {
     expect(k1.beats.find((b) => b.id === 'k1_0c')!.wake).toEqual(k0bWake);
     runs.length = 0;
     step({ era: 'today', x: 1190, z: -1113, flags: { 'k1.vorspiel': true, 'disguise.coat': true, 'disguise.letter': true } });
-    expect(all()).toContainEqual({ do: 'anchor', to: '1789', x: 1061, z: -834.5, r: 10 });
+    expect(all()).toContainEqual({ do: 'anchor', to: '1789', x: 1058.5, z: -831, r: 10 });
     step({ era: '1789', x: 1190, z: -1113, flags: { 'k1.vorspiel': true, 'disguise.coat': true, 'disguise.letter': true } }, 4);
     expect(slice.beat).toBe('k1_0c');
     // the court system sets court.admitted when the Musterung is passed → k1_1
@@ -744,7 +744,7 @@ describe('story files', () => {
     // the anchor rule: not admitted → the spring; admitted → the Ehrenhof
     runs.length = 0;
     step({ era: 'today', x: 1195, z: -1116 });
-    expect(all()).toContainEqual({ do: 'anchor', to: '1789', x: 1061, z: -834.5, r: 10 });
+    expect(all()).toContainEqual({ do: 'anchor', to: '1789', x: 1058.5, z: -831, r: 10 });
     step({ era: '1789', x: 1195, z: -1116 });
     runs.length = 0;
     step({ era: 'today', x: 1195, z: -1116, flags: { 'court.admitted': true } });
@@ -752,7 +752,7 @@ describe('story files', () => {
     expect(all().some((a) => a.do === 'anchor' && a.x === 1061)).toBe(false);
     // caught in the prelude: you wake at the spring
     const k0b = k1.beats.find((b) => b.id === 'k1_0b')!;
-    expect(k0b.wake).toEqual({ x: 1059.3, z: -833.1, yaw: 50, era: 'today', text: 'Du kommst an der Quelle zu dir, im Heute. Nichts ist verloren.' });
+    expect(k0b.wake).toEqual({ x: 1059.3, z: -833.1, yaw: 204, era: 'today', text: 'Du kommst an der Quelle zu dir, im Heute. Nichts ist verloren.' });
     // the chapter's oil and return-tip reactions wait for the end of the prelude
     for (const id of ['oel-a', 'oel-b', 'lauf-zurueck']) expect(JSON.stringify(k1.on!.find((r) => r.id === id)!.when)).toContain('"not":{"flag":"k1.vorspiel"}');
     // every Ehrenhof anchor in k1 waits for court.admitted
@@ -781,7 +781,7 @@ describe('story files', () => {
     expect(slice.beat).toBe('k1_0');
     const acts = runs.flatMap((r) => r.actions);
     // chapterEntered(resume) does not teleport: the beat's own teleport does (onResume)
-    expect(acts).toContainEqual({ do: 'teleport', x: 1059.3, z: -833.1, yaw: 50, onResume: true });
+    expect(acts).toContainEqual({ do: 'teleport', x: 1059.3, z: -833.1, yaw: 204, onResume: true });
     // the old anchor (shift.* flags) goes, the spring's flags come, the objective points at it
     expect(acts).toContainEqual({ do: 'anchor', to: null });
     expect(acts.indexOf(acts.find((a) => a.do === 'anchor')!)).toBeLessThan(acts.findIndex((a) => a.do === 'teleport'));

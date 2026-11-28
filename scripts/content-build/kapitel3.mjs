@@ -3,9 +3,9 @@ import { clue, noun, say, seq, hints, src, write, Z, P } from './common.mjs';
 const ch = 'k3';
 const E = '1793-07';
 // Marlene's notes at home: since the tour bridge (WP-01) at the Karlsbergquelle, across the trail
-// south-west of the trough (quelle/layout.ts local u 0, w 12), r 8: the spawn (1059.3/−833.1) and
+// north-east of the trough (quelle/layout.ts local u 0, w 12), r 8: the spawn (1059.3/−833.1) and
 // the trough's E zone stay outside the clue radius. The story also grants the clues.
-const QUELLE_NOTES = [1051.3, -827.4];
+const QUELLE_NOTES = [1063.4, -842];
 const EH = [1210, -1114];
 const REG = 'B03.1.eg-registratur';
 const NAT = 'B04.2.og-naturalienkabinett';

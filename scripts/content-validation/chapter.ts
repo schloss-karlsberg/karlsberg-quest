@@ -303,6 +303,7 @@ export class Chapter {
       (!c.match?.mode || c.match.mode === this.huntMode);
     if (c.event === 'hunt:finale') return this.huntMode === 'finale';
     if (c.event === 'quelle:touch') return this.flag('quelle.call');
+    if (c.event === 'quelle:find') return this.flag('quelle.find');
     return true;
   }
 

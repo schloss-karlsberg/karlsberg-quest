@@ -410,7 +410,7 @@ test('I and Pause open Ausrüstung & Talente, and learning a talent changes the 
   await page.evaluate(() => {
     const k = window.kq!;
     k.setEra('today');
-    k.teleport(1059.3, -833.1, 50);
+    k.teleport(1059.3, -833.1, 204);
     k.step(4);
   });
   await openPause(page);

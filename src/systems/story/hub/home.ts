@@ -16,7 +16,7 @@ export const HOME = {
   x: QUELLE.x,
   z: QUELLE.z,
   r: 12,
-  spawn: { x: 1059.3, z: -833.1, yaw: 50 },
+  spawn: { x: 1059.3, z: -833.1, yaw: 204 },
   safeR: 40,
 } as const;
 

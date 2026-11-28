@@ -57,7 +57,7 @@
 
 | id | Ort | Bezug | x | z | r | Ära | Trigger |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `loc.k1.quelle` | Karlsbergquelle mit Trog (heute) und Brunnenstube (1789, FIKTION `cx.42`) | OSM-KQ, LiDAR Quellmulde 1061/−835, `cx.41` | 1061 | −834,5 | 10 | heute (Morgengrauen) → 1789-07 | Kapitelstart (Checkpoint 1059,3/−833,1); E „Wasser berühren“ (`quelle:touch`); Q-Anker zurück nach 1789, solange `court.admitted` fehlt; Aufwachort in `k1_0b` |
+| `loc.k1.quelle` | Karlsbergquelle mit Trog (heute) und Brunnenstube (1789, FIKTION `cx.42`) | OSM-KQ, LiDAR Quellmulde 1058/−831, `cx.41` | 1058,5 | −831 | 10 | heute (Morgengrauen) → 1789-07 | Kapitelstart (Checkpoint 1059,3/−833,1); E „Wasser berühren“ (`quelle:touch`); Q-Anker zurück nach 1789, solange `court.admitted` fehlt; Aufwachort in `k1_0b` |
 | `loc.k1.ehrenhof` | Ehrenhof mit Gitter und Wachhäusern | TF-01, KB-B37, KB-B38, KB-B39 | 1192 | −1115 | 40 | 1789-07 | Anker A; `echo.k1.wache` beim Betreten |
 | `loc.k1.registratur` | Registratur, Nordflügel EG | B03.1.eg-registratur (KB-B03) | 1202 | −1153 | 6 (Raumpolygon) | 1789-07 | Soll |
 | `loc.k1.bauplatz` | Bauplatz am Galerie-Ostende | KB-B07 (Rotunde, 1789 im Bau), KB-B06 | 1276 | −1228 | 25 | 1789-07 | Hanne; Zeichen am Quader (1262/−1224, r 3) |

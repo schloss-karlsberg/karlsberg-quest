@@ -33,9 +33,11 @@ import {
   groundLocal,
   lookFor,
   meshGround,
+  OVERFLOW_LIP,
   PATH_HALF,
   PIECES,
   QUELLE,
+  RUNNEL,
   toLocal,
   toWorld,
   TRAIL,
@@ -285,6 +287,47 @@ function fern(b: SetBuilder, u: number, w: number, s: number, seed: number, snow
   }
 }
 
+/** Big ferns of the hollow (local u, w, height m): clear of the steps, the trail strands and the forecourt. */
+export const HOLLOW_FERNS: readonly (readonly [number, number, number])[] = [
+  [-4.7, -1.3, 0.62],
+  [3.7, -0.9, 0.7],
+  [4.9, -2.7, 0.55],
+  [-1.9, -2.4, 0.5],
+  [2.4, -3.0, 0.6],
+  [-0.9, -5.7, 0.55],
+  [2.7, -5.4, 0.65],
+  [-5.2, 0.7, 0.5],
+  [5.6, 0.2, 0.6],
+  [-6.3, -0.9, 0.58],
+];
+
+/** Mossy boulders where the wall meets the slope (local u, w, size m). */
+export const HOLLOW_BOULDERS: readonly (readonly [number, number, number])[] = [
+  [3.45, 0.35, 0.5],
+  [4.6, -1.5, 0.66],
+  [-4.9, -0.2, 0.55],
+  [1.9, -2.1, 0.44],
+];
+
+/**
+ * A big stylised forest fern (`nature2.ferns#fern`, 288 triangles) `hgt` m tall and about 3.3 times
+ * as wide; a fan of leaf cones on the low tier.
+ */
+function bigFern(b: SetBuilder, u: number, w: number, hgt: number, seed: number): void {
+  at(b, u, w, g(b, u, w) - 0.04, seed * 53);
+  const k = b.kit;
+  b.model(
+    'nature2.ferns#fern',
+    () => {
+      for (let i = 0; i < 5; i++) {
+        const a = i * 1.26 + seed;
+        k.cone(0.2 * hgt, 1.5 * hgt, Math.cos(a) * 0.3 * hgt, 0, Math.sin(a) * 0.3 * hgt, tint(FERN, rng(seed * 7 + i), 0.15), 5, [Math.cos(a) * 0.75, 0, Math.sin(a) * 0.75]);
+      }
+    },
+    { yaw: seed * 1.7, scale: hgt / FERN_FAR_AUTHORED },
+  );
+}
+
 /**
  * Ivy hanging down a face (prop frame: the face is the local z = 0 plane, +z out of it) from
  * (x, y): a wandering strand of small leaves, `n` of them.
@@ -511,7 +554,7 @@ function logBody(k: Kit, r: () => number): void {
   const mossy2: [V3, V3, V3, V3][] = [];
   for (let i = 0; i < nA; i++) {
     const a = ang(i + 0.5);
-    const back = Math.cos(a) < 0; // the side towards the wall (north-east, shady)
+    const back = Math.cos(a) < 0; // the side towards the wall (shady)
     const bottom = Math.abs(a + Math.PI / 2) < 0.7;
     for (let j = 0; j < nL; j++) {
       const q: [V3, V3, V3, V3] = [P(i, j), P(i, j + 1), P(i + 1, j + 1), P(i + 1, j)];
@@ -617,6 +660,10 @@ function logTrough(b: SetBuilder): void {
   }
   at(b, T.u, T.w, axisY);
   logBody(k, r);
+  // the overflow lip at the low end (the water falls from it to the runnel: quelle/layout.ts `overflow`)
+  k.surface = SURF.FINEWOOD;
+  k.box(OVERFLOW_LIP + 0.1, 0.035, 0.12, T.len / 2 + OVERFLOW_LIP / 2 - 0.04, TROUGH_CUT - 0.1, 0, HEART, [0, 0, -0.12]);
+  for (const s of [-1, 1]) k.box(OVERFLOW_LIP + 0.1, 0.05, 0.02, T.len / 2 + OVERFLOW_LIP / 2 - 0.04, TROUGH_CUT - 0.085, s * 0.06, CUT, [0, 0, -0.12]);
   k.surface = prevSurf;
   b.box(...toWorld(T.u, T.w), QUELLE.facing, T.len / 2, T.r + 0.02);
 }
@@ -813,7 +860,7 @@ function springHouse(b: SetBuilder, look: QuelleLook): void {
 }
 
 /**
- * Sandstone steps on the left, climbing into the slope (north-east): each slab sits at the
+ * Sandstone steps on the left, climbing into the slope (south-west): each slab sits at the
  * ground of its middle, so its back is buried in the slope and only its front edge stands.
  */
 function steps(b: SetBuilder, look: QuelleLook): void {
@@ -1117,13 +1164,17 @@ function basin(b: SetBuilder, look: QuelleLook): void {
   b.box(...toWorld(B.u, B.w), QUELLE.facing, B.len / 2 + 0.03, B.depth / 2 + 0.03);
 }
 
+/** Where the information board stands (local u, w) and how far it is turned to the right (degrees). */
+export const BOARD_AT = { u: 4.3, w: 3.55, turn: 32 } as const;
+
 /** The information board by the trail (today; OSM node 5762403253 stands about 5 m from the spring). */
 function infoBoard(b: SetBuilder): void {
   const k = b.kit;
-  // at the trail, front right of the spring, turned to the people coming up from the Weiher
-  const [x, z] = toWorld(3.4, 3.3);
+  // between the brook and the trail, front right of the spring: the first thing the people coming
+  // up from the Weiher reach, turned towards them
+  const [x, z] = toWorld(BOARD_AT.u, BOARD_AT.w);
   const y = b.heightAt(x, z) - 0.05;
-  const deg = QUELLE.facing - 25;
+  const deg = QUELLE.facing - BOARD_AT.turn;
   k.place(x, y, z, face(deg));
   const prevSurf = k.surface;
   k.surface = SURF.PLANKS;
@@ -1222,12 +1273,12 @@ function brookBanks(b: SetBuilder, look: QuelleLook): void {
       }
     }
   }
-  // stepping stones where the branch to the steps crosses the runnel
+  // flat stones where the runnel leaves the forecourt (you step over it there to the board)
   k.surface = SURF.STONE;
-  for (const [u, w, s] of [[-3.42, 1.86, 0.17], [-3.5, 2.22, 0.16], [-3.38, 2.58, 0.15]] as const) {
-    const [x, z] = toWorld(u, w);
+  for (const [du, dw, s] of [[-0.28, 0.42, 0.17], [0.08, 0.5, 0.16], [0.42, 0.6, 0.15]] as const) {
+    const [x, z] = toWorld(RUNNEL[0] + du, RUNNEL[1] + dw);
     k.place(x, meshGround(b.heightAt, x, z) - 0.06, z, r() * 6.28);
-    k.rock(s, 0, 0, 0, look === 'today' ? stoneCol(r) : tint(ASHLAR_WARM, r, 0.06), 890 + Math.round(w * 10), 0.42);
+    k.rock(s, 0, 0, 0, look === 'today' ? stoneCol(r) : tint(ASHLAR_WARM, r, 0.06), 890 + Math.round(dw * 10), 0.42);
   }
   k.surface = prevSurf;
 }
@@ -1291,10 +1342,26 @@ export function buildQuelle(b: SetBuilder, look: QuelleLook): void {
     [3.0, 0.4, 0.75],
     [3.9, -1.2, 1.0],
     [-1.6, -5.3, 0.9],
-    [4.4, 2.2, 0.7],
+    [4.7, 1.2, 0.7],
   ];
   const keep = look === 'ruin' || look === 'today' ? ferns : ferns.slice(0, 6);
   keep.forEach(([u, w, s], i) => fern(b, u, w, s * (look === 'ruin' ? 1.15 : 1), 11 + i, look === 'winter'));
+  // The hollow faces north-north-east and lies in the flank's shade all afternoon: what makes it
+  // read from the path is green. Big forest ferns round the wall ends, the steps and the spring
+  // house, and mossy boulders where the wall meets the slope (today; 1796 has the ferns too).
+  if (look === 'today' || look === 'ruin') {
+    HOLLOW_FERNS.forEach(([u, w, hgt], i) => bigFern(b, u, w, hgt, 60 + i));
+  }
+  if (look === 'today') {
+    const r = rng(87);
+    const prev = k.surface;
+    for (const [u, w, size] of HOLLOW_BOULDERS) {
+      at(b, u, w, g(b, u, w) - size * 0.28, r() * 360);
+      blob(k, size, 0, 0, 0, 870 + Math.round(u * 10), 0.62, { top: tint(r() < 0.5 ? MOSS : MOSS_LIGHT, r, 0.08), side: stoneCol(r), t: 0.25, detail: 1 });
+      b.circle(...toWorld(u, w), size * 0.75);
+    }
+    k.surface = prev;
+  }
   // ivy on the slope behind the wall (today)
   if (look === 'today') {
     const r = rng(2025);

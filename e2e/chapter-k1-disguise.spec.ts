@@ -18,7 +18,7 @@ async function startInSummer(page: import('@playwright/test').Page): Promise<voi
   await page.evaluate(() => {
     const k = window.kq!;
     k.ctx.era.set('1789');
-    k.teleport(1059.3, -833.1, 50, 0);
+    k.teleport(1059.3, -833.1, 204, 0);
     k.step(4);
   });
   // A direct chapter jump shows the chapter card. Its hold includes the court cue and quest offer.

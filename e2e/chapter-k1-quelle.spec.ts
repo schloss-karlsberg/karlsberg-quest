@@ -75,7 +75,7 @@ test('chapter 1: caught on the walk up, you wake at the spring and Q there takes
   expect(await distTo(page, SPRING.x, SPRING.z)).toBeLessThan(1);
   // the anchor is the spring, never the Ehrenhof before the court has let you in
   const f = await page.evaluate(() => window.kq!.state().flags);
-  expect([f['shift.x'], f['shift.z']]).toEqual([1061, -834.5]);
+  expect([f['shift.x'], f['shift.z']]).toEqual([1058.5, -831]);
   await shot(page, 'x0-quelle-wach');
   await walk(page, [[SPRING.x, SPRING.z]]);
   await shiftToPast(page);
