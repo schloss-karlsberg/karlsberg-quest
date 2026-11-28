@@ -234,12 +234,18 @@ function icicle(b: SetBuilder, x: number, y: number, z: number, r: number, len: 
  * clump (`nature.fern.02`, four ferns, ~5.6k triangles, drawn in the main, shadow and water
  * reflection passes) stays where the player stands at home base: within `FERN_NEAR` m of the
  * trough, or within `FERN_TRAIL` m of the trail's stretch through the hollow (its points within
- * `FERN_TRAIL_SPAN` m of the trough). Further out a clump is the stylised forest fern of the
+ * `FERN_TRAIL_SPAN` m of the trough), and never on the slope behind the wall (`FERN_BEHIND`). Further out a clump is the stylised forest fern of the
  * scattered props (`nature2.ferns#fern`, 288 triangles) at the same spot, height and footprint.
  */
 export const FERN_NEAR = 9;
 export const FERN_TRAIL = 3;
 export const FERN_TRAIL_SPAN = 14;
+/**
+ * On the slope more than this far (m) behind the wall's face a clump is always the stylised fern:
+ * from the forecourt the wall and the slope hide most of the small scanned ferns there, and the
+ * hollow's big ferns stand among them (TASK-087; seven clumps, about 37 k triangles per pass).
+ */
+export const FERN_BEHIND = 1.9;
 
 /** Local (u, w) points of the trail through the hollow, every 0.5 m. */
 let hollowTrail: [number, number][] | null = null;
@@ -255,6 +261,7 @@ function hollowTrailPoints(): [number, number][] {
 /** Whether the fern clump at local (u, w) keeps the detailed CC0 model (see `FERN_NEAR`). */
 export function fernDetailed(u: number, w: number): boolean {
   const T = PIECES.trough;
+  if (w < PIECES.wall.w - FERN_BEHIND) return false;
   if (Math.hypot(u - T.u, w - T.w) <= FERN_NEAR) return true;
   return hollowTrailPoints().some(([tu, tw]) => Math.hypot(u - tu, w - tw) <= FERN_TRAIL);
 }
@@ -837,7 +844,8 @@ function springHouse(b: SetBuilder, look: QuelleLook): void {
   k.surface = SURF.NONE;
   at(b, H.u, H.w - H.depth * 0.4, gg - 0.35);
   k.rock(2.0, 0, 0, -0.9, tint(EARTH, r, 0.08), 900, 0.5);
-  blob(k, 1.4, 0.1, 0.62, -0.8, 901, 0.3, { top: tint(dressed ? ink(0x5a6a34) : MOSS_DARK, r, 0.06), detail: 1 });
+  // high enough to swallow the back of the vault: the path's upper leg looks down on it from behind
+  blob(k, 1.45, 0.05, 0.9, -0.85, 901, 0.5, { top: tint(dressed ? ink(0x5a6a34) : MOSS_DARK, r, 0.06), detail: 1 });
   // loose stones heaped against its flanks
   k.surface = SURF.STONE;
   for (const sd of [-1, 1]) {

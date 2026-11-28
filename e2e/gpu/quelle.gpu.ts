@@ -144,7 +144,7 @@ test(`the tour group at its stop (${GRAPHICS})`, async ({ page }) => {
   mkdirSync(OUT, { recursive: true });
   const views = [
     { id: 'arriving', ...local(10.5, 7.8, 0.5, 2.6, -7) },
-    { id: 'from-the-trough', ...local(0.3, 2.3, -1.5, 7, -4) },
+    { id: 'beside-the-trough', ...local(3.3, 3.5, -1.5, 6.6, -5) },
     { id: 'from-the-hairpin', ...local(-7.5, 3.1, 0.5, 3, -9) },
   ];
   const log: unknown[] = [];
