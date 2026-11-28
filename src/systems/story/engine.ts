@@ -356,8 +356,8 @@ export class StoryEngine {
   private readonly edges = new Map<string, boolean>();
   /** Last firing time (chapter seconds) of repeatable reactions with a cooldown (not persisted). */
   private readonly lastFired = new Map<string, number>();
-  /** Pack dialogue events since the last completion check, with the completion latches they bumped. */
-  private dialogueEvents: { group: number; name: string; id: unknown; latches: string[] }[] = [];
+  /** Events since the last completion check that can affect completion, with any pack dialogue group. */
+  private completionEvents: { group?: number; name: string; id: unknown; latches: string[] }[] = [];
 
   constructor(
     files: StoryFile[],
@@ -423,7 +423,7 @@ export class StoryEngine {
     const f = this.chapter()!;
     const b = f.beats.find((x) => x.id === id)!;
     const s = this.s;
-    this.dialogueEvents = [];
+    this.completionEvents = [];
     s.beat = id;
     s.beatTime = 0;
     for (const k of Object.keys(s.latched)) if (!k.startsWith('c:')) delete s.latched[k];
@@ -478,10 +478,10 @@ export class StoryEngine {
     walkEvents(b.complete, `b:${b.id}`, (ev, key) => {
       if (!eventMatches(ev, name, payload)) return;
       s.latched[key] = (s.latched[key] ?? 0) + 1;
-      if (dialogueGroup !== undefined) latches.push(key);
+      latches.push(key);
     });
-    if (dialogueGroup !== undefined && (latches.length || name === 'clue:found' || name === 'quest:completed')) {
-      this.dialogueEvents.push({ group: dialogueGroup, name, id: (payload as { id?: unknown } | null)?.id, latches });
+    if (latches.length || name === 'clue:found' || name === 'quest:completed') {
+      this.completionEvents.push({ group: dialogueGroup, name, id: (payload as { id?: unknown } | null)?.id, latches });
     }
     for (const r of b.on ?? []) walkEvents(r.when, `br:${r.id}`, bump);
     for (const r of f.on ?? []) walkEvents(r.when, `c:${r.id}`, bump);
@@ -513,15 +513,15 @@ export class StoryEngine {
     if (this.s.beat !== b.id || this.s.chapter !== f.chapter) return; // a reaction switched beats
     this.react(b.on ?? [], 'b', env, s.beatTime);
     if (this.s.beat !== b.id || this.s.chapter !== f.chapter) return;
-    const dialogueEvents = this.dialogueEvents;
-    this.dialogueEvents = [];
+    const completionEvents = this.completionEvents;
+    this.completionEvents = [];
     const key = `b:${b.id}`;
     if (!evaluate(b.complete, env, s.latched, key, s.beatTime)) return;
-    // Undo the tick's dialogue events in reverse order to find the one that made the
-    // completion condition true, including when several events arrived before this tick.
-    const latched = dialogueEvents.length ? { ...s.latched } : s.latched;
+    // Undo the tick's events in reverse order to find the one that made the completion
+    // condition true. A silent event can finish the beat after an earlier voiced event.
+    const latched = completionEvents.length ? { ...s.latched } : s.latched;
     let beforeEvent = env;
-    for (const event of dialogueEvents.reverse()) {
+    for (const event of completionEvents.reverse()) {
       for (const latch of event.latches) latched[latch] = (latched[latch] ?? 0) - 1;
       // These producers update state before emitting the event, so their completion
       // conditions can read inventory or a quest flag instead of an event latch.
@@ -534,7 +534,7 @@ export class StoryEngine {
         beforeEvent = { ...beforeEvent, flags };
       }
       if (!evaluate(b.complete, beforeEvent, latched, key, s.beatTime)) {
-        this.host.keepCompletingDialogue?.(event.group);
+        if (event.group !== undefined) this.host.keepCompletingDialogue?.(event.group);
         break;
       }
     }

@@ -37,15 +37,52 @@ const say = (text: string, extra: Record<string, unknown> = {}) => ({ do: 'say',
 
 function engineWith(...files: StoryFile[]) {
   let slice: StorySlice = createStorySlice();
+  const completingGroups: number[] = [];
   const runs: { src: string; beat: string | null | undefined; texts: string[] }[] = [];
   const engine = new StoryEngine(files, () => slice, {
     run: (actions: Action[], o: RunOptions) => runs.push({ src: o.source, beat: o.beat, texts: actions.map((a) => (a as { text?: string }).text ?? a.do) }),
     chapterEntered: () => {},
     beatEntered: () => {},
     chapterCompleted: () => {},
+    keepCompletingDialogue: (group) => completingGroups.push(group),
   });
-  return { engine, runs, slice: () => slice, reset: () => (slice = createStorySlice()) };
+  return { engine, runs, completingGroups, slice: () => slice, reset: () => (slice = createStorySlice()) };
 }
+
+describe('completion event attribution', () => {
+  it.each([false, true])('attributes a mixed batch of event latches to the last event (voiced last: %s)', (voicedLast) => {
+    const { engine, completingGroups, slice } = engineWith({
+      chapter: 'c', order: 0, title_de: 'C', start: 'b1',
+      beats: [
+        { id: 'b1', complete: { all: [{ event: 'test:voiced' }, { event: 'test:silent' }] } },
+        { id: 'b2', complete: { manual: true } },
+      ],
+    });
+    engine.goto('c');
+    if (!voicedLast) engine.onEvent('test:voiced', {}, 7);
+    engine.onEvent('test:silent', {});
+    if (voicedLast) engine.onEvent('test:voiced', {}, 7);
+    engine.tick(0.1, env());
+    expect(slice().beat).toBe('b2');
+    expect(completingGroups).toEqual(voicedLast ? [7] : []);
+  });
+
+  it('rewinds silent clue discoveries in the same tick as a voiced discovery', () => {
+    const { engine, completingGroups, slice } = engineWith({
+      chapter: 'c', order: 0, title_de: 'C', start: 'b1',
+      beats: [
+        { id: 'b1', complete: { all: [{ have: { clue: 'voiced' } }, { have: { clue: 'silent' } }] } },
+        { id: 'b2', complete: { manual: true } },
+      ],
+    });
+    engine.goto('c');
+    engine.onEvent('clue:found', { id: 'voiced' }, 7);
+    engine.onEvent('clue:found', { id: 'silent' });
+    engine.tick(0.1, env({ inventory: { clues: ['voiced', 'silent'], nouns: [], items: [] } }));
+    expect(slice().beat).toBe('b2');
+    expect(completingGroups).toEqual([]);
+  });
+});
 
 describe('beat scope of action runs', () => {
   it('enter and beat reactions belong to their beat, exit bridges into the next, chapter reactions to none', () => {
