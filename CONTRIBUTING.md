@@ -102,8 +102,10 @@ decides:
   A file that a spec imports or reads with `new URL('../…', import.meta.url)` (a game module, a
   save fixture in `tests/fixtures/`) selects that spec too. Load files in specs only in these two
   ways, never by a path relative to the working directory: the selection cannot see those.
-- Only the check on the latest commit counts. A run that a newer push cancelled ends without a
-  failure, so an older commit can show a green "End-to-end tests" that it never earned.
+- Only a green "End-to-end tests" on the latest commit counts. A cancelled run, whether a newer
+  push or a person cancelled it, leaves the check without a result, which GitHub can show as
+  skipped and does not treat as a failure. If you cancel a run by hand, run it again before the
+  merge (`gh run rerun <run-id>`).
 - A new directory needs no rule to be safe: an unknown path runs the full suite. New files below
   `src/` need a rule (`tests/e2e-select.test.ts` says which), so that later changes stay cheap.
 - A failed shard: `gh run rerun <run-id> --failed` repeats only the failed shards.

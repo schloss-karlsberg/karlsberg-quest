@@ -5,8 +5,8 @@
 #   forces the full suite.
 # Merge queue, push to main, manual run without `specs`: the full suite.
 #
-# The job "End-to-end tests" always reports, also when no spec had to run, so it is the one check
-# the merge bar (or a ruleset) needs to name.
+# The job "End-to-end tests" reports for every run that is not cancelled, also when no spec had to
+# run, so it is the one check the merge bar (or a ruleset) needs to name.
 name: End-to-end tests
 
 # Manual runs say what they ran. A push to main skips its run when a full manual run or the merge
@@ -211,8 +211,12 @@ jobs:
     # for the pull request's own check on the same commit.
     name: ${{ github.event_name == 'workflow_dispatch' && inputs.specs != '' && 'End-to-end tests (manual selection)' || 'End-to-end tests' }}
     needs: [plan, e2e]
-    # always(): a cancelled or failed run must report a failure, never a skipped (passing) check.
-    if: always()
+    # Runs after a failed shard or plan too: with the default condition this job would be skipped
+    # then, and a skipped check passes. Not always(): a job that still has to run after a newer
+    # push cancelled the run keeps the pull request's concurrency group busy until it gets a
+    # runner, and the new run waits behind it. A shard that hits its job timeout counts as
+    # cancelled without cancelling the run, so that case is reported here as a failure.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -225,23 +229,11 @@ jobs:
           merge-multiple: true
       - name: Report
         env:
-          GH_TOKEN: ${{ github.token }}
           PLAN: ${{ needs.plan.result }}
           MODE: ${{ needs.plan.outputs.mode }}
           REASON: ${{ needs.plan.outputs.reason }}
           E2E: ${{ needs.e2e.result }}
-          PR: ${{ github.event.pull_request.number }}
-          PR_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
-          if [[ -n "$PR" && ( "$PLAN" == cancelled || "$E2E" == cancelled ) ]]; then
-            # A newer push cancelled this run. Its commit is no longer the head of the pull request,
-            # so do not report a failure for it. A run cancelled by hand on the head still fails.
-            head=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" --jq .head.sha) || head=
-            if [[ -n "$head" && "$head" != "$PR_HEAD" ]]; then
-              echo "Superseded by a newer push ($head)."
-              exit 0
-            fi
-          fi
           {
             echo "### End-to-end tests: ${MODE:-not planned}"
             echo
@@ -292,7 +284,7 @@ jobs:
     # A red main is announced in one issue, which closes itself when main is green again.
     name: Report the state of main
     needs: [plan, result]
-    if: always() && github.event_name == 'push'
+    if: ${{ !cancelled() && github.event_name == 'push' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

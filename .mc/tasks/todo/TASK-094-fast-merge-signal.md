@@ -142,8 +142,8 @@ queue. The pull request lists the exact settings.
 | Push to `main` | the full suite, unless the same commit already passed it in the queue or in a manual full run | 8, one run at a time and one waiting |
 | `workflow_dispatch` | the listed specs, or the full suite | up to 12 |
 
-- The job **"End-to-end tests"** reports in every case and fails when a shard failed, the plan
-  failed or the run was cancelled on the current commit. A manual run of chosen specs reports as
+- The job **"End-to-end tests"** reports for every run that is not cancelled and fails when a
+  shard failed or timed out or the plan failed. A manual run of chosen specs reports as
   "End-to-end tests (manual selection)", so it cannot stand in for the pull request's check.
 - The campaign runs only with the full suite. Rules never list it.
 - Specs import some game modules in Node (save format, layouts). A change to such a module also
@@ -154,8 +154,12 @@ queue. The pull request lists the exact settings.
   and the run summary lists the tests.
 - A file that a spec imports or reads with `new URL('../x', import.meta.url)` selects that spec,
   also below a `none` rule (the save fixtures in `tests/fixtures/`).
-- A run that a newer push cancelled ends without a failure for the old commit. Only the check
-  on the latest commit counts.
+- A cancelled run leaves "End-to-end tests" without a result (GitHub can show it as skipped).
+  Only a green check on the latest commit counts. The first version of the job used `always()`
+  to fail on a cancelled run. Under load that blocked the next run: the superseded run of this
+  pull request kept its concurrency group for as long as its 10-second result job waited for a
+  runner (queued from 02:22 UTC with 112 jobs waiting), and the run of the new commit stayed
+  "pending" behind it. The job now uses `!cancelled()`.
 - Each shard writes per-spec minutes; the result job prints one "Spec timings" table per run.
 - 12 shards instead of 16 for a full run: the campaign sets the wall time, and 12 + 8 (a run on
   `main`) fit the pool of 20.
