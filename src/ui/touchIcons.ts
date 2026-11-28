@@ -21,6 +21,8 @@ export const TOUCH_ICONS: Record<TouchIcon | 'skill' | 'up' | 'down' | 'shutter'
   fly: S('<path d="M5 19 15 9"/><path d="M8.5 15.5C7 10 11 4 19 4c0 8-6 12-11.5 11.5z"/><path d="M11 13h3.5M13 10.5h3"/>'),
   // a folded map
   map: S('<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/>'),
+  // a chestnut leaving the hand along an arc
+  throw: S('<path d="M15.5 7.2c-.7.7-1.7 1.2-2.9 1.8-1.7.8-2.6 2.1-2.6 3.6 0 2 2.4 3.4 5.5 3.4s5.5-1.4 5.5-3.4c0-1.5-.9-2.8-2.6-3.6-1.2-.6-2.2-1.1-2.9-1.8z"/><path d="M15.5 7.2V5.2"/><path d="M3 18.5c.8-3.5 2.6-6.3 5.4-8.2" stroke-dasharray="1.5 2.4"/>'),
   // a balm jar
   balm: S('<path d="M8 5h8v3H8z"/><path d="M7 8h10l-.6 11a1.5 1.5 0 0 1-1.5 1.4H9.1a1.5 1.5 0 0 1-1.5-1.4z"/><path d="M12 11v5M9.5 13.5h5"/>'),
   // a target ring

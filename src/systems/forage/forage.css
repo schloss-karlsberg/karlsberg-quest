@@ -1,0 +1,8 @@
+/* The chestnut chip in the vitals dock (src/systems/forage): the quick slot's look, there only
+   while chestnuts are in the pack. On touch the throw button carries the count instead. */
+.kqf-nut[hidden] {
+  display: none;
+}
+html[data-kq-touch] .kqf-nut {
+  display: none;
+}

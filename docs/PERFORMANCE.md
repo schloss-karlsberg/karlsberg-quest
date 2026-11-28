@@ -653,6 +653,27 @@ Same container, same build otherwise:
 | Camera sequence (3 × F-03 with shots, F-07 40 steps, 6 dodges) | screenshots 49–70 s (on the runner the growth started at F-07) | done in 144 s; F-07 0.2 s; screenshots 15–28 s; peaks renderer 2.9 GB, browser 0.9 GB, both drain |
 | One `kq.step(1)` per evaluate | 45 steps in 76–101 s, renderer up to 4.0 GB | unchanged: the rAF loop's own full draws (every frame in `?manual` under WebDriver) pace it at about 1.6 fps; memory swings up to 3.3 GB / 1 GB and drains |
 
+### 3.10 Foraging (TASK-090, 2026-11-28)
+
+Cutting plants adds no meshes and no shader code. `GroundCover` and `NatureProps` read a list of
+at most 48 mown circles (`src/world/vegetation/cuts.ts`) while they build their instance lists,
+and rebuild once when the list changes: on a cut, on each of the two growth steps and when a
+circle runs out. With the list empty the builders skip the lookup.
+
+Measured with `e2e/gpu/forage.gpu.ts` on the Felsenpfad (Apple M5 Pro, ANGLE Metal, Hoch, 1,059
+grass tufts and 197 ferns, bushes and flower clumps in the lists): `Nature.frame` takes 0.00 ms
+on a frame without a change and 0.17 ms on average (0.5 ms at most) on a frame that rebuilds
+after a cut, with 19 circles active. A swing triggers at most one rebuild.
+
+Draw calls: none while nothing flies. A chestnut in flight is one small mesh (at most four), the
+trail and the aim arc are one point list each, the landing ring one mesh, and all leaves, shell
+bits and drops share one instanced pool of 160 two-triangle cards.
+
+Niedrig draws no forest-floor props, so the nearest plants the staff can cut (at most 48 within
+20 m) show as broad-leaved clumps in one extra instanced layer of the ground cover: one draw and
+at most 4,224 triangles, no asset request, rebuilt after every 4 m walked or a change of the cut
+list. In the past eras, where Niedrig has no ground cover, this layer is the only one drawn.
+
 ## 4. Loading
 
 On the fresh present-day title, the historic palace mesh and the architecture pairs for ashlar,

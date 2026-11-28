@@ -54,7 +54,9 @@ export type Action =
   /** Switch between the over-the-shoulder camera and first person. */
   | 'cameraMode'
   /** Smartphone photo mode (src/systems/photo): N raises / lowers the phone (P is pause). */
-  | 'photo';
+  | 'photo'
+  /** Throw a chestnut (src/systems/forage): hold to see the arc, let go to throw. */
+  | 'throw';
 
 export const DEFAULT_BINDINGS: Record<Action, string[]> = {
   forward: ['KeyW', 'ArrowUp'],
@@ -98,6 +100,7 @@ export const DEFAULT_BINDINGS: Record<Action, string[]> = {
   lockOn: ['Tab', 'Mouse1'],
   cameraMode: ['F5'],
   photo: ['KeyN'],
+  throw: ['KeyF'],
 };
 
 /**
@@ -114,7 +117,7 @@ export const SHARED_KEYS: [Action, Action][] = [
 export const REBINDABLE: Action[] = [
   'forward', 'back', 'left', 'right', 'sprint', 'crouch', 'prone', 'fly', 'up', 'down',
   'listen', 'lantern', 'shift', 'scan', 'scan0', 'map', 'measure', 'xray', 'plans',
-  'attack', 'bannlicht', 'dodge', 'quickUse', 'inventory', 'skill1', 'skill2', 'skill3', 'lockOn', 'cameraMode', 'photo',
+  'attack', 'bannlicht', 'dodge', 'quickUse', 'inventory', 'skill1', 'skill2', 'skill3', 'lockOn', 'cameraMode', 'photo', 'throw',
   'lookLeft', 'lookRight', 'lookUp', 'lookDown',
 ];
 
@@ -137,6 +140,21 @@ export function migrateSurveyBindings(saved: Record<string, string[]>): Record<s
     return Array.isArray(codes) ? codes : [];
   }));
   for (const action of ['fly', 'scan', 'scan0', 'measure', 'xray', 'plans'] as const) {
+    if (Array.isArray(overrides[action])) continue;
+    const codes = DEFAULT_BINDINGS[action].filter((code) => !claimed.has(code));
+    if (codes.length !== DEFAULT_BINDINGS[action].length) overrides[action] = codes;
+  }
+  return overrides;
+}
+
+/**
+ * A default key added after the player saved their bindings (`throw` on F) gives way to a key
+ * they already put there: the new action keeps only its unclaimed defaults.
+ */
+export function yieldNewDefaults(saved: Record<string, string[]>, actions: readonly Action[] = ['throw']): Record<string, string[]> {
+  const overrides = { ...saved };
+  const claimed = new Set(Object.values(overrides).flatMap((codes) => (Array.isArray(codes) ? codes : [])));
+  for (const action of actions) {
     if (Array.isArray(overrides[action])) continue;
     const codes = DEFAULT_BINDINGS[action].filter((code) => !claimed.has(code));
     if (codes.length !== DEFAULT_BINDINGS[action].length) overrides[action] = codes;

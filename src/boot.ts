@@ -268,6 +268,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     flying: () => player.flying,
     measuring: () => state.state.flags['tools.measuring'] === true,
     stance: () => player.stance,
+    nuts: () => state.state.systems.progression?.inventory?.['item.kastanie'] ?? 0,
     skillUnlocked: (n) => skillsForLevel(state.state.systems.progression?.level ?? 1).includes(SKILL_IDS[n - 1]!),
   });
   const syncFlyPrompt = () => {

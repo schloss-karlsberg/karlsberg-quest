@@ -396,6 +396,10 @@ class Hunt {
       const n = this.sim?.scatter(x, z, yaw, range, angle, 4) ?? 0;
       if (n > 0) this.caption('scatter', ctx.t('combat.hounds'), 30, 2800);
     });
+    // a thrown chestnut lands (forage): a calm pack on patrol sends a hound to look
+    ev.on('world:noise', ({ x, z, loud }) => {
+      if ((this.sim?.noise(x, z, loud) ?? 0) > 0) this.caption('noise', ctx.t('hunt.noise'), 12, 2400);
+    });
     ev.on('player:step', ({ x, z, running }) => this.footprint(x, z, running));
     ev.on('player:teleport', () => (this.lastStep = null));
     // a pack that was out when the game was saved comes back (first update, all systems ready)

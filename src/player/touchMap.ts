@@ -104,7 +104,7 @@ export function isTouchSetting(v: unknown): v is TouchSetting {
  * is answered with it). 'Maus' (look / aim) has no button: it gets the neutral swipe hint ('look'),
  * never the interact hand.
  */
-export type TouchIcon = 'interact' | 'attack' | 'dodge' | 'bannlicht' | 'shift' | 'fly' | 'map' | 'balm' | 'lock' | 'crouch' | 'prone' | 'lantern' | 'relief' | 'pause' | 'photo' | 'look';
+export type TouchIcon = 'interact' | 'attack' | 'dodge' | 'bannlicht' | 'shift' | 'fly' | 'map' | 'balm' | 'lock' | 'crouch' | 'prone' | 'lantern' | 'relief' | 'pause' | 'photo' | 'look' | 'throw';
 
 /** Virtual actions for the stance and lantern controls. */
 export const TOUCH_BUTTON_ACTIONS = {
@@ -132,6 +132,7 @@ const KEY_ICON: Record<string, TouchIcon> = {
   X: 'prone',
   L: 'lantern',
   N: 'photo',
+  F: 'throw',
   MAUS: 'look',
   MOUSE: 'look',
   '1': 'fly',
@@ -158,6 +159,7 @@ const KEY_ICON: Record<string, TouchIcon> = {
   HINLEGEN: 'prone',
   LATERNE: 'lantern',
   PAUSE: 'pause',
+  KASTANIE: 'throw',
 };
 
 export function touchIconFor(key: string): TouchIcon {
@@ -202,6 +204,7 @@ const TOUCH_NAMES: Partial<Record<Action, string>> = {
   prone: 'Hinlegen',
   lantern: 'Laterne',
   pause: 'Pause',
+  throw: 'Kastanie',
   skill1: '1',
   skill2: '2',
   skill3: '3',

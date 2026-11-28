@@ -45,6 +45,7 @@ addStrings('de', {
   'touch.map': 'Karte',
   'touch.pause': 'Pause',
   'touch.photo': 'Fotomodus',
+  'touch.throw': 'Kastanie werfen (halten: zielen)',
   'touch.shutter': 'Auslöser: Foto machen',
   'touch.relief': 'Relief',
   'touch.relief.0': 'Aus',
@@ -117,6 +118,8 @@ export interface TouchDeps {
   skillUnlocked?(n: 1 | 2 | 3): boolean;
   /** The player's stance ('stand' | 'crouch' | 'prone'): the crouch button's state after a load. */
   stance?(): string;
+  /** Chestnuts in the pack: the throw button shows only while there are some. Absent: hidden until `forage:nuts`. */
+  nuts?(): number;
 }
 
 interface Btn {
@@ -151,6 +154,9 @@ export class TouchControls {
   private readonly scanPop: HTMLElement;
   private readonly skillBtns: HTMLButtonElement[];
   private readonly attackBtn: HTMLButtonElement;
+  /** Throw a chestnut: shown only with chestnuts in the pack, with their count. */
+  private readonly nutBtn: HTMLButtonElement;
+  private readonly nutCount: HTMLElement;
   private readonly rotateEl: HTMLElement;
   private titleEl: HTMLElement | null = null;
   /** Touch UI wanted (setting / device). */
@@ -233,6 +239,10 @@ export class TouchControls {
     this.surveyPop = h('div.kq-t-pop.kq-hidden', { id: 'touch-survey-pop', 'data-testid': 'touch-survey-pop' }, [this.surveyTools, this.scanPop]);
     this.surveyPop.addEventListener('pointerdown', (e) => e.stopPropagation());
     this.tap(this.surveyBtn, () => this.setSurveyMenu(this.surveyPop.classList.contains('kq-hidden') ? 'tools' : null));
+    this.nutCount = h('span.kq-t-num', { 'data-testid': 'touch-throw-count' }, '');
+    this.nutBtn = btn('throw', I.throw, t('touch.throw'), ['throw'], this.nutCount).el;
+    this.nutBtn.classList.add('kq-hidden');
+    deps.events.on('forage:nuts', ({ count }) => this.setNuts(count));
     const survey = h('div.kq-t-survey', [this.surveyBtn, this.surveyPop]);
     const pause = h('button.kq-t-btn.pause', { type: 'button', 'aria-label': t('touch.pause'), 'data-testid': 'touch-pause' }, svg(I.pause));
     this.tap(pause, () => {
@@ -256,6 +266,7 @@ export class TouchControls {
       this.crouchBtn.el,
       this.proneBtn,
       btn('lantern', I.lantern, t('touch.lantern'), TOUCH_BUTTON_ACTIONS.lantern).el,
+      this.nutBtn,
       this.interactBtn.el,
     ]);
     this.el = h('div.kq-touch.kq-hidden', { 'data-testid': 'touch' }, [this.stick, skills, arc, top, survey]);
@@ -344,6 +355,7 @@ export class TouchControls {
     this.syncVisible();
     this.syncFly();
     this.syncSkills();
+    if (this.deps.nuts) this.setNuts(this.deps.nuts());
     if (was !== this.wanted) this.onActiveChange?.(this.wanted);
   }
 
@@ -386,6 +398,12 @@ export class TouchControls {
     this.attackBtn.setAttribute('aria-label', t(on ? 'touch.shutter' : 'touch.attack'));
     const prompt = this.deps.hud.promptShown();
     this.setPrompt(prompt?.key ?? null, prompt?.text ?? null);
+  }
+
+  /** The throw button: there only while chestnuts are in the pack. */
+  private setNuts(count: number): void {
+    this.nutBtn.classList.toggle('kq-hidden', count <= 0);
+    this.nutCount.textContent = count > 0 ? String(count) : '';
   }
 
   /** Hide the ability buttons not learnt yet. */

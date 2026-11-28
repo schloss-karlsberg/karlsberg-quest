@@ -38,6 +38,7 @@ import {
   HP_REGEN,
   INPUT_BUFFER,
   KNOCK,
+  PELT,
   RESET,
   STEP_IN,
   STUMBLE,
@@ -153,6 +154,8 @@ export interface Enemy {
   orphan: number;
   /** Direction of the last staff hit (visual flinch). */
   hitX: number;
+  /** Sim time of the last stagger from a thrown chestnut (`pelt`). */
+  peltAt?: number;
   hitZ: number;
   /** Mahnbrief / Nebelling: came apart once and pulled itself together again. */
   reformed: boolean;
@@ -319,6 +322,8 @@ export type SimEvent =
   | { type: 'strike'; e: Enemy; attack: EnemyAttackDef }
   | { type: 'swing'; kind: 'light' | 'heavy'; combo: number; charge: number }
   | { type: 'whiff'; kind: 'light' | 'heavy' }
+  /** A swing came down: where the staff swept (plants are cut there, src/systems/forage). */
+  | { type: 'arc'; kind: 'light' | 'heavy'; x: number; z: number; yaw: number; reach: number; arcDeg: number }
   | { type: 'hit'; e: Enemy; damage: number; heavy: boolean; finisher: boolean; weak: boolean; armored: boolean; gebannt: boolean; dirX: number; dirZ: number }
   | { type: 'immune'; e: Enemy }
   /** A blow on a boss during its reveal or phase roar: it cannot be hurt for that moment (not the Bannlicht's business). */
@@ -1189,7 +1194,8 @@ export class CombatSim {
       this.out.push({ type: 'tired' });
       return;
     }
-    spend(p.st, COST.light * this.opt.stats.staminaCost);
+    // where fighting is off (the tour: the staff only cuts plants) a swing costs no Atem
+    if (this.safe !== 'disabled') spend(p.st, COST.light * this.opt.stats.staminaCost);
     const combo = nextCombo(p.lastCombo, p.sinceSwing);
     const yaw = this.aimYaw(inp, COMBO.reach);
     const target = this.swingTarget(inp, yaw);
@@ -1241,7 +1247,7 @@ export class CombatSim {
       this.out.push({ type: 'tired' });
       return;
     }
-    spend(p.st, COST.heavy * this.opt.stats.staminaCost);
+    if (this.safe !== 'disabled') spend(p.st, COST.heavy * this.opt.stats.staminaCost);
     p.swing = { kind: 'heavy', combo: 0, t: 0, dur: HEAVY.swing, impact: HEAVY.impact, yaw: this.aimYaw(inp, HEAVY.reach), charge, resolved: false, hits: 0 };
     p.lastCombo = -1;
     p.drink = 0;
@@ -1272,6 +1278,7 @@ export class CombatSim {
       hits++;
     }
     w.hits = hits;
+    this.out.push({ type: 'arc', kind: w.kind, x: inp.x, z: inp.z, yaw, reach, arcDeg: arc });
     if (!hits) this.out.push({ type: 'whiff', kind: w.kind });
     else {
       const rm = this.opt.reducedMotion ? 0.5 : 1;
@@ -1453,6 +1460,40 @@ export class CombatSim {
       return true;
     }
     return false;
+  }
+
+  /**
+   * A thrown chestnut (src/systems/forage) struck this enemy: a sting, not a blow. Small bodies
+   * take `PELT.damage`, flinch, and lose their footing at most once every `PELT.staggerEvery` s;
+   * armoured ones, elites and bosses only notice it; mist, lights and veils let it through. It
+   * never ends an enemy (the last blow is the staff's) and it wakes what it hits, so one can be
+   * pulled out of a pack.
+   */
+  pelt(e: Enemy, fromX: number, fromZ: number): 'through' | 'glance' | 'hit' {
+    if (this.safe || e.state === 'dissolve' || e.state === 'leave' || e.state === 'intro' || e.state === 'roar') return 'through';
+    if ((e.def.needsBann && e.stun <= 0) || e.veil || e.ward > 0) return 'through';
+    const dx = e.x - fromX;
+    const dz = e.z - fromZ;
+    const d = Math.hypot(dx, dz) || 1;
+    const dirX = dx / d;
+    const dirZ = dz / d;
+    const hard = e.boss || e.elite || !!e.def.armor || !!e.def.guard || e.kind === 'pikeur';
+    const dmg = Math.min(hard ? PELT.glance : PELT.damage, Math.max(0, Math.ceil(e.hp) - 1));
+    e.hitX = dirX;
+    e.hitZ = dirZ;
+    this.wake(e);
+    e.hp -= dmg;
+    e.flash = hard ? 0.4 : 0.8;
+    if (!hard) {
+      e.vx += dirX * PELT.knock * 8;
+      e.vz += dirZ * PELT.knock * 8;
+      if (e.def.hp <= PELT.staggerHp && this.time - (e.peltAt ?? -99) >= PELT.staggerEvery) {
+        e.peltAt = this.time;
+        this.staggerEnemy(e, PELT.stagger);
+      }
+    }
+    this.out.push({ type: 'hit', e, damage: dmg, heavy: false, finisher: false, weak: false, armored: hard, gebannt: false, dirX, dirZ });
+    return hard ? 'glance' : 'hit';
   }
 
   private staggerEnemy(e: Enemy, s: number): void {
