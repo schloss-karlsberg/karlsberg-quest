@@ -260,9 +260,9 @@ export class CardDirector {
       }
       return;
     }
-    // Resume an interrupted toast before taking the next one off the queue.
+    // Resume an interrupted toast only when it can be seen, leaving the slot free meanwhile.
     if (this.owner !== 'toast') {
-      if (this.claim('toast', this.closeToast)) this.hud.holdToast(false);
+      if (!this.toastHold?.() && this.claim('toast', this.closeToast)) this.hud.holdToast(false);
       return;
     }
     const held = this.held || !!this.toastHold?.();

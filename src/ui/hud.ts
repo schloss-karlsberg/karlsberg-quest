@@ -460,16 +460,17 @@ export class Hud {
     while (this.subsQueued.length) {
       const now = performance.now();
       const next = this.subsQueued[0]!;
-      const sounds = this.subsShown.filter((l) => l.sound);
-      const full = this.subsShown.length >= SUB_MAX || (next.sound && sounds.length >= SOUND_MAX);
-      if (full) {
-        const oldest = this.subsShown.length >= SUB_MAX ? this.subsShown[0]! : sounds[0]!;
-        const wait = oldest.shownAt + SUB_MIN_MS - now;
+      // At the sound limit, rotate the oldest sound caption even when the whole box is full.
+      const outgoing = next.sound && this.captionLines >= SOUND_MAX
+        ? this.subsShown.find((line) => line.sound)
+        : this.subsShown.length >= SUB_MAX ? this.subsShown[0] : undefined;
+      if (outgoing) {
+        const wait = outgoing.shownAt + SUB_MIN_MS - now;
         if (wait > 0) {
           this.subsWake = setTimeout(() => this.flushSubtitles(), wait);
           return;
         }
-        this.dropSubtitle(oldest, false);
+        this.dropSubtitle(outgoing, false);
       }
       const line = this.subsQueued.shift()!;
       line.shownAt = now;

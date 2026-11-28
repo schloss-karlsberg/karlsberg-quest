@@ -192,6 +192,23 @@ describe('Hud subtitles', () => {
     expect(hud.captionLines).toBe(2);
   });
 
+  it('a third sound caption waits for the oldest sound in a full box with dialogue', () => {
+    const hud = new Hud();
+    const shown = subtitleBox(hud);
+    hud.subtitle('Laub', 'Hier.', 8000);
+    vi.advanceTimersByTime(500);
+    hud.subtitle(null, 'Wind rauscht.', 8000);
+    hud.subtitle(null, 'Ein Bach plätschert.', 8000);
+    hud.subtitle(null, 'Vögel zwitschern.', 8000);
+    vi.advanceTimersByTime(1499);
+    expect(shown()).toEqual(['LaubHier.', 'Wind rauscht.', 'Ein Bach plätschert.']);
+    vi.advanceTimersByTime(1);
+    expect(shown()).toEqual(['LaubHier.', 'Ein Bach plätschert.', 'Vögel zwitschern.']);
+    expect(hud.captionLines).toBe(2);
+    vi.advanceTimersByTime(8000);
+    expect(shown()).toEqual([]);
+  });
+
   it('removes a queued line when its owner cancels it, and lets a freed slot take the next line', () => {
     const hud = new Hud();
     const shown = subtitleBox(hud);

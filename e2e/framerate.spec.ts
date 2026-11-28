@@ -152,7 +152,12 @@ test.describe('render pacing', () => {
 
   test('settings: Bildrate 30 / 60 / unbegrenzt (default 60) and Energiesparen persist and act', async ({ page }) => {
     const errors = trackErrors(page);
-    await boot(page, 'notitle&manual&q=high');
+    // `idle`: hold the frame in Pause and bullet time, as a player's browser does (boot.ts holds it
+    // unless navigator.webdriver). Without it the paused page keeps drawing Hoch at 1280×720; on
+    // CI's software renderer that took 7–13 min before the reload and 100–140 s for the reload
+    // itself, so the test ran into its 15 min limit in 3 of 8 runs (TASK-101). Nothing here needs a
+    // fresh frame: the checks read settings, the pixel ratio and the water flag.
+    await boot(page, 'notitle&manual&idle&q=high');
     await page.keyboard.press('Escape');
     await page.getByTestId('pause-settings').click();
     await page.getByTestId('set-nav-graphics').click();
@@ -177,8 +182,9 @@ test.describe('render pacing', () => {
     expect(await page.evaluate(() => window.kq!.ctx.world.water.reflections)).toBe(true);
     // a new session reads the saved cap back
     await fps.getByLabel('30').check();
-    await page.reload();
-    await page.waitForFunction(() => window.kq?.ctx !== undefined, null, { timeout: 120_000 });
+    // bounded, so a slow reload fails in minutes with its own message instead of at the test limit
+    await page.reload({ timeout: ciScale(60_000) });
+    await page.waitForFunction(() => window.kq?.ctx !== undefined, null, { timeout: ciScale(60_000) });
     expect(await page.evaluate(() => ({ cap: window.kq!.ctx.settings.state.fpsCap, q: window.kq!.ctx.quality.capFps }))).toEqual({ cap: 30, q: 30 });
     expect(errors).toEqual([]);
   });
