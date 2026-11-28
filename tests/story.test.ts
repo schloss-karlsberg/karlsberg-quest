@@ -687,7 +687,7 @@ describe('story files', () => {
     step({ era: '1789', ...SPRING, flags: { 'k1.vorspiel': true } });
     expect(slice.beat).toBe('k1_0');
     // (the chapter's `oel-tag` also stops a day oil meter here, should an old save carry one)
-    expect(all().filter((a) => a.do !== 'meter').map((a) => (a.do === 'say' ? a.id : a.do))).toEqual(['objective', 'laub.k1.brunnenstube', 'laub.k1.fremde', 'flag']);
+    expect(all().filter((a) => a.do !== 'meter').map((a) => (a.do === 'say' ? a.id : a.do))).toEqual(['flag', 'objective', 'laub.k1.brunnenstube', 'laub.k1.fremde', 'flag']);
     expect(all().find((a) => a.do === 'objective')).toMatchObject({ id: 'k1.rock', text: 'Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach' });
     expect(all().at(-1)).toEqual({ do: 'flag', set: { 'k1.angekommen': true } });
     // … and only once the chapter card has let go (`k1.karte`, set by the entry list after the card)
@@ -731,6 +731,9 @@ describe('story files', () => {
     expect(all().some((a) => a.do === 'flag' && a.set['disguise.coat'] === true && a.set['flag.k1_kleid'] === 'genommen')).toBe(true);
     expect(all()).toContainEqual({ do: 'cue', id: 'scenery:coat', data: { visible: false } });
     expect(all()).toContainEqual({ do: 'cue', id: 'court:take', data: { what: 'rock' } });
+    step({ era: '1789', x: 1001.08, z: -880.9, flags: {
+      'k1.vorspiel': true, 'disguise.coat': true, 'flag.k1_kleid': 'genommen', 'quest.q.k1.kleider': 'active',
+    } });
     expect(all()).toContainEqual({ do: 'quest', op: 'progress', id: 'q.k1.kleider', objective: 'rock', n: 1, onResume: true });
     expect(slice.beat).toBe('k1_0b');
     // the coat alone is not enough; the coat and the letter end the walk-in: k1_0c, the Musterung

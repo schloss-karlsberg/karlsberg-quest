@@ -28,7 +28,7 @@ const STORY_FLAGS = new Set([
   'flag.k2_tor', // ch. 2 choice at the gate: leuchten / dunkel
   'flag.k1_kleid', // ch. 1 Kaspar's coat: geliehen / genommen (story k1_0b)
   'disguise.coat', // ch. 1 the court coat (story k1_0b; the court system reads it)
-  'k1.rock.frei', // ch. 1 the coat can be taken: set by k1_0b, cleared while Liese has seen you at her lines
+  'k1.rock.frei', // ch. 1 the coat can be taken: set on arrival, false while Liese is guarding the coat
   'flag.k3_objekt', // ch. 3 rescued object: tuergriff / dukat / uhr / nichts
   'k2.wache_frei', // ch. 2 Wachhaus Irrlichter banned (story rule k2-wachfeuer-frei)
   'story.laub', // set when Laub first speaks at the spring (00-tour.story.json)

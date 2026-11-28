@@ -55,13 +55,15 @@ are pending; PRD D-012.
   are numbered 3–5. The testing aid `?kapitel=2…5` follows those numbers.
 - **One touch.** `t17` ends on the touch, `t18` is the arrival: the shift, `player.q.wo`,
   `laub.t.1789` (without „Für heute genügt ein Blick.“) and `laub.t.seite`, with the player free to
-  move as soon as the shift is done. The coat objective appears on arrival and stays visible
-  through the chapter card. No fade, no return, no second touch.
+  move as soon as the shift is done. The coat marker, pickup and Liese’s watch are active on arrival.
+  If the coat is still on the line, the goal stays visible through the chapter card. No fade, no return,
+  no second touch.
 - **„Der Hof“ continues where the visitor stands** (`continues` in the story file): no teleport, no
   era change. Its first beat `k1_0` sets the chapter up under the card; then Laub says „Sommer 1789.
-  Kies, Hunde …“ and what is needed, and only then `k1_0b` offers the quests, with the coat at the
-  Bleiche as the first objective. The chapter card stands alone. Chosen from
-  Pause → Kapitel the chapter starts at the spring in the present, and Q there leads into the summer.
+  Kies, Hunde …“ and what is needed, and only then `k1_0b` offers the quests. A coat taken early
+  already counts toward the disguise and completes the coat step once the quest opens. The chapter
+  card stands alone. Chosen from Pause → Kapitel the chapter starts at the spring in the present,
+  and Q there leads into the summer.
 - **Arrival spot:** the spring itself, the invented Brunnenstube (cx.42), about 310 m from the
   palace gate. Positions come from the shared home constant (`src/systems/story/hub/home.ts`).
 - **Arrival view:** during the shift the visitor takes six steps from the water and turns to the
@@ -83,7 +85,9 @@ are pending; PRD D-012.
 - The first chestnut pickup shows the throw hint beside the vitals, with the bound key or the Kastanie touch control.
 - At the trough, the tour hands over the Bussole when the visitor approaches after the pause or presses E during „Untersuchen“.
 - The glass clink at the 1789 spring is captioned on its first sound and at least 30 seconds apart thereafter.
-- The full goal is visible as soon as it changes. At the Bleiche, Laub starts the sneak brief within 30 m and the marker points to the reachable side behind the second washing line. Liese still offers the coat through her favour.
+- The full goal is visible as soon as it changes. Laub gives the Bleiche sneak brief as the first line
+  after the jump. Chapter 2 has a 30 m fallback for arrivals that missed it. The marker points to the
+  reachable side behind the second washing line. Liese still offers the coat through her favour.
 
 ## Decisions (owner, 2026-11-20)
 

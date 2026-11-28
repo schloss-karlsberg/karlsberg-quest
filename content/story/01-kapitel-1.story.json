@@ -47,6 +47,180 @@
       "sameEra": true
     },
     {
+      "id": "bleiche.liese-sieht",
+      "when": {
+        "all": [
+          {
+            "flag": "k1.vorspiel"
+          },
+          {
+            "not": {
+              "flag": "court.admitted"
+            }
+          },
+          {
+            "enter": {
+              "x": 1003.6,
+              "z": -875.7,
+              "r": 3.6,
+              "era": "1789"
+            }
+          },
+          {
+            "stance": "stand"
+          },
+          {
+            "flag": "k1.rock.frei"
+          },
+          {
+            "not": {
+              "flag": "disguise.coat"
+            }
+          },
+          {
+            "not": {
+              "talked": {
+                "npc": "liese",
+                "topic": "rock",
+                "chapter": "k1"
+              }
+            }
+          }
+        ]
+      },
+      "repeat": true,
+      "do": [
+        {
+          "do": "flag",
+          "set": {
+            "k1.rock.frei": false
+          }
+        },
+        {
+          "do": "objective",
+          "id": "k1.rock",
+          "text": "Liese hat dich gesehen. Erst weg von der Bleiche, dann geduckt oder außen herum hinter die zweite Leine. Oder frag sie",
+          "x": 1001.08,
+          "z": -880.9
+        },
+        {
+          "do": "say",
+          "id": "liese.k1.sieht",
+          "speaker": "liese",
+          "variants": [
+            "He! Finger von der Wäsche! Die ist für den Hof, nicht für Feuersalamander.",
+            "Ich seh Ihn doch. Da vorn zwischen den Leinen hat Er nichts verloren."
+          ],
+          "repeat": true
+        }
+      ]
+    },
+    {
+      "id": "bleiche.liese-ruhig",
+      "when": {
+        "all": [
+          {
+            "flag": "k1.vorspiel"
+          },
+          {
+            "not": {
+              "flag": "court.admitted"
+            }
+          },
+          {
+            "era": "1789"
+          },
+          {
+            "flag": "k1.rock.frei",
+            "eq": false
+          },
+          {
+            "not": {
+              "flag": "disguise.coat"
+            }
+          },
+          {
+            "leave": {
+              "x": 1001.5,
+              "z": -876.5,
+              "r": 14
+            }
+          }
+        ]
+      },
+      "repeat": true,
+      "do": [
+        {
+          "do": "flag",
+          "set": {
+            "k1.rock.frei": true
+          }
+        },
+        {
+          "do": "objective",
+          "id": "k1.rock",
+          "text": "Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach",
+          "x": 1001.08,
+          "z": -880.9
+        }
+      ]
+    },
+    {
+      "id": "bleiche.rock-genommen",
+      "when": {
+        "all": [
+          {
+            "flag": "k1.vorspiel"
+          },
+          {
+            "not": {
+              "flag": "court.admitted"
+            }
+          },
+          {
+            "era": "1789"
+          },
+          {
+            "have": {
+              "clue": "clue.k1.rock"
+            }
+          },
+          {
+            "not": {
+              "flag": "disguise.coat"
+            }
+          }
+        ]
+      },
+      "do": [
+        {
+          "do": "flag",
+          "set": {
+            "disguise.coat": true,
+            "flag.k1_kleid": "genommen"
+          }
+        },
+        {
+          "do": "cue",
+          "id": "scenery:coat",
+          "data": {
+            "visible": false
+          }
+        },
+        {
+          "do": "cue",
+          "id": "court:take",
+          "data": {
+            "what": "rock"
+          }
+        },
+        {
+          "do": "objective",
+          "text": null
+        }
+      ]
+    },
+    {
       "id": "oel-tag",
       "when": {
         "all": [
@@ -1144,18 +1318,47 @@
       },
       "on": [
         {
-          "id": "k1_0.damals",
+          "id": "k1_0.rock",
           "when": {
-            "era": "1789"
+            "all": [
+              {
+                "era": "1789"
+              },
+              {
+                "not": {
+                  "flag": "disguise.coat"
+                }
+              },
+              {
+                "not": {
+                  "flag": "k1.rock.frei",
+                  "eq": false
+                }
+              }
+            ]
           },
           "do": [
+            {
+              "do": "flag",
+              "set": {
+                "k1.rock.frei": true
+              }
+            },
             {
               "do": "objective",
               "id": "k1.rock",
               "text": "Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach",
               "x": 1001.08,
               "z": -880.9
-            },
+            }
+          ]
+        },
+        {
+          "id": "k1_0.damals",
+          "when": {
+            "era": "1789"
+          },
+          "do": [
             {
               "do": "say",
               "id": "laub.k1.brunnenstube",
@@ -1220,8 +1423,7 @@
           "do": "flag",
           "set": {
             "k1.vorspiel": true,
-            "npc.owns.clue.k1.papier": true,
-            "k1.rock.frei": true
+            "npc.owns.clue.k1.papier": true
           }
         },
         {
@@ -1375,6 +1577,12 @@
                 "not": {
                   "flag": "disguise.coat"
                 }
+              },
+              {
+                "not": {
+                  "flag": "k1.rock.frei",
+                  "eq": false
+                }
               }
             ]
           },
@@ -1383,6 +1591,7 @@
             {
               "do": "flag",
               "set": {
+                "k1.rock.frei": true,
                 "k1.vorspiel": true
               }
             },
@@ -1430,143 +1639,22 @@
           ]
         },
         {
-          "id": "k1_0b.liese-sieht",
-          "when": {
-            "all": [
-              {
-                "enter": {
-                  "x": 1003.6,
-                  "z": -875.7,
-                  "r": 3.6,
-                  "era": "1789"
-                }
-              },
-              {
-                "stance": "stand"
-              },
-              {
-                "flag": "k1.rock.frei"
-              },
-              {
-                "not": {
-                  "flag": "disguise.coat"
-                }
-              },
-              {
-                "not": {
-                  "talked": {
-                    "npc": "liese",
-                    "topic": "rock"
-                  }
-                }
-              }
-            ]
-          },
-          "repeat": true,
-          "do": [
-            {
-              "do": "flag",
-              "set": {
-                "k1.rock.frei": null
-              }
-            },
-            {
-              "do": "say",
-              "id": "liese.k1.sieht",
-              "speaker": "liese",
-              "variants": [
-                "He! Finger von der Wäsche! Die ist für den Hof, nicht für Feuersalamander.",
-                "Ich seh Ihn doch. Da vorn zwischen den Leinen hat Er nichts verloren."
-              ],
-              "repeat": true
-            },
-            {
-              "do": "objective",
-              "id": "k1.rock",
-              "text": "Liese hat dich gesehen. Erst weg von der Bleiche, dann geduckt oder außen herum hinter die zweite Leine. Oder frag sie",
-              "x": 1001.08,
-              "z": -880.9
-            }
-          ]
-        },
-        {
-          "id": "k1_0b.liese-ruhig",
-          "when": {
-            "all": [
-              {
-                "not": {
-                  "flag": "k1.rock.frei"
-                }
-              },
-              {
-                "not": {
-                  "flag": "disguise.coat"
-                }
-              },
-              {
-                "leave": {
-                  "x": 1001.5,
-                  "z": -876.5,
-                  "r": 14
-                }
-              }
-            ]
-          },
-          "repeat": true,
-          "do": [
-            {
-              "do": "flag",
-              "set": {
-                "k1.rock.frei": true
-              }
-            },
-            {
-              "do": "objective",
-              "id": "k1.rock",
-              "text": "Ein Rock, der nicht leuchtet: hinunter zur Bleiche am Bach",
-              "x": 1001.08,
-              "z": -880.9
-            }
-          ]
-        },
-        {
           "id": "k1_0b.rock-genommen",
           "when": {
             "all": [
               {
-                "have": {
-                  "clue": "clue.k1.rock"
-                }
+                "flag": "flag.k1_kleid",
+                "eq": "genommen"
               },
               {
-                "not": {
-                  "flag": "disguise.coat"
+                "quest": {
+                  "id": "q.k1.kleider",
+                  "state": "active"
                 }
               }
             ]
           },
           "do": [
-            {
-              "do": "flag",
-              "set": {
-                "disguise.coat": true,
-                "flag.k1_kleid": "genommen"
-              }
-            },
-            {
-              "do": "cue",
-              "id": "scenery:coat",
-              "data": {
-                "visible": false
-              }
-            },
-            {
-              "do": "cue",
-              "id": "court:take",
-              "data": {
-                "what": "rock"
-              }
-            },
             {
               "do": "quest",
               "op": "progress",
@@ -1581,6 +1669,43 @@
               "speaker": "laub",
               "delay": 1.2,
               "text": "Genommen. Im Dienst der Wissenschaft. Ich trage es ein, unter „geliehen, ohne zu fragen“."
+            }
+          ]
+        },
+        {
+          "id": "k1_0b.liese-gefragt",
+          "when": {
+            "all": [
+              {
+                "quest": {
+                  "id": "q.k1.kleider",
+                  "state": "active"
+                }
+              },
+              {
+                "talked": {
+                  "npc": "liese",
+                  "topic": "rock"
+                }
+              },
+              {
+                "not": {
+                  "quest": {
+                    "id": "q.k1.kleider",
+                    "objective": "bitte",
+                    "gte": 1
+                  }
+                }
+              }
+            ]
+          },
+          "do": [
+            {
+              "do": "quest",
+              "op": "progress",
+              "id": "q.k1.kleider",
+              "objective": "bitte",
+              "n": 1
             }
           ]
         },

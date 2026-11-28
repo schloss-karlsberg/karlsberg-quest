@@ -1,5 +1,6 @@
 import { Scene } from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import k1Pack from '../content/packs/kapitel-1.pack.json';
 import k4Pack from '../content/packs/kapitel-4.pack.json';
 import { ContentDB } from '../src/content/db';
 import type { ContentPack } from '../src/content/types';
@@ -10,7 +11,8 @@ import { EventBus } from '../src/core/events';
 import { MemoryStorage, SAVE_KEY, SaveManager } from '../src/core/save';
 import { createInitialState, deserializeState, GameStateStore, type GameState } from '../src/core/state';
 import { STANCES } from '../src/player/stance';
-import { COAT_REACH } from '../src/systems/bleiche/layout';
+import { COAT_REACH, toWorld } from '../src/systems/bleiche/layout';
+import chronik from '../src/systems/chronik';
 import type { QuestProgress } from '../src/rpg/types';
 import { createProgressionSlice } from '../src/systems/progression/logic';
 import { SHIFT_DURATION, SHIFT_DURATION_REDUCED, SHIFT_MID, SHIFT_MID_REDUCED } from '../src/systems/fx/shift/timeline';
@@ -33,7 +35,7 @@ class Element {
   readonly classList = { add: noop, remove: noop, toggle: noop, contains: () => false };
   readonly style = { setProperty: noop };
   readonly dataset = {};
-  readonly content = { firstElementChild: null };
+  readonly content = { firstElementChild: this };
 
   addEventListener(event: string, listener: () => unknown): void { this.listeners.set(event, listener); }
   setAttribute(name: string, value: string): void { this.attributes.set(name, value); }
@@ -45,7 +47,7 @@ class Element {
   remove(): void {}
 }
 
-async function boot(initial: GameState, { withFx = false, reducedMotion = false } = {}) {
+async function boot(initial: GameState, { withFx = false, reducedMotion = false, withChronik = false } = {}) {
   let pollHooks = noop;
   vi.stubGlobal('Node', Element);
   vi.stubGlobal('document', { createElement: () => new Element(), createTextNode: () => new Element(), body: new Element() });
@@ -74,42 +76,57 @@ async function boot(initial: GameState, { withFx = false, reducedMotion = false 
     writeState(target: { x: number; z: number }) { Object.assign(target, { x: this.position.x, z: this.position.z }); },
   };
   let shiftPressed = false;
+  let interactPressed = false;
+  const prompt = vi.fn();
   const confirm = vi.fn(async () => true);
   const ctx = {
     events, state, save, era, player, scene: new Scene(),
     assets: { licences: async () => null },
     params: new URLSearchParams(),
-    content: new ContentDB([{ file: 'kapitel-4.pack.json', pack: k4Pack as ContentPack }]),
+    content: new ContentDB([
+      { file: 'kapitel-4.pack.json', pack: k4Pack as ContentPack },
+      ...(withChronik ? [{ file: 'kapitel-1.pack.json', pack: k1Pack as ContentPack }] : []),
+    ]),
+    camera: { fov: 55 },
+    renderer: { domElement: { height: 360 } },
     world: { applyLook: noop, heightAt: () => 0, forest: { invalidate: noop } },
     audio: { ctx: null, bindVoiceEmitter: () => noop, createSource3D: () => null, bus: () => null },
     ui: {
       layer: () => new Element(),
-      hud: { stack: noop, dock: noop, acting: () => false, prompt: noop, setMarker: noop, subtitle: noop },
+      hud: { stack: noop, dock: noop, acting: () => false, prompt, setMarker: noop, subtitle: noop },
       toast: noop,
       modals: { count: 0, confirm, closeAll: noop },
-      cards: { soft: noop, hold: noop },
+      cards: { soft: noop, hold: noop, modal: noop },
     },
-    input: { wasPressed: (key: string) => key === 'shift' && shiftPressed, isDown: () => false },
+    input: { wasPressed: (key: string) => key === 'shift' ? shiftPressed : key === 'listen' && interactPressed, isDown: () => false },
     settings: { state: { reducedMotion } },
     loop: { manual: true },
     pause: { paused: false, reasons: new Set<string>() },
-    systems: { get: (id: string) => id === 'fx' && withFx },
+    systems: { get: (id: string) => (id === 'fx' && withFx) || (id === 'chronik' && withChronik) },
   } as unknown as GameContext;
   // Stand in for the NPC renderer while keeping the authored placement events and real quest offers.
   events.on('npc:spawn', (placement) => {
     const npc = state.slice('npc', () => ({ placed: {}, said: [] }));
     npc.placed[placement.npc] = { ...placement, era: placement.era ?? era.current };
   });
+  if (withChronik) await chronik.init(ctx);
   await story.init(ctx);
   return {
-    ctx, events, state, save, storage, era, player, confirm,
+    prompt, ctx, events, state, save, storage, era, player, confirm,
     dialogue() {
       window.kq = {} as KqHooks;
       pollHooks();
       return window.kq.story!;
     },
     start: () => events.emit('game:start', { resumed: false }),
-    tick(dt = 1 / 60) { story.update(dt); quests.update(dt); shiftPressed = false; },
+    tick(dt = 1 / 60) {
+      if (withChronik) chronik.update(dt, ctx);
+      story.update(dt);
+      quests.update(dt);
+      if (withChronik) chronik.frame(dt, ctx);
+      interactPressed = shiftPressed = false;
+    },
+    pressInteract() { interactPressed = true; },
     pressShift() { shiftPressed = true; },
   };
 }
@@ -207,6 +224,7 @@ describe('beat retirement in the story runtime', () => {
 });
 
 afterEach(() => {
+  chronik.dispose();
   quests.dispose();
   story.dispose();
   vi.unstubAllGlobals();
@@ -414,10 +432,10 @@ describe('the first time travel in the story runtime (TASK-089)', () => {
     expect(game.state.state.systems.story?.said).toEqual(expect.arrayContaining(['player.q.wo', 'laub.t.1789', 'laub.t.seite', 'laub.k1.brunnenstube', 'laub.k1.fremde']));
   });
 
-  it.each([false, true])('starts the Bleiche brief before a continuous run reaches the sheets (reduced motion: %s)', async (reducedMotion) => {
+  it.each([false, true])('opens the Bleiche before a continuous sprint reaches the coat (reduced motion: %s)', async (reducedMotion) => {
     const initial = createInitialState();
     initial.systems.story = { ...createStorySlice(), active: true, chapter: 'tour', beat: 't17', unlocked: ['tour'] };
-    const game = await boot(initial, { withFx: true, reducedMotion });
+    const game = await boot(initial, { withFx: true, reducedMotion, withChronik: true });
     Object.assign(game.player.position, { x: HOME.spawn.x, z: HOME.spawn.z });
     game.events.on('shift:request', ({ to }) => game.events.emit('shift:begin', { to, from: 'today' }));
     game.events.emit('game:start', { resumed: true });
@@ -459,9 +477,108 @@ describe('the first time travel in the story runtime (TASK-089)', () => {
     runTo(COAT_REACH.x, COAT_REACH.z);
     expect(p).toMatchObject({ x: COAT_REACH.x, z: COAT_REACH.z });
 
-    tickFor(60);
+    expect(beat(game)).toBe('tour/t18');
+    expect(window.kq!.chronik!.target()).toBe('clue.k1.rock');
+    expect(game.prompt).toHaveBeenLastCalledWith('E', 'Rock nehmen', 'chronik');
+
+    // Continue upright through the front of the green. Liese reacts before the tour ends.
+    const warning = vi.fn();
+    game.events.on('dialogue:say', ({ id }) => { if (id === 'liese.k1.sieht') warning(); });
+    runTo(...toWorld(0.3, 2.2));
+    expect(beat(game)).toBe('tour/t18');
+    expect(game.state.state.flags['k1.rock.frei']).toBe(false);
+    expect(warning).toHaveBeenCalledTimes(1);
+    expect(game.state.state.systems.story?.objective?.text).toContain('Liese hat dich gesehen');
+    expect(window.kq!.chronik!.status('clue.k1.rock')).toBe('hidden');
+
+    for (let i = 0; i < 200 && beat(game) !== 'k1/k1_0b'; i++) game.tick(0.5);
     expect(beat(game)).toBe('k1/k1_0b');
     expect(dialogue.shown().filter((id) => id === 'laub.k1.bleiche')).toHaveLength(1);
+    expect(game.state.state.flags['k1.rock.frei']).toBe(false);
+    expect(game.state.state.systems.story?.objective?.text).toContain('Liese hat dich gesehen');
+    runTo(1035.7, -855.1);
+    expect(window.kq!.chronik!.status('clue.k1.rock')).toBe('available');
+  });
+
+  it.each(['pickup', 'chapter card'])('credits a coat taken during t18 after reloading from the %s', async (saveAt) => {
+    const initial = createInitialState();
+    initial.era = '1789';
+    initial.systems.story = { ...createStorySlice(), active: true, chapter: 'tour', beat: 't18', unlocked: ['tour'] };
+    const game = await boot(initial, { withChronik: true });
+    quests.init(game.ctx);
+    const quest = 'q.k1.kleider';
+    const questState = () => game.state.state.systems.quests?.quests[quest];
+    const hides = vi.fn();
+    game.events.on('story:cue', ({ id }) => { if (id === 'scenery:coat') hides(); });
+    const reward = vi.fn();
+    game.events.on('quest:completed', ({ id }) => { if (id === quest) reward(); });
+    game.events.emit('game:start', { resumed: true });
+    game.player.teleport(COAT_REACH.x, COAT_REACH.z);
+    game.tick(0.25);
+    expect(game.prompt).toHaveBeenLastCalledWith('E', 'Rock nehmen', 'chronik');
+    game.pressInteract();
+    game.tick();
+    expect(beat(game)).toBe('tour/t18');
+    expect(game.state.state.flags).toMatchObject({ 'disguise.coat': true, 'flag.k1_kleid': 'genommen' });
+    expect(hides).toHaveBeenCalledTimes(1);
+    expect(questState()).toBeUndefined();
+
+    if (saveAt === 'pickup') {
+      // Chronik autosaves the clue inside the interaction, before the story has applied the disguise.
+      expect(rawAuto(game.storage).inventory.clues).toContain('clue.k1.rock');
+      expect(rawAuto(game.storage).flags['disguise.coat']).toBeUndefined();
+      expect(game.save.load()).toBe(true);
+    }
+
+    for (let i = 0; i < 160 && beat(game) === 'tour/t18'; i++) game.tick(0.5);
+    expect(beat(game)).toBe('k1/k1_0');
+    expect(game.state.state.systems.story?.objective?.id).not.toBe('k1.rock');
+    expect(questState()).toBeUndefined();
+    expect(rawAuto(game.storage).flags).toMatchObject({ 'disguise.coat': true, 'flag.k1_kleid': 'genommen' });
+    if (saveAt === 'chapter card') expect(game.save.load()).toBe(true);
+
+    for (let i = 0; i < 200 && questState()?.state !== 'done'; i++) game.tick(0.25);
+    game.tick();
+    expect(beat(game)).toBe('k1/k1_0b');
+    expect(questState()).toMatchObject({ state: 'done', counts: { rock: 1 } });
+    expect(reward).toHaveBeenCalledTimes(1);
+    expect(game.state.state.systems.quests?.quests['q.k1.brief']?.state).toBe('active');
+    expect(game.state.state.systems.story?.objective?.id).toBe('k1.papier');
+    expect(game.state.state.flags['flag.k1_kleid']).toBe('genommen');
+    const warning = vi.fn();
+    game.events.on('dialogue:say', ({ id }) => { if (id === 'liese.k1.sieht') warning(); });
+    game.player.teleport(...toWorld(0.3, 2.2));
+    game.tick();
+    expect(warning).not.toHaveBeenCalled();
+  });
+
+  it('credits asking Liese before the coat quest opens', async () => {
+    const initial = createInitialState();
+    initial.era = '1789';
+    initial.systems.story = { ...createStorySlice(), active: true, chapter: 'tour', beat: 't18', unlocked: ['tour'] };
+    const game = await boot(initial, { withChronik: true });
+    quests.init(game.ctx);
+    game.events.emit('game:start', { resumed: true });
+    game.tick();
+    game.state.mutable.flags['talked.k1.liese.rock'] = true;
+    game.events.emit('npc:talk', { chapter: 'k1', npc: 'liese', topic: 'rock' });
+    game.player.teleport(...toWorld(0.3, 2.2));
+    game.tick();
+    expect(game.state.state.flags['k1.rock.frei']).toBe(true);
+
+    for (let i = 0; i < 200 && beat(game) !== 'k1/k1_0b'; i++) game.tick(0.5);
+    game.tick();
+    const coatQuest = () => game.state.state.systems.quests?.quests['q.k1.kleider'];
+    expect(coatQuest()).toMatchObject({ state: 'active', counts: { bitte: 1 } });
+    for (let i = 0; i < 3; i++) {
+      game.events.emit('enemy:killed', {
+        id: `mahnbrief-${i}`, kind: 'mahnbrief', group: 'quest:q.k1.kleider:zettel',
+        x: 998, z: -886, era: '1789', boss: false, by: 'light',
+      });
+    }
+    game.tick();
+    expect(coatQuest()).toMatchObject({ state: 'done', counts: { bitte: 1, zettel: 3, rock: 1 } });
+    expect(game.state.state.flags['flag.k1_kleid']).toBe('geliehen');
   });
 
   it('queues Laub’s Bleiche brief on the approach even during the spring arrival beat', async () => {

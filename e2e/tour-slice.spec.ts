@@ -828,12 +828,18 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   }
   expect(era).toBe('1789');
   const arrivalGoal = await page.evaluate(() => {
-    window.kq!.step(1);
+    const k = window.kq!;
+    k.step(1);
     const objective = document.querySelector<HTMLElement>('[data-testid="objective"]')!;
-    return { text: objective.textContent, clipPath: getComputedStyle(objective).clipPath };
+    return {
+      text: objective.textContent,
+      clipPath: getComputedStyle(objective).clipPath,
+      beat: k.story!.state().beat,
+      coat: k.chronik!.status('clue.k1.rock'),
+    };
   });
   expect(arrivalGoal.text).toContain('Ein Rock, der nicht leuchtet');
-  expect(arrivalGoal.clipPath).toBe('none');
+  expect(arrivalGoal).toMatchObject({ clipPath: 'none', beat: 't18', coat: 'available' });
   await expectObjectiveFits(page, 'Ein Rock, der nicht leuchtet');
   await page.evaluate(() => window.kq!.step(300));
   expect(await page.evaluate(() => window.kq!.walk!.stats().visible)).toBe(0);

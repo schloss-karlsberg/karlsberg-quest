@@ -3,7 +3,7 @@ import type { Issue } from '../../src/content/validate';
 import { valueKey } from '../../src/content/triggers';
 import { ERA_INFO, isEra, type Era } from '../../src/core/era';
 import { legacyPrologueQuests } from '../../src/core/legacy-prologue-quests';
-import { skillMet } from '../../src/systems/chronik/logic';
+import { clueChapterReached, skillMet } from '../../src/systems/chronik/logic';
 import { inspectOutcome } from '../../src/systems/court/logic';
 import { remaining, upsertGroup, type SpawnRequest } from '../../src/systems/combat/rules';
 import { stackLimit } from '../../src/systems/progression/logic';
@@ -783,7 +783,7 @@ export class Chapter {
       if (topic !== BYE && !this.save.flags[talkedFlag(chapter, npc, topic === GREET ? undefined : topic)]) this.talk(payload);
     }
     for (const c of this.catalog.clues.values()) {
-      if (c.chapter && !this.save.chapters.has(c.chapter) && !story.test) continue;
+      if (!story.test && !clueChapterReached(c, this.save.chapters, this.save.flags)) continue;
       if (!skillMet(c.requires?.skill, this.save.skills)) continue;
       if (![c.where.era].flat().some(era => this.eras.has(era))) continue;
       if (c.requires?.clues?.some(id => !this.save.clues.has(id)) || c.requires?.flags?.some(f => !this.flag(f))) continue;

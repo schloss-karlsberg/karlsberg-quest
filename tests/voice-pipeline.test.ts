@@ -165,7 +165,10 @@ describe('real content', () => {
   it('maps the guided tour’s spring beats to their inline lines', () => {
     const of = (b: string) => lines.filter((l) => l.beats.includes(b)).map((l) => l.id);
     expect(of('tour:t17')).toEqual(['laub.t.intro', 'player.q.laub', 'laub.t.intro.b', 'laub.t.quelle', 'laub.t.trog']);
-    expect(of('tour:t18')).toEqual(['laub.k1.bleiche', 'player.q.wo', 'laub.t.1789', 'laub.t.seite']);
+    expect(of('tour:t18')).toEqual([
+      'laub.k1.bleiche', 'player.q.wo', 'laub.t.1789', 'laub.t.seite',
+      'liese.k1.sieht.v1', 'liese.k1.sieht.v2',
+    ]);
   });
   it('ids are unique; inline story lines and quest lines are included; test chapters are excluded', () => {
     expect(byId.size).toBe(lines.length);
