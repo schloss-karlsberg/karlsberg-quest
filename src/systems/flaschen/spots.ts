@@ -14,7 +14,7 @@
  */
 import type { Era } from '../../core/era';
 import { stringList } from '../../core/saved';
-import { toWorld } from '../quelle/layout';
+import { QUELLE, toWorld } from '../quelle/layout';
 
 export type FlaschenVerb = 'walk' | 'crouch' | 'look' | 'wucht' | 'lantern' | 'dark' | 'unseen' | 'relief' | 'open';
 export type FlaschenBase = 'terrain' | 'quelle-wall' | 'quelle-basin';
@@ -52,8 +52,8 @@ const q = (u: number, w: number): { x: number; z: number } => {
   const [x, z] = toWorld(u, w);
   return { x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100 };
 };
-const QX = 1061.0;
-const QZ = -834.5;
+const QX = QUELLE.x;
+const QZ = QUELLE.z;
 
 export const FLASCHEN: readonly FlaschenSpot[] = [
   // ---- today (6) ------------------------------------------------------------------------------

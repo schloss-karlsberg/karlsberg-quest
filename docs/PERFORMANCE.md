@@ -289,7 +289,13 @@ and shadow pass). Three changes, each checked with before / after look pairs:
    clump (`nature.fern.02`, ≈ 5.6 k triangles) stays within 9 m of the trough or 3 m of the trail
    through the hollow. The 10 brook-bank clumps up the ravine use the stylised forest fern
    (`nature2.ferns#fern`, 288 triangles) at the same spot, height and footprint. Together they
-   cost less than 75 % of the old triangles (`tests/quelle-ferns.test.ts`).
+   cost less than 75 % of the old triangles (`tests/quelle-ferns.test.ts`). Since TASK-087 the
+   hollow also has ten big stylised ferns (`HOLLOW_FERNS`, 288 each), four mossy boulders and the
+   trough's overflow fall: about 3.4 k triangles per pass, no new draw call for the kit parts and
+   one for the fall. To pay for them, the seven clumps on the slope more than 1.9 m behind the wall
+   (`FERN_BEHIND`) are always the stylised fern: about 37 k triangles less per pass, so 13 scanned
+   clumps remain in the hollow (20 before). The procedural stonework is ≈ 9 k triangles today and ≈ 5 k in 1789
+   (`tests/quelle-place.test.ts` caps it).
 3. **Trees** (`world/vegetation/trees.ts`): the lod1 → impostor ring moved from 78·k to 72·k.
    At 60·k and 66·k the pines across the Weiher looked flatter in an A/B flip, so it backed off to
    72. In the shadow pass the model trees draw caster lists with the lod1 geometry (lod0 trees

@@ -8,7 +8,7 @@ import { legacyPrologueQuests } from './legacy-prologue-quests';
 import type { GameState } from './state';
 
 // Capture the migration destination without pulling chapter 1's full script into the boot bundle.
-const CHAPTER_ONE = { chapter: 'k1', beat: 'k1_0', x: 1059.3, z: -833.1, yaw: 50 } as const;
+const CHAPTER_ONE = { chapter: 'k1', beat: 'k1_0', x: 1059.3, z: -833.1, yaw: 204 } as const;
 const questDefs = new Map<string, QuestDefIn>(legacyPrologueQuests.map((q) => [q.id, q]));
 const retiredObjective = (id: string | undefined) => id?.startsWith('q.p.') ?? false;
 

@@ -6,23 +6,29 @@
 import { describe, expect, it } from 'vitest';
 import { PIECES, TRAIL, toLocal, toWorld, trailLine } from '../src/systems/quelle/layout';
 import { SetBuilder } from '../src/systems/scenery/builder';
-import { FERN_NEAR, FERN_TRAIL, fernDetailed, fernFarHeight, quelleSet } from '../src/systems/scenery/quelle';
+import { FERN_BEHIND, FERN_NEAR, FERN_TRAIL, HOLLOW_FERNS, fernDetailed, fernFarHeight, quelleSet } from '../src/systems/scenery/quelle';
 import { loadPalaceData } from './interiors-fixture';
 
 const { h2025 } = loadPalaceData();
 const heightAt = (x: number, z: number) => h2025.heightAt(x, z);
 const T = PIECES.trough;
 
-function ferns(era: '1789' | 'today') {
+/** The big ferns of the hollow (TASK-087) are stylised ones by design, at any distance. */
+const isBig = (u: number, w: number) => HOLLOW_FERNS.some(([fu, fw]) => Math.hypot(u - fu, w - fw) < 0.05);
+
+function allFerns(era: '1789' | 'today') {
   const b = new SetBuilder(heightAt, true, true);
   quelleSet.build(b, { era, gateOpen: 0 });
   return b.models
     .filter((m) => m.id === 'nature.fern.02' || m.id === 'nature2.ferns#fern')
     .map((m) => {
       const [u, w] = toLocal(m.matrix.elements[12]!, m.matrix.elements[14]!);
-      return { id: m.id, u, w, d: Math.hypot(u - T.u, w - T.w) };
+      return { id: m.id, u, w, d: Math.hypot(u - T.u, w - T.w), height: Math.hypot(m.matrix.elements[4]!, m.matrix.elements[5]!, m.matrix.elements[6]!) * 2.69 };
     });
 }
+
+/** The fern clumps of the LOD (without the hollow's big ferns). */
+const ferns = (era: '1789' | 'today') => allFerns(era).filter((f) => !isBig(f.u, f.w));
 
 describe('Quelle fern LOD', () => {
   it('keeps the detailed clump by the trough and on the trail through the hollow', () => {
@@ -31,7 +37,7 @@ describe('Quelle fern LOD', () => {
     // the forecourt and the trail up to the spring
     for (const p of trailLine(TRAIL[0]!, 0.5)) {
       const [u, w] = toLocal(p.x, p.z);
-      if (Math.hypot(u - T.u, w - T.w) <= 12) expect(fernDetailed(u, w + FERN_TRAIL * 0.8), `${u}/${w}`).toBe(true);
+      if (Math.hypot(u - T.u, w - T.w) <= 12 && w > 0) expect(fernDetailed(u, w + FERN_TRAIL * 0.8), `${u}/${w}`).toBe(true);
     }
   });
 
@@ -48,11 +54,18 @@ describe('Quelle fern LOD', () => {
     // 18 in the hollow + the brook banks
     expect(all.length).toBeGreaterThanOrEqual(28);
     for (const f of all) expect(f.id, `${f.u.toFixed(1)}/${f.w.toFixed(1)} at ${f.d.toFixed(1)} m`).toBe(fernDetailed(f.u, f.w) ? 'nature.fern.02' : 'nature2.ferns#fern');
-    // every clump within 8 m of the trough is detailed; the brook's far banks are not
-    expect(all.filter((f) => f.d <= 8).every((f) => f.id === 'nature.fern.02')).toBe(true);
+    // every clump within 8 m of the trough is detailed, but for the slope behind the wall; the
+    // brook's far banks are not
+    const behind = (f: { w: number }) => f.w < PIECES.wall.w - FERN_BEHIND;
+    expect(all.filter((f) => f.d <= 8 && !behind(f)).every((f) => f.id === 'nature.fern.02')).toBe(true);
+    expect(all.filter(behind).every((f) => f.id === 'nature2.ferns#fern')).toBe(true);
+    expect(all.filter(behind).length).toBeGreaterThanOrEqual(6);
     const far = all.filter((f) => f.id === 'nature2.ferns#fern');
     expect(far.length).toBeGreaterThanOrEqual(5);
-    expect(Math.min(...far.map((f) => f.d))).toBeGreaterThan(FERN_NEAR);
+    expect(Math.min(...far.filter((f) => !behind(f)).map((f) => f.d))).toBeGreaterThan(FERN_NEAR);
+    // TASK-087: at most 14 scanned clumps in the hollow (20 before), so the ten big ferns, the
+    // boulders and the overflow cost nothing net
+    expect(all.length - far.length).toBeLessThanOrEqual(14);
     const near = all.length - far.length;
     // the triangle sum of the clumps drops by a quarter or more (the brook's banks up the ravine)
     expect(near * 5624 + far.length * 288).toBeLessThan(all.length * 5624 * 0.75);
@@ -65,5 +78,28 @@ describe('Quelle fern LOD', () => {
       expect(fernFarHeight(s)).toBeLessThan(0.4 * 0.55 * s * 1.6);
     }
     expect(toWorld(T.u, T.w)[0]).toBeTypeOf('number');
+  });
+});
+
+describe('the hollow\'s big ferns (TASK-087)', () => {
+  it('today: ten stylised ferns, half a metre and more tall, off the steps, the forecourt and the trail', () => {
+    const big = allFerns('today').filter((f) => isBig(f.u, f.w));
+    expect(big).toHaveLength(HOLLOW_FERNS.length);
+    expect(HOLLOW_FERNS.length).toBe(10);
+    const trail = TRAIL.flatMap((s) => trailLine(s, 0.5)).map((p) => ({ uw: toLocal(p.x, p.z), half: p.half }));
+    const S = PIECES.steps;
+    for (const f of big) {
+      expect(f.id).toBe('nature2.ferns#fern');
+      expect(f.height).toBeGreaterThan(0.45);
+      expect(f.height).toBeLessThan(0.8);
+      // never where people walk or stand
+      for (const t of trail) expect(Math.hypot(f.u - t.uw[0], f.w - t.uw[1]), `${f.u}/${f.w}`).toBeGreaterThan(t.half + 0.5);
+      expect(Math.abs(f.u - S.u) > S.width / 2 + 0.6 || f.w > S.w0 + 0.6 || f.w < S.w0 - S.n * S.run - 0.6, `${f.u}/${f.w}`).toBe(true);
+      expect(f.w < PIECES.wall.w || Math.abs(f.u) > PIECES.wall.u1 + 0.8, `${f.u}/${f.w}`).toBe(true);
+    }
+    // 288 triangles each: under 3k for the hollow
+    expect(big.length * 288).toBeLessThan(3000);
+    // the baroque spring is kept: none in 1789
+    expect(allFerns('1789').filter((f) => isBig(f.u, f.w))).toHaveLength(0);
   });
 });

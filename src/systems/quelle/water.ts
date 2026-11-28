@@ -408,10 +408,10 @@ void main() {
   float fade = smoothstep(uLen, uLen - 6.0, along) * smoothstep(0.0, 0.5, along);
   float aBed = bed * fade;
   if (aBed < 0.01) discard;
-  // the water: a thread of a few centimetres, broken where only wet stones show, small pools
+  // the water: a hand-wide run that reads from the path (TASK-087), thinner over stones, small pools
   float pool = smoothstep(0.62, 0.85, kqNoise(vec2(along * 0.22, 11.0)));
-  float tw = 0.03 + 0.06 * kqNoise(vec2(along * 0.9, 7.9)) + pool * 0.12 + grow * 0.03;
-  float run = mix(smoothstep(0.2, 0.42, kqNoise(vec2(along * 0.55, 9.1))), 1.0, pool);
+  float tw = 0.07 + 0.07 * kqNoise(vec2(along * 0.9, 7.9)) + pool * 0.14 + grow * 0.04;
+  float run = mix(smoothstep(0.06, 0.26, kqNoise(vec2(along * 0.55, 9.1))), 1.0, pool);
   float core = (1.0 - smoothstep(tw * 0.45, tw + 0.035, ax + (kqNoise(p * 6.0) - 0.5) * 0.05)) * run;
   // flow: ripples and glints running downhill (uPhase forward), standing, or climbing back
   float f = uPhase * 1.8;
@@ -436,9 +436,12 @@ void main() {
   float lat = clamp(1.0 - length(uLanternPos - vWp) / uLanternRadius, 0.0, 1.0);
   vec3 water = lit * 0.4 + refl * fres + (uSunColor * (spec * 0.7 + glint * 0.3 * sh) + uLantern * glint * 0.15 * lat) * (1.0 - uIce);
   water += uGlowColor * (fres * 0.25 + glint * 0.06);
+  // running water carries the sky's light even under the beeches: moving streaks along the flow
+  float streak = smoothstep(0.42, 0.78, kqNoise(vec2(x * 13.0, along * 2.2 - f * 3.4)));
+  water += (uSkyAmbient * 0.55 + uSunColor * 0.05) * (0.1 + 0.26 * streak) * (1.0 - uIce);
   // foam flecks where the thread runs over stones
-  float foam = smoothstep(0.8, 0.96, r2 * 0.65 + peb * 0.5) * (1.0 - uIce) * (1.0 - pool);
-  water += vec3(0.6, 0.65, 0.66) * foam * 0.14 * (uSkyAmbient + uSunColor * 0.5);
+  float foam = smoothstep(0.8, 0.97, r2 * 0.65 + peb * 0.5) * (1.0 - uIce) * (1.0 - pool);
+  water += vec3(0.6, 0.65, 0.66) * foam * 0.24 * (uSkyAmbient + uSunColor * 0.5);
   // the wet bed round the thread: darker, glossy stones
   vec3 wetBed = lit * mix(0.55, 0.85, smoothstep(0.5, 1.0, ax / bw)) + refl * fres * 0.12 + uSunColor * spec * peb * 0.08;
   vec3 col = mix(wetBed, water, core);

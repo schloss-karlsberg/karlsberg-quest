@@ -1,7 +1,7 @@
 {
  "format": "kq-data-v1",
- "generated": "2026-11-26T03:52:45.810Z",
- "totalBytes": 14624070,
+ "generated": "2026-11-28T01:44:21.605Z",
+ "totalBytes": 14624127,
  "files": {
   "terrain/meta.json": 3493,
   "terrain/h2025.u16.deflate": 1434991,
@@ -18,6 +18,6 @@
   "paths.json": 124443,
   "attribution.json": 3307,
   "terrain/surface2025.rgba.deflate": 1816196,
-  "terrain/relief2025.u8.deflate": 220832
+  "terrain/relief2025.u8.deflate": 220889
  }
 }

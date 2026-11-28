@@ -222,7 +222,7 @@ export async function playK4(page: Page, o: PlayOptions = {}): Promise<void> {
   expect(s.era).toBe('today');
   await untilQuest(page, 'q.k4.zettel', 'active');
   await shot(page, '00-station-night');
-  await examineHere(page, 'clue.k4.marlene', 1056.4, -835.4);
+  await examineHere(page, 'clue.k4.marlene', 1062.9, -832.5);
   await run(page, 0.5);
   expect(await beat(page)).toBe('k4_1');
   await drainLines(page);

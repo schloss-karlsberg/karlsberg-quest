@@ -4,7 +4,7 @@ import { ciScale } from './helpers/ci';
 import { trackErrors } from './helpers/common';
 import { waitForHooks } from './helpers/pause';
 import { expectHandover } from './helpers/tour';
-import { toWorld, yawToWater } from '../src/systems/quelle/layout';
+import { PIECES, rightOfTourPath, toLocal, toWorld, yawToWater } from '../src/systems/quelle/layout';
 
 /**
  * The tour (content/story/00-tour.story.json, the opening of a new game): a smoke run from the
@@ -665,22 +665,51 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   expect(back.era).toBe('today');
   const strayS = (await time(page)) - tStray0;
   await follow(page, 't15', 240);
+  // TASK-087: the spring stands where the group stops, on the right of the path they came up; the
+  // guide waits before it (never on the slope behind the wall) and the way to the trough is free
+  const spring = await page.evaluate(() => {
+    const k = window.kq!;
+    k.step(120);
+    const guide = k.walk!.list().find((n) => n.npc === 'imhoff')!;
+    const people = k.walk!.list().filter((n) => n.npc !== 'imhoff').map((n) => [n.x, n.z] as [number, number]);
+    return { sets: k.scenery!.built(), water: k.quelle!.info(), guide: [guide.x, guide.z] as [number, number], people };
+  });
+  expect(spring.sets).toContain('karlsbergquelle');
+  expect(spring.water).toMatchObject({ built: 'today', visible: true, water: { look: 'today' } });
+  expect(rightOfTourPath(spring.water.water!.x, spring.water.water!.z)).toBeGreaterThan(3);
+  expect(toLocal(...spring.guide)[1]).toBeGreaterThan(PIECES.edge.w);
+  expect(spring.people.length).toBeGreaterThanOrEqual(10);
+  for (const [px, pz] of spring.people) {
+    const [pu, pw] = toLocal(px, pz);
+    // nobody on the stonework or between the trail and the water
+    expect(pw > PIECES.edge.w + 1 || Math.abs(pu) > PIECES.wall.u1 + 1, `${px.toFixed(1)}/${pz.toFixed(1)}`).toBe(true);
+  }
   await viewGroup(page, 8);
   await shot(page, '10-quelle-station4');
   await follow(page, 't16', 90);
   expect(await shown(page, 'imhoff.t.station4')).toEqual(['imhoff.t.station4', 'imhoff.t.station4a', 'imhoff.t.station4b', 'imhoff.t.station4c']);
   expect(await shown(page, 'imhoff.t.pause')).toEqual(['imhoff.t.pause']);
-  // Stay on the forecourt side, three metres from the water.
-  const [x, z] = toWorld(0.1, 4.15);
-  const yaw = -yawToWater(x, z, 'today') * 180 / Math.PI;
+  // TASK-081: beside the trough's low end, outside the walk-in zone, with the back to the water.
+  // Nothing is asked of the view: once the glint shows, E „Untersuchen“ is there and finds it.
+  const [x, z] = toWorld(1.9, 2.6);
+  const yaw = -yawToWater(x, z, 'today') * 180 / Math.PI + 180;
   await page.evaluate(({ x, z, yaw }) => {
     const k = window.kq!;
     k.teleport(x, z, yaw, -10);
     k.step(60);
   }, { x, z, yaw });
-  expect(await page.evaluate(() => window.kq!.quelle!.info().prompt)).toBe(false);
-  for (let i = 0; i < 40 && (await beat(page)) !== 't17'; i++) await page.evaluate(() => window.kq!.step(60));
+  expect(await page.evaluate(() => window.kq!.quelle!.info())).toMatchObject({ prompt: false, find: false });
+  for (let i = 0; i < 14 && !(await page.evaluate(() => window.kq!.quelle!.info().find)); i++) await page.evaluate(() => window.kq!.step(60));
+  expect(await page.evaluate(() => window.kq!.ctx.ui.hud.promptShown())).toEqual({ key: 'E', text: 'Untersuchen', owner: 'quelle' });
+  await page.evaluate(() => window.kq!.step(180));
+  expect(await beat(page)).toBe('t16');
+  await page.evaluate(() => {
+    const k = window.kq!;
+    k.press('KeyE', 2);
+    k.step(30);
+  });
   expect(await beat(page)).toBe('t17');
+  expect(await page.evaluate(() => window.kq!.quelle!.info().find)).toBe(false);
   await captionShown(page, '[Messing klirrt auf Stein]');
   await expect(page.getByTestId('objective')).toContainText('Laub zuhören');
   const laubIntro = ['laub.t.intro', 'player.q.laub', 'laub.t.intro.b', 'laub.t.quelle', 'laub.t.trog'];
@@ -695,6 +724,12 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
     };
   }, laubIntro);
   expect(entrySave).toEqual({ beat: 't17', spoken: [], unlocked: false, loaded: true });
+  // the touch does ask for the view: turn round to the water (after the reload, before the autosave)
+  await page.evaluate(({ x, z, yaw }) => {
+    const k = window.kq!;
+    k.teleport(x, z, yaw, -10);
+    k.step(2);
+  }, { x, z, yaw: yaw - 180 });
   expect(await page.evaluate(() => window.kq!.quelle!.info().prompt)).toBe(false);
   const uphill = await page.evaluate(() => {
     const k = window.kq!;

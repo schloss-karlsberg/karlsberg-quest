@@ -6,7 +6,7 @@
   "era": "1793-07",
   "start": "k3_0",
   "next": "k4",
-  "checkpoint": { "x": 1059.3, "z": -833.1, "yaw": 50, "era": "today" },
+  "checkpoint": { "x": 1059.3, "z": -833.1, "yaw": 204, "era": "today" },
   "on": [
     { "id": "teil-b", "when": { "have": { "clue": "clue.k3.chronik" } }, "do": [{ "do": "flag", "set": { "flag.k3_teil_b": true } }] },
     {
@@ -694,7 +694,7 @@
         { "do": "say", "line": "marlene.k3.abend", "delay": 3 },
         { "do": "objective", "id": "k3.quelle", "text": "Zur Quelle", "x": 1059.3, "z": -833.1, "delay": 1 }
       ],
-      "complete": { "any": [{ "event": "hub:enter" }, { "enter": { "x": 1061, "z": -834.5, "r": 12, "era": "today" } }] }
+      "complete": { "any": [{ "event": "hub:enter" }, { "enter": { "x": 1058.5, "z": -831, "r": 12, "era": "today" } }] }
     },
     {
       "id": "k3_10",

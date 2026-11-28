@@ -362,7 +362,7 @@ test.describe('staged set pieces (K2 / K4 / endings)', () => {
 
   test('Endings: the burn shows its memories through the burning pages; the museum needle; the keep prints', async ({ page }) => {
     const errors = trackErrors(page);
-    await place(page, 'today', 1059.3, -833.1, 50, 0);
+    await place(page, 'today', 1059.3, -833.1, 204, 0);
     await page.evaluate(() => {
       const k = window.kq!;
       k.story!.look('night');
@@ -387,7 +387,7 @@ test.describe('staged set pieces (K2 / K4 / endings)', () => {
 
   test('Endings: the museum needle settles north; the keep ending leaves prints before the step', async ({ page }) => {
     const errors = trackErrors(page);
-    await place(page, 'today', 1059.3, -833.1, 50, 0);
+    await place(page, 'today', 1059.3, -833.1, 204, 0);
     await page.evaluate(() => {
       const k = window.kq!;
       k.story!.look('dawn');
@@ -402,7 +402,7 @@ test.describe('staged set pieces (K2 / K4 / endings)', () => {
     await expect(page.getByTestId('ending-next')).toBeVisible({ timeout: 30_000 });
     await page.reload();
     await page.waitForFunction(() => !!(window.kq as Any)?.stage && !!window.kq?.story, null, { timeout: 180_000 });
-    await place(page, 'today', 1059.3, -833.1, 50, -14);
+    await place(page, 'today', 1059.3, -833.1, 204, -14);
     await page.evaluate(() => {
       const k = window.kq!;
       k.story!.look('dusk');
@@ -417,7 +417,7 @@ test.describe('staged set pieces (K2 / K4 / endings)', () => {
   });
   test('Bussole cues (lid, needle, ticking) and the Registratur papers; the passing frost', async ({ page }) => {
     const errors = trackErrors(page);
-    await place(page, 'today', 1059.3, -833.1, 50, 0);
+    await place(page, 'today', 1059.3, -833.1, 204, 0);
     const cue = (id: string, data: Record<string, unknown> = {}) =>
       page.evaluate(({ id, data }) => window.kq!.ctx.events.emit('story:cue', { id, data } as never), { id, data });
     // the lid springs open and a page rises out of it (the Bussole shows for the cue)

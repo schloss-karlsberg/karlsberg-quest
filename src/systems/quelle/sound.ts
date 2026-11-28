@@ -1,5 +1,5 @@
 /**
- * The spring's sounds, procedural like the rest (src/audio/synth.ts): a trickle from the pipe
+ * The spring's sounds, procedural like the rest (src/audio/synth.ts): a trickle from the pipe and the trough's overflow
  * (noise through two narrow band-passes with a quick random gurgle), the splash of the hand, the
  * moment time stands still (the trickle cut, the ambience ducked, a thin glassy chord) and the
  * brook running back (a rising, swelling hush).
@@ -26,7 +26,8 @@ export function springSound(am: AudioManager): SpringSound {
   const buf = am.noise();
   const sfx = am.bus('sfx');
   if (!ctx || !buf || !sfx) return noop;
-  const src3d: Source3D | null = am.createSource3D('ambience', { refDistance: 2.5, maxDistance: 60, rolloff: 1.3 });
+  // heard from the trail a few steps before the forecourt (the pipe's jet and the overflow's fall)
+  const src3d: Source3D | null = am.createSource3D('ambience', { refDistance: 3.5, maxDistance: 60, rolloff: 1.3 });
   if (!src3d) return noop;
   // ---- the trickle: two band-passes, a fast wobbling gain (the gurgle)
   const n = ctx.createBufferSource();
@@ -90,7 +91,7 @@ export function springSound(am: AudioManager): SpringSound {
   return {
     trickle(v, x, y, z) {
       src3d.setPosition(x, y, z);
-      level.gain.setTargetAtTime(Math.max(0, v) * 0.5, now(), v > 0.01 ? 0.25 : 0.03);
+      level.gain.setTargetAtTime(Math.max(0, v) * 0.62, now(), v > 0.01 ? 0.25 : 0.03);
     },
     splash() {
       burst(0.35, 3200, 900, 0.35);

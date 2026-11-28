@@ -14,7 +14,11 @@
  *    story answers with the shift to 1789 (fx scan wave). The player stays held until the shift is
  *    done; the new era's water starts frozen and thaws while the magic fades;
  *  - `quelle.guide` (the story, while Laub leads you here): motes drift down the brook and hover
- *    over the water, so the place calls from afar.
+ *    over the water, so the place calls from afar;
+ *  - `quelle.find` (the tour's break, t16: something glints in the trough): anywhere before the
+ *    trough, whichever way the player looks, E „Untersuchen“ → `quelle:find` (TASK-081);
+ *  - under the title the fixed steps stand still: the water is built and runs per frame there, so
+ *    the backdrop of a save that rests at the spring shows the spring (TASK-087).
  *
  * Trees, scattered props and today's ground cover keep out of the hollow (forest / nature clearings); loot caches too
  * (travel/pois.ts KEEP_CLEAR).
@@ -25,12 +29,12 @@ import type { Era } from '../../core/era';
 import { defineSystem } from '../../core/systems';
 import { cameraHints } from '../../player/camera';
 import { addStrings } from '../../i18n';
-import { brookLine, canTouch, clearings, lookFor, outlet, QUELLE, toWorld, touchLocal, TOUR_REACH, TRAIL, trailLine, waterSpec, yawToWater, type WaterSpec } from './layout';
+import { brookLine, canFind, canTouch, clearings, lookFor, outlet, overflow, QUELLE, toWorld, touchLocal, TOUR_REACH, TRAIL, trailLine, waterSpec, yawToWater, type WaterSpec } from './layout';
 import { inTourQuelle } from './tour';
 import { springSound, type SpringSound } from './sound';
 import { applyLook, brookMesh, glowSprite, motes, poolMesh, streamMesh, trailMesh, waterUniforms, type Motes } from './water';
 
-addStrings('de', { 'quelle.touch': 'Wasser berühren' });
+addStrings('de', { 'quelle.touch': 'Wasser berühren', 'quelle.find': 'Untersuchen' });
 
 declare module '../../core/events' {
   interface GameEvents {
@@ -38,6 +42,8 @@ declare module '../../core/events' {
     'quelle:dip': { era: Era };
     /** The touch is done (the moment stood still, the brook ran back): the story shifts. */
     'quelle:touch': { era: Era };
+    /** E „Untersuchen“ before the trough while `quelle.find` is set (the tour's find, t16). */
+    'quelle:find': { era: Era };
   }
 }
 
@@ -47,7 +53,10 @@ export interface QuelleHooks {
     built: Era | null;
     visible: boolean;
     water: WaterSpec | null;
+    /** E „Wasser berühren“ is up. */
     prompt: boolean;
+    /** E „Untersuchen“ is up (the tour's find). */
+    find: boolean;
     scene: number | null;
     magic: number;
     freeze: number;
@@ -69,6 +78,7 @@ declare module '../../debug/hooks' {
 const RANGE = 150;
 export const FLAG_CALL = 'quelle.call';
 export const FLAG_GUIDE = 'quelle.guide';
+export const FLAG_FIND = 'quelle.find';
 const OWNER = 'quelle';
 
 /** The scene's timeline (s, game time). */
@@ -115,7 +125,7 @@ let scene: Scene | null = null;
 /** Seconds since the moment was let go (the new era's water thaws, the magic fades), or null. */
 let after: number | null = null;
 let held: number | null = null;
-let promptOn = false;
+let promptOn: 'touch' | 'find' | null = null;
 let focusSet = false;
 let sound: SpringSound | null = null;
 const offs: (() => void)[] = [];
@@ -162,7 +172,13 @@ function build(ctx: GameContext, era: Era): void {
     // +w in world (towards the viewer)
     const dx = Math.sin(YAW);
     const dz = Math.cos(YAW);
-    const s = streamMesh(new Vector3(o.x, o.y, o.z), dx, dz, spec.y, U, speed);
+    const s = streamMesh(new Vector3(o.x, o.y, o.z), dx, dz, spec.y, U, speed, 0.02);
+    if (s) g.add(s);
+  }
+  // today the trough runs over at its low end: a second, broader fall you see from the path
+  const ov = overflow(h, era);
+  if (ov) {
+    const s = streamMesh(new Vector3(ov.x, ov.y, ov.z), Math.cos(YAW), -Math.sin(YAW), ov.toY, U, 0.3, 0.028);
     if (s) g.add(s);
   }
   const line = brookLine(h, era);
@@ -183,11 +199,20 @@ function build(ctx: GameContext, era: Era): void {
   built = era;
 }
 
-function setPrompt(ctx: GameContext, on: boolean): void {
+/** Build the era's water when the player is near, and show it only then. */
+function showWater(ctx: GameContext): void {
+  const p = ctx.player.position;
+  const era = ctx.era.current;
+  const near = Math.hypot(p.x - QUELLE.x, p.z - QUELLE.z) < RANGE;
+  if (near && built !== era) build(ctx, era);
+  if (group) group.visible = near;
+}
+
+function setPrompt(ctx: GameContext, on: 'touch' | 'find' | null): void {
   const flags = ctx.state.mutable.flags;
   if (on !== promptOn) {
     promptOn = on;
-    ctx.ui.hud.prompt(on ? 'E' : null, on ? ctx.t('quelle.touch') : undefined, OWNER);
+    ctx.ui.hud.prompt(on ? 'E' : null, on ? ctx.t(`quelle.${on}`) : undefined, OWNER);
     if (on) flags['e.owner'] = OWNER;
   }
   // A save from the water can carry an interaction claim even when its prompt is no longer up.
@@ -214,7 +239,7 @@ function startScene(ctx: GameContext): void {
   after = null;
   pl.frozen = true;
   pl.lookLocked = true;
-  setPrompt(ctx, false);
+  setPrompt(ctx, null);
   ctx.ui.hud.blockPrompts(OWNER, true);
 }
 
@@ -313,7 +338,8 @@ function installHooks(ctx: GameContext): void {
       built,
       visible: !!group?.visible,
       water: spec ? { ...spec } : null,
-      prompt: promptOn,
+      prompt: promptOn === 'touch',
+      find: promptOn === 'find',
       scene: scene ? scene.t : null,
       magic,
       freeze,
@@ -366,31 +392,29 @@ export default defineSystem({
     const pl = ctx.player;
     const p = pl.position;
     const era = ctx.era.current;
-    const near = Math.hypot(p.x - QUELLE.x, p.z - QUELLE.z) < RANGE;
-    if (near && built !== era) build(ctx, era);
-    if (group) group.visible = near;
+    showWater(ctx);
     updateScene(dt, ctx);
     const { flags, systems } = ctx.state.state;
     const tour = inTourQuelle(systems.story);
     const tourTouch = tour && systems.story?.beat === 't17' && era === 'today';
-    const can =
-      !scene &&
-      flags[FLAG_CALL] === true &&
-      (!tour || tourTouch) &&
-      !!spec &&
-      !pl.flying &&
-      !pl.frozen &&
-      ctx.input.enabled &&
-      ctx.ui.modals.count === 0 &&
-      canTouch(p.x, p.z, pl.yaw, era, tourTouch ? TOUR_REACH : undefined) &&
-      Math.abs(p.y - spec.y) < 2.5;
-    setPrompt(ctx, can);
+    const free = !scene && !!spec && !pl.flying && !pl.frozen && ctx.input.enabled && ctx.ui.modals.count === 0 && Math.abs(p.y - spec.y) < 2.5;
+    const can = free && flags[FLAG_CALL] === true && (!tour || tourTouch) && canTouch(p.x, p.z, pl.yaw, era, tourTouch ? TOUR_REACH : undefined);
+    // the tour's find: no facing asked (the player may stand at the trough looking after the group)
+    const find = free && !can && tour && era === 'today' && flags[FLAG_FIND] === true && canFind(p.x, p.z, era);
+    setPrompt(ctx, can ? 'touch' : find ? 'find' : null);
     if (can && ctx.input.wasPressed('listen')) startScene(ctx);
+    else if (find && ctx.input.wasPressed('listen')) ctx.events.emit('quelle:find', { era });
     stepVisuals(dt, flags[FLAG_GUIDE] === true);
   },
 
-  frame(_dt, ctx) {
+  frame(dt, ctx) {
     installHooks(ctx);
+    const title = ctx.pause.reasons.has('title');
+    if (title) {
+      // the fixed steps stand still under the title: build and run the water here
+      showWater(ctx);
+      stepVisuals(Math.min(dt, 0.1), false);
+    }
     U.uPoolTime.value = poolT;
     U.uPhase.value = phase;
     U.uFreeze.value = freeze;
@@ -405,7 +429,7 @@ export default defineSystem({
       if (guide > 0.01 || magic > 0.01) mot.flow(path, moteOff);
     }
     // the trickle: on while the stream runs (not frozen, not iced, not in 1796)
-    if (sound && out && group?.visible) {
+    if (sound && out && group?.visible && !title) {
       const look = built ? lookFor(built) : 'today';
       const v = look === 'winter' ? 0 : (1 - freeze) * Math.max(0, flow);
       sound.trickle(v, out.x, out.y, out.z);

@@ -4,9 +4,10 @@ import type { GameContext } from '../src/core/context';
 import type { Era } from '../src/core/era';
 import { EventBus } from '../src/core/events';
 import { createInitialState, GameStateStore } from '../src/core/state';
-import scenery, { type SceneryHooks } from '../src/systems/scenery';
+import scenery, { TITLE_SETS, type SceneryHooks } from '../src/systems/scenery';
 import { BAUWAGEN_SET, BAUWAGEN_SITE } from '../src/systems/scenery/bauwagen';
 import { GATE_CENTER } from '../src/systems/scenery/sets';
+import { HOME } from '../src/systems/story/hub/home';
 import { FootprintCollider } from '../src/world/collision';
 import { loadPalaceFootprints } from './interiors-fixture';
 
@@ -23,6 +24,7 @@ function sceneryGame(start: Era = 'today', beforeScenery?: (events: EventBus) =>
   const scene = new Scene();
   const player = { position: new Vector3(-1000, 0, -1000), yaw: 0 };
   const era = { current: start };
+  const pause = { reasons: new Set<string>() };
   const collider = new FootprintCollider(footprints.map(f => f.ring));
   const terrain = { heightAt: () => 0, bounds: { x0: -2000, z0: -2000, x1: 3000, z1: 3000 } };
   // A single pane is enough to distinguish the full and zero shares of light.
@@ -31,7 +33,7 @@ function sceneryGame(start: Era = 'today', beforeScenery?: (events: EventBus) =>
   glass.setAttribute('aBld', new Float32BufferAttribute(new Float32Array(4), 1));
   const palace = new Group().add(new Mesh(glass));
   const ctx = {
-    era, state, events, scene, player, camera: { position: new Vector3() },
+    era, state, events, scene, player, pause, camera: { position: new Vector3() },
     data: { footprints: { buildings: footprints } },
     quality: { level: 'low' }, settings: { state: { reducedMotion: true } },
     content: { facts: new Map() }, input: {}, ui: { hud: { prompt: vi.fn() } },
@@ -47,7 +49,8 @@ function sceneryGame(start: Era = 'today', beforeScenery?: (events: EventBus) =>
   const step = () => scenery.update(1 / 60, ctx);
   step();
   return {
-    state, events, collider, player, hooks: kq.scenery!, step,
+    state, events, collider, player, pause, hooks: kq.scenery!, step,
+    frame: () => scenery.frame!(1 / 60, ctx),
     shift(to: Era) {
       const from = era.current;
       era.current = to;
@@ -60,6 +63,35 @@ function sceneryGame(start: Era = 'today', beforeScenery?: (events: EventBus) =>
   };
 }
 afterEach(() => { scenery.dispose(); vi.unstubAllGlobals(); });
+
+describe('the title backdrop (TASK-087)', () => {
+  it('builds the spring for a save that rests at home, although the fixed steps stand still', () => {
+    const g = sceneryGame();
+    expect(TITLE_SETS.map((def) => def.id)).toEqual(['karlsbergquelle']);
+    g.pause.reasons.add('title');
+    g.player.position.set(HOME.spawn.x, 0, HOME.spawn.z);
+    expect(g.hooks.built()).toEqual([]);
+    g.frame();
+    expect(g.hooks.built()).toEqual(['karlsbergquelle']);
+    g.frame();
+    expect(g.hooks.built()).toEqual(['karlsbergquelle']);
+    // play takes over as before
+    g.pause.reasons.delete('title');
+    g.step();
+    expect(g.hooks.built()).toContain('karlsbergquelle');
+  });
+
+  it('builds nothing else under the title: the opening keeps its first-input budget', () => {
+    const g = sceneryGame();
+    g.pause.reasons.add('title');
+    g.player.position.set(BAUWAGEN_SITE.x, 0, BAUWAGEN_SITE.z);
+    g.frame();
+    expect(g.hooks.built()).toEqual([]);
+    g.pause.reasons.delete('title');
+    g.step();
+    expect(g.hooks.built()).toContain('bauwagen');
+  });
+});
 
 describe('era-specific scenery', () => {
   it('streams the present-day trailer and its obstacle over the approach and departure distances', () => {

@@ -16,7 +16,7 @@ export async function throughTour(page: Page): Promise<void> {
   await page.evaluate(() => {
     const k = window.kq!;
     k.story!.goto('tour', 't17');
-    k.teleport(1059.3, -833.1, 50, -10);
+    k.teleport(1059.3, -833.1, 204, -10);
     k.step(60);
   });
   // Laub's lines run, then the Quelle's own E („das Wasser berühren“)

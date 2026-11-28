@@ -3,12 +3,12 @@ import { clue, noun, say, seq, hints, src, write } from './common.mjs';
 const ch = 'k4';
 const E = '1796';
 // Marlene's notes at home: since the tour bridge (WP-01) at the Karlsbergquelle, across the trail
-// south-west of the trough (quelle/layout.ts local u 0, w 12), r 8: the spawn (1059.3/−833.1) and
+// north-east of the trough (quelle/layout.ts local u 0, w 12), r 8: the spawn (1059.3/−833.1) and
 // the trough's E zone stay outside the clue radius. The story also grants the clues.
-const QUELLE_NOTES = [1051.3, -827.4];
+const QUELLE_NOTES = [1063.4, -842];
 // Marlene's note lies on the mossy edge block by the steps at the spring (local u −3.4, w 3.2),
 // 3.7 m from the wake spot: reachable, and its 1.2 m circle stays clear of the trough's E zone
-const STUFE = [1056.4, -835.4];
+const STUFE = [1062.9, -832.5];
 const TAL = [497, -900];
 const WEST = [200, -905];
 const BAU = [503, -836];

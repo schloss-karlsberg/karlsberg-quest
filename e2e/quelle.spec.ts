@@ -3,7 +3,7 @@ import { ciScale } from './helpers/ci';
 import { trackErrors } from './helpers/common';
 import { boot } from './helpers/k1';
 import { QUELLE_STAND, flag, holdHome, qn, qs, story } from './helpers/prolog';
-import { PIECES, REACH, toLocal, toWorld, touchLocal } from '../src/systems/quelle/layout';
+import { PIECES, QUELLE, REACH, toLocal, toWorld, touchLocal } from '../src/systems/quelle/layout';
 
 /**
  * At the K1 opening, E at the trough triggers the touch scene on game time. After the shift
@@ -54,13 +54,13 @@ test('Karlsbergquelle: E at the trough, the still moment, the shift to 1789, Q h
       },
       [x, z, yaw] as const,
     );
-  // facing away (the spring's own front, compass 234): no
+  // facing away (the way the spring's own front looks): no
   expect((await at(QUELLE_STAND.x, QUELLE_STAND.z, QUELLE_STAND.yaw + 180)).prompt).toBe(false);
   // Pressing E while facing away leaves the world view in place.
   await page.evaluate(() => window.kq!.press('KeyE', 2));
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  // on the slope behind the wall, turned to the water (+w = compass 234), within reach: no (the wall is between)
-  const behind = await at(...toWorld(touchLocal('today')[0], PIECES.wall.w - PIECES.wall.thick - 0.45), 234);
+  // on the slope behind the wall, turned to the water (+w = the spring's facing), within reach: no (the wall is between)
+  const behind = await at(...toWorld(touchLocal('today')[0], PIECES.wall.w - PIECES.wall.thick - 0.45), QUELLE.facing);
   const [bu, bw] = toLocal(behind.x, behind.z);
   expect(bw).toBeLessThan(PIECES.wall.w - PIECES.wall.thick);
   expect(Math.hypot(bu - touchLocal('today')[0], bw - touchLocal('today')[1])).toBeLessThan(REACH);
@@ -170,5 +170,23 @@ test('Karlsbergquelle: E at the trough, the still moment, the shift to 1789, Q h
   expect(await qn(page, 'q.k1.ankunft', 'quelle')).toBe(1);
   expect(await page.evaluate(() => window.kq!.quelle!.info())).toMatchObject({ built: 'today', prompt: false, scene: null });
   expect((await story(page)).inHub).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test('the title backdrop of a save that rests at home shows the spring (TASK-087)', async ({ page }) => {
+  const errors = trackErrors(page);
+  // the title holds the fixed steps: the home set and its water are built per frame there
+  await page.goto(`./?nosave&fresh&x=${QUELLE_STAND.x}&z=${QUELLE_STAND.z}`);
+  await expect(page.getByTestId('title-new')).toBeEnabled({ timeout: ciScale(120_000) });
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const k = window.kq;
+          return { title: !!k?.ctx.pause.reasons.has('title'), sets: k?.scenery?.built() ?? [], water: k?.quelle?.info().visible ?? false, look: k?.quelle?.info().water?.look ?? null };
+        }),
+      { timeout: ciScale(60_000) },
+    )
+    .toEqual({ title: true, sets: ['karlsbergquelle'], water: true, look: 'today' });
   expect(errors).toEqual([]);
 });

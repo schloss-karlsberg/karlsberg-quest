@@ -204,6 +204,22 @@ function updatePlateau(ctx: GameContext): void {
   plateau.setLevel(ctx.quality.level);
 }
 
+/** The sets the title backdrop builds: the home place (the opening's other sets wait for play). */
+export const TITLE_SETS: readonly SetDef[] = SETS.filter((def) => def.id === 'karlsbergquelle');
+
+/** Build the sets of `defs` in range of the player in this era, drop the ones that are not. */
+function syncSets(ctx: GameContext, defs: readonly SetDef[]): void {
+  const era = ctx.era.current;
+  const p = ctx.player.position;
+  for (const def of defs) {
+    const l = live.get(def.id);
+    const here = def.eras.includes(era);
+    const d = Math.hypot(p.x - def.x, p.z - def.z);
+    if (l && (!here || d > def.range + 80 || l.gate !== slice.gate)) dropSet(def.id);
+    if (!live.has(def.id) && here && d < def.range) buildSet(ctx, def, era);
+  }
+}
+
 function updateUnderstory(ctx: GameContext): void {
   const state = understory;
   if (!state) return;
@@ -721,13 +737,7 @@ export default defineSystem({
     ensurePassage(ctx);
     if (slice.windows.length && lit.size < slice.windows.length) applyWindows(ctx);
     const p = ctx.player.position;
-    for (const def of SETS) {
-      const l = live.get(def.id);
-      const here = def.eras.includes(era);
-      const d = Math.hypot(p.x - def.x, p.z - def.z);
-      if (l && (!here || d > def.range + 80 || l.gate !== slice.gate)) dropSet(def.id);
-      if (!live.has(def.id) && here && d < def.range) buildSet(ctx, def, era);
-    }
+    syncSets(ctx, SETS);
     syncSolids(ctx);
     bauwagen?.update(live.has(BAUWAGEN_SET.id));
     if (live.has('bleiche')) bleichePlayer(p.x, p.y, p.z);
@@ -743,6 +753,9 @@ export default defineSystem({
   // per rendered frame: hooks (also while `?manual` holds the fixed steps) and motion settings
   frame(_dt, ctx) {
     installHooks(ctx);
+    // The fixed steps stand still under the title, so nothing above builds a set there. A save
+    // rests at home, and its title backdrop would show the hollow without the spring (TASK-087).
+    if (ctx.pause.reasons.has('title')) syncSets(ctx, TITLE_SETS);
     updatePlateau(ctx);
     updateUnderstory(ctx);
     const reduced = ctx.settings.state.reducedMotion;
