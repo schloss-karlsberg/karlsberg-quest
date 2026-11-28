@@ -4,7 +4,7 @@ aliases:
 - TASK-085
 title: 'HUD boxes cover each other: speech box over the tracker, toast over captions, level card over speech'
 slug: hud-boxes-cover-each-other
-status: todo
+status: done
 priority: 3
 owner: ''
 projects: []
@@ -19,7 +19,7 @@ milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-27
-updated: 2026-11-27
+updated: 2026-11-28
 ---
 
 # HUD boxes cover each other: speech box over the tracker, toast over captions, level card over speech
