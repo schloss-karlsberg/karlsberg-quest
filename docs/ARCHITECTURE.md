@@ -1282,7 +1282,8 @@ Round-4 (polish: set dressing) integration rules:
   `hud.acting('reveal')` (a boss's reveal, combat) every line but `now` is held; a beat's own
   non-lore line is queued ahead of waiting lore that has not started (quest history at a turn-in
   never pushes the beat's line past its moment). Pack dialogue from the event that satisfies beat
-  completion keeps its queue position and skips the retirement deadline. The ordinary queue
+  completion skips the retirement deadline and survives natural chapter handoffs, both while
+  queued and on screen. The ordinary queue
   limits and validity checks still apply, including the place check. Lines a
   trigger fires on `story:ending` are assembled by the ending card, not spoken; the presenter is
   cleared at the credits. Reactions take `cooldown` (s, with `repeat`). Starting or replaying a

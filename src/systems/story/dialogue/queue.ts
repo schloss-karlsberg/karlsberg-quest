@@ -164,8 +164,14 @@ export class LineQueue<T extends QueuedLine> {
     return this.items.filter(held).length;
   }
 
-  clear(): void {
-    this.items.length = 0;
+  clear(keepCompleting = false): void {
+    if (!keepCompleting) {
+      this.items.length = 0;
+      return;
+    }
+    for (let i = this.items.length - 1; i >= 0; i--) {
+      if (!this.items[i]!.completesBeat) this.items.splice(i, 1);
+    }
   }
 
   /** The line belongs to a sequence that is playing or waiting to resume. */

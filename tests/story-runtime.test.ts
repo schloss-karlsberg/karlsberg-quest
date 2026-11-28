@@ -111,13 +111,14 @@ async function boot(initial: GameState, { withFx = false, reducedMotion = false 
 }
 
 describe('beat retirement in the story runtime', () => {
-  async function dawn() {
+  async function dawn(backlogMs = 5200) {
     const initial = createInitialState();
     initial.systems.story = { ...createStorySlice(), active: true, chapter: 'k4', beat: 'k4_14' };
     const game = await boot(initial, { reducedMotion: true });
+    game.player.teleport(1059.3, -833.1);
     game.start();
     const dialogue = game.dialogue();
-    game.events.emit('dialogue:say', { id: 'test.long', speaker: 'marlene', text: 'Einen Moment.', ms: 5200 });
+    game.events.emit('dialogue:say', { id: 'test.long', speaker: 'marlene', text: 'Einen Moment.', ms: backlogMs });
     const find = (id: string) => {
       game.state.mutable.inventory.clues.push(id);
       game.events.emit('clue:found', { id, kind: 'dialogue' });
@@ -133,6 +134,24 @@ describe('beat retirement in the story runtime', () => {
     expect(game.dialogue.state()).toMatchObject({ beat: 'k4_15', dialogue: { id: 'test.long' } });
     for (let i = 0; i < 35; i++) game.tick(0.25);
     expect(game.dialogue.shown()).toEqual(['test.long', 'laub.k4.nur_steine', 'laub.k4.x.luecken']);
+  });
+
+  it.each([8000, 15000])('keeps a completing reaction across the endings handoff (backlog: %s ms)', async (ms) => {
+    const game = await dawn(ms);
+    game.find('clue.k4.foto');
+    game.find('clue.k4.nur_steine');
+    for (let i = 0; i < 35; i++) game.tick(0.25);
+    expect(game.dialogue.state()).toMatchObject({
+      chapter: 'k4', beat: 'k4_15',
+      dialogue: { id: ms === 8000 ? 'laub.k4.nur_steine' : 'test.long' },
+    });
+    game.tick(0.25);
+    expect(game.dialogue.state()).toMatchObject({ chapter: 'enden', beat: 'e1' });
+    if (ms === 8000) expect(game.dialogue.state().dialogue?.id).toBe('laub.k4.nur_steine');
+    else expect(game.dialogue.state().pendingLines).toBe(1);
+    for (let i = 0; i < 24 && !game.dialogue.shown().includes('laub.k4.nur_steine'); i++) game.tick(0.25);
+    expect(game.dialogue.shown().filter((id) => id === 'laub.k4.nur_steine')).toHaveLength(1);
+    expect(game.dialogue.shown()).not.toContain('marlene.k4.foto');
   });
 
   it('still expires the earlier clue reaction when it did not complete the beat', async () => {

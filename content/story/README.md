@@ -90,9 +90,11 @@ terrace, Parkzaun) so Q takes you straight back.
 chapter reactions to none). When a new beat begins, the old beat's delayed presentation
 (`say/toast/sound/card/prompt/echo/choice`) is dropped and its delayed state changes run at once;
 waiting dialogue lines of the old beat get 3 s to start (barks are dropped). Pack dialogue queued
-by the event that satisfies the beat's completion keeps its place through retirement. This covers
-event latches, clue discovery for `have.clue` and quest turn-in for `quest`. Queue limits, timeouts,
-place checks and presentation holds still apply.
+by the event that satisfies the beat's completion keeps its place through retirement and natural
+chapter handoffs. An active completing reaction can finish across the handoff. This covers event
+latches, clue discovery for `have.clue` and quest turn-in for `quest`. Silent events can complete the
+beat without protecting earlier dialogue. Queue limits, timeouts, place checks and presentation
+holds still apply.
 Put other lines the player needs to hear early in a reaction or into the beat's `exit`
 (lines already said stay silent, see k4_9). A scripted `grant` can be followed by a `say` of the
 clue's triggered line to reserve reading time before the next action (see the photo in k4_14).

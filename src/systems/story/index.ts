@@ -691,10 +691,10 @@ class StoryRuntime {
       }
       return;
     }
-    // the previous chapter's queued lines and delayed actions end with it: the new title card
-    // starts clean (in a campaign Laub's prologue rules ran on into "Der Hof")
+    // Ordinary lines and delayed actions end with the chapter. Completing reactions carry
+    // through a natural handoff, including a line that is already on screen.
     this.cancelScheduled();
-    this.presenter.clear();
+    this.presenter.clear(handover);
     // a new chapter (a new day) starts on your feet, not still prone from the last chase
     if (ctx.player.stance !== 'stand') ctx.player.setStance('stand');
     // … and with the new chapter's own objective, not the last one of the previous chapter
