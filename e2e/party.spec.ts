@@ -223,6 +223,40 @@ test('party (c): ?party=museum — the world is quiet: no tripod beam, no marker
   expect(errors).toEqual([]);
 });
 
+test('party (d): ?party=museum from the title (no ?debug, no ?notitle) goes straight to the party, no tour', async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto('./?nosave&fresh&manual&party=museum');
+  const start = page.getByTestId('title-new');
+  await expect(start).toBeEnabled({ timeout: ciScale(90_000) });
+  await page.evaluate(() => {
+    const w = window as unknown as { storyEvents: string[] };
+    w.storyEvents = [];
+    window.kq!.ctx.events.onAny((n) => {
+      if (n === 'story:chapter' || n === 'story:beat') w.storyEvents.push(n);
+    });
+  });
+  await start.click();
+  await page.getByTestId('warning-accept').click();
+  await page.getByTestId('name-confirm').click();
+  // the testing aid skips the tour's route card („Tour starten“)
+  await expect(page.getByTestId('tour-map')).toHaveCount(0);
+  await expect(page.getByTestId('title')).toBeHidden({ timeout: ciScale(30_000) });
+  await page.waitForFunction(() => {
+    const k = window.kq!;
+    if (!k.party || k.party.state().variant === null) k.step();
+    return k.party?.state().variant === 'museum';
+  }, null, { timeout: ciScale(120_000) });
+  await step(page, 60);
+  const st = await page.evaluate(() => {
+    const s = window.kq!.story!.state();
+    return { active: s.active, chapter: s.chapter, objective: s.objective, credits: window.kq!.party!.state().credits };
+  });
+  expect(st).toMatchObject({ active: false, objective: null, credits: 'playing' });
+  expect(st.chapter).not.toBe('tour');
+  expect(await page.evaluate(() => (window as unknown as { storyEvents: string[] }).storyEvents)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
 test('party (b): Escape dismisses the credits and the dogs lie at the player\'s feet', async ({ page }) => {
   const errors = trackErrors(page);
   const t0 = Date.now();

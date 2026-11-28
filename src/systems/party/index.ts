@@ -31,6 +31,7 @@ import { FestPartySet } from './fest';
 import type { PartySet } from './set';
 import { CreditsStrip } from './strip';
 import { isOneOf } from '../../core/saved';
+import { partyDevVariant } from '../story/devstart';
 import { PARTY_CREDITS, PARTY_VARIANTS, type PartySlice, type PartyVariant } from './types';
 import './types';
 
@@ -110,10 +111,11 @@ class PartySystem {
 
   /** `?party=museum|burn|keep`: era today at the plateau checkpoint, facing the party, dusk, set, credits. */
   private devEntry(): void {
-    const v = this.ctx.params.get('party');
-    if (!v) return;
-    if (!PARTY_VARIANTS.includes(v as PartyVariant)) {
-      console.warn(`[party] ?party=${v}: use museum, burn or keep`);
+    const raw = this.ctx.params.get('party');
+    if (!raw) return;
+    const v = partyDevVariant(this.ctx.params);
+    if (!v) {
+      console.warn(`[party] ?party=${raw}: use museum, burn or keep`);
       return;
     }
     const off = this.ctx.events.on('game:start', () => {
@@ -125,7 +127,7 @@ class PartySystem {
         const p = PARTY_CHECKPOINT;
         ctx.player.teleport(p.x, p.z, yawTo(p.x, p.z, TF01.x, TF01.z));
         window.kq?.story?.look('dusk');
-        ctx.events.emit('party:set', { variant: v as PartyVariant });
+        ctx.events.emit('party:set', { variant: v });
         ctx.events.emit('party:credits', {});
       }, 0);
     });

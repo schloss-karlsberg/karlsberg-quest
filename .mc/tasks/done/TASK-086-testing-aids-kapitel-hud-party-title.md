@@ -4,7 +4,7 @@ aliases:
 - TASK-086
 title: 'Testing aids: stale XP widget after ?kapitel, tour runs under ?party from the title'
 slug: testing-aids-kapitel-hud-party-title
-status: todo
+status: done
 priority: 3
 owner: ''
 projects: []
@@ -18,7 +18,7 @@ milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-27
-updated: 2026-11-27
+updated: 2026-11-28
 ---
 
 # Testing aids: stale XP widget after ?kapitel, tour runs under ?party from the title
@@ -41,7 +41,18 @@ CONTRIBUTING.md „Testing aids“ give a wrong picture to testers. Players are 
 
 ## Acceptance criteria
 
-- [ ] After a `?kapitel` jump the XP widget shows the granted level and XP at once.
-- [ ] `?party=…` started from the title goes straight to the party (no tour beat, title card or
+- [x] After a `?kapitel` jump the XP widget shows the granted level and XP at once.
+- [x] `?party=…` started from the title goes straight to the party (no tour beat, title card or
       tour objective); `?kapitel=N` skips the tour route card.
-- [ ] The smoke or party e2e covers one of these paths without `?debug`.
+- [x] The smoke or party e2e covers one of these paths without `?debug`.
+
+## Done (2026-11-28)
+
+- `src/systems/story/devstart.ts`: `kapitelJump`, `partyDevVariant`, `skipsTourRoute` read the
+  two testing-aid flags in one place (boot, story, party use them; flag names and ranges unchanged).
+- Title flow (`title/flow.ts`): with `skipRoute` the name confirm starts the game, no route card.
+- Story `onStart`: a title new game under a valid `?party=` does not start the tour.
+- Progression: `kq.progression.level(n)` redraws the XP widget at once (`refreshXp`).
+- Tests: `tests/devstart.test.ts`, `tests/progression-level-hud.test.ts`, e2e
+  `party (d): ?party=museum from the title …` in `e2e/party.spec.ts` (no `?debug`/`?notitle`).
+- CONTRIBUTING testing-aids table and ARCHITECTURE party section updated.

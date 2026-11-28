@@ -315,6 +315,11 @@ class Progression {
     if (this.started) this.ctx.save.autosave(`progression-${reason}`, force);
   }
 
+  /** Redraw the XP bar from the slice without animation (debug level jumps). */
+  refreshXp(): void {
+    this.updateXp(false);
+  }
+
   private updateXp(animate: boolean): void {
     const s = this.core.slice();
     const lvl = s.level;
@@ -483,7 +488,11 @@ export default defineSystem({
     hooks = {
       state: () => structuredClone(p.core.slice()),
       xp: (n, at) => ctx.events.emit('xp:grant', { amount: n, reason: 'debug', x: at?.x, z: at?.z }),
-      level: (n) => p.core.setLevel(n),
+      level: (n) => {
+        p.core.setLevel(n);
+        // setLevel grants no XP (no xp:gain): show the new level and XP at once (`?kapitel`, TASK-086)
+        p.refreshXp();
+      },
       grant: (item, n = 1, quiet) => ctx.events.emit('item:grant', { item, count: n, quiet }),
       equip: (item) => p.core.equip(item),
       use: (item) => p.quickUse(item),

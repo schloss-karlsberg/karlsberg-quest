@@ -1,5 +1,6 @@
 /**
- * New-game flow on the title screen: content warning (16+) → visitor name → tour map.
+ * New-game flow on the title screen: content warning (16+) → visitor name → tour map
+ * (skipped for the `?kapitel` / `?party` testing aids).
  * Starting the tour also unlocks audio.
  * Installed through `titleHooks` (src/ui/title.ts).
  */
@@ -16,6 +17,8 @@ export interface FlowDeps {
   modals: ModalManager;
   /** The chosen name (applied to the story when the new game starts). */
   onName(name: string): void;
+  /** Testing aids (`?kapitel`, `?party`): the name starts the game, no tour route card. */
+  skipRoute?: boolean;
 }
 
 // Schematic of the tour route in content/story/00-tour.story.json.
@@ -121,6 +124,12 @@ export function runNewGameFlow(host: HTMLElement, d: FlowDeps): Promise<false | 
         const name = input.value.trim().replace(/\s+/g, ' ').slice(0, 24);
         if (!name) {
           input.focus();
+          return;
+        }
+        if (d.skipRoute) {
+          root?.remove();
+          // still within the confirm gesture, so boot can unlock Web Audio
+          resolve(() => d.onName(name));
           return;
         }
         show(tourMapScreen(name));
