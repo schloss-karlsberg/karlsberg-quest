@@ -31,7 +31,7 @@ Address the fresh-game playtest on main at db8b1b8d, through the first visit to 
 
 - [x] F2. Open passages between car-park visitors, with multi-direction collision regressions.
 - [x] F3. Align the coat marker with a working interaction spot and brief the player on approach.
-- [ ] F5 and F10. Switch goals at the first shift and share the group target between HUD indicators.
+- [x] F5 and F10. Switch goals at the first shift and share the group target between HUD indicators.
 - [ ] F8 and F9. Pace clink captions and show the full goal as it wraps.
 - [ ] F12. Deliver the throw hint with the first pickup.
 - [ ] F7 and F11. Check the scripted compass grant and recorded dialogue before changing either.
@@ -43,3 +43,4 @@ Address the fresh-game playtest on main at db8b1b8d, through the first visit to 
 - F2. Spaced the gathered arcs for player clearance. The car-park regression reproduced the stall on the baseline and now passes from 16 headings, including starts inside the ring.
 - F3. The story and quest point to the existing reach spot behind the second line. The brief starts within 30 m, including during the spring arrival beat. The disguise spec checks the approach and takes the coat from its marked spot.
 - F5. The coat objective replaces the trough on the first story tick in 1789 and stays in the HUD through the chapter handover. The runtime and tour spec check both moments.
+- F10. The story HUD reads the moving waypoint used by the group marker and uses its distance format. Unit and tour coverage check both indicators.

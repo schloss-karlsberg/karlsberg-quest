@@ -38,7 +38,7 @@ const _v = new Vector3();
 const _f = new Vector3();
 
 /** Metres → "42 m" / "1,2 km". */
-function dist(m: number): string {
+export function waymarkDistance(m: number): string {
   if (m < 1000) return `${Math.round(m)} m`;
   return `${(m / 1000).toFixed(1).replace('.', ',')} km`;
 }
@@ -155,7 +155,7 @@ export class Waymark {
       this.el.classList.toggle('kq-wm-look', looking);
       if (onScreen && nearCentre < 70) want *= 0.35 + 0.65 * (nearCentre / 70);
       this.el.style.transform = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px)`;
-      const text = dist(d);
+      const text = waymarkDistance(d);
       if (text !== this.lastText) {
         this.lastText = text;
         this.distEl.textContent = text;

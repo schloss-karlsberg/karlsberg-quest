@@ -630,8 +630,13 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
     k.step(60);
     // the compass and the lead refresh at 10 Hz: settle them at the new position
     k.ctx.loop.renderOnce(0.1);
+    // Story reads the resolved quest waypoint on the following frame.
+    k.ctx.loop.renderOnce(0);
     return { guide: { x: g.x, z: g.z }, spot, waiting: k.walk!.walker('imhoff')!.waiting, lead: k.quests!.lead() };
   }, { points: fuehrung.points, stop: { x: quelleStop.x, z: quelleStop.z } });
+  const groupDistance = Math.round(Math.hypot(strayAt.lead!.x! - strayAt.spot.x, strayAt.lead!.z! - strayAt.spot.z));
+  await expect(page.getByTestId('objective').locator('.kqs-obj-dist')).toHaveText(`· ${groupDistance} m`);
+  await expect(page.getByTestId('waymark').locator('.kq-wm-dist')).toHaveText(`${groupDistance} m`);
   console.log(`[tour] stray lead: ${JSON.stringify(strayAt)}`);
   // the objective sits on the route at the group, not on the Quelle stop
   expect(strayAt.waiting).toBe(true);

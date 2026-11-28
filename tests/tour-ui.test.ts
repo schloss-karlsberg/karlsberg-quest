@@ -5,6 +5,7 @@ import { EventBus } from '../src/core/events';
 import { MemoryStorage, SaveManager, SettingsStore } from '../src/core/save';
 import { GameStateStore, createInitialState } from '../src/core/state';
 import quests from '../src/systems/quests';
+import { ObjectiveView } from '../src/systems/story/objectives';
 import { createStorySlice } from '../src/systems/story/engine';
 import { ENDING_SLOT, endingTitleActions } from '../src/systems/story/title/actions';
 import { Hud } from '../src/ui/hud';
@@ -65,6 +66,8 @@ beforeEach(() => {
     querySelector: () => null,
     querySelectorAll: () => [],
     documentElement: root,
+    body: root,
+    activeElement: root,
     createElement: (tag: string) => tag === 'template' ? { content: { firstElementChild: new ElementStub() } } : new ElementStub(),
     createTextNode: () => new ElementStub(),
   });
@@ -108,6 +111,24 @@ describe('tour compass', () => {
     } finally {
       quests.dispose();
     }
+  });
+
+  it('shows the moving group waypoint distance in the objective line', () => {
+    const hud = new Hud();
+    const goal = { id: 'tour', text: 'Der Gruppe folgen', x: 40, z: 0 };
+    const view = new ObjectiveView(root as unknown as HTMLElement, hud);
+    view.set(goal);
+    const group = { x: 3, z: 4, y: 0, r: 3, kind: 'zone', main: true, label: goal.text } as const;
+    hud.waymark.set(group);
+    hud.questLead = { target: group, story: goal };
+    view.frame(1 / 60, 0, 0, 0, { compass: false, visible: true, reducedMotion: false });
+    expect(view.line).toBe('Der Gruppe folgen · 5 m');
+
+    const closer = { ...group, x: 0, z: 1 };
+    hud.waymark.set(closer);
+    hud.questLead = { target: closer, story: goal };
+    view.frame(1 / 60, 0, 0, 0, { compass: false, visible: true, reducedMotion: false });
+    expect(view.line).toBe('Der Gruppe folgen');
   });
 
   it('keeps the guide on the second row when looking ahead or when both markers clamp to the same edge', () => {
