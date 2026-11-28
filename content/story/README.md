@@ -89,11 +89,13 @@ terrace, Parkzaun) so Q takes you straight back.
 **Beat scope.** Delayed actions belong to the beat that ran them (`exit` actions to the next beat;
 chapter reactions to none). When a new beat begins, the old beat's delayed presentation
 (`say/toast/sound/card/prompt/echo/choice`) is dropped and its delayed state changes run at once;
-waiting dialogue lines of the old beat get 6 s to start (barks are dropped).
-So a line the player must hear goes early in a reaction (short delays) or into the beat's
-`exit` (lines already said stay silent, see k4_9). A beat that completes on a clue its own script
-grants: put a `say` of the clue's triggered line right after the `grant` — it stays silent (the
-clue already said it) but reserves its reading time, so the next grant does not cut it off (k4_14).
+waiting dialogue lines of the old beat get 3 s to start (barks are dropped). Pack dialogue queued
+by the event that satisfies the beat's completion keeps its place through retirement. This covers
+event latches, clue discovery for `have.clue` and quest turn-in for `quest`. Queue limits, timeouts,
+place checks and presentation holds still apply.
+Put other lines the player needs to hear early in a reaction or into the beat's `exit`
+(lines already said stay silent, see k4_9). A scripted `grant` can be followed by a `say` of the
+clue's triggered line to reserve reading time before the next action (see the photo in k4_14).
 | `epilogue?` | fallback epilogue data (the endings pack's `epilog:line` lines win, see below) |
 
 **`sameEra` reactions.** On a chapter or beat reaction, `sameEra: true` drops the reaction's pending

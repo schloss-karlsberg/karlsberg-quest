@@ -196,6 +196,10 @@ export class DialoguePresenter {
     this.queue.retireBeat(beat);
   }
 
+  keepCompletingGroup(group: number): void {
+    this.queue.keepCompletingGroup(group);
+  }
+
   clear(): void {
     this.queue.clear();
     this.interruptedGroups.clear();

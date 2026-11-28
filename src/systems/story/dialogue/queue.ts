@@ -5,7 +5,7 @@
  *   oldest waiting ordinary line outside a sequence that has started, then urgent lines;
  * - a low-priority line that waited longer than LOW_TTL seconds is dropped;
  * - when a beat begins, waiting lines of other beats retire: low ones at once, the rest get
- *   STALE_GRACE seconds to start (`retireBeat`);
+ *   STALE_GRACE seconds to start (`retireBeat`); the event that completed a beat keeps its group;
  * - a sequence (same `group`) retains protection while it plays or is interrupted by an urgent line;
  * - `valid` (the host: is the player still near the place the line is about?) is asked when a
  *   line's turn comes;
@@ -34,6 +34,8 @@ export interface QueuedLine {
   staleAt?: number;
   /** Lines emitted together share a group (see above). */
   group?: number;
+  /** The reaction to a completing event keeps its place through beat retirement. */
+  completesBeat?: boolean;
   /** History / lore: held while a fight is on (see above), never a reason to lag. */
   lore?: boolean;
 }
@@ -97,7 +99,9 @@ export class LineQueue<T extends QueuedLine> {
     } else if (item.priority !== 'low' && !item.lore && item.beat) {
       // a beat's own line goes ahead of waiting lore (a quest's history must not make the beat's
       // line miss its moment: K4 echo, integration round 3)
-      const at = this.items.findIndex((q) => q.lore && q.priority !== 'now' && !this.started(q));
+      let after = this.items.length;
+      while (after > 0 && !this.items[after - 1]!.completesBeat) after--;
+      const at = this.items.findIndex((q, i) => i >= after && q.lore && q.priority !== 'now' && !this.started(q));
       if (at < 0) this.items.push(item);
       else this.items.splice(at, 0, item);
     } else this.items.push(item);
@@ -117,11 +121,15 @@ export class LineQueue<T extends QueuedLine> {
     this.items.unshift(item);
   }
 
+  keepCompletingGroup(group: number): void {
+    for (const item of this.items) if (item.group === group) item.completesBeat = true;
+  }
+
   /** A beat began: waiting lines of other beats are stale (see above). */
   retireBeat(beat: string): void {
     for (let i = this.items.length - 1; i >= 0; i--) {
       const q = this.items[i]!;
-      if (q.beat === undefined || q.beat === null || q.beat === beat || this.started(q)) continue;
+      if (q.beat === undefined || q.beat === null || q.beat === beat || q.completesBeat || this.started(q)) continue;
       if (q.priority === 'low') {
         this.items.splice(i, 1);
         this.dropped++;

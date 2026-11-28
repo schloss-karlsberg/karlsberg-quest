@@ -261,6 +261,19 @@ describe('dialogue queue rules', () => {
     playing = undefined;
   });
 
+  it('keeps a completing lore reaction ahead of the next beat but still expires it by its own rules', () => {
+    const q = mk();
+    let expired = false;
+    q.push({ id: 'completing-lore', beat: 'b1', group: 7, lore: true });
+    q.push({ id: 'expired-reaction', beat: 'b1', group: 7, lore: true, expired: () => expired });
+    q.keepCompletingGroup(7);
+    q.retireBeat('b2');
+    q.tick(STALE_GRACE + 0.5);
+    q.push({ id: 'new', beat: 'b2' });
+    expired = true;
+    expect(drain(q)).toEqual(['completing-lore', 'new']);
+  });
+
   it('a line about a place is skipped when the player has left it (valid callback)', () => {
     let near = true;
     const q = mk(undefined, () => near);

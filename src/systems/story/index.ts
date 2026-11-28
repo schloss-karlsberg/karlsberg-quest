@@ -217,6 +217,7 @@ const ASSEMBLED_EVENTS = new Set(['epilog:line', 'story:ending']);
 interface RunScope {
   beat: string | null;
   where: { x: number; z: number; r: number } | null;
+  dialogueGroup?: number;
   /** The era visit a `sameEra` reaction belongs to. */
   eraVisit?: number;
 }
@@ -322,6 +323,7 @@ class StoryRuntime {
       run: (actions, o) =>
         this.run(actions, o.resume, { beat: o.beat ?? null, where: o.where ?? null, eraVisit: o.sameEra ? this.eraVisit : undefined }, o.source),
       chapterEntered: (f, o) => this.chapterEntered(f, o),
+      keepCompletingDialogue: (group) => this.presenter.keepCompletingGroup(group),
       beatEntered: (ch, b, o) => {
         if (ch === 'enden' && b.id === 'e1' && !o.resume) {
           const finaleLines = new Set(sayLineIds(this.engine.chapter()));
@@ -1326,23 +1328,14 @@ class StoryRuntime {
   private onEvent(name: string, payload: unknown): void {
     if (QUIET_EVENTS.has(name)) return;
     if (name === 'room:enter' || name === 'room:leave') this.onRoom(name, payload);
-    this.engine.onEvent(name, payload);
-    // ContentDB dialogue triggers (echo lines are played by the Chronik's echo director itself)
-    if (ECHO_EVENTS.has(name) || ASSEMBLED_EVENTS.has(name)) return;
-    const sys = this.ctx.systems;
-    // the npc feature plays its conversations, the barks feature its barks (rules: barks/rules.ts)
-    if (name === 'npc:talk' && sys.get('npc')) return;
-    const barks = !!sys.get('barks');
-    if (barks && name.startsWith('bark:')) return;
-    const lines = this.ctx.content.dialogueFor(name).filter((l) => !this.mutedLines.has(l.id) && !(barks && isBarkLine(l.id)));
-    if (!lines.length) return;
+    const seq = this.dialogueSequence(name, payload);
+    const group = seq.length ? ++this.lineGroup : undefined;
+    this.engine.onEvent(name, payload, this.caughtBusy ? undefined : group);
+    if (group === undefined) return;
     const s = this.slice;
-    const st = this.ctx.state.state;
-    const seq = pickSequence(lines, name, payload, { era: this.ctx.era.current, flags: st.flags, chapter: s.chapter, beat: s.beat, clues: st.inventory.clues }, new Set(s.said), this.lastSaid, this.time);
-    // a trigger's lines are about what just happened, here: one group, bound to this spot
+    // A trigger's lines are about what just happened here and share one queue group.
     const p = this.ctx.player.position;
-    const scope: RunScope = { beat: s.beat, where: { x: p.x, z: p.z, r: 0 } };
-    this.lineGroup++;
+    const scope: RunScope = { beat: s.beat, where: { x: p.x, z: p.z, r: 0 }, dialogueGroup: group };
     for (const line of seq) {
       this.lastSaid.set(line.id, this.time);
       if (line.once && !s.said.includes(line.id)) s.said.push(line.id);
@@ -1351,7 +1344,22 @@ class StoryRuntime {
       if (this.caughtBusy) this.wakeLines.push(say);
       else this.withScope(scope, () => this.ctx.events.emit('dialogue:say', say));
     }
-    if (seq.length) this.lineGroup++;
+    this.lineGroup++;
+  }
+
+  private dialogueSequence(name: string, payload: unknown) {
+    // ContentDB dialogue triggers (echo lines are played by the Chronik's echo director itself)
+    if (ECHO_EVENTS.has(name) || ASSEMBLED_EVENTS.has(name)) return [];
+    const sys = this.ctx.systems;
+    // the npc feature plays its conversations, the barks feature its barks (rules: barks/rules.ts)
+    if (name === 'npc:talk' && sys.get('npc')) return [];
+    const barks = !!sys.get('barks');
+    if (barks && name.startsWith('bark:')) return [];
+    const lines = this.ctx.content.dialogueFor(name).filter((l) => !this.mutedLines.has(l.id) && !(barks && isBarkLine(l.id)));
+    if (!lines.length) return [];
+    const s = this.slice;
+    const st = this.ctx.state.state;
+    return pickSequence(lines, name, payload, { era: this.ctx.era.current, flags: st.flags, chapter: s.chapter, beat: s.beat, clues: st.inventory.clues }, new Set(s.said), this.lastSaid, this.time);
   }
 
   /**
@@ -1404,7 +1412,7 @@ class StoryRuntime {
       beat: p.keep ? null : sc ? sc.beat : this.slice.beat,
       where,
       priority: p.priority ?? (low ? 'low' : 'normal'),
-      group: sc ? this.lineGroup : ++this.lineGroup,
+      group: sc ? sc.dialogueGroup ?? this.lineGroup : ++this.lineGroup,
       expired: this.expiry(p, line?.trigger?.event),
       // sourced lines teach history: they wait out a fight (and are dropped if it lasts too long)
       lore: p.lore || !!src || undefined,
