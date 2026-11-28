@@ -1,12 +1,13 @@
 /**
  * Forage visuals (three.js, procedural only): the chestnuts in flight with a short trail, the aim
- * arc with its landing ring, and one small pool of flying leaves, shell bits and drops. Three draw
- * calls at most while something happens, none otherwise. With reduced motion nothing flies: no
+ * arc with its landing ring, and one small pool of flying leaves, shell bits and drops. Nothing is
+ * drawn while nothing flies (docs/PERFORMANCE.md §3.10). With reduced motion nothing flies: no
  * trail, no leaves, and the arc is drawn without its crawl.
  */
 import {
   BufferAttribute,
   BufferGeometry,
+  AdditiveBlending,
   Color,
   DoubleSide,
   DynamicDrawUsage,
@@ -22,6 +23,7 @@ import {
   SphereGeometry,
   Vector3,
 } from 'three';
+import { atmosphere } from '../../world/atmosphere';
 import { mulberry32 } from '../progression/logic';
 import { type Nut, THROW, type V3 } from './logic';
 
@@ -33,19 +35,21 @@ function lin(hex: number, k = 1): Color {
 export type BurstKind = 'fern' | 'bush' | 'flowers' | 'grass' | 'shell' | 'splash';
 
 const PALETTES: Record<BurstKind, Color[]> = {
-  // mid-November: fronds gone gold and rust, some still green
-  fern: [lin(0x8a8f34), lin(0xb58a2c), lin(0x9c6a24), lin(0x66752c), lin(0xc9a13a)],
-  bush: [lin(0x5f6f2a), lin(0x7d7a2c), lin(0xa86b26), lin(0x4f5d27)],
-  flowers: [lin(0x7f8c36), lin(0xe9e2c8), lin(0xe3b93a), lin(0x9a78c8)],
-  grass: [lin(0xb9a760), lin(0x9c9a4a), lin(0xcdb672)],
+  // the plants' own greens, so the fronds read against the rust-red leaf litter; a few gone gold
+  fern: [lin(0x3d9a35), lin(0x57b53f), lin(0x2c7a2c), lin(0x8fc24a), lin(0xd6b23a)],
+  bush: [lin(0x4f9a3c), lin(0x79b04a), lin(0x2f6f2c), lin(0xa83a3a)],
+  flowers: [lin(0x5fa83e), lin(0xf1ead2), lin(0xf0c53c), lin(0xa988d8)],
+  grass: [lin(0xd8c676), lin(0xb9b25a), lin(0xe6d28a)],
   shell: [lin(0x6b3a1c), lin(0x8a5a2e), lin(0xd8c39a)],
   splash: [lin(0xdfeaf2), lin(0xb9cfe0)],
 };
 
 const NUTS = 4;
-const TRAIL = 7;
+const TRAIL = 10;
 const ARC = 20;
-const LEAVES = 120;
+const LEAVES = 160;
+/** The chestnut is drawn larger than it collides, so the eye can follow it. */
+const NUT_DRAW = 1.5;
 
 interface Leaf {
   x: number;
@@ -85,6 +89,8 @@ export class ForageVisuals {
   private readonly pos = new Vector3();
   private readonly scale = new Vector3();
   private readonly disposables: { dispose(): void }[] = [];
+  /** Unlit materials tinted by the world's light each frame (sun + sky), so leaves match the plants. */
+  private readonly lit: MeshBasicMaterial[] = [];
 
   constructor() {
     this.group.name = 'forage';
@@ -111,6 +117,7 @@ export class ForageVisuals {
     }
     nutGeo.setAttribute('color', new BufferAttribute(col, 3));
     const nutMat = keep(new MeshBasicMaterial({ vertexColors: true }));
+    this.lit.push(nutMat);
     for (let i = 0; i < NUTS; i++) {
       const m = new Mesh(nutGeo, nutMat);
       m.visible = false;
@@ -130,12 +137,12 @@ export class ForageVisuals {
     const warm = lin(0xf2d9a0);
     for (let n = 0; n < NUTS; n++)
       for (let i = 0; i < TRAIL; i++) {
-        const k = (1 - i / TRAIL) * 0.8;
+        const k = (1 - i / TRAIL) * 1.1;
         tc.set([warm.r * k, warm.g * k, warm.b * k], (n * TRAIL + i) * 3);
       }
     trailGeo.setAttribute('color', new BufferAttribute(tc, 3));
     trailGeo.setDrawRange(0, 0);
-    this.trail = new Points(trailGeo, keep(new PointsMaterial({ size: 0.075, sizeAttenuation: true, vertexColors: true, transparent: true, opacity: 0.7, depthWrite: false })));
+    this.trail = new Points(trailGeo, keep(new PointsMaterial({ size: 0.16, sizeAttenuation: true, vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false, blending: AdditiveBlending })));
     this.trail.frustumCulled = false;
     this.trail.visible = false;
     this.group.add(this.trail);
@@ -146,12 +153,12 @@ export class ForageVisuals {
     const ap = new BufferAttribute(this.arcPos, 3);
     ap.setUsage(DynamicDrawUsage);
     arcGeo.setAttribute('position', ap);
-    this.arc = new Points(arcGeo, keep(new PointsMaterial({ size: 0.085, sizeAttenuation: true, color: lin(0xfff0c8), transparent: true, opacity: 0.9, depthWrite: false })));
+    this.arc = new Points(arcGeo, keep(new PointsMaterial({ size: 0.13, sizeAttenuation: true, color: lin(0xfff0c8, 1.3), transparent: true, opacity: 0.95, depthWrite: false })));
     this.arc.frustumCulled = false;
     this.arc.visible = false;
-    const ringGeo = keep(new RingGeometry(0.3, 0.4, 28));
+    const ringGeo = keep(new RingGeometry(0.3, 0.46, 28));
     ringGeo.rotateX(-Math.PI / 2);
-    this.ring = new Mesh(ringGeo, keep(new MeshBasicMaterial({ color: lin(0xfff0c8), transparent: true, opacity: 0.85, depthWrite: false, side: DoubleSide })));
+    this.ring = new Mesh(ringGeo, keep(new MeshBasicMaterial({ color: lin(0xfff0c8, 1.3), transparent: true, opacity: 0.9, depthWrite: false, side: DoubleSide })));
     this.ring.visible = false;
     this.ring.renderOrder = 3;
     this.group.add(this.arc, this.ring);
@@ -160,7 +167,9 @@ export class ForageVisuals {
     const leafGeo = keep(new BufferGeometry());
     leafGeo.setAttribute('position', new BufferAttribute(new Float32Array([-0.5, 0, 0, 0, 0, 0.26, 0.5, 0, 0, 0, 0, -0.26]), 3));
     leafGeo.setIndex([0, 1, 2, 0, 2, 3]);
-    this.leaves = new InstancedMesh(leafGeo, keep(new MeshBasicMaterial({ side: DoubleSide })), LEAVES);
+    const leafMat = keep(new MeshBasicMaterial({ side: DoubleSide }));
+    this.lit.push(leafMat);
+    this.leaves = new InstancedMesh(leafGeo, leafMat, LEAVES);
     this.leaves.instanceMatrix.setUsage(DynamicDrawUsage);
     this.leaves.count = 0;
     this.leaves.visible = false;
@@ -177,33 +186,48 @@ export class ForageVisuals {
       if (this.live.length >= LEAVES) this.live.shift();
       const r = this.rng;
       const a = r() * Math.PI * 2;
-      const sp = (0.8 + 1.9 * r()) * power;
+      const sp = (1.1 + 2.3 * r()) * power;
       const leaf: Leaf = {
         x: x + (r() - 0.5) * (small ? 0.1 : 0.5),
         y: y + (small ? 0.05 : 0.15 + 0.5 * r()),
         z: z + (r() - 0.5) * (small ? 0.1 : 0.5),
-        vx: Math.cos(a) * sp * 0.7 + dx * sp * 1.1,
-        vy: (small ? 1.2 : 1.6) + 2.2 * r() * power,
-        vz: Math.sin(a) * sp * 0.7 + dz * sp * 1.1,
+        vx: Math.cos(a) * sp * 0.8 + dx * sp * 0.6,
+        vy: (small ? 1.2 : 2.4) + 2.6 * r() * power,
+        vz: Math.sin(a) * sp * 0.8 + dz * sp * 0.6,
         ax: r() - 0.5,
         ay: r() - 0.5,
         az: r() - 0.5,
         spin: (4 + 9 * r()) * (r() < 0.5 ? -1 : 1),
         rot: r() * 6.28,
         life: 0,
-        max: small ? 0.45 + 0.25 * r() : 0.9 + 0.8 * r(),
-        size: small ? 0.04 + 0.04 * r() : kind === 'grass' ? 0.14 + 0.1 * r() : 0.11 + 0.11 * r(),
+        max: small ? 0.45 + 0.25 * r() : 1.1 + 0.9 * r(),
+        size: small ? 0.05 + 0.05 * r() : kind === 'grass' ? 0.16 + 0.12 * r() : 0.17 + 0.16 * r(),
         floor: y + 0.02,
         // leaves flutter down, bits and drops fall
-        drag: small ? 0.6 : 2.4,
+        drag: small ? 0.6 : 2,
         c: pal[Math.floor(r() * pal.length)]!,
       };
       this.live.push(leaf);
     }
   }
 
+  /** One fixed step: the trail remembers where each flying chestnut was (index = slot). */
+  tick(nuts: readonly Nut[]): void {
+    for (let i = 0; i < NUTS; i++) {
+      const n = nuts[i];
+      const h = this.history[i]!;
+      if (!n || !n.alive || n.rest >= 0) continue;
+      if (n.age <= 1 / 30) for (let k = 0; k < TRAIL; k++) h.set([n.x, n.y, n.z], k * 3);
+      h.copyWithin(3, 0, (TRAIL - 1) * 3);
+      h.set([n.x, n.y, n.z], 0);
+    }
+  }
+
   /** Chestnuts in flight (index = slot). */
   setNuts(nuts: readonly Nut[], reduced: boolean): void {
+    // sun and sky as the world's shaders see them (no shadow test: these are a few small cards)
+    const tint = this.lit[0]!.color.copy(atmosphere.uSunColor.value).multiplyScalar(0.55).add(atmosphere.uSkyAmbient.value);
+    for (const m of this.lit) m.color.copy(tint);
     let trail = 0;
     for (let i = 0; i < NUTS; i++) {
       const n = nuts[i];
@@ -211,19 +235,15 @@ export class ForageVisuals {
       const on = !!n && n.alive;
       const h = this.history[i]!;
       if (!on) {
-        if (m.visible) h.fill(Number.NaN);
         m.visible = false;
         continue;
       }
       // lying still: it sinks into the litter before it is gone
       const lying = n.rest >= 0 ? Math.max(0, 1 - n.rest / THROW.rest) : 1;
-      if (!m.visible) for (let k = 0; k < TRAIL; k++) h.set([n.x, n.y, n.z], k * 3);
       m.visible = true;
       m.position.set(n.x, n.y - (1 - lying) * THROW.radius * 1.6, n.z);
-      m.scale.setScalar(0.6 + 0.4 * lying);
+      m.scale.setScalar(NUT_DRAW * (0.6 + 0.4 * lying));
       if (n.rest < 0) m.rotation.set(n.age * 11, n.age * 3, n.age * 7);
-      h.copyWithin(3, 0, (TRAIL - 1) * 3);
-      h.set([n.x, n.y, n.z], 0);
       if (!reduced && n.rest < 0) {
         this.trailPos.set(h, trail * 3);
         trail += TRAIL;

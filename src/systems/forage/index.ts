@@ -528,6 +528,7 @@ class Forage {
     const fx = -Math.sin(yaw) * 0.7;
     const fz = -Math.cos(yaw) * 0.7;
     const era = ctx.era.current;
+    const low = ctx.quality.level === 'low';
     let plants = 0;
     let fresh = 0;
     let drops = 0;
@@ -536,7 +537,8 @@ class Forage {
       if (grown <= CUT.stub + 0.01) return;
       plants++;
       const whole = grown >= 1;
-      if (!reduced && plants <= 6) this.visuals.burst(kind as BurstKind, px, py + height * 0.25, pz, whole ? (heavy ? 10 : 7) : 3, heavy ? 1.35 : 1, fx, fz);
+      // (Niedrig draws the plants as straw-coloured clumps: their leaves are straw too)
+      if (!reduced && plants <= 6) this.visuals.burst(low ? 'grass' : (kind as BurstKind), px, py + height * 0.25, pz, whole ? (heavy ? 16 : 12) : 4, heavy ? 1.35 : 1, fx, fz);
       if (!whole) return;
       fresh++;
       const sure = this.rigged > 0;
@@ -618,6 +620,7 @@ class Forage {
     this.syncCount();
     this.tickThrow(dt);
     this.tickNuts(dt);
+    this.visuals.tick(this.nuts);
     this.tickHints(dt);
     this.tickBrush(dt);
     // leaves fly on game time (bullet time and `kq.step` move them like everything else)

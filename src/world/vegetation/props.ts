@@ -481,9 +481,9 @@ export class NatureProps {
             this.e.set((hash2(o, k, 3) - 0.5) * 0.12, L[o + 3]!, (hash2(o, k, 5) - 0.5) * 0.12);
             this.q.setFromEuler(this.e);
             this.v.set(L[o]!, L[o + 1]! - piece.height * sc * K.sink, L[o + 2]!);
-            // cut with the staff: a stub that keeps most of its footprint (cuts.ts)
+            // cut with the staff: a low stub on a smaller footprint (cuts.ts)
             const grown = cut && K.cut !== undefined && L[o + 4]! <= K.cut ? plantCuts.factorAt(L[o]!, L[o + 2]!) : 1;
-            if (grown < 1) this.s.set(sc * (0.7 + 0.3 * grown), sc * grown, sc * (0.7 + 0.3 * grown));
+            if (grown < 1) this.s.set(sc * (0.5 + 0.5 * grown), sc * grown, sc * (0.5 + 0.5 * grown));
             else this.s.setScalar(sc);
             this.m4.compose(this.v, this.q, this.s);
             for (const im of piece.meshes) im.setMatrixAt(n, this.m4);
