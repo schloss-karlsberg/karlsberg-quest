@@ -2,9 +2,9 @@
 id: TASK-079
 aliases:
 - TASK-079
-title: '„Vögel zwitschern.“ caption fires every few seconds'
+title: „Vögel zwitschern.“ caption fires every few seconds
 slug: bird-caption-every-few-seconds
-status: todo
+status: done
 priority: 3
 owner: ''
 projects: []
@@ -19,7 +19,7 @@ milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-27
-updated: 2026-11-27
+updated: 2026-11-28
 ---
 
 # „Vögel zwitschern.“ caption fires every few seconds
@@ -39,7 +39,16 @@ calls `this.caption('birds', 2000)`.
 
 ## Acceptance criteria
 
-- [ ] The bird caption appears once when birdsong starts (entering the forest, era change) and
+- [x] The bird caption appears once when birdsong starts (entering the forest, era change) and
       then at most every 30 s or so, not on every chirp; same for the other ambience loops.
-- [ ] Story and sound-effect captions (barks, wind, water) are unchanged.
-- [ ] A unit test pins the reduced cadence.
+- [x] Story and sound-effect captions (barks, wind, water) are unchanged.
+- [x] A unit test pins the reduced cadence.
+
+## Progress
+
+- 2026-11-28. Recurring ambience captions (birds, 1789 hooves and court) now caption the first sound
+  after the bed starts (entering it, landing, era change) and then wait at least 30 s
+  (`AMBIENCE_CAPTION_GAP`); the sounds keep their rhythm. Wind and water already captioned once per
+  era or visit; story and effect captions are untouched. New test "captions birdsong when it starts
+  and then at most every 30 s, not on every chirp" in `tests/ambience.test.ts` drives fixed 0.2 s
+  ticks with `Math.random` pinned to the shortest chirp interval; the court test was updated.

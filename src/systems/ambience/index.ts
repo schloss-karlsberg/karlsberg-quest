@@ -16,6 +16,9 @@ addStrings('de', {
   'ambience.court': 'Vom Schlosshof dringt leises Stimmengewirr herüber.',
 });
 
+/** Minimum gap between repeated captions of a recurring ambience cue (birds, court), in seconds. */
+export const AMBIENCE_CAPTION_GAP = 30;
+
 class Ambience {
   private wind: Loop | null = null;
   private dread: Loop | null = null;
@@ -26,6 +29,10 @@ class Ambience {
   private birdTimer = 3;
   private courtTimer = 3;
   private hoovesNext = true;
+  // Seconds until a recurring cue may caption again; <= 0 means the next event captions.
+  private birdCaptionWait = 0;
+  private courtCaptionWait = 0;
+  private birdsActive = false;
   private courtNear = false;
   private water: 'pond' | 'brook' | null = null;
   private windCaption: (() => void) | null = null;
@@ -46,6 +53,8 @@ class Ambience {
     const elapsed = this.elapsed;
     this.elapsed = 0;
     this.era = era.current;
+    this.birdCaptionWait -= elapsed;
+    this.courtCaptionWait -= elapsed;
     const p = player.position;
     const mix = ambienceAt(era.current, p.x, p.z);
     const hill = Math.max(0, Math.min(1, (p.y - 300) / 60));
@@ -63,7 +72,11 @@ class Ambience {
       this.updateWaterCaption(pond, brook);
     }
     this.updateCourt(mix.court * onGround, elapsed);
-    if (!player.flying && mix.birds > 0 && (this.birdTimer -= elapsed) <= 0) this.playBirds(mix.birds);
+    const birdsActive = !player.flying && mix.birds > 0;
+    // Birdsong (re)starting, e.g. entering the forest or changing era, captions on the next chirp.
+    if (birdsActive && (!this.birdsActive || eraChanged)) this.birdCaptionWait = 0;
+    this.birdsActive = birdsActive;
+    if (birdsActive && (this.birdTimer -= elapsed) <= 0) this.playBirds(mix.birds);
 
     if (!audio.unlocked) return;
     const bus = audio.bus('ambience');
@@ -88,8 +101,11 @@ class Ambience {
 
   private playBirds(level: number): void {
     this.birdTimer = (2.5 + Math.random() * 6) / level;
-    this.birdCaption?.();
-    this.birdCaption = this.caption('birds', 2000);
+    if (this.birdCaptionWait <= 0) {
+      this.birdCaption?.();
+      this.birdCaption = this.caption('birds', 2000);
+      if (this.birdCaption) this.birdCaptionWait = AMBIENCE_CAPTION_GAP;
+    }
     const { audio, player } = this.ctx;
     if (!audio.unlocked) return;
     this.birds ??= audio.createSource3D('ambience', { refDistance: 8 });
@@ -118,6 +134,7 @@ class Ambience {
     if (!near) {
       this.courtTimer = 3;
       this.hoovesNext = true;
+      this.courtCaptionWait = 0;
       this.courtCaption?.();
       this.courtCaption = null;
       return;
@@ -125,8 +142,11 @@ class Ambience {
     this.courtTimer -= elapsed;
     if (this.courtTimer > 0) return;
     this.courtTimer = this.hoovesNext ? 9 : 15 + Math.random() * 7;
-    this.courtCaption?.();
-    this.courtCaption = this.caption(this.hoovesNext ? 'hooves' : 'court', 3500, true);
+    if (this.courtCaptionWait <= 0) {
+      this.courtCaption?.();
+      this.courtCaption = this.caption(this.hoovesNext ? 'hooves' : 'court', 3500, true);
+      if (this.courtCaption) this.courtCaptionWait = AMBIENCE_CAPTION_GAP;
+    }
     if (audio.unlocked) {
       this.court ??= audio.createSource3D('ambience', { refDistance: 18, rolloff: 0.65 });
       if (this.court) {

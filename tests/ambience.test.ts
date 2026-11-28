@@ -1,11 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import ascent from '../content/routes/p-aufstieg.json';
 import tour from '../content/routes/p-fuehrung.json';
 import { ERAS } from '../src/core/era';
 import type { GameContext } from '../src/core/context';
 import type { Era } from '../src/core/era';
 import { t } from '../src/i18n';
-import ambience from '../src/systems/ambience';
+import ambience, { AMBIENCE_CAPTION_GAP } from '../src/systems/ambience';
 import { ambienceAt } from '../src/systems/ambience/profile';
 
 function atStop(id: string, era: (typeof ERAS)[number] = 'today') {
@@ -96,11 +96,14 @@ describe('ambience captions', () => {
       scene.era.current = '1789';
       scene.tick(3.3);
       scene.tick(9.3);
-      expect(scene.shown).toEqual(['In der Ferne klappern Hufe. (Fiktion)', 'Vom Schlosshof dringt leises Stimmengewirr herüber. (Fiktion)']);
+      // The court murmur still plays 9 s later, but its caption waits for the 30 s gap.
+      expect(scene.shown).toEqual(['In der Ferne klappern Hufe. (Fiktion)']);
+      scene.tick(25);
+      expect(scene.shown).toEqual(['In der Ferne klappern Hufe. (Fiktion)', 'In der Ferne klappern Hufe. (Fiktion)']);
       scene.era.current = '1793-02';
       scene.tick(25);
       expect(scene.shown).toHaveLength(2);
-      expect(scene.removed).toContain('Vom Schlosshof dringt leises Stimmengewirr herüber. (Fiktion)');
+      expect(scene.removed).toContain('In der Ferne klappern Hufe. (Fiktion)');
       scene.move('weiher');
       expect(scene.shown).toHaveLength(2);
     } finally {
@@ -121,6 +124,49 @@ describe('ambience captions', () => {
       expect(scene.outdoor.at(-1)).toBe('Wind rauscht.');
     } finally {
       ambience.dispose();
+    }
+  });
+
+  it('captions birdsong when it starts and then at most every 30 s, not on every chirp', () => {
+    // Math.random() = 0 gives the shortest chirp interval (2.5 s), the worst case for caption spam.
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0);
+    const scene = captionScene();
+    try {
+      scene.move('felsen');
+      let time = 0.21;
+      const birdTimes: number[] = [];
+      const run = (seconds: number) => {
+        for (const end = time + seconds; time < end - 1e-9; time += 0.2) {
+          const before = scene.outdoor.length;
+          scene.tick(0.2);
+          if (scene.outdoor.slice(before).includes('Vögel zwitschern.')) birdTimes.push(time);
+        }
+      };
+      run(100);
+      // About 40 chirps in 100 s, but only the first one and one per 30 s gap are captioned.
+      expect(birdTimes).toHaveLength(4);
+      expect(birdTimes[0]).toBeLessThan(4);
+      for (let i = 1; i < birdTimes.length; i++) {
+        expect(birdTimes[i]! - birdTimes[i - 1]!).toBeGreaterThanOrEqual(AMBIENCE_CAPTION_GAP);
+        expect(birdTimes[i]! - birdTimes[i - 1]!).toBeLessThan(AMBIENCE_CAPTION_GAP + 3);
+      }
+      // Birdsong restarting (landing after a flight, or an era change) captions on the first chirp.
+      birdTimes.length = 0;
+      scene.player.flying = true;
+      run(2);
+      scene.player.flying = false;
+      const landed = time;
+      run(3);
+      expect(birdTimes).toHaveLength(1);
+      expect(birdTimes[0]! - landed).toBeLessThan(3);
+      scene.era.current = '1789';
+      const eraChange = time;
+      run(10);
+      expect(birdTimes).toHaveLength(2);
+      expect(birdTimes[1]! - eraChange).toBeLessThan(10);
+    } finally {
+      ambience.dispose();
+      random.mockRestore();
     }
   });
 
@@ -150,14 +196,15 @@ function captionScene() {
   const outdoor: string[] = [];
   const removed: string[] = [];
   const position = { x: 524, y: 280, z: -770 };
+  const player = { position, flying: false };
   const era: { current: Era } = { current: 'today' };
   const settings = { state: { subtitles: true } };
   const ctx = {
     audio: { unlocked: false },
-    player: { position, flying: false },
+    player,
     era,
     settings,
-    world: {},
+    world: { heightAt: () => 0 },
     t,
     ui: { hud: { subtitle: (_speaker: null, text: string, _ms: number, fiction?: boolean) => {
       if (text === 'Wind rauscht.' || text === 'Vögel zwitschern.') {
@@ -176,6 +223,7 @@ function captionScene() {
     removed,
     era,
     settings,
+    player,
     move(id: string) {
       const stop = [...tour.stops, ...ascent.stops].find((stop) => stop.id === id)!;
       Object.assign(position, { x: stop.x, z: stop.z });
