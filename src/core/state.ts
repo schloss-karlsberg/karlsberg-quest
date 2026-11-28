@@ -176,6 +176,7 @@ export function deserializeState(json: string): GameState {
   const travel = s.systems.travel;
   if (isObj(travel)) {
     travel.activated = livePointIds(travel.activated);
+    if (travel.mapTipPoint !== undefined && !travel.activated.includes(travel.mapTipPoint)) delete travel.mapTipPoint;
     travel.announced = livePointIds(travel.announced);
   }
   restoreTourStaff(s);

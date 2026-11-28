@@ -65,6 +65,8 @@ export function subtitlesCoverToast(touch: boolean, viewportH: number, subtitleL
 interface Toast {
   text: string;
   left: number;
+  /** Resolve the text at display time, or return null to discard a stale notice. */
+  onShow?: () => string | null;
 }
 
 export class CardDirector {
@@ -223,10 +225,18 @@ export class CardDirector {
     return true;
   }
 
-  enqueueToast(text: string, ms = 2600): void {
-    if (this.toast?.text === text || this.toasts.some((toast) => toast.text === text)) return;
-    this.toasts.push({ text, left: ms / 1000 });
-    if (this.toasts.length > 6) this.toasts.shift();
+  enqueueToast(text: string, ms = 2600, onShow?: () => string | null): void {
+    if (this.toast?.text === text) return;
+    const queued = this.toasts.find((toast) => toast.text === text);
+    if (queued) {
+      if (onShow) queued.onShow = onShow;
+      return;
+    }
+    this.toasts.push({ text, left: ms / 1000, onShow });
+    if (this.toasts.length > 6) {
+      const routine = this.toasts.findIndex((toast) => !toast.onShow);
+      this.toasts.splice(Math.max(0, routine), 1);
+    }
   }
 
   private readonly closeToast = () => {
@@ -244,7 +254,9 @@ export class CardDirector {
     if (!this.toast) {
       if (this.toasts.length && !this.toastHold?.() && this.claim('toast', this.closeToast)) {
         this.toast = this.toasts.shift()!;
-        this.hud.showToast(this.toast.text);
+        const text = this.toast.onShow ? this.toast.onShow() : this.toast.text;
+        if (text === null) this.closeToast();
+        else this.hud.showToast(text);
       }
       return;
     }

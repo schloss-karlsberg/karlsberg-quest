@@ -139,7 +139,7 @@ git push -u origin main
 
 - **`window.kq`**, always installed (`src/debug/hooks.ts`, `installDebug` from `src/boot.ts`):
   teleporting, setting the era, `step` / `press`, combat hooks, the `kq.pilot` API, spawning assets.
-- **URL flags:** `?debug`, `?kapitel=2|3|4`, `?era=`, `?x=&z=`, `?manual` (bullet time).
+- **URL flags:** `?debug`, `?kapitel=2|3|4|5`, `?era=`, `?x=&z=`, `?manual` (bullet time).
 
 They are testing aids for contributors and are documented in `CONTRIBUTING.md`. In a
 single-player game they harm nobody.

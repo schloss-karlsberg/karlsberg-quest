@@ -9,8 +9,9 @@ import { qn, qs } from './helpers/prolog';
  * Chapter 1 "Der Hof" as quests (docs/ACTION-RPG.md §11.1), played through headless (`?manual`,
  * driven through window.kq). The playthrough lives in e2e/helpers/k1.ts (shared with
  * e2e/campaign.spec.ts); this spec boots the chapter directly with what the prologue leaves behind.
- * A second test: the lantern running dry in Teil A and being caught in Teil B lose nothing (the
- * quests keep their counts); you wake in the present at that part's anchor, not the station.
+ * A second test: an empty lantern sends nobody home by day (Teil A has no oil timer), and being
+ * caught in Teil A or B loses nothing (the quests keep their counts); you wake in the present at
+ * that part's anchor.
  * Screenshots: test-results/screens/ch-k1-*.png, cna-k1-*.png.
  */
 test('chapter 1 "Der Hof": the whole chapter as quests, both parts', async ({ page }) => {
@@ -33,7 +34,7 @@ test('chapter 1 "Der Hof": the whole chapter as quests, both parts', async ({ pa
   expect(errors).toEqual([]);
 });
 
-test('chapter 1: an empty lantern (Teil A) and the pack (Teil B) cost nothing, you wake at the anchor', async ({ page }) => {
+test('chapter 1: no oil timer by day; caught in Teil A or by the pack in Teil B costs nothing, you wake at the anchor', async ({ page }) => {
   test.setTimeout(ciScale(600_000));
   const errors = trackErrors(page);
   await boot(page);
@@ -47,7 +48,7 @@ test('chapter 1: an empty lantern (Teil A) and the pack (Teil B) cost nothing, y
   });
   expect(await qs(page, 'q.k1.lohn')).toBe('offered');
   await page.evaluate(() => window.kq!.quests!.accept('q.k1.lohn'));
-  // Teil A: the lantern runs dry in 1789 → curtain → the Ehrenhof today (beat `wake`), same beat
+  // Teil A: an empty lantern in 1789 sends nobody home; caught → the Ehrenhof today (beat `wake`), same beat
   await page.evaluate(() => {
     window.kq!.teleport(1224, -1117, 80, 0);
     window.kq!.step(2);
@@ -57,11 +58,17 @@ test('chapter 1: an empty lantern (Teil A) and the pack (Teil B) cost nothing, y
     window.kq!.chronik!.examine('clue.k1.zeichen');
     window.kq!.ctx.ui.modals.closeAll();
     window.kq!.lantern!.setOil(0.002);
+    window.kq!.ctx.events.emit('lantern:request', { lit: true });
   });
-  await upd(page, 120);
+  await upd(page, 240);
+  let s = await story(page);
+  expect(s).toMatchObject({ era: '1789', beat: 'k1_3' });
+  expect(!!s.meters.oil, 'no oil timer by day').toBe(false);
+  await expect(page.getByTestId('story-curtain')).not.toHaveClass(/kqs-down/);
+  await page.evaluate(() => window.kq!.story!.caught('pack'));
   await expect(page.getByTestId('story-curtain')).toBeVisible();
   await upd(page, 400);
-  let s = await story(page);
+  s = await story(page);
   expect(s).toMatchObject({ era: 'today', beat: 'k1_3' });
   expect(s.objective?.id).toBe('k1.zurueck-a');
   expect((await inv(page)).clues).toContain('clue.k1.zeichen');

@@ -281,6 +281,6 @@ write('kapitel-4', {
   hints: hints('case.k4', ch, [
     'Zahlen. Die Pächter zählt der Kanzlist am Baumagazin, die Schulden stehen am Pfeiler im Ehrenhof. Verwechseln Sie nicht, was gebaut, was eingenommen und was geschuldet wurde. Das waren drei verschiedene Unglücke.',
     'Woher kamen die Steine? Schauen Sie vom Westrand aus nach Südwesten. Das Holz kam aus einem anderen Schloss, die Steine von einer Burg. Und was heute noch steht, sehen Sie unten im Tal, wenn Sie den Leuten mit den Karren zusehen.',
-    'Die Mauerzüge im Scan. Gehen Sie zu den Gräben am Küchenhof, einmal 1796 und einmal heute. Was die Männer dort zurücklassen, haben Sie im Prolog schon im Handbuch gesehen.',
+    'Die Mauerzüge im Scan. Gehen Sie zu den Gräben am Küchenhof, einmal 1796 und einmal heute. Bei der Führung am Karlsbergweiher hat Gerold Ihnen den Damm gezeigt. Am Küchenhof verraten gerade Rinnen, wo früher Mauern standen.',
   ]),
 });

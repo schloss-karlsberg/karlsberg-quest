@@ -2,11 +2,12 @@
 import { Scene } from 'three';
 import { vi } from 'vitest';
 import type { GameContext } from '../src/core/context';
+import type { Era } from '../src/core/era';
 import { EventBus } from '../src/core/events';
 import { MemoryStorage, SaveManager } from '../src/core/save';
 import { createInitialState, GameStateStore } from '../src/core/state';
 import { t } from '../src/i18n';
-import type { Input } from '../src/player/input';
+import { DEFAULT_BINDINGS, type Input } from '../src/player/input';
 import { Player } from '../src/player/player';
 import travel, { type TravelHooks } from '../src/systems/travel';
 
@@ -16,7 +17,12 @@ export function setupTravel() {
   const keys = new Set<string>();
   const pauseReasons = new Set<string>();
   const ground = { heightAt: () => 0, slopeDeg: () => 0 };
-  const input = { wasPressed: () => false, isDown: (key: string) => keys.has(key), touchMode: false };
+  const input = {
+    wasPressed: vi.fn<(key: string) => boolean>(() => false),
+    bindings: { ...DEFAULT_BINDINGS },
+    isDown: (key: string) => keys.has(key),
+    touchMode: false,
+  };
   const player = new Player({
     heightAt: ground.heightAt,
     collide: (x, z) => ({ x, z, hit: false }),
@@ -33,23 +39,51 @@ export function setupTravel() {
     combat: { state: () => ({ hp: 15 }), heal },
   };
   vi.stubGlobal('window', { kq });
-  const createElement = () => ({
-    dataset: {}, classList: { add: vi.fn(), remove: vi.fn(), toggle: vi.fn() },
-    append: vi.fn(), remove: vi.fn(), setAttribute: vi.fn(),
-  });
+  const createElement = () => {
+    const classes = new Set<string>();
+    return {
+      dataset: {},
+      classList: {
+        add: vi.fn(), remove: vi.fn(),
+        contains: (name: string) => classes.has(name),
+        toggle: vi.fn((name: string, on: boolean) => on ? classes.add(name) : classes.delete(name)),
+      },
+      textContent: '', append: vi.fn(), remove: vi.fn(), setAttribute: vi.fn(),
+    };
+  };
   const body = { append: vi.fn<(element: ReturnType<typeof createElement>) => void>() };
   vi.stubGlobal('document', { createElement, head: { append: vi.fn() }, body });
-  vi.stubGlobal('requestAnimationFrame', vi.fn());
+  let frameId = 0;
+  const frames = new Map<number, FrameRequestCallback>();
+  vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+    frames.set(++frameId, cb);
+    return frameId;
+  });
+  vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
+  const paint = () => {
+    for (const id of [...frames.keys()]) {
+      const cb = frames.get(id);
+      frames.delete(id);
+      cb?.(0);
+    }
+  };
   const storage = new MemoryStorage();
   const save = new SaveManager(state, storage, events);
   vi.spyOn(save, 'autosave');
   const loop = { manual: true };
+  const era = { current: 'today' as Era };
+  const shift = (to: Era) => {
+    const from = era.current;
+    era.current = state.mutable.era = to;
+    events.emit('era:change', { from, to });
+  };
+  const cards = { claim: vi.fn(() => true), release: vi.fn() };
   const ctx = {
-    events, state, player, loop, save, scene: new Scene(), era: { current: 'today' }, t,
+    events, state, player, loop, save, scene: new Scene(), era, t,
     settings: { state: { reducedMotion: true } }, params: new URLSearchParams(),
     input,
     pause: { push: (r: string) => pauseReasons.add(r), pop: (r: string) => pauseReasons.delete(r) },
-    ui: { add: vi.fn(), toast: vi.fn(), cards: { claim: () => true, release: vi.fn() }, modals: { count: 0 }, hud: {} },
+    ui: { add: vi.fn(), toast: vi.fn(), cards, modals: { count: 0 }, hud: {} },
     audio: { bus: () => null, noise: () => null }, post: { uniforms: { uShift: { value: 0 } } },
     quality: { hold: vi.fn() },
     world: {
@@ -60,7 +94,7 @@ export function setupTravel() {
   travel.init(ctx);
   const step = (dt = 1 / 60) => travel.update(dt, ctx);
   step();
-  return { hooks: kq.travel!, events, player, keys, step, state, pauseReasons, save, storage, loop, heal, body, input, ui: ctx.ui };
+  return { hooks: kq.travel!, events, player, keys, step, state, pauseReasons, save, storage, loop, heal, body, input, shift, cards, paint, ui: ctx.ui };
 }
 
 export function disposeTravel(): void {

@@ -39,6 +39,7 @@ export function validateProgression(
     visitStoryActions(input, a => {
       if (a.do === 'unlock') link(story.chapter, a.chapter);
       if (a.do === 'flag') for (const key of Object.keys(a.set)) declaredFlags.add(key);
+      if (a.do === 'toast' && a.onceFlag) declaredFlags.add(a.onceFlag);
       if (a.do === 'choice') {
         declaredFlags.add('choice.' + a.id);
         for (const o of a.options) for (const key of Object.keys(o.set)) declaredFlags.add(key);

@@ -5,13 +5,12 @@ state machine of **beats**; `pnpm validate` and `tests/story.test.ts` check ever
 (schema: `src/systems/story/types.ts`, validator: `src/systems/story/validate.ts`).
 The [story bible](../bible/00-overview.md) holds the writing and design notes, including the
 [guided tour](../bible/01-prolog.md) and [party endings](../bible/06-enden.md). The story files
-and their generators define the shipped beats and dialogue. For Chapter 4, edit the beat and quest
-JSON directly; `scripts/content-build/kapitel4.mjs` generates the K4 clue and dialogue pack, not those
-files. Placeholders carry `"placeholder": true`.
+define the shipped beats. Edit beat JSON directly. Edit generated chapter packs and K1/K2 quests
+in `scripts/content-build/`, then run `node scripts/content-build/build.mjs`. Placeholders carry `"placeholder": true`.
 
 ```jsonc
 {
-  "chapter": "tour", "order": -1, "title_de": "Die Führung", "sub_de": "Prolog · …",
+  "chapter": "tour", "order": -1, "title_de": "Die Führung", "sub_de": "Kapitel 1 · …",
   "start": "t1", "next": "k1",                // next chapter starts when the last beat completes
   "checkpoint": { "x": 529, "z": -777, "yaw": 215, "era": "today" }, // chapter start / after being caught
   "on": [ /* chapter-wide reactions */ ],
@@ -27,6 +26,23 @@ files. Placeholders carry `"placeholder": true`.
   ]
 }
 ```
+
+## Chapter ids and the numbers on the cards
+
+The player sees five numbered chapters. The ids in files, saves, quests, clues and voice clips are
+one behind, because the tour used to be a prologue. Renaming them would touch every save.
+
+| id | file | card (`title_de` / `sub_de`) |
+| --- | --- | --- |
+| `tour` | `00-tour.story.json` | Die Führung / Kapitel 1 · heute, ein Novembernachmittag |
+| `k1` | `01-kapitel-1.story.json` | Der Hof / Kapitel 2 · Sommer 1789 |
+| `k2` | `02-kapitel-2.story.json` | Die Flucht / Kapitel 3 · Nacht vom 9. auf den 10. Februar 1793 |
+| `k3` | `03-kapitel-3.story.json` | Die Nacht / Kapitel 4 · Sonntag, 28. Juli 1793 |
+| `k4` | `04-kapitel-4.story.json` | Der Steinbruch / Kapitel 5 · 1796 → 1840 → heute |
+| `enden` | `05-enden.story.json` | Was das Feuer nicht fraß / heute · Morgengrauen |
+
+In docs and code comments "K1" … "K4" usually mean the ids. The testing aid `?kapitel=2…5`
+uses the displayed chapter numbers.
 
 ## Static progression checks
 
@@ -79,7 +95,10 @@ Continue from its autosave finishes the jump), plays the arrival lines and hands
 `k1_0.damals` reaction lets Laub say where you are and what is needed once the card has faded, then
 `k1_0b` follows with the quests, so nothing is offered on the chapter card.
 Started from the chapter list, `k1_0` runs in the present and its `k1_0.heute` reaction makes the
-spring the Q anchor; the lines wait for the summer. The spring's „Wasser berühren“ is offered once in the game, in `t17`.
+spring the Q anchor and `k1.karte` holds the beat until its chapter card clears. The spring's
+„Wasser berühren“ is offered in `t17`. During the day in „Der Hof“, the story clears any old oil
+meter and the scripted return happens after the Zwinger. The night in the Karlslust uses the
+lantern timer. Voluntary returns and wake places still work.
 
 **Wake places.** `wake {x, z, yaw?, era: "today", text?}` on a beat: being caught or an empty
 meter while it runs brings you to the present *there* (the resumed beat's `wake` wins, else the
@@ -257,6 +276,10 @@ already arrived. Continue restores the free-play hint on completed endings with 
 `spurenleser` (1 horn meaning, 2 pack routes). Each raise shows the unlock card; Laub comments once
 `flag {set: {"story.laub": true}}` has been set. Measuring: `{event: 'measure:done', match: {building: 'KB-B06'}}`
 or `flag measured.KB-B06` (the measured distance). Chronik clue requirements use `skill: 'kartograf:3'`.
+
+Laub's eleven world tripods and their discovery triggers are present-only. For a goal in the past,
+author an objective with its own coordinates and era. Known survey points can still be map
+destinations.
 
 ## Hunt modes, snow tracks and the menagerie
 

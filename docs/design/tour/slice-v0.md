@@ -2,7 +2,7 @@
 
 **The tour is the start of the game** (owner, 2026-11-22: „Everything new should be standard“): the
 chapter `tour` (`content/story/00-tour.story.json`, order −1, `next: k1`) opens every new game; no URL
-switch. Its end hands over into chapter 1 with the state the old prologue left (relief 3, Kartograf 1,
+switch. Its end hands over to Chapter 2, „Der Hof“, with the state the old prologue left (relief 3, Kartograf 1,
 the Bussole, the „Seite im Deckel der Bussole“, the main path's balms / oil, its XP → level 3; diffed in
 `tests/tour-handover.test.ts`). The tour also offers the deer photo. In v0.7–v0.8,
 `?classic` selected the old surveyor prologue and saves could resume there. Old bookmarks now
@@ -11,7 +11,7 @@ handover and their earned progress (TASK-007). The beats are described in the to
 ([Prolog „Die Führung“](../../../content/bible/01-prolog.md)). Gerold Imhoff is a placeholder name.
 
 **Start:** `pnpm dev` → „Neues Spiel“. Tests: `?notitle`, then `kq.story.start('Name')`; e2e fast
-path to chapter 1: `throughTour(page)` (`e2e/helpers/tour.ts`).
+path to Chapter 2: `throughTour(page)` (`e2e/helpers/tour.ts`).
 
 ## What is in
 
@@ -28,7 +28,7 @@ path to chapter 1: `throughTour(page)` (`e2e/helpers/tour.ts`).
 | t12–t13 | Marlene calls out at the dam and lends the Messstab at the Weiher in t13. The pickup feed confirms the loan and the staff is visible once equipped. Station 3: date and purpose **offen**. |
 | t14–t15 Quelle | Station 4: Quelle, Bach, Wassertretbecken „in der Nähe“; supply / Fassung **offen**. „Ruh dich kurz aus, wir sind oben am Plateau.“ The group walks off on `p-aufstieg`. |
 | t16–t17 | Alone: `player.q.fund`, step into the trough → `item.bussole`, `story.compass`, `story.laub`; `laub.t.intro`, `player.q.laub`, `laub.t.intro.b`, `laub.t.quelle`, `laub.t.trog`; `quelle.call` → the Quelle's own E „Wasser berühren“ → shift to 1789 (reason `quelle`). |
-| t18 Sommer 1789 | The shift, then `player.q.wo`, `laub.t.1789`, `laub.t.seite` with the player free to move; no fade and no return since TASK-089. Exit: the hand-over grants (relief 3, Kartograf 1, „Seite im Deckel der Bussole“, 4 balms, 1 oil, 549 XP), k1 unlocked; the chapter's `leave` lifts `combat.disabled` / `laub.silent` / `tour.slice` and despawns the group and animals; chapter 1 (k1_0, at the Quelle in the present) follows. |
+| t18 Sommer 1789 | The shift, then `player.q.wo`, `laub.t.1789`, `laub.t.seite` with the player free to move; no fade and no return since TASK-089. Exit: the hand-over grants (relief 3, Kartograf 1, „Seite im Deckel der Bussole“, 4 balms, 1 oil, 549 XP), k1 unlocked; the chapter's `leave` lifts `combat.disabled` / `laub.silent` / `tour.slice` and despawns the group and animals; Chapter 2, „Der Hof“ (`k1_0`), begins where the player stands in 1789. Continuing a `tour/t18` save from before the era change finishes the shift and places the player facing the palace at its midpoint. |
 
 Story schema additions (kq-story): look `tour`; `StoryFile.dev`; actions `{do:'npc', op: walk|group|follow|gather|hold|release|warp}` and `{do:'npc', op:'despawn', group}` → `npc:walk` (C2), `{do:'cinematic', …}` → `cinematic:play` (C1), `{do:'animal', …}` → `animal:request` (C5), `{do:'fade', to, seconds}`; sounds `wind`, `bark`; validator cases incl. route / stop checks against `content/routes/*.json`. Tests: `tests/tour-slice.test.ts` (headless beat-by-beat run), `e2e/tour-slice.spec.ts`.
 

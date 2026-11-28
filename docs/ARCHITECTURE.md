@@ -519,7 +519,7 @@ listener's exception and continues delivery so that other systems can process th
 ```
 Loading merges onto defaults (new fields appear automatically, extra keys are kept, newer versions
 are rejected). Bump `STATE_VERSION` and add a migration in `deserializeState` for structural changes.
-Surveyor saves resume at the Chapter 1 checkpoint. The migration uses the archived quest history
+Surveyor saves resume at the Chapter 2 checkpoint. The migration uses the archived quest history
 and reward data in `src/core/legacy-prologue-quests.ts` to retain deeds and settle pending payouts.
 Successful writes record wall-clock time in `meta.savedAt`. The five-second autosave cooldown
 and failure backoff use a monotonic clock. The first storage failure permits an immediate retry.
