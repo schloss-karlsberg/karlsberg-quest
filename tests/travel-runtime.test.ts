@@ -7,6 +7,49 @@ import { disposeTravel, setupTravel } from './travel-fixture';
 afterEach(disposeTravel);
 
 describe('travel discoveries', () => {
+  it.each(['photo', 'another card'])('shows the first map tip once after it was blocked by %s', (blocker) => {
+    const { hooks, events, step, save, cards, ui, shift } = setupTravel();
+    const present = (text: string) => {
+      const banner = vi.mocked(ui.add).mock.lastCall![0];
+      const children = vi.mocked(banner.append).mock.calls.map(([el]) => (el as HTMLElement).textContent);
+      expect(children).toContain(text);
+      expect(banner.classList.toggle).toHaveBeenLastCalledWith('kqt-aside', false);
+    };
+    if (blocker === 'photo') events.emit('photo:open', {});
+    else cards.claim.mockReturnValue(false);
+    hooks.activate('ehrenhof');
+    step();
+    step();
+    expect(hooks.state()).toMatchObject({ activated: ['ehrenhof'], tips: [], mapTipPoint: 'ehrenhof' });
+    expect(save.save('pending')).toBe(true);
+    if (blocker === 'photo') expect(ui.add).not.toHaveBeenCalled();
+    else {
+      const banner = vi.mocked(ui.add).mock.lastCall![0];
+      expect(banner.classList.toggle).toHaveBeenLastCalledWith('kqt-aside', true);
+    }
+
+    shift('1789');
+    events.emit('photo:close', {});
+    cards.claim.mockReturnValue(true);
+    vi.mocked(ui.add).mockClear();
+    step();
+    expect(ui.add).not.toHaveBeenCalled();
+    shift('today');
+    if (blocker === 'photo') expect(save.load('pending')).toBe(true);
+    step();
+    step();
+    present(TRAVEL_DE.firstMap);
+    expect(hooks.state().tips).toEqual(['map']);
+    expect(hooks.state().mapTipPoint).toBeUndefined();
+
+    shift('1789');
+    shift('today');
+    hooks.activate('taleingang');
+    step();
+    present(TRAVEL_DE.activatedSub);
+    expect(hooks.state().tips).toEqual(['map']);
+  });
+
   it('grants lore XP once on foot per slot and restores an uncollected find from an older slot', () => {
     const { hooks, events, player, state, step, save } = setupTravel();
     const lore = hooks.pois().find(p => p.chapter === 'prolog' && p.era === 'today' && p.kind === 'lore')!;

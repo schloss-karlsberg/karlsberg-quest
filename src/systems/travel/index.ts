@@ -59,6 +59,8 @@ export interface TravelSlice {
   shrineT: Record<string, number>;
   /** One-time tips shown. */
   tips: string[];
+  /** First point whose map instructions have yet to appear. */
+  mapTipPoint?: string;
 }
 
 declare module '../../core/state' {
@@ -181,7 +183,8 @@ class Travel {
   private cardT = 0;
   /** The card up is the activation banner (it shares the centre-card slot: ui/cards.ts). */
   private cardBanner = false;
-  private readonly pendingActivations: { name: string; first: boolean }[] = [];
+  private cardMapTip = false;
+  private readonly pendingActivations: SurveyPoint[] = [];
   private time = 0;
   /** 'world:quiet' (the party): tripods, POIs and the trail hidden, no activation, no announcement. */
   private readonly quiet: QuietGate;
@@ -296,10 +299,8 @@ class Travel {
     const ctx = this.ctx;
     chimeActivate(ctx.audio);
     // the first one says what the map is for, on the banner itself (a toast would sit under it)
-    const first = !this.slice.tips.includes('map');
-    if (first) this.slice.tips.push('map');
-    if (this.quiet.photoOpen || this.pendingActivations.length) this.pendingActivations.push({ name: p.name, first });
-    else this.showActivation(p.name, first);
+    if (!this.slice.tips.includes('map')) this.slice.mapTipPoint ??= id;
+    this.pendingActivations.push(p);
     ctx.events.emit('travel:activated', { id });
     ctx.save.autosave('travel');
   }
@@ -630,8 +631,10 @@ class Travel {
 
   // ---- the found-card (activation, Fundstück) ---------------------------------------------------
 
-  private showActivation(name: string, first: boolean): void {
-    this.showCard(TRAVEL_DE.activated(name), first ? TRAVEL_DE.firstMap : TRAVEL_DE.activatedSub, null, first ? 6 : 4.5, 'travel-card-activated');
+  private showActivation(point: SurveyPoint): void {
+    const first = this.slice.mapTipPoint === point.id;
+    this.showCard(TRAVEL_DE.activated(point.name), first ? TRAVEL_DE.firstMap : TRAVEL_DE.activatedSub, null, first ? 6 : 4.5, 'travel-card-activated');
+    this.cardMapTip = first;
   }
 
   showCard(title: string, text: string, from: string | null, seconds: number, testid: string): void {
@@ -675,21 +678,22 @@ class Travel {
     this.card = null;
     if (this.cardBanner) this.ctx.ui.cards.release(BANNER_TOKEN);
     this.cardBanner = false;
+    this.cardMapTip = false;
   }
 
   /**
    * M-18 (docs/MOBILE-UI-PASS.md): the activation banner never stacks on another centre card (the
    * skill card, a level or reward card, a field-book page). It takes the slot when it is free, so a
    * card that comes later waits for it; while another card holds the slot, the banner waits (or
-   * steps aside) and its clock stops. A spoken line or a fight does not keep it back: it is short.
+   * steps aside) and its clock stops.
    * On a landscape phone it shares the top band with the dialogue card, so there it waits while a
    * line is up (touch.css places it).
    */
   private bannerAside(): boolean {
     const cards = this.ctx.ui.cards;
     if (phoneBand() && document.querySelector('.kqs-dlg.kqs-show')) return true;
-    if (cards.claim(BANNER_TOKEN)) return false;
-    return cards.showing !== null;
+    if (cards.held) return true;
+    return !cards.claim(BANNER_TOKEN);
   }
 
   // ---- Laufschritt -------------------------------------------------------------------------------
@@ -903,12 +907,21 @@ class Travel {
       const aside = this.cardBanner && this.bannerAside();
       this.card.classList.toggle('kqt-aside', aside);
       if (aside) return;
+      if (this.cardMapTip) {
+        this.cardMapTip = false;
+        this.slice.tips.push('map');
+        delete this.slice.mapTipPoint;
+        ctx.save.autosave('travel-map-tip', true);
+      }
       this.cardT -= dt;
       if (this.cardT <= 0 || (ctx.input.wasPressed('listen') && this.cardT < 11 && cardMayTakeE(ctx.state.state.flags))) this.hideCard();
     }
-    if (!this.card) {
+    if (!this.card && ctx.era.current === 'today' && !this.quiet.quiet && !ctx.player.frozen) {
+      // After an era change or load the ordinary banners are gone. Restore the unseen tutorial.
+      const tip = this.slice.mapTipPoint ? pointById(this.slice.mapTipPoint) : undefined;
+      if (tip && this.pendingActivations[0] !== tip) this.pendingActivations.unshift(tip);
       const next = this.pendingActivations.shift();
-      if (next) this.showActivation(next.name, next.first);
+      if (next) this.showActivation(next);
     }
   }
 
