@@ -39,7 +39,7 @@ import { TouchControls } from './ui/touch';
 import { SKILL_IDS, skillsForLevel } from './systems/combat/rules';
 import { CameraTakeover, OverrideSlot } from './systems/cinematic/takeover';
 import { endingTitleActions } from './systems/story/title/actions';
-import { kapitelJump } from './systems/story/devstart';
+import { kapitelJump, startAtChapter } from './systems/story/devstart';
 import { mobileLevel } from './render/mobileDefaults';
 import { UI } from './ui/ui';
 import { atmosphere } from './world/atmosphere';
@@ -563,6 +563,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   events.on('ui:toast', ({ text, ms }) => ui.toast(t(text), ms));
   // the character's short reactions (third person)
   events.on('player:damaged', () => avatar.react('hit'));
+  events.on('forage:throw', () => avatar.react('throw'));
   for (const ev of ['clue:found', 'item:pickup', 'measure:done', 'quelle:dip'] as const) events.on(ev, () => avatar.react('interact'));
   // the character's costume (the story's court disguise) and lantern tint (src/player/avatar.ts)
   events.on('player:costume', ({ costume }) => avatar.setCostume(costume));
@@ -796,7 +797,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     ready: () => Promise.all([palaceReady, surfaceReady]),
   });
 
-  // Playtesting a later chapter: ?kapitel=2|3|4 turns a NEW game into a start at that chapter,
+  // Playtesting a later chapter: ?kapitel=2|3|4|5 turns a NEW game into a start at that chapter,
   // with what the earlier chapters would have left behind (survey skills, a fitting level).
   const kapitel = kapitelJump(params);
   if (kapitel !== null) {
@@ -804,7 +805,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
       offStart();
       if (resumed) return;
       // after the story system's own game:start handler has started the prologue
-      setTimeout(() => startAtChapter(kapitel), 0);
+      setTimeout(() => startAtChapter(window.kq, kapitel), 0);
     });
   }
   window.kq!.camera = {
@@ -863,17 +864,4 @@ export function startPlay({ events, ui, input }: Pick<GameContext, 'events' | 'u
   // A resume handler can restore a modal synchronously while pointer lock is granted asynchronously.
   events.emit('game:start', { resumed });
   if (ui.modals.count === 0) input.requestLock();
-}
-
-/** `?kapitel=N`: jump a freshly started game to chapter N (see boot). */
-function startAtChapter(n: number): void {
-  const k = window.kq;
-  if (!k?.story || !k.skills || !k.progression || !k.quests) return;
-  const skills: [string, number][] = [['relief', 2], ['kartograf', 2]];
-  if (n >= 2) skills.push(['baumeister', 1], ['spurenleser', 1]);
-  for (const [id, tier] of skills) k.skills.grant(id, tier, true);
-  k.progression.level(n * 2 + 1);
-  const earlier = new RegExp(`^q\\.(p|${Array.from({ length: n - 1 }, (_, i) => `k${i + 1}`).join('|')})\\.`);
-  for (const id of k.quests.ids()) if (earlier.test(id) && k.quests.state().quests[id]?.state !== 'done') k.quests.reset(id);
-  k.story.goto(`k${n}`, `k${n}_0`);
 }

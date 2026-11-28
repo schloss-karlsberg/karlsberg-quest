@@ -117,7 +117,7 @@ declare module '../core/events' {
     /** A shift has started, before the effect takes over player movement. */
     'shift:begin': { from: Era; to: Era };
     /** Era has just been switched under cover of the effect. */
-    'shift:midpoint': { from: Era; to: Era };
+    'shift:midpoint': { from: Era; to: Era; reason?: ShiftReason };
     /** `reason` is the one from the 'shift:request' that started it (tour C4: 'return' → spring). */
     'shift:done': { from: Era; to: Era; reason?: ShiftReason };
     'fire:room': { roomId: string; state: 'smoke' | 'burning' | 'collapsed' };
@@ -183,6 +183,12 @@ declare module '../core/events' {
      */
     'npc:yaw': { npc: string; yaw: number | null };
     /**
+     * court → npc: a placed NPC stands `dx` / `dz` m off its placement for now (a watcher that
+     * walks to a noise and back). Never saved: the placement stays its post. 0 / 0 = back on it.
+     * Sent while it walks (every tick then), not otherwise.
+     */
+    'npc:offset': { npc: string; dx: number; dz: number };
+    /**
      * npc: the player asked an NPC about a topic (greet / <topic> / bye). The npc system plays the
      * dialogue lines with trigger { event: 'npc:talk', npc, chapter, topic, step? } itself.
      */
@@ -207,6 +213,12 @@ declare module '../core/events' {
      * calm pack on patrol sends a hound to look (hunt). Never emitted for the player's own steps.
      */
     'world:noise': { x: number; z: number; loud: number; by: string };
+    /**
+     * forage → npc: a thrown chestnut flew from a to b this tick. The npc system fills `receipt`
+     * when a placed person stands in its way (it bounces off; `npc` = who). Nobody is hurt; the
+     * court takes a struck watcher from 'forage:impact'.
+     */
+    'world:pelt': { ax: number; ay: number; az: number; bx: number; by: number; bz: number; receipt: { hit: boolean; at?: number; x?: number; z?: number; npc?: string } };
 
     // ---- interiors (owner: interiors) -----------------------------------------------------
     /**

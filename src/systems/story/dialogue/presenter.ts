@@ -196,9 +196,15 @@ export class DialoguePresenter {
     this.queue.retireBeat(beat);
   }
 
-  clear(): void {
-    this.queue.clear();
+  keepCompletingGroup(group: number): void {
+    if (this.cur?.item.group === group) this.cur.item.completesBeat = true;
+    this.queue.keepCompletingGroup(group);
+  }
+
+  clear(keepCompleting = false): void {
+    this.queue.clear(keepCompleting);
     this.interruptedGroups.clear();
+    if (keepCompleting && this.cur?.item.completesBeat) return;
     this.stopClip();
     this.cur = null;
     this.el.classList.remove('kqs-show', 'kqs-speaking');

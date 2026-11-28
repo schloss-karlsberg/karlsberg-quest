@@ -303,7 +303,7 @@ export class ShiftEffect {
     ctx.era.set(this.to);
     ctx.player.frozen = true; // era.set re-grounds the player; keep them still
     this.pendingNewTrees = 1;
-    ctx.events.emit('shift:midpoint', { from: this.from, to: this.to });
+    ctx.events.emit('shift:midpoint', { from: this.from, to: this.to, reason: this.reason });
   }
 
   private apply(): void {

@@ -28,7 +28,7 @@ export const TRAVEL_DE = {
   travelSub: 'Laub peilt an. Die Bussole dreht sich.',
   arrived: (name: string) => `${name}.`,
   wakeHint: (name: string) => `Schnellreise: M öffnet die Karte. ${name} liegt nah am Ziel.`,
-  firstMap: 'Mit M öffnest du die Karte. Zu entdeckten Reisepunkten kannst du direkt reisen.',
+  firstMap: (control: string) => `${control ? `Mit ${control} öffnest du die Karte.` : 'Öffne die Karte.'} Zu entdeckten Reisepunkten kannst du direkt reisen.`,
   sprint: 'Laufschritt: Halte die Umschalttaste, um außerhalb von Kämpfen schneller zu laufen.',
   /** `sprint` in touch mode: the stick pushed to the rim runs (src/player/touchMap.ts `sprintAt`). */
   sprintTouch: 'Laufschritt: Schieb den Bewegungsregler ganz nach vorn, um außerhalb von Kämpfen schneller zu laufen.',

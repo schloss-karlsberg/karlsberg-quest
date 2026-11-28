@@ -73,7 +73,7 @@ declare module '../../core/events' {
      * struck an enemy (`CombatSim.pelt`): `result` 'hit' (a sting and a flinch) or 'glance' (armour,
      * elites, bosses). Mist, lights and veils let it through (no hit).
      */
-    'combat:pelt': { ax: number; ay: number; az: number; bx: number; by: number; bz: number; receipt: { hit: boolean; result?: 'hit' | 'glance'; x?: number; y?: number; z?: number; kind?: string } };
+    'combat:pelt': { /** Only hits strictly before this segment fraction can take effect. */ before?: number; ax: number; ay: number; az: number; bx: number; by: number; bz: number; receipt: { hit: boolean; result?: 'hit' | 'glance'; x?: number; y?: number; z?: number; kind?: string } };
     /** forage → combat: where the locked or soft target's body is, for the throw's aim (`receipt.found`). */
     'combat:aim': { receipt: { found: boolean; x: number; y: number; z: number } };
   }
@@ -344,7 +344,7 @@ class Combat {
     ev.on('combat:pelt', (q) => {
       if (q.receipt.hit) return;
       let best: Enemy | null = null;
-      let bestT = Infinity;
+      let bestT = q.before ?? Infinity;
       for (const e of this.sim.enemies) {
         if (e.state === 'dissolve' || e.state === 'leave') continue;
         const at = segmentHitsBody(q.ax, q.ay, q.az, q.bx, q.by, q.bz, e.x, e.y, e.z, Math.max(e.radius, 0.3) + 0.12, this.visuals.topOf(e));

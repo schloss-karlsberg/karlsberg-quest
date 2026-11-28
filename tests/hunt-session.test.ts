@@ -1,8 +1,11 @@
 import { PerspectiveCamera, Scene, Vector3 } from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import chapter1 from '../content/story/01-kapitel-1.story.json';
 import type { GameContext } from '../src/core/context';
 import hunt from '../src/systems/hunt';
 import story from '../src/systems/story';
+import { DEFAULT_BINDINGS } from '../src/player/input';
+import { CardDirector } from '../src/ui/cards';
 import { createStorySlice } from '../src/systems/story/engine';
 import type { StoryFile } from '../src/systems/story/types';
 import { explorationSession } from './exploration-fixture';
@@ -20,6 +23,13 @@ vi.mock('../src/systems/story/stories', async (importOriginal) => ({
         { id: 'gate', enter: [{ do: 'objective', text: 'Zum Tor' }], complete: { manual: true } },
         { id: 'yard', enter: [{ do: 'objective', text: 'Zum Hof' }], complete: { manual: true } },
       ],
+    } satisfies StoryFile,
+  }, {
+    file: '01-kapitel-1.story.json',
+    story: {
+      ...chapter1 as StoryFile,
+      // Keep the authored chapter reactions and isolate them from quest choreography.
+      beats: ['k1_3', 'k1_7'].map((id) => ({ id, complete: { manual: true } })),
     } satisfies StoryFile,
   }],
 }));
@@ -39,7 +49,7 @@ function setup() {
   const ceilingAt = vi.fn<() => number | null>(() => null);
   const loop = { time: 0, tick: 0 };
   const ctx = {
-    state, events, save, era, loop, player, scene: new Scene(), camera: new PerspectiveCamera(),
+    state, events, save, era, loop, player, pause: { reasons: new Set<string>() }, scene: new Scene(), camera: new PerspectiveCamera(),
     audio: { bus: () => null, noise: () => null },
     systems: { get: vi.fn() }, post: { uniforms: { uDesaturate: { value: 0 } } },
     data: { paths: { nodes: [], edges: [], kinds: [] } },
@@ -51,7 +61,7 @@ function setup() {
       heightfield: { normalAt: () => new Vector3(0, 1, 0) },
       look: { snow: 0 },
     },
-    t: (key: string) => key, input: { wasPressed: () => false },
+    t: (key: string) => key, input: { wasPressed: () => false, touchMode: false, bindings: DEFAULT_BINDINGS },
     settings: { state: { gentleMode: false, subtitles: false, soundIndicators: false } },
   } as unknown as GameContext;
   events.on('save:loaded', () => player.teleport(state.state.player.x, state.state.player.z));
@@ -112,6 +122,118 @@ describe('the lantern during exploration', () => {
     expect(lamp.state()).toMatchObject({ lit: true, oil: 0.5, seconds: 10 });
     expect(player.stats.lanternLit).toBe(true);
     expect(state.state.flags.lanternLit).toBe(true);
+  });
+});
+
+describe('the Chapter 2 lantern on Continue', () => {
+  it.each([false, true])('only an old daytime meter is removed before the lantern empties (night: %s)', async (night) => {
+    const { ctx, element, era, events, save, state, step, lamp } = setup();
+    await initStory(ctx, element);
+    era.set('1789');
+    state.mutable.systems.story = {
+      ...createStorySlice(), active: true, chapter: 'k1', beat: night ? 'k1_7' : 'k1_3',
+      meters: { oil: { id: 'oil', value: 0.999, done: false, seconds: 10, full: 'return' } },
+    };
+    if (night) state.mutable.flags['k1.b'] = true;
+    lamp.setSeconds(10);
+    lamp.setOil(0.001);
+    events.emit('lantern:request', { lit: true });
+    save.save('1');
+    expect(save.load('1')).toBe(true);
+    expect(lamp.state()).toMatchObject({ lit: true, oil: 0.001 });
+    const empty = vi.fn();
+    const expired = vi.fn();
+    events.on('lantern:empty', empty);
+    events.on('story:meter-full', expired);
+    // Hunt runs ahead of Story on the first tick.
+    step(1 / 60);
+    expect(empty).toHaveBeenCalledOnce();
+    if (night) expect(expired).toHaveBeenCalledExactlyOnceWith({ id: 'oil' });
+    else {
+      expect(expired).not.toHaveBeenCalled();
+      expect(state.state.systems.story?.meters.oil).toBeUndefined();
+      expect(era.current).toBe('1789');
+    }
+  });
+
+  it('keeps the saved night meter on a cold Continue and starts a fresh one on the next visit', async () => {
+    const { ctx, element, era, events, save, state, step, lamp } = setup();
+    await initStory(ctx, element);
+    era.set('1789');
+    state.mutable.flags['k1.b'] = true;
+    state.mutable.systems.story = {
+      ...createStorySlice(), active: true, chapter: 'k1', beat: 'k1_7',
+      meters: { oil: { id: 'oil', value: 0.4, done: false, seconds: 420, full: 'return', era: '1789' } },
+    };
+    lamp.setSeconds(420);
+    lamp.setOil(0.6);
+    events.emit('lantern:request', { lit: true });
+    expect(save.save('night')).toBe(true);
+    era.set('today');
+
+    expect(save.load('night')).toBe(true);
+    events.emit('game:start', { resumed: true });
+    const dt = 1 / 60;
+    step(dt);
+    story.update(dt);
+    expect(lamp.state().oil).toBeCloseTo(0.6 - dt / 420, 8);
+    expect(state.state.systems.story?.meters.oil).toMatchObject({ value: 0.4, done: false, seconds: 420 });
+    step(5);
+    story.update(dt);
+    expect(state.state.systems.story?.meters.oil?.value).toBeCloseTo(0.4 + (dt + 5) / 420, 8);
+
+    era.set('today');
+    story.update(dt);
+    expect(state.state.systems.story?.meters.oil).toBeUndefined();
+    era.set('1789');
+    story.update(dt);
+    expect(state.state.systems.story?.meters.oil).toMatchObject({ value: 0, seconds: 420 });
+    expect(lamp.state().oil).toBe(1);
+  });
+
+  it.each([false, true])('retries the delayed and queued lantern tip on Continue (touch: %s)', async (touch) => {
+    const { ctx, element, era, events, save, state } = setup();
+    ctx.input.touchMode = touch;
+    const hud = { inAction: false, showToast: vi.fn(), holdToast: vi.fn(), closeToast: vi.fn() };
+    const cards = new CardDirector(hud, ctx.ui.modals);
+    vi.mocked(ctx.ui.toast).mockImplementation((...args) => cards.enqueueToast(...args));
+    events.on('save:loaded', () => cards.clearToasts());
+    await initStory(ctx, element);
+    era.set('1789');
+    state.mutable.systems.story = { ...createStorySlice(), active: true, chapter: 'k1', beat: 'k1_7' };
+    Object.assign(state.mutable.flags, { 'k1.b': true });
+    events.emit('game:start', { resumed: true });
+    story.update(0);
+    story.update(4);
+    const flag = 'k1.tut.return.shown';
+    expect(state.state.flags[flag]).toBeUndefined();
+    save.save('delay');
+    expect(save.load('delay')).toBe(true);
+    story.update(0);
+    cards.hold('other-card', true);
+    story.update(9);
+    cards.tick(1);
+    expect(ctx.ui.toast).toHaveBeenCalledWith(expect.stringContaining('Die Laterne'), 6500, expect.any(Function));
+    expect(hud.showToast).not.toHaveBeenCalled();
+    expect(state.state.flags[flag]).toBeUndefined();
+
+    // An older save could already have recorded both the reaction and its marker.
+    state.mutable.flags['k1.tut.return'] = true;
+    state.mutable.systems.story!.fired.push('c:lauf-zurueck');
+    save.save('queued');
+    expect(save.load('queued')).toBe(true);
+    cards.hold('other-card', false);
+    story.update(0);
+    story.update(9);
+    cards.tick(1);
+    expect(hud.showToast).toHaveBeenCalledExactlyOnceWith(expect.stringContaining(touch ? 'Halte Epoche,' : 'Halte Q,'));
+    expect(state.state.flags[flag]).toBe(true);
+    save.save('shown');
+    expect(save.load('shown')).toBe(true);
+    story.update(0);
+    story.update(9);
+    cards.tick(1);
+    expect(hud.showToast).toHaveBeenCalledTimes(1);
   });
 });
 

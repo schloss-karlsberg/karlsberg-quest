@@ -392,6 +392,8 @@ function checkActions(list: Action[] | undefined, file: string, where: string, e
         break;
       case 'toast':
         if (!isStr(a.text)) err(file, where, 'toast needs text');
+        if (a.onceFlag !== undefined && !isStr(a.onceFlag)) err(file, where, 'toast onceFlag must be a flag name');
+        if (a.action !== undefined && !Object.hasOwn(DEFAULT_BINDINGS, a.action)) err(file, where, 'toast action must be an input action');
         break;
       case 'teleport':
         if (!isNum(a.x) || !isNum(a.z)) err(file, where, 'teleport needs x/z');

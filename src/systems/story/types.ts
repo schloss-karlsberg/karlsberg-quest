@@ -329,6 +329,10 @@ export interface ToastAction extends ActionBase {
   do: 'toast';
   text: string;
   ms?: number;
+  /** Replace {key} with the current keyboard binding or touch button. */
+  action?: InputAction;
+  /** Set when the toast becomes visible. */
+  onceFlag?: string;
 }
 export interface TeleportAction extends ActionBase {
   do: 'teleport';

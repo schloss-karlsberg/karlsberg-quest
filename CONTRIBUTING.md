@@ -34,7 +34,7 @@ These are intentionally **on in production** too, so you can reproduce a bug on 
 | Aid | What it does |
 | --- | --- |
 | `?debug` | Stats panel and validation; skips the title and never pauses |
-| `?kapitel=2\|3\|4` | A new game starts at that chapter, with matching skills and level. From the title, the name starts the game (no tour route card) |
+| `?kapitel=2\|3\|4\|5` | A new game starts at that chapter, with matching skills and level. From the title, the name starts the game (no tour route card) |
 | `?era=1789` | Start in that era: `today`, `1789`, `1793-02`, `1793-07`, `1796` |
 | `?x=…&z=…` | Start at a local position |
 | `?party=museum\|burn\|keep` | Start at the end-of-game party on the plateau at dusk, credits rolling. From the title, the name starts the party (no tour route card, no tour) |
