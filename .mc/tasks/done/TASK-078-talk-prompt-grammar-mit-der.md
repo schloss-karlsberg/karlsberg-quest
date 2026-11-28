@@ -39,11 +39,11 @@ some speaker names in `content/packs/speakers.pack.json` (built by
 
 ## Acceptance criteria
 
-- [ ] Talk prompts for article names read correctly („Mit dem Hofgärtner sprechen“, „Mit dem
+- [x] Talk prompts for article names read correctly („Mit dem Hofgärtner sprechen“, „Mit dem
       Kommissär sprechen“), for example via an optional dative form per speaker
       (`prompt_de`) or a neutral prompt („Sprechen: Der Hofgärtner“).
-- [ ] Names without an article are unchanged.
-- [ ] A unit test covers one article name and one plain name.
+- [x] Names without an article are unchanged.
+- [x] A unit test covers one article name and one plain name.
 
 ## Plan
 _Status: approved 2026-11-27_

@@ -38,8 +38,8 @@ without waiting for the shared development machine.
       checks are skipped with reasons, and local config and assertions keep their behaviour.
 - [x] The contributing guide, agent commands, e2e architecture and PRD describe the change.
 - [x] Validate workflow YAML, list the CI shards and skips, and run the four gates.
-- [ ] Run the touched specs plus smoke under the local lock when loopback is available.
-- [ ] Confirm the updated hosted suite completes, with any remaining failures coming from assertions.
+- [x] Run the touched specs plus smoke under the local lock when loopback is available. Superseded: since PR #92 the PR e2e runs on the hosted shards.
+- [x] Confirm the updated hosted suite completes, with any remaining failures coming from assertions. The hosted suite is green on main (`f8a75ff7`).
 
 ## Plan
 
