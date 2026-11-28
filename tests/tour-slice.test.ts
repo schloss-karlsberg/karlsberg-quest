@@ -375,6 +375,15 @@ describe('tour slice v0 (00-tour.story.json)', () => {
     hit.tick(10);
     expect(hit.beat()).not.toBe('t10');
 
+    // a save from mid-stop (the flight flag without the minute's timer, which is not saved) still moves on
+    const stale = harness();
+    go(stale);
+    stale.flags['tour.reh.weg'] = true;
+    stale.tick(250);
+    expect(stale.beat()).toBe('t10');
+    stale.tick(15);
+    expect(stale.beat()).not.toBe('t10');
+
     // a scripted startle (a cue) says nothing
     const cue = harness();
     go(cue);

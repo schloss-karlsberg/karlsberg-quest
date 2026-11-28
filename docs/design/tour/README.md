@@ -87,7 +87,7 @@ fail state) stands.
      distance. Upright walking inside 20 m, running, or creeping on once she has stepped aside.
   Standing still when she looks up ends the alert, as the guide says. The pair stops 25 m on, on
   open ground where there is some, and grazes again; the stop waits 60 s after a flight before the
-  tour moves on (180 s without one).
+  tour moves on (180 s without one, 260 s at the latest).
 - **The photo counts what is in it.** A shot is measured at the shutter: an animal of which less
   than 35 % shows is „Verdeckt“ and the shot is not good. „Perfekt!“ needs both animals at least
   70 % in the open, closer than 16 m and big in the frame, which from the sneak path means the 2×

@@ -289,7 +289,7 @@
         "any": [
           { "flag": "tour.reh.done" },
           { "all": [
-            { "any": [{ "flag": "tour.reh.aus" }, { "all": [{ "timer": 180 }, { "not": { "flag": "tour.reh.weg" } }] }] },
+            { "any": [{ "flag": "tour.reh.aus" }, { "all": [{ "timer": 180 }, { "not": { "flag": "tour.reh.weg" } }] }, { "timer": 260 }] },
             { "not": { "flag": "tour.reh.photo" } }
           ] }
         ]
