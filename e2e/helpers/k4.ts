@@ -85,6 +85,13 @@ export async function untilLine(page: Page, id: string, maxSeconds = 40): Promis
     if ((await page.evaluate(() => window.kq!.story!.state().dialogue?.id ?? null)) === id) return true;
     await run(page, 0.5);
   }
+  // what the story was doing instead (a line dropped from the queue, a card or modal holding it)
+  const why = await page.evaluate(() => {
+    const k = window.kq!;
+    const st = k.story!.state();
+    return { beat: st.beat, dialogue: st.dialogue?.id ?? null, pending: st.pendingLines, scheduled: st.scheduled, shown: k.story!.shown().slice(-8), card: k.ctx.ui.cards.showing, modals: k.ctx.ui.modals.count };
+  });
+  console.log(`[k4] untilLine ${id} timed out: ${JSON.stringify(why)}`);
   return false;
 }
 
