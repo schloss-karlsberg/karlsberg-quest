@@ -448,7 +448,9 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
     // the HUD calm counts real play time (frames), so a fight's linger also ends in ?manual
     if (!pause.paused) ui.hud.tickCalm(frameDt);
     ui.cards.tick(frameDt);
-    world.frame(camera, frameDt, loop.time + titleTime);
+    // over the shoulder the lens circles the character: the world takes the haze under the trees
+    // from where they stand, so a turn on the spot does not change it
+    world.frame(camera, frameDt, loop.time + titleTime, player.thirdPerson && cameraOverride.fn === null ? player.renderPos : null);
     audio.updateListener(camera);
     ui.hud.setHeading(((-player.yaw * 180) / Math.PI + 360) % 360);
   }
