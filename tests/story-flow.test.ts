@@ -37,15 +37,52 @@ const say = (text: string, extra: Record<string, unknown> = {}) => ({ do: 'say',
 
 function engineWith(...files: StoryFile[]) {
   let slice: StorySlice = createStorySlice();
+  const completingGroups: number[] = [];
   const runs: { src: string; beat: string | null | undefined; texts: string[] }[] = [];
   const engine = new StoryEngine(files, () => slice, {
     run: (actions: Action[], o: RunOptions) => runs.push({ src: o.source, beat: o.beat, texts: actions.map((a) => (a as { text?: string }).text ?? a.do) }),
     chapterEntered: () => {},
     beatEntered: () => {},
     chapterCompleted: () => {},
+    keepCompletingDialogue: (group) => completingGroups.push(group),
   });
-  return { engine, runs, slice: () => slice, reset: () => (slice = createStorySlice()) };
+  return { engine, runs, completingGroups, slice: () => slice, reset: () => (slice = createStorySlice()) };
 }
+
+describe('completion event attribution', () => {
+  it.each([false, true])('attributes a mixed batch of event latches to the last event (voiced last: %s)', (voicedLast) => {
+    const { engine, completingGroups, slice } = engineWith({
+      chapter: 'c', order: 0, title_de: 'C', start: 'b1',
+      beats: [
+        { id: 'b1', complete: { all: [{ event: 'test:voiced' }, { event: 'test:silent' }] } },
+        { id: 'b2', complete: { manual: true } },
+      ],
+    });
+    engine.goto('c');
+    if (!voicedLast) engine.onEvent('test:voiced', {}, 7);
+    engine.onEvent('test:silent', {});
+    if (voicedLast) engine.onEvent('test:voiced', {}, 7);
+    engine.tick(0.1, env());
+    expect(slice().beat).toBe('b2');
+    expect(completingGroups).toEqual(voicedLast ? [7] : []);
+  });
+
+  it('rewinds silent clue discoveries in the same tick as a voiced discovery', () => {
+    const { engine, completingGroups, slice } = engineWith({
+      chapter: 'c', order: 0, title_de: 'C', start: 'b1',
+      beats: [
+        { id: 'b1', complete: { all: [{ have: { clue: 'voiced' } }, { have: { clue: 'silent' } }] } },
+        { id: 'b2', complete: { manual: true } },
+      ],
+    });
+    engine.goto('c');
+    engine.onEvent('clue:found', { id: 'voiced' }, 7);
+    engine.onEvent('clue:found', { id: 'silent' });
+    engine.tick(0.1, env({ inventory: { clues: ['voiced', 'silent'], nouns: [], items: [] } }));
+    expect(slice().beat).toBe('b2');
+    expect(completingGroups).toEqual([]);
+  });
+});
 
 describe('beat scope of action runs', () => {
   it('enter and beat reactions belong to their beat, exit bridges into the next, chapter reactions to none', () => {
@@ -259,6 +296,19 @@ describe('dialogue queue rules', () => {
     q.tick(STALE_GRACE + 5);
     expect(drain(q)).toEqual(['seq-2']);
     playing = undefined;
+  });
+
+  it('keeps a completing lore reaction ahead of the next beat but still expires it by its own rules', () => {
+    const q = mk();
+    let expired = false;
+    q.push({ id: 'completing-lore', beat: 'b1', group: 7, lore: true });
+    q.push({ id: 'expired-reaction', beat: 'b1', group: 7, lore: true, expired: () => expired });
+    q.keepCompletingGroup(7);
+    q.retireBeat('b2');
+    q.tick(STALE_GRACE + 0.5);
+    q.push({ id: 'new', beat: 'b2' });
+    expired = true;
+    expect(drain(q)).toEqual(['completing-lore', 'new']);
   });
 
   it('a line about a place is skipped when the player has left it (valid callback)', () => {

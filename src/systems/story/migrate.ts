@@ -51,7 +51,9 @@ export function readStorySlice(saved: Record<string, unknown>): StorySlice {
     throw new Error('save: invalid story ending');
   }
 
-  const story = { ...createStorySlice(), ...saved };
+  // Discard the temporary branch-only field so a later save uses the regular format.
+  const { pendingCompletingDialogue: _pending, ...progress } = saved;
+  const story = { ...createStorySlice(), ...progress };
   migrateStorySlice(story);
   return story;
 }

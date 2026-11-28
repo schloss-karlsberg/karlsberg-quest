@@ -1275,13 +1275,16 @@ Round-4 (polish: set dressing) integration rules:
   of queued `now` lines. A playable `now` line can interrupt ordinary dialogue directly, without
   taking a waiting slot. Further urgent lines can queue while an urgent line is showing. An
   interrupted sequence keeps its queue protection until it resumes. The queue drops barks after
-  14 s, gives lines of an ended beat or a left place `STALE_GRACE` = 3 s, beat lines
+  14 s, gives waiting lines of an ended beat `STALE_GRACE` = 3 s, beat lines
   `NORMAL_TTL` = 20 s and lore
   (`dialogue:say {lore}`, sourced lines) `LORE_TTL` = 50 s, never cuts a playing sequence; while
   `hud.acting('combat')` lore and lines over 120 chars are held (`take(held)`), barks pass; while
   `hud.acting('reveal')` (a boss's reveal, combat) every line but `now` is held; a beat's own
   non-lore line is queued ahead of waiting lore that has not started (quest history at a turn-in
-  never pushes the beat's line past its moment). Lines a
+  never pushes the beat's line past its moment). Pack dialogue from the event that satisfies beat
+  completion skips the retirement deadline and survives natural chapter handoffs, both while
+  queued and on screen. The ordinary queue
+  limits and validity checks still apply, including the place check. Lines a
   trigger fires on `story:ending` are assembled by the ending card, not spoken; the presenter is
   cleared at the credits. Reactions take `cooldown` (s, with `repeat`). Starting or replaying a
   chapter resets reaction cooldowns and rising-edge state. The `speed {gte, lte}` condition reads the
