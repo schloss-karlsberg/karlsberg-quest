@@ -373,19 +373,22 @@ export default defineSystem({
       ctx.events.on('shift:begin', () => {
         if (scene?.touched) scene.shifting = true;
       }),
-      ctx.events.on('shift:midpoint', () => {
-        if (!scene?.shifting) return;
+      ctx.events.on('shift:midpoint', ({ to, reason }) => {
+        // Continue resumes the shift without replaying the touch scene.
+        if (!scene?.shifting && reason !== 'quelle') return;
         // the new era: its water starts still and thaws (the story keeps the player held until done)
         after = 0;
         // the journey into 1789: the screen is covered now, so the few steps from the water and the
         // turn to the hill are a cut. When the land shows, the palace stands on the horizon (the
         // arrival's first frame) and the camera has room behind the player
-        if (ctx.era.current === '1789' && !scene.arrived) {
+        if (to === '1789' && !scene?.arrived) {
           const pl = ctx.player;
-          const to = arrivalSpot(pl.position.x, pl.position.z);
-          scene.arrived = true;
-          scene.yaw0 = scene.yaw1 = to.yaw;
-          pl.teleport(to.x, to.z, to.yaw);
+          const arrival = arrivalSpot(pl.position.x, pl.position.z);
+          if (scene) {
+            scene.arrived = true;
+            scene.yaw0 = scene.yaw1 = arrival.yaw;
+          }
+          pl.teleport(arrival.x, arrival.z, arrival.yaw);
           pl.pitch = ARRIVAL_PITCH;
         }
       }),

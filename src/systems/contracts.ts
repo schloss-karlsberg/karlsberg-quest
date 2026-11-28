@@ -117,7 +117,7 @@ declare module '../core/events' {
     /** A shift has started, before the effect takes over player movement. */
     'shift:begin': { from: Era; to: Era };
     /** Era has just been switched under cover of the effect. */
-    'shift:midpoint': { from: Era; to: Era };
+    'shift:midpoint': { from: Era; to: Era; reason?: ShiftReason };
     /** `reason` is the one from the 'shift:request' that started it (tour C4: 'return' → spring). */
     'shift:done': { from: Era; to: Era; reason?: ShiftReason };
     'fire:room': { roomId: string; state: 'smoke' | 'burning' | 'collapsed' };

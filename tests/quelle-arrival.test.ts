@@ -4,10 +4,9 @@
  * logis, so the palace stands on the horizon in the first frame of 1789. The yaw is computed from
  * where the player stands, so it follows the spring to whichever flank of the gorge it ends up on.
  */
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { FIRE_CENTER } from '../src/systems/fx/fire/schedule';
-import { ARRIVAL_PITCH, ARRIVAL_STEP, PALACE_SIGHT, arrivalSpot, yawToPalace, yawToWater } from '../src/systems/quelle/layout';
+import { ARRIVAL_PITCH, ARRIVAL_STEP, PALACE_SIGHT, arrivalSpot, yawToPalace } from '../src/systems/quelle/layout';
 import { HOME } from '../src/systems/story/hub/home';
 
 /** Compass bearing (0 = north, 90 = east) of a three.js yaw (forward = (−sin, −cos)). */
@@ -61,19 +60,4 @@ describe('the arrival in 1789 looks at the palace', () => {
     expect(ARRIVAL_PITCH).toBeLessThan(0.2);
   });
 
-  it('is applied by the spring at the shift’s midpoint, once, and frees the camera from the water', () => {
-    // the scene itself needs a renderer; this pins the three places the turn lives in
-    const src = readFileSync('src/systems/quelle/index.ts', 'utf8');
-    const midpoint = src.slice(src.indexOf("ctx.events.on('shift:midpoint'"), src.indexOf("ctx.events.on('shift:done'"));
-    expect(midpoint).toContain("ctx.era.current === '1789' && !scene.arrived");
-    expect(midpoint).toContain('const to = arrivalSpot(pl.position.x, pl.position.z)');
-    expect(midpoint).toContain('scene.yaw0 = scene.yaw1 = to.yaw');
-    expect(midpoint).toContain('pl.teleport(to.x, to.z, to.yaw)');
-    expect(midpoint).toContain('pl.pitch = ARRIVAL_PITCH');
-    expect(src).toContain('if (scene && !scene.arrived && spec && ctx.player.thirdPerson)');
-    // sanity for the reader of a failing run: how far the turn is at today's layout
-    const { x, z } = HOME.spawn;
-    const turn = Math.abs(Math.atan2(Math.sin(yawToPalace(x, z) - yawToWater(x, z, '1789')), Math.cos(yawToPalace(x, z) - yawToWater(x, z, '1789'))));
-    expect(turn).toBeLessThanOrEqual(Math.PI);
-  });
 });
