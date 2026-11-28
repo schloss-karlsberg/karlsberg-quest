@@ -163,7 +163,13 @@ test('walk (e): the group held on the dam leaves a lane, the player walks throug
   expect(waiting).toHaveLength(1);
   const g0 = await guide(page);
   expect(g0.x).toBeGreaterThan(840);
-  // W held: past the whole held group (its front pair stands 0.9 m behind the dam stop)
+  // W held from the playtest spot (main f8a75ff7: 90 s without moving), facing the waiting guide:
+  // past the whole held group (its front pair stands 0.9 m behind the dam stop)
+  await page.evaluate(([gx, gz]) => {
+    const yaw = (Math.atan2(gx! - 832.8, -(gz! - -838.8)) * 180) / Math.PI;
+    window.kq!.teleport(832.8, -838.8, yaw, -8);
+  }, [g0.x, g0.z]);
+  await step(page, 1);
   let p = { x: 0, z: 0 };
   for (let s = 0; s < 12 && p.x < 840; s++) {
     await page.evaluate(() => window.kq!.press('KeyW', 30));

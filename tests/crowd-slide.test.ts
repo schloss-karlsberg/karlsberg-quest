@@ -258,5 +258,21 @@ describe('wait slots beside the path (TASK-082)', () => {
       p = { x: body.x, z: body.z };
     }
     expect(stuck).toBe(0);
+    // the playtest spot (2026-11-28, main f8a75ff7: W held 90 s without moving): from there straight
+    // at the waiting guide, the player walks clear of the held group
+    const spot = { x: 832.8, z: -838.8 };
+    const crowd = rt.tourVisitors().map((c) => ({ ...c, y: 0 }));
+    let q = { ...spot };
+    let ticks = 0;
+    for (; ticks < 600 && Math.hypot(L.x - q.x, L.z - q.z) > 3; ticks++) {
+      // W held, the view on the guide
+      const d = Math.hypot(L.x - q.x, L.z - q.z);
+      const body = { x: q.x + ((L.x - q.x) / d) * STEP, y: 0, z: q.z + ((L.z - q.z) / d) * STEP, radius: PLAYER_RADIUS };
+      slideThroughCrowd(body, crowd, q);
+      expect(Math.hypot(body.x - q.x, body.z - q.z)).toBeGreaterThan(MIN_SLIDE * STEP * 0.98);
+      q = { x: body.x, z: body.z };
+    }
+    expect(Math.hypot(L.x - q.x, L.z - q.z)).toBeLessThanOrEqual(3);
+    expect(ticks * STEP).toBeLessThan(20);
   });
 });
