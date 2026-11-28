@@ -44,3 +44,4 @@ Address the fresh-game playtest on main at db8b1b8d, through the first visit to 
 - F3. The story and quest point to the existing reach spot behind the second line. The brief starts within 30 m, including during the spring arrival beat. The disguise spec checks the approach and takes the coat from its marked spot.
 - F5. The coat objective replaces the trough on the first story tick in 1789 and stays in the HUD through the chapter handover. The runtime and tour spec check both moments.
 - F10. The story HUD reads the moving waypoint used by the group marker and uses its distance format. Unit and tour coverage check both indicators.
+- F8. The glass sound keeps its cue cadence. The first caption is immediate when the sound plays, and later captions are at least 30 seconds apart.

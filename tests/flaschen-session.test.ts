@@ -20,12 +20,14 @@ function setup() {
   const look = { disc: 'sun' };
   const setSolids = vi.fn();
   const keys = new Set<string>();
+  const subtitle = vi.fn();
+  const settings = { state: { subtitles: false } };
   const ctx = {
     events, state, save, era, player, scene: new Scene(), audio: { bus: () => null },
-    ui: { toast: vi.fn(), hud: { prompt: vi.fn(), subtitle: vi.fn() }, modals: { count: 0 } },
+    ui: { toast: vi.fn(), hud: { prompt: vi.fn(), subtitle }, modals: { count: 0 } },
     world: { look, heightAt: () => 0, heightfield: { heightAt: () => 0 }, collider: { setSolids } },
     input: { enabled: true, wasPressed: (key: string) => keys.has(key) },
-    settings: { state: { subtitles: false } },
+    settings,
   } as unknown as GameContext;
   bottles.init(ctx);
   const step = () => { bottles.update(1 / 60); keys.clear(); };
@@ -37,7 +39,7 @@ function setup() {
     step();
   };
   const spotState = (id: string) => hooks.spots().find(s => s.id === id)!;
-  return { events, state, save, era, player, look, keys, setSolids, hooks, visit, step, spotState };
+  return { events, state, save, era, player, look, keys, setSolids, hooks, visit, step, spotState, subtitle, settings };
 }
 
 afterEach(() => {
@@ -275,4 +277,25 @@ it('reuses the held spots between steps until a memorial or an arena changes', (
   events.emit('memorial:set', { id: 'near', active: true, x: spot.x, z: spot.z });
   step();
   expect(hooks.prompt()).toBeNull();
+});
+
+it('captions the first spring clink and waits at least 30 seconds before repeating it', () => {
+  vi.spyOn(Math, 'random').mockReturnValue(0);
+  const { player, visit, step, subtitle, settings } = setup();
+  settings.state.subtitles = true;
+  const spring = FLASCHEN.find((s) => s.id === 'fl.1789.quelle')!;
+  visit(spring);
+  player.position.z += 2;
+  const captionTimes: number[] = [];
+  for (let tick = 0; tick < 60 * 80; tick++) {
+    const count = subtitle.mock.calls.length;
+    step();
+    if (subtitle.mock.calls.length > count) captionTimes.push(tick / 60);
+  }
+  expect(subtitle.mock.calls.every(([, text]) => text === '[Glas klirrt leise, vorn]')).toBe(true);
+  expect(captionTimes).toHaveLength(3);
+  expect(captionTimes[0]).toBeLessThanOrEqual(4);
+  for (let i = 1; i < captionTimes.length; i++) {
+    expect(captionTimes[i]! - captionTimes[i - 1]!).toBeGreaterThanOrEqual(30);
+  }
 });
