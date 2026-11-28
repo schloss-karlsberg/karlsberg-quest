@@ -184,8 +184,12 @@ describe('HUD toast slot', () => {
     expect(d.claim('skill')).toBe(false);
     expect(toast()).toBeNull();
 
-    // The director can start a toast before the skills system next tries to claim.
+    // Past the limit the cards still wait for the break after the line on screen (TASK-085).
     d.tick(SOFT_MAX);
+    expect(toast()).toBeNull();
+    d.soft('dialogue', false);
+    // The director can start a toast before the skills system next tries to claim.
+    d.tick(0);
     expect(toast()).toBe('Durchfahrt zum Küchenhof');
     d.tick(0.5);
     expect(d.claim('skill')).toBe(true);
@@ -234,20 +238,75 @@ describe('CardDirector soft holds (playtest round 5)', () => {
     expect(d.claim('reward')).toBe(true);
   });
 
-  it('a long spell of talk does not bury a waiting card (SOFT_MAX)', () => {
+  it('a long spell of talk does not bury a waiting card (SOFT_MAX), which still waits for a break in the lines', () => {
     const { d } = rig();
     d.soft('dialogue', true);
     d.tick(0.1);
     expect(d.claim('reward')).toBe(false);
     for (let t = 0; t < SOFT_MAX; t += 0.5) d.tick(0.5);
+    // TASK-085: the line on screen is not covered, the card comes in the break after it
+    expect(d.claim('reward')).toBe(false);
+    expect(d.held).toBe(true);
+    d.soft('dialogue', false);
+    d.tick(0.1);
     expect(d.claim('reward')).toBe(true);
     expect(d.held).toBe(false);
+    // once through, it stays up over the next line of the same spell (no flicker in and out)
+    d.soft('dialogue', true);
+    d.tick(0.5);
+    expect(d.held).toBe(false);
+    expect(d.claim('reward')).toBe(true);
     // after a break in the talk, the next spell holds again
     d.soft('dialogue', false);
     for (let t = 0; t < 2; t += 0.5) d.tick(0.5);
     d.soft('dialogue', true);
     d.tick(0.1);
     expect(d.held).toBe(true);
+  });
+
+  it('a card already up steps aside for a long spell of talk and comes back only in a break', () => {
+    const { d } = rig();
+    expect(d.claim('level')).toBe(true);
+    d.soft('dialogue', true);
+    d.tick(0.1);
+    expect(d.held).toBe(true);
+    for (let t = 0; t < SOFT_MAX + 4; t += 0.5) d.tick(0.5);
+    expect(d.held).toBe(true);
+    d.soft('dialogue', false);
+    d.tick(0.1);
+    expect(d.held).toBe(false);
+  });
+
+  it('past SOFT_MAX the next line taking the place of the one on screen lets a waiting card through', () => {
+    const { d } = rig();
+    const a = {}, b = {};
+    d.soft('dialogue', true, a);
+    d.tick(0.1);
+    for (let t = 0; t < SOFT_MAX + 2; t += 0.5) {
+      d.soft('dialogue', true, a);
+      d.tick(0.5);
+    }
+    expect(d.claim('level')).toBe(false);
+    d.soft('dialogue', true, b);
+    d.tick(0.05);
+    expect(d.claim('level')).toBe(true);
+    expect(d.held).toBe(false);
+    // before the limit a new line does not release anything
+    d.clear();
+    d.soft('dialogue', true, a);
+    d.tick(1);
+    d.soft('dialogue', true, b);
+    d.tick(0.05);
+    expect(d.held).toBe(true);
+  });
+
+  it('a pack out (no line) still lets cards through after SOFT_MAX', () => {
+    const { d } = rig();
+    d.soft('hunt', true);
+    d.tick(0.1);
+    expect(d.claim('reward')).toBe(false);
+    for (let t = 0; t < SOFT_MAX; t += 0.5) d.tick(0.5);
+    expect(d.claim('reward')).toBe(true);
   });
 
   it.each(['level', 'skill'])('dismisses a %s card claimed with a touch callback only while it is visible', (token) => {

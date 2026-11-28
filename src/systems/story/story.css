@@ -176,6 +176,10 @@ body.kq-in-combat .kqs-dlg-body::before {
   color: var(--ink-soft);
   font-style: italic;
 }
+/* the goal strip (TASK-085) shows only on the short touch layout (touch.css) */
+.kqs-dlg-goal {
+  display: none;
+}
 .kqs-skip {
   padding: 0;
   border: 0;

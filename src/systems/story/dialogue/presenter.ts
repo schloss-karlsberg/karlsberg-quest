@@ -106,6 +106,8 @@ export class DialoguePresenter {
   private readonly restEl: HTMLElement;
   private readonly srcEl: HTMLElement;
   private readonly skipEl: HTMLElement;
+  private readonly goalEl: HTMLElement;
+  private goal: string | null = null;
   private skipTouch: boolean | null = null;
   /** Waiting lines (cap, stale and place rules: ./queue.ts). */
   private readonly queue: LineQueue<DialogueItem>;
@@ -127,6 +129,7 @@ export class DialoguePresenter {
     this.typedEl = h('span.kqs-typed');
     this.restEl = h('span.kqs-rest');
     this.srcEl = h('span.kqs-src');
+    this.goalEl = h('span.kqs-dlg-goal', { 'data-testid': 'dialogue-goal' });
     this.skipEl = h('button.kqs-skip', { type: 'button', 'aria-label': t('story.dialogue.next'), onclick: () => this.skip() });
     this.skipHint();
     this.el = h('div.kqs-dlg', { 'data-testid': 'dialogue', role: 'status' }, [
@@ -134,7 +137,7 @@ export class DialoguePresenter {
       h('div.kqs-dlg-body', [
         h('div.kqs-dlg-head', [this.whoEl, this.tagEl]),
         h('div.kqs-dlg-text', { 'aria-live': 'polite' }, [this.typedEl, this.restEl]),
-        h('div.kqs-dlg-foot', [this.srcEl, this.skipEl]),
+        h('div.kqs-dlg-foot', [this.goalEl, this.srcEl, this.skipEl]),
       ]),
     ]);
     // a click, and on a phone a tap (its compatibility mousedown), advances
@@ -215,6 +218,17 @@ export class DialoguePresenter {
    * The game is paused (pause menu, an echo holding the presenter): the clip pauses with the
    * typing and resumes where it stopped. A suspended audio context (hidden tab) freezes it anyway.
    */
+  /**
+   * The current goal as a one-line strip in the card's footer (TASK-085). Only the short touch
+   * layout shows it (touch.css): there the card lies over the HUD's top-left column and the tracker
+   * steps back while a line is up.
+   */
+  setGoal(text: string | null): void {
+    if (text === this.goal) return;
+    this.goal = text;
+    this.goalEl.textContent = text ?? '';
+  }
+
   setPaused(paused: boolean): void {
     this.paused = paused;
     this.syncClip();

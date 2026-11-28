@@ -32,7 +32,7 @@ import { EndingStage } from './endings/stage';
 import { EndingScreen } from './endings/ui';
 import { HOME, atHome, bringHome } from './hub/home';
 import { migrateInterruptedHunt } from './migrate';
-import { ObjectiveView, objectivePoint } from './objectives';
+import { ObjectiveView, dialogueGoal, objectivePoint } from './objectives';
 import { StoryOverlays, cardClockDt } from './overlays';
 import { keepsOnBeatExit, retireScheduled, takeDueActions, type Scheduled } from './schedule';
 import { playStorySound, playStorySoundAction } from './sfx';
@@ -43,6 +43,7 @@ import { pauseHooks } from '../../ui/menus';
 import { h } from '../../ui/dom';
 import { addPausePage } from '../../ui/pause-pages';
 import { actionLabel } from '../../ui/actionLabel';
+import { SOFT_LINE } from '../../ui/cards';
 import { type Action, type Checkpoint, type ChoiceAction, type Condition, type EndingId, type FlagValue, type LookTime, type MeterAction, type NpcAction, type PromptAction, type StoryFile, isWalkAction } from './types';
 import type { WalkRequest } from '../walk/types';
 import type { AnimalAction } from '../animals/types';
@@ -1675,7 +1676,7 @@ class StoryRuntime {
       this.activeSpeaker = speaker;
       ctx.events.emit('dialogue:active', { speaker });
     }
-    ctx.ui.cards.soft('dialogue', !!cur && cur.priority !== 'low');
+    ctx.ui.cards.soft(SOFT_LINE, !!cur && cur.priority !== 'low', cur);
     ctx.ui.cards.hold('echo', this.echoHold);
     this.overlays.tickChoice(dt);
     if (this.caughtBusy) {
@@ -1864,6 +1865,12 @@ class StoryRuntime {
     const tx = Number(tracker?.dataset.tx), tz = Number(tracker?.dataset.tz);
     const questTarget = tracker?.dataset.tx !== undefined && Number.isFinite(tx) && Number.isFinite(tz) ? { x: tx, z: tz } : null;
     this.objectives.frame(dt, p.x, p.z, heading, { compass, visible: hudVisible, reducedMotion: ctx.settings.state.reducedMotion, questLed, questTarget });
+    // a phone's dialogue card covers the tracker: the goal rides along in its footer (TASK-085)
+    if (ctx.input.touchMode && this.presenter.current) {
+      const open = '.kqq-to:not(.kqq-done)';
+      const goalRow = tracker?.querySelector(`.kqq-tq.kqq-main ${open}`) ?? tracker?.querySelector(`.kqq-tq ${open}`);
+      this.presenter.setGoal(dialogueGoal(this.objectives.line, goalRow?.textContent ?? null));
+    }
     this.layer.classList.toggle('kqs-reduced', ctx.settings.state.reducedMotion);
     this.presenter.el.style.visibility = hudVisible && !this.echoHold && !this.talking ? '' : 'hidden';
     // a recorded line pauses with the game (pause menu, a modal) and while an echo holds it

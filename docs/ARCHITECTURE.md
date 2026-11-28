@@ -426,10 +426,14 @@ conversation is open (`cards.hold('talk', on)`, set by npc): nothing comes up, a
 steps aside and its clock stops. **Soft holds** (`cards.soft(reason, on)`, playtest round 5) keep
 automatic feedback back (payout, toast, level and skill), while a clue page or modal may still open. They linger
 `SOFT_LINGER` = 1.2 s after they end, but never more than `SOFT_MAX` = 8 s of unbroken holding (a
-chain of lines must not bury a card): a spoken story line that is not low priority (`dialogue`), an
-active pack outside the ending's resting tableau (`hunt`); hard holds also cover the Festsaal
+chain of lines must not bury a card). Past `SOFT_MAX` a card still waits until the line on screen is
+done (a break, or the next line taking its place: story passes the line as `cards.soft('dialogue',
+on, line)`), then stays for the rest of that spell of talk; the level and skill cards sit clear of
+the dialogue card on every layout, below a raised radio line too (TASK-085). Soft reasons: a spoken
+story line that is not low priority (`dialogue`), an active pack outside the ending's resting
+tableau (`hunt`); hard holds also cover the Festsaal
 (`festsaal`) and a playing echo (`echo`, set on `echo:start` / `echo:end`; releasing a hold
-opens a waiting page at once). The level and skill cards also wait while `cards.held`. Slide-in cards also wait for the chapter title card / curtain and
+opens a waiting page at once). The level and skill cards also wait while `cards.held`. Slide-in cards also wait for the chapter title card (from the frame it is added until its fade has ended) / curtain and
 other modals. A clue page may open over Pause. Merging: skill
 unlocks that wait as a level card comes up ride along on it (`cards.source('skill', …)` /
 `cards.drain('skill')` → "Freigeschaltet" rows, `level-card-skill`; combat's new abilities the

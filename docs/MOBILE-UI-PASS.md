@@ -75,6 +75,7 @@ Each unit shoots these states in order. The file name is `<NN>-<state>[-<sub>].p
 | 25 | `npc-talk` | | Hanne: `-line`, `-topics` (the choices), `-answer` | `npc.talk('hanne')`, **tap** a `npc-topic-*` |
 | 26 | `skill-unlock` | | standalone Baumeister unlock with a long Aktion prompt, then `-dismissed` | `skills.grant('baumeister', 1)`, **tap** the play surface |
 | 27 | `credits` | ✱ | `-crawl`, `-static`, `-static-scrolled`, or the rotate overlay during each mode on portrait phones | `party.set('burn')`, `party.credits()`, **swipe** the static list and **tap** `party-credits-skip` |
+| 28 | `hud-overlap` | | TASK-085: `-speech` (the goal stays readable while a line is up: the tracker clear of the dialogue card, or the goal strip in the card's footer on a landscape phone), `-toast-caption` and `-toast-caption-line` (no toast on a caption), `-level-after-card` (a level-up at the start of chapter 1: the level card never shows during the chapter card or its fade and never lies on the chapter card or the dialogue card) | `dialogue:say`, `hud.subtitle(null, …)`, `ui.toast`, `story.goto('k1')` + `progression.level(n+1)` |
 
 Long modals are covered by `news`, `title-settings`, `settings`, `pause` (controls, licences) and `journal`. Each is swiped with a finger to its end, then scrolled by script to be sure. The `-bottom` shot notes whether the swipe alone moved it; if not, that is a scroll trap.
 

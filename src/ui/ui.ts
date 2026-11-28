@@ -30,8 +30,10 @@ export class UI {
     parent.append(this.root);
     this.modals = new ModalManager(this.root);
     this.cards = new CardDirector(this.hud, this.modals);
+    // a chapter title card holds the slot from the frame it is added until its fade is over (TASK-085:
+    // „Stufe IX“ came up over „Der Steinbruch“)
     this.cards.extraHold = () => !!document.querySelector(
-      '.kq-title:not(.kq-hidden):not(.fade-out), .kqs-card.kqs-show, .kqs-curtain.kqs-down, .kqs-choice-card.kqs-show, .kqt-travel-curtain, html[data-kq-rotate]',
+      '.kq-title:not(.kq-hidden):not(.fade-out), .kqs-card, .kqs-curtain.kqs-down, .kqs-choice-card.kqs-show, .kqt-travel-curtain, html[data-kq-rotate]',
     );
   }
 

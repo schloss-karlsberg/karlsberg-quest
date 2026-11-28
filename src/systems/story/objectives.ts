@@ -30,6 +30,15 @@ export function angleDiff(a: number, b: number): number {
   return ((a - b + 540) % 360) - 180;
 }
 
+/**
+ * The goal line for the phone dialogue card's footer (TASK-085): the story's own objective while it
+ * leads, else the quest tracker's current goal; null when there is none.
+ */
+export function dialogueGoal(story: string | null, quest: string | null): string | null {
+  const line = (story ?? '').trim() || (quest ?? '').replace(/\s+/g, ' ').trim();
+  return line ? `◆ ${line}` : null;
+}
+
 const BUSSOLE = `<svg viewBox="0 0 100 100" class="kqs-bussole-svg" aria-hidden="true">
   <circle class="kqs-b-glow" cx="50" cy="50" r="49" fill="url(#kqs-glow)"/>
   <circle cx="50" cy="50" r="40" fill="url(#kqs-brass)" stroke="#2a2118" stroke-width="2"/>
@@ -148,6 +157,12 @@ export class ObjectiveView {
 
   get current(): ObjectiveState | null {
     return this.obj;
+  }
+
+  /** The objective line as the HUD shows it (text and distance), or null while it is hidden or steps back. */
+  get line(): string | null {
+    if (!this.obj || this.el.style.display === 'none' || this.el.classList.contains('kqs-dup')) return null;
+    return `${this.obj.text}${this.distEl.textContent ?? ''}`;
   }
 
   /** Per frame. heading = view heading (deg, clockwise from north). */
