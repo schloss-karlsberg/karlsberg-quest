@@ -4,7 +4,7 @@ aliases:
 - TASK-022
 title: Tour dogs and group rendering
 slug: tour-dogs-and-group-rendering
-status: in-progress
+status: todo
 priority: 2
 owner: ''
 projects: []
@@ -20,7 +20,7 @@ depends_on:
 - TASK-016
 due_date: ''
 created: 2026-11-26
-updated: 2026-11-26
+updated: 2026-11-28
 ---
 
 # Tour dogs and group rendering
@@ -137,3 +137,10 @@ KQ_E2E_PORT=5408 scripts/dev/heavy.sh --max-hold 15 pnpm exec playwright test e2
 git add -- e2e/tour-slice.spec.ts tests/walk-system.test.ts tests/touchMap.test.ts docs/ACTION-RPG.md docs/ARCHITECTURE.md docs/PRD.md docs/design/tour/systems.md .mc/tasks/todo/TASK-022-tour-dogs-and-group-rendering.md
 git commit -m 'test(story): verify delivered wait barks and phone rotation' -m 'Refs: TASK-022, TASK-016' -m 'Co-Authored-By: Codex <noreply@openai.com>'
 ```
+
+## Remaining (audit 2026-11-28)
+
+The code and the uncommitted review batch shipped in PR #101; the tour, animals and smoke specs pass
+in the hosted e2e suite on main (`f8a75ff7`). Left: the visual check. Look at the tour crowd at
+5–20 m on a phone viewport (touch, Niedrig) and watch the group and dogs leave the Bussole through
+the era shift; fix only what looks wrong.

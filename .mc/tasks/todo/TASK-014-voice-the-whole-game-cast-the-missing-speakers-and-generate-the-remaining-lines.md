@@ -4,7 +4,7 @@ aliases:
 - TASK-014
 title: 'Voice the whole game: cast the missing speakers and generate the remaining lines'
 slug: voice-the-whole-game-cast-the-missing-speakers-and-generate-the-remaining-lines
-status: in-progress
+status: todo
 priority: 2
 owner: ''
 projects: []
@@ -18,7 +18,7 @@ milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-25
-updated: 2026-11-25
+updated: 2026-11-28
 ---
 
 # Voice the whole game: cast the missing speakers and generate the remaining lines
@@ -181,3 +181,13 @@ open ./index.html
 ```
 
 Review the whole service queue at the runner prompt. Use **Sprechproben zur gewählten Stimme** to hear each selected reference on fresh text. If a take runs on or loses the character, select the other seed and repeat the page command. Only the confirmed picks proceed to chapter recording.
+
+## Remaining (audit 2026-11-28)
+
+Blocked on the owner. Only the casting preparation (PR #43) is merged; `public/voice/` holds clips
+for laub, imhoff, player and a few single lines (13 MB). Jost, Soll, Hanne, Mannlich, Peter, Liese
+and the epilogue narrator have no voice yet. Next step is the owner's: render the four design
+batches, pick one seed per role by ear and run `moss-run` for the auditions (commands under
+"Owner commands"). After that, agents can queue chapter batches; the 333 ungenerated lines of the
+already cast speakers also need an owner `moss-run`.
+%% mc-links: [[SPR-001]] %%

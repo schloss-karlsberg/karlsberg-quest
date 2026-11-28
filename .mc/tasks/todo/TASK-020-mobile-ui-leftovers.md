@@ -4,7 +4,7 @@ aliases:
 - TASK-020
 title: Mobile UI leftovers
 slug: mobile-ui-leftovers
-status: in-progress
+status: todo
 priority: 2
 owner: ''
 projects: []
@@ -18,7 +18,7 @@ milestone: ''
 depends_on: []
 due_date: ''
 created: 2026-11-26
-updated: 2026-11-26
+updated: 2026-11-28
 ---
 
 # Mobile UI leftovers
@@ -159,3 +159,11 @@ time during movement, and fades on an early tap.
 - Run `e2e/party.spec.ts`, `e2e/smoke.spec.ts`, the full `small-landscape` tour and the other five device subsets using
   the commands and visual checklist in MOBILE-UI-PASS §8.5.
 - Run the standard `pnpm validate` command where the local tsx socket is allowed.
+
+## Remaining (audit 2026-11-28)
+
+The code shipped in PR #107. The merge review ran party, smoke, skills, touch and the
+`small-landscape` mobile tour subset with no failed states. Left: run the other device subsets of
+`scripts/dev/mobile-tour.ts` (phone portrait and the tablets, MOBILE-UI-PASS §8.5) for the credits
+and skill-unlock states, and fix anything that fails.
+%% mc-links: [[SPR-001]] %%
