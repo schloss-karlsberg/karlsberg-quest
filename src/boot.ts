@@ -31,6 +31,7 @@ import { SYSTEM_LOADERS } from './systems';
 import { actionLabel } from './ui/actionLabel';
 import type { BootLoader, LoadingRequest } from './ui/loader';
 import { openLicences, openPause, setAssetLicences } from './ui/menus';
+import { blockPromptsDuringScenes } from './ui/promptBlocks';
 import { openNews } from './ui/news';
 import { createPlayDismissal } from './ui/playDismissal';
 import { TitleScreen } from './ui/title';
@@ -557,8 +558,7 @@ export async function boot(container: HTMLElement, loader: BootLoader): Promise<
   events.on('player:costume', ({ costume }) => avatar.setCostume(costume));
   events.on('player:lantern-tint', ({ hex }) => avatar.setLanternTint(hex));
   // The shift already covers its own wait. Only offer a loader for prefetch that outlasts it.
-  events.on('cinematic:start', () => ui.hud.blockPrompts('cinematic', true));
-  events.on('cinematic:end', () => ui.hud.blockPrompts('cinematic', false));
+  blockPromptsDuringScenes(events, ui.hud);
   let shifting = false;
   let eraLoad: { feedback?: LoadingRequest } | undefined;
   const showEraLoad = () => {

@@ -9,7 +9,15 @@ const ZONE_GAP = 18;
 const SUB_MAX = 3;
 const SUB_MIN_MS = 1500;
 
-type SubtitleLine = { el: HTMLElement; ms: number; shownAt: number; timer: ReturnType<typeof setTimeout> | undefined; sound: boolean };
+type SubtitleLine = {
+  el: HTMLElement;
+  /** speaker + text + fiction mark: two calls with the same key are the same line on screen */
+  key: string;
+  ms: number;
+  shownAt: number;
+  timer: ReturnType<typeof setTimeout> | undefined;
+  sound: boolean;
+};
 
 const MOUSE_SVG = `<svg viewBox="0 0 24 32" class="kq-ctp-mouse" aria-hidden="true"><rect x="3" y="2" width="18" height="28" rx="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v10M3 12h18" stroke="currentColor" stroke-width="1.4" fill="none"/><path d="M4 11V11a8 8 0 0 1 8-8v9z" fill="currentColor" opacity="0.85"/></svg>`;
 
@@ -403,10 +411,30 @@ export class Hud {
    * When it is full, the oldest line gives way only once it has been up for SUB_MIN_MS; until then
    * new lines wait in order, so a sound caption followed by a burst of dialogue stays readable and
    * no line is lost (TASK-073). A line's own time starts when it appears.
+   * The same line (speaker, text, fiction mark) is never on screen or in the queue twice: a repeat
+   * that arrives while it is still up keeps the one line and extends its time instead (TASK-093:
+   * „[Glas klirrt leise, vorn]“ stood twice in the box).
    */
   subtitle(speaker: string | null, text: string, ms = 4000, fiction = false): () => void {
+    const key = `${speaker ?? ''}\u0000${text}\u0000${fiction ? 1 : 0}`;
+    const queued = this.subsQueued.find((l) => l.key === key);
+    if (queued) {
+      queued.ms = Math.max(queued.ms, ms);
+      return () => this.dropSubtitle(queued);
+    }
+    const shown = this.subsShown.find((l) => l.key === key);
+    if (shown) {
+      const now = performance.now();
+      if (now + ms > shown.shownAt + shown.ms) {
+        shown.ms = now + ms - shown.shownAt;
+        clearTimeout(shown.timer);
+        shown.timer = setTimeout(() => this.dropSubtitle(shown), ms);
+      }
+      return () => this.dropSubtitle(shown);
+    }
     const line: SubtitleLine = {
       el: h('div', h('span.line', [speaker ? h('span.who', speaker) : null, text, fiction ? h('span.fiction', '(Fiktion)') : null])),
+      key,
       ms,
       shownAt: 0,
       timer: undefined,
