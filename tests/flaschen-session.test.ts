@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import type { GameContext } from '../src/core/context';
 import { cosmetics, FLASCHENGRUEN } from '../src/player/cosmetics';
 import { newMemory } from '../src/systems/barks/rules';
-import bottles from '../src/systems/flaschen';
+import bottles, { NUT_R } from '../src/systems/flaschen';
 import { FLASCHEN, type FlaschenSpot, countByEra } from '../src/systems/flaschen/spots';
 import { explorationSession } from './exploration-fixture';
 
@@ -72,6 +72,23 @@ it('builds only the local era and checks the lantern and night before offering a
   player.stats.lanternLit = true;
   step();
   expect(spotState(fire.id).visible).toBe(false);
+});
+
+it('a thrown chestnut that strikes right by a hanging bottle shakes it down (TASK-095)', () => {
+  const { events, hooks, visit, step, spotState } = setup();
+  const apple = FLASCHEN.find(s => s.id === 'fl.1789.allee')!;
+  visit(apple);
+  expect(spotState(apple.id).hanging).toBe(true);
+  const at = { x: apple.hang!.x, y: 1, z: apple.hang!.z };
+  // too far off, or not the tree: it stays
+  events.emit('forage:impact', { ...at, x: at.x + NUT_R + 0.5, on: 'ground' });
+  events.emit('forage:impact', { ...at, on: 'body', npc: 'gardist' });
+  events.emit('forage:impact', { ...at, on: 'water' });
+  expect(hooks.state().dropped).toEqual([]);
+  // the trunk it hangs on
+  events.emit('forage:impact', { ...at, x: at.x + 0.6, on: 'wood' });
+  step();
+  expect(hooks.state().dropped).toEqual([apple.id]);
 });
 
 it('restores a shaken bottle on the ground after a mid-fall save and takes it only once', () => {

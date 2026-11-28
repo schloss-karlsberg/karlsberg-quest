@@ -19,7 +19,7 @@ async function avatarFixture() {
   const chest = new Bone();
   chest.name = 'Chest';
   model.add(body, chest);
-  const clips = ['Idle', 'Idle_Sword', 'Walk', 'Run', 'Run_Back', 'Run_Left', 'Run_Right', 'Roll', 'Death', 'Sword_Slash', 'HitReceive', 'Wave'];
+  const clips = ['Idle', 'Idle_Sword', 'Walk', 'Run', 'Run_Back', 'Run_Left', 'Run_Right', 'Roll', 'Death', 'Sword_Slash', 'HitReceive', 'Wave', 'Punch_Right'];
   const animations = clips.map((name, i) => new AnimationClip(name, 1, [
     new NumberKeyframeTrack('Chest.position[y]', [0, 1], [i, i + 1]),
   ]));
@@ -170,6 +170,25 @@ describe('avatar animation', () => {
       actionPose.dead = true;
       frame();
       expect(poseChest.position.y).toBeCloseTo(8 + PLAYER_DT / 1.04, 3);
+    } finally {
+      avatar.dispose();
+    }
+  });
+
+  it('throws with the right arm over the legs, turns to the view and is done in under half a second', async () => {
+    const { avatar, player, frame } = await avatarFixture();
+    try {
+      frame();
+      expect(avatar.debug.upper).toBe('');
+      player.yaw = 1.2;
+      avatar.react('throw');
+      frame(6);
+      expect(avatar.debug.upper).toBe('throw:Punch_Right');
+      expect(avatar.debug.full).toBe('');
+      frame(40);
+      expect(avatar.debug.upper).toBe('');
+      // the body turned to where the chestnut went
+      expect(Math.abs(avatar.facing - 1.2)).toBeLessThan(0.2);
     } finally {
       avatar.dispose();
     }

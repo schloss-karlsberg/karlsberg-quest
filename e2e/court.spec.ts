@@ -269,6 +269,64 @@ test('court: running and the staff are tells; in the coat walking is not', async
   await step(page, 60);
   w = (await page.evaluate(() => window.kq!.court!.watchers()))[0]!;
   expect(w.level).toBe(0);
+  // the first escort explained itself: the card goes, and the captions so far run out
+  const hint = page.getByTestId('court-hint');
+  if (await hint.count()) await hint.getByRole('button', { name: 'Verstanden' }).click();
+  await step(page, 60 * 8);
+  // a chestnut thrown from behind him lands in earshot: he goes to look, comes back, and falls
+  // for it only once (TASK-095)
+  await place(page, 1231, -1116, 300);
+  const lure = await page.evaluate(() => {
+    const k = window.kq!;
+    k.progression!.grant('item.kastanie', 3, true);
+    k.step(2);
+    let impact: { x: number; z: number; on: string } | null = null;
+    k.ctx.events.on('forage:impact', (p) => (impact ??= { x: p.x, z: p.z, on: p.on }));
+    const thrown = k.forage!.throw();
+    for (let i = 0; i < 180 && !impact; i++) k.step(1);
+    k.step(2);
+    return { thrown, impact: impact as { x: number; z: number; on: string } | null, w: k.court!.watchers()[0]! };
+  });
+  console.log('[court] lure', JSON.stringify(lure));
+  expect(lure.thrown).toBe(true);
+  expect(lure.impact).not.toBeNull();
+  expect(Math.hypot(lure.impact!.x - lure.w.postX, lure.impact!.z - lure.w.postZ)).toBeLessThan(11);
+  expect(lure.w.distract).toBe('turn');
+  expect(lure.w.level).toBe(0);
+  // (the captions are checked in tests/court-system.test.ts: here they queue behind the escort's)
+  const phases = async () => (await events(page, 'court:distracted')).map((e) => (e as { phase: string }).phase);
+  expect(await phases()).toEqual(['turn']);
+  await step(page, 60 * 4);
+  const away = await page.evaluate(() => ({ w: window.kq!.court!.watchers()[0]!, fig: window.kq!.npc!.list().find((n) => n.npc === 'gardist')! }));
+  expect(['walk', 'look']).toContain(away.w.distract);
+  expect(Math.hypot(away.w.x - away.w.postX, away.w.z - away.w.postZ)).toBeGreaterThan(1);
+  // the figure stands where the court says he is, and his fan points away from his post's sweep
+  expect(Math.hypot(away.fig.x - away.w.x, away.fig.z - away.w.z)).toBeLessThan(0.05);
+  await shot(page, 'distracted');
+  await step(page, 60 * 14);
+  let back = (await page.evaluate(() => window.kq!.court!.watchers()))[0]!;
+  expect(back).toMatchObject({ distract: 'post', x: back.postX, z: back.postZ, level: 0 });
+  expect(back.wary).toBeGreaterThan(0);
+  await page.evaluate(() => {
+    const k = window.kq!;
+    const w = k.court!.watchers()[0]!;
+    k.ctx.events.emit('world:noise', { x: w.postX, z: w.postZ - 6, loud: 0.7, by: 'e2e' });
+    k.step(2);
+  });
+  back = (await page.evaluate(() => window.kq!.court!.watchers()))[0]!;
+  expect(back.distract).toBe('glance');
+  expect(await phases()).toEqual(['turn', 'walk', 'look', 'back', 'post', 'glance']);
+  // a chestnut that strikes him is no distraction: he looks for the thrower
+  await step(page, 60 * 3);
+  await page.evaluate(() => {
+    const k = window.kq!;
+    const w = k.court!.watchers()[0]!;
+    k.ctx.events.emit('forage:impact', { x: w.x, y: 0, z: w.z, on: 'body', npc: w.npc });
+    k.step(2);
+  });
+  back = (await page.evaluate(() => window.kq!.court!.watchers()))[0]!;
+  expect(back).toMatchObject({ distract: 'alert', tell: 'throw' });
+  expect(back.level).toBeGreaterThan(0.5);
   expect(errors).toEqual([]);
 });
 

@@ -524,7 +524,8 @@ The tour and quests grant survey skills (`skill:grant`, unlock cards and Laub’
   Feb 1793 4, Jul 1793 3, 1796 5; the spring holds one in every year), never guarded, no glow, no map
   mark, no Bussole marker, not shown by Spürsinn. Hints: a soft clink within 6 m every 8–12 s
   (captioned with its side) and a glint when the camera faces one within 15° and 12 m in light. Some
-  need a verb: a Wuchthieb shakes two out of apple trees and one out of the spring's icicles; one shows
+  need a verb: a Wuchthieb, or a thrown chestnut that strikes within 2 m of them (§7.1), shakes two
+  out of apple trees and one out of the spring's icicles; one shows
   only in lantern light at night, one only with the lantern out. E „Fläschchen aufheben“ → toast
   „Fläschchen n/24“. Pause → Sammlungen shows era counts and one bottle per find. Marlene speaks
   at 8 and Laub at 16. Finding all 24 awards the lantern glass „Flaschengrün“ and the
@@ -574,8 +575,10 @@ lies for a second and is gone. Water swallows it.
 | Armour, a guard, an elite, a boss, the Pikeur | 1 damage, no flinch |
 | An Irrlicht before the flare, a veiled or warded body | It flies through |
 | Any enemy | It wakes: one can be pulled out of a pack. It never takes the last point of Lebenskraft: the last blow is the staff's |
-| A tree trunk, a palace wall, a person or a dog of the tour | It bounces off and drops. Nobody is hurt or alerted |
-| The ground | A noise (`world:noise`, loudness 0.7) |
+| A tree trunk, a palace wall, a placed person, a person or a dog of the tour | It bounces off and drops. Nobody is hurt (`world:pelt`: the npc system answers for placed people) |
+| A court watcher | It is alerted, not distracted (below) |
+| The ground | A noise (`world:noise`, loudness 0.7; half of that off a body, 0.5 in water) |
+| Within 2 m of a hanging Fläschchen (trunk, wall or ground) | The bottle falls, as after a Wuchthieb |
 
 The noise is what animals and the pack hear. The tour's roe deer add it to their notice meter:
 one chestnut nearby makes them look up, two right next to them send them off, and they settle
@@ -584,6 +587,32 @@ nearest hound within 14 m to the spot (`PackSim.noise`, `NOISE` in `hunt/sim.ts`
 about ten seconds; the hound that went stays warier while that fades, so the next glimpse of the
 player counts for more. A pack that is searching or chasing ignores it, and so do the staged
 modes (the chapter 2 chase, the drive, the kennel finale).
+
+**Distracting a watcher** (TASK-095, `court/distract.ts`). This is what chestnuts are for at
+court: a watcher that hears one land goes to look, and the player passes behind it.
+
+- **Earshot** is 17 m × the loudness, so about 12 m for a landing chestnut. The watchers' fans
+  reach 12–14 m and a throw carries 22 m, so the player can stand outside a fan and land one
+  beyond or beside the watcher.
+- **What the watcher does:** it turns to the noise at once (0.7 s), walks towards it at 1.7 m/s,
+  never more than 8 m from its post and stopping 1.5 m short, looks around for 4 s with its head
+  swinging ±40°, and walks back. Walls, water and steep banks end the walk early; a noise less
+  than a step away is looked at from the post. Its fan points where it looks the whole time,
+  along its way home on the way back. From the first head turn to the post that is about 9–15 s.
+- **How it reads:** the fan on the ground swings away and travels with the figure, which walks
+  with its walk clip. Captions: „[Ein Gardist horcht auf und geht nachsehen]“ with a short line
+  from the watcher („Was war das?“), „[… geht zurück auf den Posten]“ when the window closes.
+- **Not a free pass.** Back at its post a watcher is wary for 20 s and only turns its head for
+  1.8 s („[… dreht nur kurz den Kopf]“). A watcher that is busy with one noise ignores the next.
+  The gate's inspector never leaves the gate and only glances. A watcher that reaches Misstrauen
+  breaks the search off and walks back.
+- **A chestnut that strikes a watcher** alerts it: it faces the thrower for 3 s, takes 0.55
+  suspicion at once whatever its fan saw (tell „du wirfst mit Kastanien“), and is wary for 30 s.
+- **Throwing in view** is a tell of its own: 0.45 at once for every watcher that sees the throw.
+
+The watcher's placement stays its post; the court sends the npc system where the figure stands
+for now (`npc:offset`), which is never saved. `court:distracted {watcher, phase}` reports each
+step (`turn`, `walk`, `look`, `back`, `post`, `glance`, `alert`).
 
 No throw in a scene that lowers the staff (`combat.disabled` outside the tour), in photo mode, in
 a conversation, while measuring, in the spirit view or lying flat.
@@ -611,8 +640,9 @@ comes to hand. Each shows once per save, in a gap between spoken lines or after 
 are chestnuts the vitals dock shows a chip with the key and the count; on touch the button
 carries the count.
 
-**Feedback.** Procedural sounds for the throw, the landing (ground, wood, body, water), the cut
-and a find. Cut plants throw leaves in their own colours, a landing chestnut a few shell bits;
+**Feedback.** The avatar throws with the right arm over the walking legs (0.45 s, the body turns
+to the view), also with reduced motion. Procedural sounds for the throw, the landing (ground,
+wood, body, water), the cut and a find. Cut plants throw leaves in their own colours, a landing chestnut a few shell bits;
 the chestnut draws a short trail. With reduced motion there are no leaves and no trail, and the
 landing ring holds still.
 
@@ -1178,6 +1208,7 @@ track looks at; ARCHITECTURE.md section for its system; commits end with the co-
 
 | Risk | Mitigation |
 | --- | --- |
+| A chestnut as a free pass through the court (TASK-095, 2026-11-28) | A distracted watcher is away for 9–15 s, then wary for 20 s and only glances; the gate's inspector never leaves; a throw seen by a watcher and a chestnut that strikes one raise suspicion; a watcher that reaches Misstrauen breaks its search off. |
 | Chestnuts as a ranged weapon or a free way past the pack (TASK-090, 2026-11-28) | A throw does 4 damage (a third of a first Hieb), 1 against armour, elites and bosses, never the last point, and staggers a small enemy at most once every 4 s. Only a calm or suspicious patrol follows the noise, with one hound, and that hound is warier afterwards. The chapter 2 chase, the drive and the kennel finale ignore it. |
 | The tour guide offers a talk at his stops that opens an empty box (TASK-076, 2026-11-27) | A person takes E only while it has something to say: a greeting that can still play, a menu topic, a quest topic, or a silent figure without any lines. A forced open with nothing to say shows „(Schweigt und sieht dich an.)“. The guide's car-park greetings belong to stop 1 (flag `tour.station1.ready`). `tests/npc-talk-waits.test.ts` keeps beats from waiting for a talk with someone who has nothing to say; `tests/npc-has-words.test.ts`, `tests/npc-encounter.test.ts`, `e2e/tour-slice.spec.ts`. |
 | Photos vanish on reload and cannot be kept (TASK-006, 2026-11-26) | Every shot with signal is stored on the device: IndexedDB `kq-photos` holds a full JPEG (≤ 1920 px), a thumbnail and the shot's metadata, or memory where IndexedDB is blocked. The gallery opens with G on the phone, its „Galerie“ button on touch, or Pause → Album. It shows a grid, a full-size viewer, Löschen, Herunterladen and Teilen (the OS share sheet where files can be shared, else a download). At most 100 photos; beyond that a toast instead of a silent drop. The photos are not in the save, and the gallery says they live only on this device. `tests/photo-gallery.test.ts`, `e2e/photo.spec.ts`. |
