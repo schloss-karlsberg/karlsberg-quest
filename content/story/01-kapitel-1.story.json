@@ -955,7 +955,9 @@
             "npc.owns.clue.k1.amphitheater": true,
             "quelle.guide": null,
             "quelle.call": null,
-            "k1.vorspiel": true
+            "k1.vorspiel": true,
+            "npc.owns.clue.k1.papier": true,
+            "k1.angekommen": null
           }
         },
         {
@@ -992,12 +994,152 @@
         {
           "do": "anchor",
           "to": null
+        },
+        {
+          "do": "npc",
+          "op": "spawn",
+          "npc": "liese",
+          "x": 1004.85,
+          "z": -870.3,
+          "era": "1789",
+          "chapter": "k1",
+          "yaw": 120
+        },
+        {
+          "do": "npc",
+          "op": "spawn",
+          "npc": "hofgaertner",
+          "x": 1221,
+          "z": -993,
+          "era": "1789",
+          "chapter": "k1",
+          "yaw": 110,
+          "watch": {
+            "fov": 70,
+            "range": 13,
+            "sweep": [
+              20,
+              200
+            ],
+            "period": 10,
+            "set": "k1",
+            "zone": "court.orangerie",
+            "who": "Der Hofgärtner"
+          }
+        },
+        {
+          "do": "npc",
+          "op": "spawn",
+          "npc": "gardist-tor",
+          "x": 1194.6,
+          "z": -1111.5,
+          "era": "1789",
+          "chapter": "k1",
+          "yaw": 270,
+          "watch": {
+            "fov": 70,
+            "range": 12,
+            "sweep": [
+              240,
+              300
+            ],
+            "period": 9,
+            "set": "k1",
+            "inspector": true,
+            "who": "Ein Gardist"
+          }
+        },
+        {
+          "do": "npc",
+          "op": "spawn",
+          "npc": "gardist",
+          "x": 1218,
+          "z": -1100,
+          "era": "1789",
+          "chapter": "k1",
+          "yaw": 210,
+          "watch": {
+            "fov": 70,
+            "range": 14,
+            "sweep": [
+              170,
+              250
+            ],
+            "period": 10,
+            "set": "k1",
+            "who": "Ein Gardist"
+          }
+        },
+        {
+          "do": "npc",
+          "op": "spawn",
+          "npc": "lakai",
+          "x": 1238,
+          "z": -1124,
+          "era": "1789",
+          "chapter": "k1",
+          "yaw": 285,
+          "watch": {
+            "fov": 70,
+            "range": 12,
+            "sweep": [
+              250,
+              320
+            ],
+            "period": 7,
+            "set": "k1",
+            "who": "Ein Lakai"
+          }
+        },
+        {
+          "do": "cue",
+          "id": "court:on",
+          "data": {
+            "set": "k1"
+          }
         }
       ],
       "complete": {
-        "era": "1789"
+        "all": [
+          {
+            "era": "1789"
+          },
+          {
+            "flag": "k1.angekommen"
+          }
+        ]
       },
       "on": [
+        {
+          "id": "k1_0.damals",
+          "when": {
+            "era": "1789"
+          },
+          "do": [
+            {
+              "do": "say",
+              "id": "laub.k1.brunnenstube",
+              "speaker": "laub",
+              "delay": 1,
+              "wait": true,
+              "text": "Sommer 1789. Kies, Hunde, irgendwo eine Geige. Und mittendrin Sie. In Orange."
+            },
+            {
+              "do": "say",
+              "id": "laub.k1.fremde",
+              "speaker": "laub",
+              "delay": 0.4,
+              "wait": true,
+              "text": "Der Herzog lässt keine Fremden auf den Berg. Hundert Gardisten an den Türen, schreibt man. Wir brauchen zwei Dinge: einen Rock, der nicht leuchtet, und ein Papier, das jemand anders geschrieben hat. Unten an der Bleiche hängt Wäsche."
+            },
+            {
+              "do": "flag",
+              "set": {
+                "k1.angekommen": true
+              }
+            }
+          ]
+        },
         {
           "id": "k1_0.heute",
           "when": {
@@ -1151,25 +1293,11 @@
           "onResume": true
         },
         {
-          "do": "say",
-          "id": "laub.k1.brunnenstube",
-          "speaker": "laub",
-          "delay": 4.5,
-          "text": "Sommer 1789. Kies, Hunde, irgendwo eine Geige. Und mittendrin Sie. In Orange."
-        },
-        {
           "do": "quest",
           "op": "offer",
           "id": "q.k1.ankunft",
           "delay": 0.6,
           "onResume": true
-        },
-        {
-          "do": "say",
-          "id": "laub.k1.fremde",
-          "speaker": "laub",
-          "delay": 1,
-          "text": "Der Herzog lässt keine Fremden auf den Berg. Hundert Gardisten an den Türen, schreibt man. Wir brauchen zwei Dinge: einen Rock, der nicht leuchtet, und ein Papier, das jemand anders geschrieben hat. Unten an der Bleiche hängt Wäsche."
         }
       ],
       "on": [

@@ -75,9 +75,11 @@ Starting or replaying a chapter resets reaction cooldowns and rising-edge state.
 
 **One journey.** The tour's `t17` ends on `quelle:touch`; `t18` shifts to 1789 (`onResume`, so a
 Continue from its autosave finishes the jump), plays the arrival lines and hands over. „Der Hof“
-`continues`: `k1_0` sets the chapter up and completes as soon as the era is 1789, `k1_0b` follows.
+`continues`: `k1_0` sets the chapter up under the card (all its people stand at once), its
+`k1_0.damals` reaction lets Laub say where you are and what is needed once the card has faded, then
+`k1_0b` follows with the quests, so nothing is offered on the chapter card.
 Started from the chapter list, `k1_0` runs in the present and its `k1_0.heute` reaction makes the
-spring the Q anchor. The spring's „Wasser berühren“ is offered once in the game, in `t17`.
+spring the Q anchor; the lines wait for the summer. The spring's „Wasser berühren“ is offered once in the game, in `t17`.
 
 **Wake places.** `wake {x, z, yaw?, era: "today", text?}` on a beat: being caught or an empty
 meter while it runs brings you to the present *there* (the resumed beat's `wake` wins, else the

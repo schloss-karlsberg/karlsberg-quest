@@ -283,7 +283,7 @@ test('campaign: new game → tour → chapters 1–4 → ending → credits', as
       expect(voice.murmured).toBeGreaterThan(0);
     }
     lap('tour');
-    await chapterStart(page, 'tour', 'k1', 'k1_0b', '1789');
+    await chapterStart(page, 'tour', 'k1', 'k1_0', '1789');
     // chapter 1 opens at the Karlsbergquelle (its checkpoint), in 1789
     expect(await distTo(page, K1_START.x, K1_START.z), 'k1 starts at the spring').toBeLessThan(30);
     // what the old prologue left behind, now from the tour (tests/tour-handover.test.ts)

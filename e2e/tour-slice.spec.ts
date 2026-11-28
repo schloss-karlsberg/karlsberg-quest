@@ -806,8 +806,10 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   const s1 = await page.evaluate(() => window.kq!.story!.state());
   expect(s1.completed).toContain('tour');
   expect(s1.chapter).toBe('k1');
-  expect(s1.beat).toBe('k1_0b');
+  expect(s1.beat).toBe('k1_0');
   expect(s1.era).toBe('1789');
+  // the chapter card stands alone: no quest banner on it
+  expect(await page.evaluate(() => window.kq!.quests!.state().quests['q.k1.kleider']?.state ?? 'hidden')).toBe('hidden');
   expect(await page.evaluate(() => window.kq!.quelle!.info().prompt), 'no second touch').toBe(false);
   expect(await page.evaluate(() => window.kq!.walk!.stats().bodies)).toBe(0);
   await expectHandover(page);

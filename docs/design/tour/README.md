@@ -56,8 +56,9 @@ are pending; PRD D-012.
   move as soon as the shift is done. No fade, no return, no second touch. The hand-over grants are
   unchanged.
 - **„Der Hof“ continues where the visitor stands** (`continues` in the story file): no teleport, no
-  era change. Its first beat `k1_0` only sets the chapter up; `k1_0b` follows at once with Laub's
-  „Sommer 1789. Kies, Hunde …“ and the coat at the Bleiche as the first objective. Chosen from
+  era change. Its first beat `k1_0` sets the chapter up under the card; then Laub says „Sommer 1789.
+  Kies, Hunde …“ and what is needed, and only then `k1_0b` offers the quests, with the coat at the
+  Bleiche as the first objective. The chapter card stands alone. Chosen from
   Pause → Kapitel the chapter starts at the spring in the present, and Q there leads into the summer.
 - **Arrival spot:** the spring itself, the invented Brunnenstube (cx.42), about 310 m from the
   palace gate. Positions come from the shared home constant (`src/systems/story/hub/home.ts`).

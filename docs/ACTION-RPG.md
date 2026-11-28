@@ -983,12 +983,13 @@ As built (`content/quests/01-kapitel-1.quests.json`, `scripts/content-build/kapi
 **Opening at the Karlsbergquelle** (owner, 2026-11-20; one-way since 2026-11-28, TASK-089;
 story `k1_0` → `k1_0b` → `k1_0c` → `k1_1`): the chapter goes on in 1789 where the tour's touch left the
 player (`continues`: no teleport, no era change at the hand-over). `k1_0` „An der Brunnenstube“ sets
-the chapter up (people, flags, the prelude's `k1.vorspiel`) and completes as soon as the era is 1789.
+the chapter up under the card (all people, flags, the prelude's `k1.vorspiel`); in 1789 its reaction
+`k1_0.damals` plays Laub's two arrival lines after the card and ends the beat (`k1.angekommen`).
 There is no dawn, no radio line and no second touch any more; the arrival quest lost its
 „das Wasser berühren“ step. The chapter checkpoint is the trough stand in the present (the shared home
 constant `HOME.spawn`): a replay from Pause → Kapitel or a debug jump starts there, and
 `k1_0.heute` makes the spring the Q anchor. `k1_0b` „Die
-Brunnenstube, Sommer“ (Laub: the place, the arrival quest, what is needed) is the walk up on foot by the trail west of the Orangerie to the
+Brunnenstube, Sommer“ (the coat quest and the arrival quest, offered after Laub's lines) is the walk up on foot by the trail west of the Orangerie to the
 Ehrenhof gate (1200/−1116, r 14); flag `k1.vorspiel` keeps the oil meter and the return tip off until
 `k1_1` clears it. Caught or back in today on the way: you wake at the spring, and Q there (anchor
 1058.5/−831 r 10) takes you back. **Anchor rule:** Q never anchors inside the Ehrenhof before the

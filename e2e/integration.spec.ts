@@ -115,10 +115,9 @@ test('integration: the tour and K1 across story, fx, hunt and chronik', async ({
     const k = window.kq!;
     k.ctx.ui.modals.closeAll();
     k.story!.goto('tour', 't17');
-    k.teleport(1059.3, -833.1, 50, -10);
     k.step(4);
   });
-  // Laub's lines run, then the water is called
+  // Laub's lines run, then the water is called (touchSpring steps to the trough)
   for (let i = 0; i < 60 && !(await page.evaluate(() => window.kq!.state().flags['quelle.call'])); i++) await page.evaluate(() => (window.kq!.story!.finishTyping(), window.kq!.step(60)));
   expect((await story(page)).objective).toMatchObject({ id: 'tour', text: 'Am Trog das Wasser berühren' });
   await expect(page.getByTestId('bussole')).toHaveClass(/kqs-show/);

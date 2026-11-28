@@ -196,7 +196,7 @@ test('story: home at the Quelle by day and night, dialogue portraits', async ({ 
     return k.story!.state().dialogue?.id === id;
   }, lineId, { timeout: 90_000 });
 
-  // Keep the chapter timeline: the coat quest's offer first, then Laub's arrival line in 1789.
+  // Keep the chapter timeline: after the card, Laub's arrival line in 1789.
   await waitForLine('laub.k1.brunnenstube');
   await typed(page);
   await expect(page.getByTestId('dialogue')).toHaveAttribute('data-portrait', 'compass');

@@ -348,8 +348,14 @@ export async function arriveAtSpring(page: Page, o: { screenshot?: (name: string
     await o.screenshot?.('quelle-heute');
     await shiftToPast(page);
   }
-  // the first tick of the prelude
-  for (let i = 0; i < 12 && (await beat(page)) !== 'k1_0b'; i++) await upd(page, 60);
+  // the arrival beat: the chapter card, then Laub says where you are and what is needed; nothing
+  // is offered before that
+  if ((await beat(page)) === 'k1_0') expect(await qs(page, 'q.k1.kleider'), 'no quest lands on the chapter card').toBe('hidden');
+  for (let i = 0; i < 12 && (await beat(page)) !== 'k1_0b'; i++) {
+    await flush(page);
+    await upd(page, 30);
+  }
+  expect((await flags(page))['k1.angekommen'], 'the arrival lines of Laub ran').toBe(true);
   const s = await story(page);
   expect(s).toMatchObject({ chapter: 'k1', era: '1789', beat: 'k1_0b' });
   expect(await distTo(page, K1_START.x, K1_START.z), 'k1 starts at the spring').toBeLessThan(30);
@@ -360,7 +366,7 @@ export async function arriveAtSpring(page: Page, o: { screenshot?: (name: string
   expect(await page.evaluate(() => window.kq!.quelle!.info().prompt), 'no E at the water in 1789').toBe(false);
   // the lantern waits for the court
   expect(!!s.meters.oil, 'no lantern in the prelude').toBe(false);
-  // Laub's arrival lines, with the arrival quest offered between them
+  // the prelude: both opening quests, the coat first
   await flush(page);
   await upd(page, 30);
   expect(await qs(page, 'q.k1.kleider')).toBe('active');

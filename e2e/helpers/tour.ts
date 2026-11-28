@@ -8,8 +8,9 @@ import { type Page, expect } from '@playwright/test';
  * granted in t17 and at the tour's end (t18 exit, the chapter's `leave`), so the state at k1 is the
  * same as after the full walk (tests/tour-handover.test.ts checks the authored grants).
  *
- * The touch is the journey: ends with the story in k1 (k1_0 hands on to k1_0b at once), still in
- * 1789, at the Quelle. No fade, no return to the present, no second touch.
+ * The touch is the journey: ends with the story in k1 / k1_0 (the arrival beat: the chapter card,
+ * then Laub's two lines, then k1_0b), still in 1789, at the Quelle. No fade, no return to the
+ * present, no second touch.
  */
 export async function throughTour(page: Page): Promise<void> {
   const st = await page.evaluate(() => window.kq!.story!.state());
@@ -46,7 +47,7 @@ export async function throughTour(page: Page): Promise<void> {
   const s = await page.evaluate(() => window.kq!.story!.state());
   expect(s.completed).toContain('tour');
   expect(s.chapter).toBe('k1');
-  expect(s.beat).toBe('k1_0b');
+  expect(s.beat).toBe('k1_0');
   expect(s.era).toBe('1789');
 }
 

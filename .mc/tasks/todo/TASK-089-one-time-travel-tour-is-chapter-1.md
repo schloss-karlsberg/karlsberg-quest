@@ -234,9 +234,12 @@ _Status: approved 2026-11-28_ (by the coordinator; the owner's answers are pendi
   working as it did.
 - The shift moved from `t17`'s exit to `t18`'s entry with `onResume`, so the `t18` autosave (written
   before the shift runs) finishes the jump on Continue.
-- The arrival quest is offered in `k1_0b` between Laub's two arrival lines. The coat quest stays on
-  offer from the first tick: the static progression check (and a fast player) must never take the
-  coat before it counts.
+- `k1_0` holds through the chapter card: all people of the chapter and the prelude stand at once,
+  Laub's two arrival lines come from its 1789 reaction once the card has faded, and only then
+  `k1_0b` offers the coat quest and the arrival quest. The first real-GPU strip showed the coat
+  quest's banner on top of the chapter card and its offer line before „Sommer 1789. Kies, Hunde …“.
+  The coat quest is still offered on the first tick of `k1_0b`: the static progression check (and a
+  fast player) must never take the coat before it counts.
 
 **Playtest findings of 2026-11-28 on the arrival path, and where they go:**
 | Finding | Where |
@@ -330,9 +333,9 @@ objective, Pause → Kapitel.
   describe that loop. A new design document first.
 - The seams between the later chapters still imply several days (Marlene's „Erzähl’s mir morgen“,
   „Brötchen auf der Stufe“), against the one-afternoon rule.
-- The order of Laub's lines on arrival: the coat quest's offer line („Ein Rock, der nicht
-  leuchtet …“) still comes before „Sommer 1789. Kies, Hunde …“ because the quest must be on from
-  the first tick. A quiet offer (no line) would let the place speak first.
+- The level card („Stufe III“ with three unlocks) still comes up over Laub's lines about 15 s
+  after the hand-over, once the soft hold of 8 s has run out (real-GPU strip, frame 31). Holding it
+  until the speech is done is TASK-085's change in `src/ui`.
 
 ## Progress
 

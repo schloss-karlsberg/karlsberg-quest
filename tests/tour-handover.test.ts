@@ -220,7 +220,7 @@ describe('saves from the old opening (a look at 1789, back to the present, a sec
     game.tick();
     expect(game.at()).toBe('tour/t18');
     expect(game.current.era).toBe('1789');
-    game.tick(3);
+    game.tick(4);
     expect(game.at()).toBe('k1/k1_0b');
     expect(game.current.era).toBe('1789');
     expect(game.current.systems.story!.completed).toContain('tour');
@@ -238,7 +238,7 @@ describe('saves from the old opening (a look at 1789, back to the present, a sec
     // the resume repeats the shift (a no-op in 1789) and the latch of the lines
     expect(game.ran).toContainEqual({ do: 'shift', to: '1789', reason: 'quelle', onResume: true });
     expect(game.current.era).toBe('1789');
-    game.tick(3);
+    game.tick(4);
     expect(game.at()).toBe('k1/k1_0b');
     expect(game.current.era).toBe('1789');
     expect(game.ran).toContainEqual({ do: 'xp', amount: 549, reason: 'story:tour' });
@@ -266,7 +266,7 @@ describe('saves from the old opening (a look at 1789, back to the present, a sec
     expect(game.at()).toBe('k1/k1_0');
     // the dawn of the old opening ends with the resume
     expect(game.ran).toContainEqual({ do: 'look', time: 'day' });
-    game.tick(2);
+    game.tick(3);
     expect(game.at()).toBe('k1/k1_0b');
     expect(game.current.era).toBe('1789');
     expect(game.current.flags['quelle.call']).toBeUndefined();
@@ -375,17 +375,25 @@ describe('retired prologue saves', () => {
           if (resume && !runsOnResume(action)) continue;
           if (action.do === 'quest' && action.op === 'offer') book.offer(action.id);
           if (action.do === 'shift') current.era = action.to;
+          if (action.do === 'flag') {
+            for (const [key, value] of Object.entries(action.set)) {
+              if (value === null) delete current.flags[key];
+              else current.flags[key] = value;
+            }
+          }
         }
       },
       chapterEntered: () => {}, beatEntered: () => {}, chapterCompleted: () => {},
     });
     engine.resume();
     expect(engine.beat()?.id).toBe('k1_0');
-    // no touch: the save arrives in 1789 and the arrival beat hands on
-    engine.tick(0.1, {
-      era: current.era, x: current.player.x, z: current.player.z, flags: current.flags, inventory: current.inventory,
-      chronik: current.chronik, scan: 0, map: false, stance: 'stand', lantern: false, caseFacts: () => null,
-    });
+    // no touch: the save arrives in 1789, Laub's arrival lines run and the beat hands on
+    for (let i = 0; i < 2; i++) {
+      engine.tick(0.1, {
+        era: current.era, x: current.player.x, z: current.player.z, flags: current.flags, inventory: current.inventory,
+        chronik: current.chronik, scan: 0, map: false, stance: 'stand', lantern: false, caseFacts: () => null,
+      });
+    }
     expect(engine.beat()?.id).toBe('k1_0b');
     expect(current.era).toBe('1789');
     expect([...book.tracked()].sort()).toEqual(['q.k1.ankunft', 'q.k1.kleider']);

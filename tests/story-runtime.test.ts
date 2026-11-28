@@ -277,8 +277,15 @@ describe('the first time travel in the story runtime (TASK-089)', () => {
     Object.assign(game.player.position, { x: HOME.spawn.x - 70, z: HOME.spawn.z - 40 });
     for (let i = 0; i < 160 && game.state.state.systems.story?.chapter === 'tour'; i++) game.tick(0.5);
     expect(game.state.state.systems.story).toMatchObject({ chapter: 'k1', completed: ['tour'] });
-    for (let i = 0; i < 4; i++) game.tick(0.5);
+    // the people of the chapter stand while the card is still up, the prelude's too
+    game.tick(0.5);
+    expect(beat(game)).toBe('k1/k1_0');
+    expect(Object.keys(placed(game)).sort()).toEqual(['diener', 'gaertner', 'gardist', 'gardist-tor', 'hanne', 'hofgaertner', 'jost', 'lakai', 'liese', 'soll']);
+    // nothing is offered on the card: the quests wait for Laub's arrival lines
+    expect(game.state.state.systems.quests?.quests['q.k1.kleider']?.state ?? 'hidden').toBe('hidden');
+    for (let i = 0; i < 200 && beat(game) !== 'k1/k1_0b'; i++) game.tick(0.5);
     expect(beat(game)).toBe('k1/k1_0b');
+    expect(game.state.state.systems.story?.said).toEqual(expect.arrayContaining(['laub.k1.brunnenstube', 'laub.k1.fremde']));
     // one journey: never back to the present, never moved back to the spring
     expect(eras).toEqual(['1789']);
     expect(teleports).toEqual([]);
@@ -317,7 +324,8 @@ describe('the first time travel in the story runtime (TASK-089)', () => {
     expect(game.player.position).toMatchObject({ x: HOME.spawn.x, z: HOME.spawn.z });
     game.events.emit('game:start', { resumed: true });
     game.tick();
-    game.tick();
+    expect(beat(game)).toBe('k1/k1_0');
+    for (let i = 0; i < 200 && beat(game) !== 'k1/k1_0b'; i++) game.tick(0.5);
     expect(beat(game)).toBe('k1/k1_0b');
     expect(game.era.current).toBe('1789');
     expect(game.state.state.flags['quelle.call']).toBeUndefined();

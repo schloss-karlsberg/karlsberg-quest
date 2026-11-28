@@ -681,15 +681,20 @@ describe('story files', () => {
     expect(k0.some((a) => a.do === 'quest')).toBe(false);
     expect(JSON.stringify(k1)).not.toContain('morgen.quelle');
     expect(JSON.stringify(k1.beats[0])).not.toContain('quelle:touch');
-    // in 1789 the beat hands on at once
+    // in 1789 Laub says where you are and what is needed (the card has faded by then), then the
+    // beat hands on; the quests come after his lines, never on the chapter card
     runs.length = 0;
     step({ era: '1789', ...SPRING, flags: { 'k1.vorspiel': true } });
+    expect(slice.beat).toBe('k1_0');
+    expect(all().map((a) => (a.do === 'say' ? a.id : a.do))).toEqual(['laub.k1.brunnenstube', 'laub.k1.fremde', 'flag']);
+    expect(all().at(-1)).toEqual({ do: 'flag', set: { 'k1.angekommen': true } });
+    step({ era: '1789', ...SPRING, flags: { 'k1.vorspiel': true, 'k1.angekommen': true } });
     expect(slice.beat).toBe('k1_0b');
-    const k0bSays = k1.beats.find((b) => b.id === 'k1_0b')!.enter!.filter((a): a is Extract<Action, { do: 'say' }> => a.do === 'say').map((a) => a.id);
-    expect(k0bSays).toEqual(['laub.k1.brunnenstube', 'laub.k1.fremde']);
-    // the place first, then the way in (the arrival quest), then what is needed for it
     const k0bTalk = k1.beats.find((b) => b.id === 'k1_0b')!.enter!.filter((a) => a.do === 'say' || a.do === 'quest').map((a) => a.id);
-    expect(k0bTalk).toEqual(['q.k1.kleider', 'laub.k1.brunnenstube', 'q.k1.ankunft', 'laub.k1.fremde']);
+    expect(k0bTalk).toEqual(['q.k1.kleider', 'q.k1.ankunft']);
+    // the prelude's people stand from the first tick of the chapter (the Bleiche is a 12 s run away)
+    const early = k1.beats[0]!.enter!.filter((a): a is NpcAction => a.do === 'npc' && 'npc' in a).map((a) => a.npc);
+    expect(early).toEqual(expect.arrayContaining(['liese', 'hofgaertner', 'gardist-tor', 'gardist', 'lakai']));
     step({ era: '1789', ...SPRING, flags: { 'k1.vorspiel': true } }, 6);
     expect(slice.beat).toBe('k1_0b');
     // back to today on the walk: Q at the spring takes you back, never the Ehrenhof
@@ -794,11 +799,15 @@ describe('story files', () => {
     acts = runs.flatMap((r) => r.actions);
     expect(acts).toContainEqual({ do: 'anchor', to: '1789', x: QUELLE.x, z: QUELLE.z, r: 10 });
     expect(acts).toContainEqual({ do: 'objective', id: 'k1.zurueck-q', text: 'Zurück in den Sommer 1789: Q an der Quelle', x: HOME.spawn.x, z: HOME.spawn.z });
-    // a touch is neither needed nor counted; the era is what ends the beat
+    // a touch is neither needed nor counted; the summer and Laub's arrival lines end the beat
     engine.onEvent('quelle:touch', { era: 'today' });
     engine.tick(0.5, env({ era: 'today', x: HOME.spawn.x, z: HOME.spawn.z }));
     expect(slice.beat).toBe('k1_0');
+    runs.length = 0;
     engine.tick(0.5, env({ era: '1789', x: HOME.spawn.x, z: HOME.spawn.z }));
+    expect(slice.beat).toBe('k1_0');
+    expect(runs.flatMap((r) => r.actions).at(-1)).toEqual({ do: 'flag', set: { 'k1.angekommen': true } });
+    engine.tick(0.5, env({ era: '1789', x: HOME.spawn.x, z: HOME.spawn.z, flags: { 'k1.angekommen': true } }));
     expect(slice.beat).toBe('k1_0b');
   });
 
