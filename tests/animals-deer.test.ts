@@ -1,7 +1,7 @@
 /** Tour C5: the shy roe deer core (src/systems/animals/deer.ts). */
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import type { GameEvents } from '../src/core/events';
-import { DEER, calmHerd, createDeer, isSneaking, leaveDeer, noticeRadius, restoreDeer, serializeDeer, startleDeer, stepDeerHerd, type Deer, type DeerInput, type DeerPlayer } from '../src/systems/animals/deer';
+import { DEER, calmHerd, createDeer, grazeClip, headingOf, hitDeer, isSneaking, leaveDeer, noticeRadius, restoreDeer, serializeDeer, startleDeer, stepDeerHerd, type Deer, type DeerInput, type DeerPlayer } from '../src/systems/animals/deer';
 import { restoreAnimals, serializeAnimals } from '../src/systems/animals/save';
 import { toRequest, type AnimalAction, type AnimalEvent } from '../src/systems/animals/types';
 
@@ -75,8 +75,10 @@ describe('deer: approach', () => {
     expect(fled).toMatchObject({ by: 'player' });
     expect((fled as { dist: number }).dist).toBeLessThanOrEqual(DEER.FLEE);
     expect((fled as { dist: number }).dist).toBeGreaterThan(14);
-    // bounded 25 m away from the player (player came from +z → deer went toward −z)
-    expect(h[0]!.z).toBeCloseTo(-25, 0);
+    // bounded 25 m away from the player (player came from +z → deer went toward −z), after her one step aside
+    expect(h[0]!.z).toBeLessThan(-24);
+    expect(Math.hypot(h[0]!.x, h[0]!.z)).toBeGreaterThan(25 - 0.5);
+    expect(Math.hypot(h[0]!.x, h[0]!.z)).toBeLessThan(25 + DEER.STEP_LEN + 0.5);
   });
 
   it('the alert precedes the flight by at least the 1.5 s tell', () => {
@@ -194,9 +196,242 @@ describe('deer: approach', () => {
   it('flees around unwalkable ground', () => {
     const h = herd();
     const walkable = (x: number, z: number) => !(z < -5 && Math.abs(x) < 8); // a pond straight behind
-    run(h, 20, approach('stand', 3.2), { walkable });
+    const log = run(h, 20, approach('stand', 3.2), { walkable });
+    expect(count(log.events, 'animal:fled', 'ricke')).toBe(1);
     expect(walkable(h[0]!.x, h[0]!.z)).toBe(true);
-    expect(Math.hypot(h[0]!.x, h[0]!.z)).toBeCloseTo(25, 0);
+    expect(Math.hypot(h[0]!.x, h[0]!.z)).toBeGreaterThan(25 - DEER.STEP_LEN - 0.5);
+    expect(Math.hypot(h[0]!.x, h[0]!.z)).toBeLessThan(25 + DEER.STEP_LEN + 0.5);
+  });
+});
+
+describe('deer: reactions a watcher can read (TASK-080)', () => {
+  const far: DeerPlayer = { x: 0, z: 200, speed: 0, stance: 'stand' };
+  /** Angle between where the body faces and a point (radians, 0 = straight ahead). */
+  const offAhead = (d: Deer, x: number, z: number) => {
+    const a = headingOf(x - d.x, z - d.z) - d.yaw;
+    return Math.abs(Math.atan2(Math.sin(a), Math.cos(a)));
+  };
+
+  it('grazing: the head comes up for a look around every few seconds, and nothing else changes', () => {
+    expect(grazeClip(0)).toBe('graze');
+    expect(grazeClip(DEER.GLANCE_EVERY - DEER.GLANCE_S + 0.1)).toBe('idle');
+    expect(grazeClip(DEER.GLANCE_EVERY + 0.1)).toBe('graze');
+    const h = herd();
+    run(h, 3, () => far); // the fawn walks to its place behind her
+    const clips = new Set<string>();
+    const log = run(h, 2 * DEER.GLANCE_EVERY, () => far, {}, (hh) => {
+      clips.add(hh[0]!.motion.clip);
+      expect(hh[1]!.motion.clip).toBe(hh[0]!.motion.clip);
+    });
+    expect([...clips].sort()).toEqual(['graze', 'idle']);
+    expect(log.events).toEqual([]);
+    expect(h.map((d) => [d.state, d.meter])).toEqual([['graze', 0], ['graze', 0]]);
+    expect([h[0]!.x, h[0]!.z, h[0]!.yaw]).toEqual([0, 0, 0]);
+    expect(h[0]!.motion.gaze).toBeNull();
+  });
+
+  it('an upright walker is noticed early: head up beyond 26 m, flight only inside the flee radius, 2 s later or more', () => {
+    const h = herd();
+    const step = approach('stand', 3.2);
+    let alertAt = -1;
+    let fledAt = -1;
+    let alertDist = 0;
+    let fledDist = 0;
+    for (let i = 0; i < 20 / DT; i++) {
+      const p = step(h);
+      for (const e of stepDeerHerd(h, DT, { player: p })) {
+        if (e.id !== 'ricke') continue;
+        if (e.type === 'animal:alert') [alertAt, alertDist] = [i * DT, Math.hypot(p.x - h[0]!.x, p.z - h[0]!.z)];
+        if (e.type === 'animal:fled') [fledAt, fledDist] = [i * DT, e.dist];
+      }
+    }
+    expect(alertDist).toBeGreaterThan(26);
+    expect(fledDist).toBeLessThanOrEqual(DEER.FLEE);
+    expect(fledAt - alertAt).toBeGreaterThanOrEqual(2);
+  });
+
+  it('outside the flee radius she only watches: an upright player pacing at 24 m never makes her bolt', () => {
+    const h = herd();
+    const p: DeerPlayer = { x: 0, z: 24, speed: 3.2, stance: 'stand' };
+    let dir = 1;
+    const log = run(h, 30, () => {
+      if (Math.abs(p.x) > 4) dir = -Math.sign(p.x);
+      p.x += dir * p.speed * DT;
+      return p;
+    });
+    expect(count(log.events, 'animal:alert', 'ricke')).toBe(1);
+    expect(count(log.events, 'animal:fled', 'ricke')).toBe(0);
+    expect(h[0]!.state).toBe('alert');
+    expect(h[0]!.meter).toBeLessThanOrEqual(DEER.HOLD_CAP);
+    // and one more step toward her is enough
+    const closer = run(h, 4, approach('stand', 3.2, 24, 15));
+    expect(count(closer.events, 'animal:fled', 'ricke')).toBe(1);
+  });
+
+  it('alert: she looks at the player, and the body turns only as far as the neck needs', () => {
+    // the doe faces −z (yaw 0); a player to her right front needs no turn at all
+    const front = herd();
+    const p: DeerPlayer = { x: 6, z: -8, speed: 0, stance: 'stand' };
+    run(front, 1, () => p);
+    expect(front[0]!.state).toBe('alert');
+    expect(front[0]!.yaw).toBe(0);
+    expect(front[0]!.motion.gaze).toEqual({ x: 6, z: -8, h: 1.65 });
+    expect(front[1]!.motion.gaze).toEqual(front[0]!.motion.gaze);
+    // a player straight behind her: she turns until the neck can do the rest, never face-on
+    const behind = herd();
+    const q: DeerPlayer = { x: 0, z: 10, speed: 0, stance: 'crouch' };
+    run(behind, 0.2, () => ({ ...q, stance: 'stand' }));
+    run(behind, 0.6, () => ({ ...q, stance: 'stand' }));
+    expect(behind[0]!.state).toBe('alert');
+    expect(offAhead(behind[0]!, q.x, q.z)).toBeCloseTo(DEER.HEAD_TURN, 5);
+    expect(behind[0]!.motion.yaw).toBe(behind[0]!.yaw);
+    // a crouched player is looked at lower
+    run(behind, 0.1, () => q);
+    expect(behind[0]!.motion.gaze).toMatchObject({ h: 1.05 });
+  });
+
+  it('the ladder of a careless sneak: head up, one step aside away from the player, then the flight', () => {
+    const h = herd();
+    const step = approach('crouch', 1.6, 16, 2);
+    const seen: string[] = [];
+    let stepped = 0;
+    let before = { x: 0, z: 0 };
+    let playerAtStep: DeerPlayer | null = null;
+    for (let i = 0; i < 25 / DT && h[0]!.state !== 'flee'; i++) {
+      const p = step(h);
+      const was = { x: h[0]!.x, z: h[0]!.z };
+      for (const e of stepDeerHerd(h, DT, { player: p })) if (e.id === 'ricke') seen.push(e.type);
+      const moved = Math.hypot(h[0]!.x - was.x, h[0]!.z - was.z);
+      if (moved > 0 && h[0]!.state === 'alert') {
+        if (!stepped) {
+          before = was;
+          playerAtStep = { ...p };
+          seen.push('step');
+        }
+        stepped += moved;
+        expect(h[0]!.motion.speed).toBe(DEER.WALK);
+        expect(h[0]!.motion.clip).toBe('alert');
+      }
+    }
+    expect(seen).toEqual(['animal:alert', 'step', 'animal:fled']);
+    // (the flight may cut the last centimetres of the step short)
+    expect(stepped).toBeGreaterThan(DEER.STEP_LEN * 0.8);
+    expect(stepped).toBeLessThanOrEqual(DEER.STEP_LEN + 1e-9);
+    // away from the player, at an angle: farther off than before, but not straight away
+    const d0 = Math.hypot(before.x - playerAtStep!.x, before.z - playerAtStep!.z);
+    const gained = Math.hypot(h[0]!.flee!.fx - playerAtStep!.x, h[0]!.flee!.fz - playerAtStep!.z) - d0;
+    expect(gained).toBeGreaterThan(0.5);
+    expect(gained).toBeLessThan(DEER.STEP_LEN);
+  });
+
+  it('freezing when she looks up ends the alert; a second alert has its own step', () => {
+    const h = herd();
+    const p: DeerPlayer = { x: 0, z: 14, speed: 1.6, stance: 'crouch' };
+    const sneakUntilAlert = () => {
+      for (let i = 0; i < 20 / DT && h[0]!.state !== 'alert'; i++) {
+        p.z -= p.speed * DT;
+        stepDeerHerd(h, DT, { player: p });
+      }
+    };
+    sneakUntilAlert();
+    expect(h[0]!.state).toBe('alert');
+    const held = run(h, 2, () => ({ ...p, speed: 0 }));
+    expect(held.events).toEqual([]);
+    expect(h[0]!.state).toBe('graze');
+    expect([h[0]!.x, h[0]!.z]).toEqual([0, 0]);
+    sneakUntilAlert();
+    let moved = 0;
+    for (let i = 0; i < 4 / DT && h[0]!.state === 'alert'; i++) {
+      p.z -= p.speed * DT;
+      stepDeerHerd(h, DT, { player: p });
+      if (h[0]!.state === 'alert') moved = Math.hypot(h[0]!.x, h[0]!.z);
+    }
+    // closer this time, so the flight may cut the step short: still a step anyone can see
+    expect(moved).toBeGreaterThan(DEER.STEP_LEN * 0.5);
+  });
+
+  it('a chestnut landing beside her: she looks toward it for a few seconds and does not bolt', () => {
+    const h = herd();
+    const nut = { x: 4, z: -1, loud: 0.7 };
+    const first = stepDeerHerd(h, DT, { player: far, los: false, noise: [nut] });
+    expect(first.filter((e) => e.id === 'ricke')).toEqual([
+      { type: 'animal:heard', id: 'ricke', x: 4, z: -1 },
+      { type: 'animal:alert', id: 'ricke' },
+    ]);
+    expect(h.map((d) => d.state)).toEqual(['alert', 'alert']);
+    expect(h[0]!.motion.gaze).toEqual({ x: 4, z: -1, h: 0.2 });
+    expect(h[0]!.motion.clip).toBe('alert');
+    // the look outlasts the meter: still watching the spot after 5 s, grazing again after LOOK_S
+    const watching = run(h, 5, () => far, { los: false });
+    expect(h[0]!.meter).toBeLessThan(DEER.CLEAR_AT);
+    expect(h[0]!.state).toBe('alert');
+    expect(h[1]!.motion.gaze).toEqual({ x: 4, z: -1, h: 0.2 });
+    expect(offAhead(h[0]!, 4, -1)).toBeLessThanOrEqual(DEER.HEAD_TURN + 1e-9);
+    const after = run(h, DEER.LOOK_S - 5 + 0.2, () => far, { los: false });
+    expect(h[0]!.state).toBe('graze');
+    expect(h[0]!.motion.gaze).toBeNull();
+    expect([...watching.events, ...after.events]).toEqual([]);
+    expect([h[0]!.x, h[0]!.z]).toEqual([0, 0]);
+  });
+
+  it('noises alone never fill the meter: three chestnuts in a row are three looks, no flight', () => {
+    const h = herd();
+    const log: RunLog = { events: [], minDist: Infinity, maxFawnGap: 0 };
+    for (const x of [3, -3, 2]) {
+      log.events.push(...stepDeerHerd(h, DT, { player: far, noise: [{ x, z: 2, loud: 0.7 }] }));
+      run(h, 0.5, () => far, {}, undefined, log);
+    }
+    run(h, 3, () => far, {}, undefined, log);
+    expect(count(log.events, 'animal:heard', 'ricke')).toBe(3);
+    expect(count(log.events, 'animal:alert', 'ricke')).toBe(1);
+    expect(count(log.events, 'animal:fled', 'ricke')).toBe(0);
+    expect(h[0]!.motion.gaze).toMatchObject({ x: 2, z: 2 });
+  });
+
+  it('a chestnut far from her (or a faint noise) does not turn her head', () => {
+    const h = herd();
+    const log = run(h, DT, () => far, { noise: [{ x: 0, z: 15, loud: 0.7 }] });
+    expect(log.events).toEqual([]);
+    expect(h[0]!.state).toBe('graze');
+    expect(h[0]!.meter).toBeGreaterThan(0);
+    expect(h[0]!.motion.gaze).toBeNull();
+  });
+
+  it('a hit: both bolt at once, cause "hit", away from where it came from; the save keeps the cause', () => {
+    const h = herd();
+    const ev = hitDeer(h[0]!, { x: 0, z: 12 });
+    expect(ev).toEqual([{ type: 'animal:fled', id: 'ricke', by: 'hit', dist: 12 }]);
+    const log = run(h, 0.1, () => ({ x: 0, z: 12, speed: 0, stance: 'crouch' }));
+    expect(log.events).toEqual([{ type: 'animal:fled', id: 'kitz', by: 'hit', dist: expect.any(Number) }]);
+    expect(restoreDeer(serializeDeer(h[0]!)).flee).toMatchObject({ by: 'hit' });
+    run(h, 6, () => ({ x: 0, z: 12, speed: 0, stance: 'crouch' }), {}, undefined, log);
+    expect(h[0]!.z).toBeCloseTo(-25, 0);
+    expect(count(log.events, 'animal:settled', 'ricke')).toBe(1);
+    // already running: a second hit changes nothing
+    const again = herd();
+    hitDeer(again[0]!, { x: 0, z: 12 });
+    expect(hitDeer(again[0]!, { x: 5, z: 0 })).toEqual([]);
+  });
+
+  it('the flight ends in the open where it can: the first direction without undergrowth at its end', () => {
+    // straight away (−z) ends in ferns, 30° to one side is open
+    const clutter = (x: number, z: number) => (Math.abs(x) < 3 && z < -20 ? 3 : 0);
+    const h = herd();
+    startleDeer(h[0]!, { x: 0, z: 10 }, undefined, clutter);
+    const f = h[0]!.flee!;
+    expect(clutter(f.tx, f.tz)).toBe(0);
+    expect(Math.hypot(f.tx, f.tz)).toBeCloseTo(25, 5);
+    expect(Math.abs(Math.atan2(f.tx, -f.tz))).toBeCloseTo(Math.PI / 6, 5);
+    // overgrown everywhere: the least overgrown end, still on walkable ground
+    const thick = (x: number, _z: number) => 2 + Math.abs(x - 12.5) / 10;
+    const walkable = (x: number, _z: number) => x < 20;
+    const g = herd();
+    startleDeer(g[0]!, { x: 0, z: 10 }, walkable, thick);
+    expect(g[0]!.flee!.tx).toBeCloseTo(12.5, 1);
+    // no clutter function: straight away, as before
+    const plain = herd();
+    startleDeer(plain[0]!, { x: 0, z: 10 });
+    expect(plain[0]!.flee).toMatchObject({ tx: 0, tz: -25 });
   });
 });
 

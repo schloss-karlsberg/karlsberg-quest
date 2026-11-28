@@ -457,7 +457,7 @@ declare module '../../debug/hooks' {
 
 - The **deer notice meter** rises with the player's stance noise and visibility (`STANCES`) inside `notice` m and in line of sight. Crouching at crouch speed halves the radius, allowing an approach to photo range. Standing within `flee` builds suspicion even while still. When the meter is full and the warning has played, both deer bound 25 m away and stop (`animal:settled`). A `follow` fawn stays within 2 m of the doe. See the [tour tuning](slice-v0.md#deer-photo-and-sneak-tuning-task-017).
 - **Dogs:** `op: 'follow'` with `follow: 'npc:double.jost'`. `op: 'run'` with `path`, `bark: true`, `back: true` is the t5 bolt, ending in `animal:returned`. `op: 'lie'` is the party pose (keep ending: at the player's feet). Dogs are never hostile and never targetable, and in no era are they the Meute.
-- **Waiting:** `{ "event": "animal:returned", "match": { "id": "bijou" } }` (t5 ends); `{ "event": "animal:fled", "match": { "id": "ricke", "by": "player" } }` (an optional Gerold line „Zu schnell.“).
+- **Waiting:** `{ "event": "animal:returned", "match": { "id": "bijou" } }` (t5 ends); `{ "event": "animal:fled", "match": { "id": "ricke", "by": "player" } }` (Gerold's „Zu schnell.“); `by` is `player`, `cue` or `hit` (a thrown chestnut struck a deer, TASK-080).
 - **Validator:** `id` matches `ID_RE`. `spawn` needs `kind` and numeric x/z inside the extent (or `follow`). `era` is `today` when given. `shy` needs `notice > flee > 0` and `settle > 0`. `run` needs a `path` of ≥ 2 points inside the extent. `follow` matches `npc:<roster id>` or `animal:<spawned id>`. The other ops refer to an id spawned earlier in the chapter.
 - **Example (t5 and t6):**
 ```json

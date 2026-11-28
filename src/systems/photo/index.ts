@@ -5,7 +5,10 @@
  *   button; holding a key on a phone is awkward). Up: the phone frame overlay, the lens at the
  *   eyes (`CameraRig.setPhoto`), 1× / 2× zoom (mouse wheel or the chips; `CameraRig.setFovScale`).
  * - **Click** (or the touch attack button, which becomes the shutter) takes the picture: a flash,
- *   then a card with 0–3 stars and the verdict. The core (`core.ts`) judges it geometrically.
+ *   then a card with 0–3 stars and the verdict. The core (`core.ts`) judges it geometrically;
+ *   targets with a drawn body (the deer) are first measured by pixels, once per shot
+ *   (`visibility.ts`: what ferns, grass or a rise hide does not count), and a weak shot's card
+ *   says in one sentence what to change.
  * - **Down**: N, Esc, right click (or the camera button). Not in a conversation, a menu, a fight,
  *   the spirit view, a cut scene (`player.frozen`) or while somebody else holds the camera
  *   (`camera:override`): a toast says why, and an open phone closes. Such a forced close (also
@@ -35,6 +38,7 @@ import { addPausePage } from '../../ui/pause-pages';
 import { addControlKeys } from '../../ui/menus';
 import { registerEraMaterials } from '../fx/shift/prewarm';
 import { captureView, captureViewBlobs } from '../notes/capture';
+import { type Seen, ShotVisibility, registerSubject, shotTip } from './visibility';
 import { GalleryView, type GalleryState } from './gallery';
 import { PhotoLibrary } from './gallery-logic';
 import { type PhotoMeta, openPhotoStore, requestPersist } from './store';
@@ -127,12 +131,14 @@ export interface PhotoHooks {
   /** A good shot of that target exists (survives the album cap). */
   has(id: string): boolean;
   targets(): { id: string; era: string; label_de: string; placeholder: boolean; inWorld: boolean; at: Vec3 | null }[];
-  /** Judge one target against the current view without shooting (null if unknown). */
+  /** Judge one target against the current view as a shot would, pixel test included, without shooting (null if unknown). */
   judge(id: string): TargetJudgement | null;
   state(): { open: boolean; zoom: number; signal: boolean; steady: number; blocked: string | null; lastShot: ShotResult | null };
   zoom(k: 1 | 2): void;
   /** Photo cards unlocked. */
   cards(): string[];
+  /** The pixel test of the current view, as a shot runs it (visibility.ts): per target id with a drawn body. */
+  seen(): Record<string, Seen>;
   /** The device-wide gallery (TASK-006, IndexedDB `kq-photos`). */
   gallery: {
     open(): Promise<void>;
@@ -207,6 +213,12 @@ export function attachTarget(id: string, live: PhotoLiveBinding): () => void {
   return off;
 }
 
+/**
+ * The drawn body of a target (`visibility.ts`): with one, a shot counts what the lens really sees
+ * of it instead of sight rays. The animals system registers the deer's bodies through its bridge.
+ */
+export { registerSubject };
+
 /** True while any live binding (`attachTarget`) holds that target. */
 export function isAttached(id: string): boolean {
   return core.isAttached(id);
@@ -258,6 +270,9 @@ class Photo {
   private deer: DebugDeer | null = null;
   private board: { remove(): void } | null = null;
   private readonly world: PhotoWorld;
+  /** The pixel test of the shot being judged (visibility.ts); null between shots. */
+  private seenNow: Map<string, Seen> | null = null;
+  private readonly vis = new ShotVisibility();
   /** The device-wide gallery (TASK-006): its store opens at boot, shots are stored in order. */
   private readonly library: Promise<PhotoLibrary>;
   private readonly gallery: GalleryView;
@@ -289,6 +304,7 @@ class Photo {
       heightAt: (x, z) => w.heightAt(x, z),
       blocked: (x, z) => w.collider.enabled && w.collider.hits(x, z, 0.05),
       trunks: (x, z, r, fn) => w.forest.trunksNear(x, z, r, fn),
+      seen: (id) => this.seenNow?.get(id),
     };
     this.clock = h('span.kq-photo-clock', '14:31');
     this.zoomBtns = ([1, 2] as const).map((k) =>
@@ -453,6 +469,8 @@ class Photo {
       ctx.events.on('era:change', () => (d.group.visible = today())),
       attachTarget('reh.ricke', { at: () => (today() ? d.doeAt() : null), calm: () => d.calm, state: () => d.state }),
       attachTarget('reh.kitz', { at: () => (today() ? d.fawnAt() : null), calm: () => d.calm, state: () => d.state }),
+      registerSubject('reh.ricke', () => d.doe),
+      registerSubject('reh.kitz', () => d.fawn),
     );
     return true;
   }
@@ -589,7 +607,7 @@ class Photo {
     if (!this.isOpen || this.cooldown > 0) return null;
     this.cooldown = 0.6;
     const ctx = this.ctx;
-    const r = core.judge(ctx.era.current, this.view(), this.world);
+    const r = this.judgeSeen();
     let img: string | null;
     if (!r.signal) img = this.whiteImage();
     else img = captureView(ctx, THUMB_W, THUMB_Q);
@@ -622,7 +640,34 @@ class Photo {
     if (booked.length) ctx.save.autosave('photo');
     this.showFlash();
     this.showCard(r, img);
+    this.cardTip(r);
     return r;
+  }
+
+  /**
+   * Judge the view as a shot does: bodies in the world are measured by pixels first (one small
+   * extra draw of the scene, only now and only while such a body is drawn), the rest by sight rays.
+   */
+  private judgeSeen(): ShotResult {
+    const { renderer, scene, camera, era } = this.ctx;
+    this.seenNow = era.current === 'today' ? this.vis.measure(renderer, scene, camera) : null;
+    try {
+      return core.judge(era.current, this.view(), this.world);
+    } finally {
+      this.seenNow = null;
+    }
+  }
+
+  /** Under a weak shot's card: what to change (visibility.ts `shotTip`); the card stays a little longer. */
+  private cardTip(r: ShotResult): void {
+    const tip = shotTip(r, (id) => {
+      const d = core.targets.get(id);
+      return d && Math.max(d.maxDist, d.fallbackDist ?? 0);
+    });
+    if (!tip) return;
+    this.card.append(h('div.kq-photo-tip', { 'data-testid': 'photo-card-tip' }, tip));
+    window.clearTimeout(this.cardTimer);
+    this.cardTimer = window.setTimeout(() => this.card.classList.add('kq-hidden'), 5200);
   }
 
   private whiteImage(): string | null {
@@ -730,12 +775,13 @@ class Photo {
           return { id: x.id, era: x.era, label_de: x.label_de, placeholder: !!x.placeholder, inWorld: !!at, at: at ? { ...at } : null };
         }),
       judge: (id) => {
-        const r = core.judge(this.ctx.era.current, this.view(), this.world);
+        const r = this.judgeSeen();
         return r.details.find((d) => d.id === id) ?? null;
       },
       state: () => ({ open: this.isOpen, zoom: this.zoomK, signal: this.ctx.era.current === 'today', steady: this.steady.speed(performance.now() / 1000), blocked: this.blocked(), lastShot: this.lastShot }),
       zoom: (k) => this.setZoom(k),
       cards: () => [...slice().cards],
+      seen: () => Object.fromEntries(this.vis.measure(this.ctx.renderer, this.ctx.scene, this.ctx.camera) ?? []),
       gallery: {
         open: () => this.openGallery(),
         close: () => this.gallery.close(),
@@ -756,6 +802,7 @@ class Photo {
     for (const off of this.offs) off();
     window.removeEventListener('keydown', this.onKey, { capture: true });
     this.deer?.dispose();
+    this.vis.dispose();
     this.board?.remove();
     this.el.remove();
     this.zoomBar.remove();

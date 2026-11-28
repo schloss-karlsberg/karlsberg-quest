@@ -4,10 +4,15 @@
  * Bijou (follow, sniff, sit, the t5 bolt with bark and return, the party lie). Exists only in era
  * `today`: elsewhere the animals are hidden and their behaviour pauses.
  *
+ * What the deer do is said once in a sound caption each time (TASK-080): the head coming up, a
+ * noise she turns to (`world:noise`: a thrown chestnut landing near her), the flight. A chestnut
+ * that strikes a deer bounces off (`world:pelt`) and sends the pair running (`forage:impact` →
+ * `animal:fled` by 'hit').
+ *
  * Story → animals: 'animal:request' AnimalAction (spawn / despawn / run / lie / follow); also
  *                  'story:cue' {id: 'animal', data: AnimalAction} until the story's dispatch lands.
- * animals → world: 'animal:alert' {id}, 'animal:fled' {id, by, dist}, 'animal:settled' {id},
- *                  'animal:returned' {id}.
+ * animals → world: 'animal:alert' {id}, 'animal:heard' {id, x, z}, 'animal:fled' {id, by, dist},
+ *                  'animal:settled' {id}, 'animal:returned' {id}.
  * Behaviour:       the pure core (deer.ts, dogs.ts) against the player's stance and ground speed,
  *                  `hunt/perception.ts` lineOfSight at 5 Hz, the world's walkable ground.
  * Bodies:          `ctx.fauna` (kq-characters' fauna contract v0); animals are re-spawned from
@@ -21,15 +26,37 @@
  */
 import type { GameContext } from '../../core/context';
 import { defineSystem } from '../../core/systems';
+import { addStrings, t } from '../../i18n';
+import { actionLabel } from '../../ui/actionLabel';
 import { TARGET_HEIGHT, lineOfSight, type SenseWorld } from '../hunt/perception';
 import { AnimalsRuntime, type AnimalsBus } from './runtime';
 import type { AnimalAction, AnimalSave } from './types';
+
+addStrings('de', {
+  // sound captions for what the deer do (said once each time, never stacked)
+  'animals.cap.alert': '[Die Ricke hebt den Kopf]',
+  'animals.cap.heard': '[Die Ricke horcht auf]',
+  'animals.cap.fled': '[Die Rehe springen ab]',
+  // one hint, the first time the player stalks deer with chestnuts in the pack; {key} is the key cap
+  'animals.hint.nut': 'Wirf eine Kastanie neben die Rehe ({key}): Die Ricke schaut auf. Triff sie nicht.',
+  'animals.hint.nut.touch': 'Wirf eine Kastanie neben die Rehe: Die Ricke schaut auf. Triff sie nicht.',
+});
 
 declare module '../../core/state' {
   interface SystemStates {
     animals: AnimalSave;
   }
 }
+
+/** Seconds between two deer captions (an alert that flickers on and off is said once). */
+const CAPTION_GAP = 2.5;
+/** Undergrowth within this many metres of a spot counts against ending a flight there. */
+const CLUTTER_R = 2.2;
+/** The chestnut hint: shown once (this flag), after `NUT_HINT_S` s within `NUT_HINT_R` m of calm deer with a chestnut in the pack. */
+const NUT_HINT_FLAG = 'animals.hint.nut';
+const NUT_HINT_R = 26;
+const NUT_HINT_S = 3;
+const NUT = 'item.kastanie';
 
 export interface AnimalsHooks {
   /** true once the `animal:request` listener is attached (kq-story's temporary stand-in checks it). */
@@ -76,6 +103,13 @@ class AnimalsSystem {
   readonly rt: AnimalsRuntime;
   private hooks = false;
   private ms = 0;
+  /** What the deer did this tick, for one caption: the flight outranks the noise, the noise the alert. */
+  private said: 'alert' | 'heard' | 'fled' | null = null;
+  private saidAt = -Infinity;
+  private nutHintT = 0;
+  /** The phone is up: the HUD is behind the viewfinder, so captions and the hint wait or are skipped. */
+  private phoneUp = false;
+  private readonly offs: (() => void)[] = [];
 
   constructor(private readonly ctx: GameContext) {
     const w = ctx.world;
@@ -101,6 +135,11 @@ class AnimalsSystem {
           return { x: pl.position.x, y: pl.position.y, z: pl.position.z, speed: pl.stats.speed, stance: pl.stance, flying: pl.flying };
         },
         walkable: walkableFor(ctx),
+        clutter: (x, z) => {
+          let n = 0;
+          w.nature.props.forEachCuttable(x, z, CLUTTER_R, () => n++);
+          return n;
+        },
         tourVisitors: () => ctx.tourCrowd.visitors?.() ?? [],
         los: (ax, az, bx, bz, stance) =>
           lineOfSight(sense, ax, w.heightAt(ax, az) + DEER_EYE, az, bx, w.heightAt(bx, bz) + TARGET_HEIGHT[stance], bz) > 0.15,
@@ -115,6 +154,18 @@ class AnimalsSystem {
       },
     });
     ctx.tourCrowd.dogs = () => this.rt.tourDogs();
+    const rank = { alert: 1, heard: 2, fled: 3 } as const;
+    const say = (what: keyof typeof rank, id: string): void => {
+      if (!this.rt.deer.some((d) => d.id === id)) return;
+      if (!this.said || rank[what] > rank[this.said]) this.said = what;
+    };
+    this.offs.push(
+      ctx.events.on('animal:alert', ({ id }) => say('alert', id)),
+      ctx.events.on('animal:heard', ({ id }) => say('heard', id)),
+      ctx.events.on('animal:fled', ({ id }) => say('fled', id)),
+      ctx.events.on('photo:open', () => (this.phoneUp = true)),
+      ctx.events.on('photo:close', () => (this.phoneUp = false)),
+    );
     this.rt.restore();
   }
 
@@ -122,7 +173,39 @@ class AnimalsSystem {
     if (!this.hooks && window.kq) this.installHooks();
     const t0 = performance.now();
     this.rt.update(dt);
+    this.caption();
+    if (this.rt.deer.length) this.nutHint(dt);
     this.ms = performance.now() - t0;
+  }
+
+  /** Once: stalking calm deer with a chestnut in the pack, say what a chestnut is good for here. */
+  private nutHint(dt: number): void {
+    const { ctx } = this;
+    const flags = ctx.state.state.flags;
+    if (flags[NUT_HINT_FLAG] === true || this.rt.paused) return;
+    const pl = ctx.player;
+    const near = this.rt.deer.some((d) => (d.state === 'graze' || d.state === 'alert') && Math.hypot(d.x - pl.position.x, d.z - pl.position.z) <= NUT_HINT_R);
+    const nuts = ctx.state.state.systems.progression?.inventory?.[NUT] ?? 0;
+    if (!near || nuts <= 0 || this.phoneUp || pl.frozen || pl.flying || ctx.ui.modals.count > 0) {
+      this.nutHintT = 0;
+      return;
+    }
+    this.nutHintT += dt;
+    if (this.nutHintT < NUT_HINT_S) return;
+    ctx.state.mutable.flags[NUT_HINT_FLAG] = true;
+    ctx.ui.toast(ctx.input.touchMode ? t('animals.hint.nut.touch') : t('animals.hint.nut', { key: actionLabel(ctx.input, 'throw') }), 7000);
+  }
+
+  /** One sound caption for what the deer just did (the flight is always said). */
+  private caption(): void {
+    const what = this.said;
+    if (!what) return;
+    this.said = null;
+    const now = this.ctx.loop.time;
+    // through the viewfinder the player sees her head come up; a caption queued behind it would be stale
+    if (what !== 'fled' && (this.phoneUp || now - this.saidAt < CAPTION_GAP)) return;
+    this.saidAt = now;
+    this.ctx.ui.hud.subtitle(null, t(`animals.cap.${what}`), 2800);
   }
 
   frame(): void {
@@ -194,6 +277,7 @@ class AnimalsSystem {
 
   dispose(): void {
     delete this.ctx.tourCrowd.dogs;
+    for (const off of this.offs) off();
     this.rt.dispose();
   }
 }

@@ -117,6 +117,8 @@ export interface AnimalMotion {
   speed: number;
   yaw: number;
   clip: AnimalClipHint;
+  /** What the head looks at: a point on the map, `h` m above its ground (deer; null or absent: straight ahead). */
+  gaze?: { x: number; z: number; h: number } | null;
 }
 
 /**
@@ -125,7 +127,8 @@ export interface AnimalMotion {
  */
 export type AnimalEvent =
   | { type: 'animal:alert'; id: string }
-  | { type: 'animal:fled'; id: string; by: 'player' | 'cue'; dist: number }
+  | { type: 'animal:heard'; id: string; x: number; z: number }
+  | { type: 'animal:fled'; id: string; by: 'player' | 'cue' | 'hit'; dist: number }
   | { type: 'animal:settled'; id: string }
   | { type: 'animal:returned'; id: string }
   | { type: 'bark'; id: string; x: number; z: number }
@@ -146,7 +149,7 @@ export interface DeerSave {
   spacing: number;
   shy: ShyRadii;
   /** Flight in progress: from, to, cause, player distance at the trigger. */
-  flee?: { fx: number; fz: number; tx: number; tz: number; by: 'player' | 'cue'; dist: number };
+  flee?: { fx: number; fz: number; tx: number; tz: number; by: 'player' | 'cue' | 'hit'; dist: number };
   /** leave() target in progress. */
   away?: { x: number; z: number };
 }
@@ -184,8 +187,14 @@ declare module '../../core/events' {
     'animal:request': AnimalAction;
     /** Head up, the 1.5 s tell. */
     'animal:alert': { id: string };
-    /** dist = metres between the player and the animal when it bolted. */
-    'animal:fled': { id: string; by: 'player' | 'cue'; dist: number };
+    /** A deer heard a noise at x/z (a thrown chestnut landed) and looks toward it. */
+    'animal:heard': { id: string; x: number; z: number };
+    /**
+     * It bolted. `by`: the player came too fast, a script, or a thrown chestnut struck it ('hit').
+     * dist = metres between the animal and what it fled from (the player; for a cue or a hit, the
+     * point it was startled from).
+     */
+    'animal:fled': { id: string; by: 'player' | 'cue' | 'hit'; dist: number };
     /** Stopped again after fleeing. */
     'animal:settled': { id: string };
     /** A dog back at its follow target. */

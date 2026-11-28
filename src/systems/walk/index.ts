@@ -115,6 +115,8 @@ class WalkSystem {
     // The authored trail slots stay clear at every graphics tier, including scattered boulders.
     for (const stop of routes.get('p-fuehrung')?.stops ?? []) {
       for (const [x, z] of stop.slots ?? []) ctx.world.nature.props.addClearing(x, z, 2, ['today']);
+      // … and what a stop is about can be seen from the path (the deer's grazing spot)
+      for (const [x, z, r] of stop.glades ?? []) ctx.world.nature.props.addClearing(x, z, r, ['today']);
     }
     this.rt = new WalkRuntime({
       bus: ctx.events as unknown as WalkBus,

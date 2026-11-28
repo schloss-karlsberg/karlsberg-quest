@@ -162,8 +162,9 @@ function deerMesh(s: number, coat: number): Group {
  */
 export class DebugDeer {
   readonly group = new Group();
-  private readonly doe = deerMesh(1, 0x7b7266);
-  private readonly fawn = deerMesh(0.82, 0x857a6c);
+  /** The two bodies (the photo system measures what the lens sees of them, visibility.ts). */
+  readonly doe = deerMesh(1, 0x7b7266);
+  readonly fawn = deerMesh(0.82, 0x857a6c);
   calm = true;
   state = 'graze';
   private t = 0;

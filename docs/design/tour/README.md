@@ -77,6 +77,39 @@ are pending; PRD D-012.
   belong to the present. Known survey points still serve as map destinations. Story and quest
   markers in the past come from their own objectives.
 
+## The deer stop (2026-11-28, TASK-080)
+
+The playtest of 2026-11-28 called the deer photo the weakest moment of the first fifteen minutes:
+both animals stood behind ferns, the photo scored „Perfekt!“ with no deer in the picture, and the
+doe seemed never to react. Measured on that build, she did react, but out of sight: an upright
+walker made her bolt at 20 m without a word, and the pair landed behind a row of ferns. Scope set
+by the coordinator; decision 7 (the first wow moment, the sneak tutorial, grey winter coat, no
+fail state) stands.
+
+- **Seeing them.** The grazing spot (698 / −773) is a glade: no ferns or bushes within 9 m, on
+  every graphics tier that draws them (`glades` on the `reh` stop of `p-fuehrung`). The doe lifts
+  her head for 2.4 s every 9 s while grazing.
+- **Her reactions, in the order they escalate.** Each has a sound caption.
+  1. Head up, a look at the player: „[Die Ricke hebt den Kopf]“. Upright and walking: from about
+     27 m. Crouched and slow: from about 10 m. Outside 20 m she only watches, however long.
+  2. One step aside, away from the player, and she watches again.
+  3. The flight: „[Die Rehe springen ab]“, then „Und weg.“ and Gerold's „Zu schnell.“ at any
+     distance. Upright walking inside 20 m, running, or creeping on once she has stepped aside.
+  Standing still when she looks up ends the alert, as the guide says. The pair stops 25 m on, on
+  open ground where there is some, and grazes again; the stop waits 60 s after a flight before the
+  tour moves on (180 s without one, 260 s at the latest).
+- **The photo counts what is in it.** A shot is measured at the shutter: an animal of which less
+  than 35 % shows is „Verdeckt“ and the shot is not good. „Perfekt!“ needs both animals at least
+  70 % in the open, closer than 16 m and big in the frame, which from the sneak path means the 2×
+  zoom. The card says in one sentence what to change. Between about 10 and 17 m the wide lens
+  still gives two stars, which is all the tour asks for.
+- **Chestnuts.** One that lands within about 13 m of the pair makes them look toward it for 8 s
+  („[Die Ricke horcht auf]“): a photo in that time is the one Gerold praises with „Sie hat dich
+  angesehen.“ One that hits a deer sends both running („Und weg.“). A toast says so once, when the
+  player stalks the deer with a chestnut in the pack.
+- **Not done.** No new spoken lines (they need voice clips). The coat stays grey; at 1× the pair is
+  still small in a wide picture.
+
 ## Decisions (owner, 2026-11-20)
 
 The owner's answers to the open questions, plus the earlier rulings:

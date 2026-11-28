@@ -85,6 +85,11 @@ describe('routes', () => {
     has(checkRoute(route({ stops: [{ id: 'a', x: 1010, z: -1005 }] })), /'a' is 5\.0 m from the polyline/);
     has(checkRoute(route({ stops: [{ id: 'a', x: 1000, z: -1000 }, { id: 'a', x: 1020, z: -990 }] })), /duplicate stop id 'a'/);
     has(checkRoute(route({ stops: [{ id: 'c', x: 1020, z: -990 }, { id: 'b', x: 1015, z: -1000 }] })), /'b' .* is not after 'c'/);
+    // glades (TASK-080): a circle near its stop, inside the extent, not a clear-cut
+    expect(checkRoute(route({ stops: [{ id: 'a', x: 1000, z: -1000, glades: [[990, -1020, 9]] }] }))).toEqual([]);
+    has(checkRoute(route({ stops: [{ id: 'a', x: 1000, z: -1000, glades: [[990, -1020, 20]] }] })), /glade outside the playable extent or wider than 12 m/);
+    has(checkRoute(route({ stops: [{ id: 'a', x: 1000, z: -1000, glades: [[1000, -1100, 5]] }] })), /glade more than 60 m from the stop/);
+    has(checkRoute(route({ stops: [{ id: 'a', x: 1000, z: -1000, glades: 'yes' as never }] })), /glades must be an array/);
     has(checkPath([[1000, -1000]]), /at least 2 points/);
     has(checkPath([[1000, -1000], [1000, -1031]]), /31\.0 m apart/);
     has(checkPath([[1000, -1000], [1000, -2160]]), /outside the extent/);

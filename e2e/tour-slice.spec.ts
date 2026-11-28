@@ -9,7 +9,8 @@ import { PIECES, rightOfTourPath, toLocal, toWorld, yawToWater } from '../src/sy
 /**
  * The tour (content/story/00-tour.story.json, the opening of a new game): a smoke run from the
  * car park to the shift to 1789 and the hand-over into chapter 1. The player keeps behind the guide by debug teleports (as a player
- * walking along would be), talks to Gerold, crouches for a 2× deer photo from about 23 m,
+ * walking along would be), talks to Gerold, crouches for a 2× deer photo from about 23 m (first
+ * with a screen in front of the pair: „Verdeckt“, TASK-080),
  * steps to the trough and touches the water. Game seconds per beat are written to
  * test-results/tour/timings.json (the walking pace is the group's, so they approximate a player who
  * keeps up and does not dawdle). Screenshots: test-results/tour/tour-*.png.
@@ -513,8 +514,41 @@ test('tour: car park → Felsenpfad → wind and dogs → the deer photo → Wei
   expect(judge!.dist).toBeGreaterThanOrEqual(20);
   expect(judge!.dist).toBeLessThanOrEqual(25);
   await shot(page, '07-reh-handy');
+  // The photo counts what the lens sees (TASK-080). A screen between the lens and the pair (the
+  // car-park board, tripled) hides both: the same view is „Verdeckt“, and the card says what to do.
+  const hidden = await page.evaluate(() => {
+    const k = window.kq!;
+    const { scene, camera, world } = k.ctx;
+    const targets = k.photo!.targets();
+    const ricke = targets.find((d) => d.id === 'reh.ricke')!.at!;
+    const kitz = targets.find((d) => d.id === 'reh.kitz')!.at!;
+    const cx = (ricke.x + kitz.x) / 2;
+    const cz = (ricke.z + kitz.z) / 2;
+    const dx = camera.position.x - cx;
+    const dz = camera.position.z - cz;
+    const len = Math.hypot(dx, dz);
+    const screen = scene.getObjectByName('photo-demo-board')!.clone();
+    const sx = cx + (dx / len) * 3;
+    const sz = cz + (dz / len) * 3;
+    screen.scale.set(3, 3, 1);
+    screen.position.set(sx, world.heightAt(sx, sz) - 3.3, sz);
+    screen.rotation.y = Math.atan2(dx, dz);
+    screen.visible = true;
+    scene.add(screen);
+    const seen = k.photo!.seen();
+    const r = k.photo!.shoot();
+    const tip = document.querySelector('[data-testid="photo-card-tip"]')?.textContent ?? null;
+    scene.remove(screen);
+    return { seen, shot: r && { good: r.good, stars: r.stars, verdict: r.verdict }, tip, has: k.photo!.has('reh.ricke') };
+  });
+  expect(hidden.shot, JSON.stringify(hidden)).toEqual({ good: [], stars: 1, verdict: 'verdeckt' });
+  expect(hidden.tip).toBe('Etwas steht davor. Such dir eine freie Sicht.');
+  expect(hidden.has).toBe(false);
+  for (const id of ['reh.ricke', 'reh.kitz']) expect(hidden.seen[id]?.share ?? 0, `${id} behind the screen`).toBeLessThan(0.35);
   const res = await page.evaluate(() => window.kq!.photo!.shoot());
   expect(res, JSON.stringify(res)).toMatchObject({ good: ['reh.ricke', 'reh.kitz'], stars: 2 });
+  // … and in the open most of both animals is in the picture
+  for (const d of res!.details.filter((x) => x.id.startsWith('reh.'))) expect(d.seen, `${d.id} in the open`).toBeGreaterThan(0.5);
   const reaction = await page.evaluate(() => {
     const k = window.kq!;
     const praise = ['imhoff.t.reh3', 'imhoff.t.reh.alert'];

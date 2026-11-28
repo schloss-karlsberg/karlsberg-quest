@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { t } from '../src/i18n';
 import '../src/systems/photo';
-import { ALBUM_MAX, type GrantSink, PhotoCore, type PhotoSlice, type PhotoTargetDef, type PhotoView, type PhotoWorld, STEADY_RAD_S, SteadyMeter, debugDeerBlocker, emptySlice, goodEvents, judgeShot, judgeTarget, normaliseSlice, project } from '../src/systems/photo/core';
+import { ALBUM_MAX, BIG_STAR, type GrantSink, PhotoCore, type PhotoSlice, type PhotoTargetDef, type PhotoView, type PhotoWorld, SEEN_CLEAR, SEEN_MIN, STEADY_RAD_S, SteadyMeter, debugDeerBlocker, emptySlice, goodEvents, judgeShot, judgeTarget, normaliseSlice, project } from '../src/systems/photo/core';
 import { targetFromData, validatePhotoTargets } from '../src/systems/photo/data';
 import { validateQuests } from '../src/systems/quests/validate';
 import { eventMatches } from '../src/systems/story/engine';
@@ -211,6 +211,99 @@ describe('photo mode: geometric judging', () => {
     const r = judgeShot([target({ at: () => null })], 'today', view(), flat);
     expect(r.targets).toEqual([]);
     expect(r.stars).toBe(0);
+  });
+});
+
+describe('photo mode: what the lens really sees (TASK-080)', () => {
+  /** Doe and fawn side by side, bound to each other, `d` m in front of the lens. */
+  const pair = (d: number): PhotoTargetDef[] => [
+    target({ id: 'reh.ricke', kind: 'animal', d, dx: -0.75, maxDist: 27, minFrac: 0.055, needAll: ['reh.kitz'], label_de: 'Ricke' }),
+    target({ id: 'reh.kitz', kind: 'animal', d, dx: 0.75, r: 0.65, maxDist: 27, minFrac: 0.044, needAll: ['reh.ricke'], label_de: 'Kitz' }),
+  ];
+  /** A flat world (every sight ray is clear) in which a pixel test saw these shares. */
+  const seeing = (shares: Record<string, number>): PhotoWorld => ({ ...flat, seen: (id) => (id in shares ? { share: shares[id]! } : undefined) });
+
+  it('hidden deer: every ray is clear, nothing of them shows → „Verdeckt“, one star, never „Perfekt!“', () => {
+    const deer = pair(11);
+    // the old judge: 3 stars for a row of ferns in front of both animals
+    expect(judgeShot(deer, 'today', view(), flat)).toMatchObject({ stars: 3, verdict: 'perfekt' });
+    const shot = judgeShot(deer, 'today', view(), seeing({ 'reh.ricke': 0.02, 'reh.kitz': 0 }));
+    expect(shot).toMatchObject({ good: [], stars: 1, verdict: 'verdeckt', verdict_de: 'Verdeckt' });
+    for (const d of shot.details) expect(d).toMatchObject({ inFrame: true, good: false, stars: 1, verdict: 'verdeckt' });
+    expect(goodEvents(shot)).toEqual([]);
+  });
+
+  it('clear deer: in the open, close and big in the frame → both good, 3 stars „Perfekt!“', () => {
+    const open = seeing({ 'reh.ricke': 0.96, 'reh.kitz': 0.9 });
+    // the phone's wide lens from very close, or its 2× from the sneak path
+    expect(judgeShot(pair(8), 'today', view(), open)).toMatchObject({ good: ['reh.ricke', 'reh.kitz'], stars: 3, verdict: 'perfekt' });
+    const shot = judgeShot(pair(15), 'today', view({ fovV: 32 }), open);
+    expect(shot).toMatchObject({ good: ['reh.ricke', 'reh.kitz'], stars: 3, verdict: 'perfekt' });
+    for (const d of shot.details) expect(d.short).toBeUndefined();
+  });
+
+  it('clear deer that are small in the frame, or far: good, 2 stars, and the judgement says what was short', () => {
+    const open = seeing({ 'reh.ricke': 0.96, 'reh.kitz': 0.9 });
+    // the wide lens from 15 m: two specks in the picture
+    const wide = judgeShot(pair(15), 'today', view(), open);
+    expect(wide).toMatchObject({ good: ['reh.ricke', 'reh.kitz'], stars: 2, verdict: 'gut' });
+    expect(wide.details.map((d) => d.short)).toEqual(['size', 'size']);
+    expect(wide.details[0]!.frac).toBeLessThan(BIG_STAR * 0.055);
+    // big enough through the zoom, but beyond 0.6 × maxDist
+    const far = judgeShot(pair(17), 'today', view({ fovV: 25 }), open);
+    expect(far).toMatchObject({ good: ['reh.ricke', 'reh.kitz'], stars: 2, verdict: 'gut' });
+    expect(far.details.map((d) => d.short)).toEqual(['far', 'far']);
+  });
+
+  it('the limits: under SEEN_MIN hidden, under SEEN_CLEAR good without the third star', () => {
+    const one = target({ kind: 'animal', d: 8, maxDist: 27 });
+    const at = (share: number) => judgeTarget(one, view(), seeing({ 'reh.ricke': share }), false);
+    expect(at(SEEN_MIN - 0.01)).toMatchObject({ good: false, verdict: 'verdeckt', stars: 1 });
+    expect(at(SEEN_MIN)).toMatchObject({ good: true, verdict: 'gut', stars: 2, short: 'cover' });
+    expect(at(SEEN_CLEAR - 0.01)).toMatchObject({ good: true, verdict: 'gut', stars: 2, short: 'cover' });
+    expect(at(SEEN_CLEAR)).toMatchObject({ good: true, verdict: 'perfekt', stars: 3, seen: SEEN_CLEAR });
+    expect(at(SEEN_CLEAR).short).toBeUndefined();
+  });
+
+  it('one animal covered: the other is „Nicht alle im Bild“, the shot is not good', () => {
+    const shot = judgeShot(pair(11), 'today', view(), seeing({ 'reh.ricke': 0.9, 'reh.kitz': 0.1 }));
+    expect(shot).toMatchObject({ good: [], stars: 1 });
+    expect(shot.details.map((d) => d.verdict)).toEqual(['nicht-alle', 'verdeckt']);
+  });
+
+  it('a pair is one picture: half a doe beside a clear fawn is good, not „Perfekt!“', () => {
+    const shot = judgeShot(pair(8), 'today', view(), seeing({ 'reh.ricke': 0.5, 'reh.kitz': 0.95 }));
+    expect(shot).toMatchObject({ good: ['reh.ricke', 'reh.kitz'], stars: 2, verdict: 'gut' });
+    expect(shot.details.map((d) => d.short)).toEqual(['cover', undefined]);
+    expect(shot.details.map((d) => [d.stars, d.verdict])).toEqual([[2, 'gut'], [2, 'gut']]);
+    expect(goodEvents(shot).map((e) => e.stars)).toEqual([2, 2]);
+  });
+
+  it('a measurement replaces the sight rays: a rise the rays hit does not hide a body the lens sees', () => {
+    const ridge: PhotoWorld = { heightAt: (_x, z) => (Math.abs(z + 5) < 0.3 ? 3 : 0) };
+    const one = target({ kind: 'animal', d: 10, maxDist: 27 });
+    expect(judgeTarget(one, view(), ridge, false)).toMatchObject({ verdict: 'verdeckt', clear: 0 });
+    const heightAt = vi.fn(ridge.heightAt);
+    const measured = judgeTarget(one, view(), { heightAt, seen: () => ({ share: 0.8 }) }, false);
+    expect(measured).toMatchObject({ good: true, stars: 3, seen: 0.8, clear: 4 });
+    expect(heightAt).not.toHaveBeenCalled();
+  });
+
+  it('a target that was not measured (no drawn body, or too small to tell) keeps the sight rays', () => {
+    const board = target({ id: 'photo.parkplatz', d: 10 });
+    const shot = judgeShot([board], 'today', view(), seeing({ 'reh.ricke': 0 }));
+    expect(shot).toMatchObject({ good: ['photo.parkplatz'], stars: 2 });
+    expect(shot.details[0]!.seen).toBeUndefined();
+    // … and its third star is the old rule: close is enough
+    expect(judgeShot([target({ id: 'photo.parkplatz', d: 8 })], 'today', view(), flat)).toMatchObject({ stars: 3, verdict: 'perfekt' });
+  });
+
+  it('the other rules still come first or after as before: too far, off-centre, fleeing', () => {
+    const open = seeing({ 'reh.ricke': 1, 'reh.kitz': 1 });
+    expect(judgeShot(pair(30), 'today', view({ fovV: 20 }), open).verdict).toBe('zu-weit');
+    expect(judgeShot(pair(11), 'today', view({ yaw: 0.5 }), open).verdict).toBe('nicht-mittig');
+    const fleeing = pair(11).map((t) => ({ ...t, calm: () => false }));
+    expect(judgeShot(fleeing, 'today', view(), open)).toMatchObject({ good: [], verdict: 'aufgeschreckt' });
   });
 });
 

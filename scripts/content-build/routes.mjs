@@ -5,14 +5,14 @@
 //   node scripts/content-build/routes.mjs p-fuehrung      # one spec by id (or a path to a spec file)
 //   node scripts/content-build/routes.mjs --check         # resolve and report, write nothing
 //
-// Spec: { id, note?, stops: [{ id, x, z, ref?, offGraph? }], roadFactor?, maxStep?, minStep?, tolerance? }.
+// Spec: { id, note?, stops: [{ id, x, z, ref?, offGraph?, glades? }], roadFactor?, maxStep?, minStep?, tolerance? }.
 // Input: public/data/paths.json (kq-paths-v1: nodes = flat [x, y, z] triples, edges = flat
 // [a, b, kind, length_m] quads, kinds = path / track / road). Each stop is projected onto its
 // nearest graph edge (a virtual node splits the edge); consecutive stops are joined by the
 // shortest walk (Dijkstra; road edges cost `roadFactor` × their length, so paths and tracks win
 // when the detour is small). The polyline is simplified (Douglas-Peucker, stops pinned) and
 // resampled to `minStep` ≤ step ≤ `maxStep`, rounded to 0.1 m.
-// Output: { id, stops: [{ id, x, z }], points: [[x, z], ...] }; stops lie on the polyline, in order.
+// Output: { id, stops: [{ id, x, z, glades? }], points: [[x, z], ...] }; stops lie on the polyline, in order.
 // A stop farther than SNAP_WARN m from the graph is reported (exit code 1), never silently snapped.
 // The first or last stop may set `offGraph: true` (an open place such as a car park): it keeps its
 // spec position and is joined to the graph by a straight spur, which the report lists.
@@ -241,7 +241,8 @@ export function buildRoute(spec, g) {
   const rounded = points.map(([x, z]) => [r1(x), r1(z)]).filter((p, k, a) => k === 0 || p[0] !== a[k - 1][0] || p[1] !== a[k - 1][1]);
   const stops = snaps.map((s) => {
     const q = spur(s) ?? s.q;
-    return { id: s.stop.id, x: r1(q[0]), z: r1(q[1]) };
+    // a stop's glades (circles kept free of forest-floor props, src/systems/walk) pass through as written
+    return { id: s.stop.id, x: r1(q[0]), z: r1(q[1]), ...(s.stop.glades ? { glades: s.stop.glades } : {}) };
   });
   // checks: stops on the line and in order, step lengths, extent
   let lastS = -1;

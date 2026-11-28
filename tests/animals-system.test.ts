@@ -37,6 +37,7 @@ interface FakeAnimal extends Animal {
   speeds: number[];
   yaws: number[];
   shine: number[];
+  looks: ({ x: number; y: number; z: number } | null)[];
 }
 
 function fakeFauna() {
@@ -58,10 +59,11 @@ function fakeFauna() {
         speeds: [],
         yaws: [],
         shine: [],
+        looks: [],
         setSpeed: (v) => a.speeds.push(v),
         play: (c) => a.clips.push(c),
         face: (y) => a.yaws.push(y),
-        lookAt: () => {},
+        lookAt: (at) => a.looks.push(at && { ...at }),
         headWorld: (out) => {
           out.x = pos.x;
           out.y = pos.y + 0.95;
@@ -78,7 +80,7 @@ function fakeFauna() {
   return { fauna, spawned };
 }
 
-function setup(opts: { save?: AnimalSave; photoMods?: Record<string, unknown>; people?: PersonLike[]; npcs?: { npc: string; x: number; z: number }[]; visitors?: CrowdCircle[] } = {}) {
+function setup(opts: { save?: AnimalSave; photoMods?: Record<string, unknown>; people?: PersonLike[]; npcs?: { npc: string; x: number; z: number }[]; visitors?: CrowdCircle[]; clutter?: (x: number, z: number) => number } = {}) {
   const bus = new FakeBus();
   const { fauna, spawned } = fakeFauna();
   const player = { x: 0, z: 40, speed: 0, stance: 'stand' as Stance };
@@ -103,6 +105,7 @@ function setup(opts: { save?: AnimalSave; photoMods?: Record<string, unknown>; p
       people: () => opts.people ?? [],
       npcs: () => opts.npcs ?? [],
       tourVisitors: () => opts.visitors ?? [],
+      ...(opts.clutter ? { clutter: opts.clutter } : {}),
     },
   });
   const step = (seconds: number, each?: () => void) => {
@@ -325,6 +328,161 @@ describe('animals runtime (C5)', () => {
     for (const [s, c] of seen) expect(c).toBe(s !== 'flee');
     bus.emit('animal:request', { op: 'despawn', id: 'kitz' });
     expect(undone).toBe(1);
+  });
+
+  it('photo bridge: hands the deer bodies to the pixel test, only while they are shown (TASK-080)', () => {
+    const bodies = new Map<string, () => object | null>();
+    let undone = 0;
+    const mods = {
+      '../photo/index.ts': {
+        attachTarget: (_id: string, t: PhotoTargetHooks) => {
+          expect(t).not.toHaveProperty('body');
+          return () => {};
+        },
+        registerSubject: (id: string, body: () => object | null) => {
+          bodies.set(id, body);
+          return () => undone++;
+        },
+      },
+    };
+    const { bus, spawned, world, step } = setup({ photoMods: mods });
+    bus.emit('animal:request', RICKE);
+    bus.emit('animal:request', KITZ);
+    expect([...bodies.keys()]).toEqual(['reh.ricke', 'reh.kitz']);
+    expect(bodies.get('reh.ricke')!()).toBe(spawned[0]!.root);
+    expect(bodies.get('reh.kitz')!()).toBe(spawned[1]!.root);
+    world.era = '1789';
+    step(DT);
+    expect(bodies.get('reh.ricke')!()).toBeNull();
+    world.era = 'today';
+    step(DT);
+    bus.emit('animal:request', { op: 'despawn', id: 'kitz' });
+    expect(undone).toBe(1);
+    // a photo module without the registry (an older build): the target still attaches
+    const plain = setup({ photoMods: { '../photo/index.ts': { attachTarget: () => () => {} } } });
+    expect(plain.bus.emit('animal:request', RICKE)).toBeUndefined();
+    expect(plain.rt.stats().photo).toBe('active');
+  });
+
+  it('a chestnut landing near the deer: they look toward it, the heads follow, then straight ahead again (TASK-080)', () => {
+    const { bus, spawned, step, player } = setup();
+    player.z = 200;
+    bus.emit('animal:request', RICKE);
+    bus.emit('animal:request', KITZ);
+    step(1);
+    expect(spawned[0]!.looks).toEqual([]);
+    bus.emit('world:noise', { x: 4, z: -2, loud: 0.7, by: 'kastanie' });
+    step(DT * 2);
+    expect(bus.of('animal:heard')).toEqual([{ id: 'ricke', x: 4, z: -2 }]);
+    expect(bus.of('animal:alert').map((e) => e.id)).toEqual(['ricke', 'kitz']);
+    expect(spawned[0]!.looks.at(-1)).toEqual({ x: 4, y: 300 + 0.2, z: -2 });
+    expect(spawned[1]!.looks.at(-1)).toEqual({ x: 4, y: 300 + 0.2, z: -2 });
+    expect(spawned[0]!.clips.at(-1)).toBe('alert');
+    step(9);
+    expect(bus.of('animal:fled')).toEqual([]);
+    expect(spawned[0]!.looks.at(-1)).toBeNull();
+    expect(spawned[1]!.looks.at(-1)).toBeNull();
+    expect(spawned[0]!.clips).toContain('graze');
+    // an alert by the player: the head follows the player's eyes as they move
+    player.z = 14;
+    player.speed = 1;
+    step(1);
+    expect(spawned[0]!.looks.at(-1)).toEqual({ x: 0, y: 300 + 1.65, z: 14 });
+  });
+
+  it('a chestnut that strikes a deer bounces off and both bolt, cause "hit"; a miss is only heard (TASK-080)', () => {
+    type Pelt = { ax: number; ay: number; az: number; bx: number; by: number; bz: number; receipt: { hit: boolean; at?: number; x?: number; z?: number; npc?: string } };
+    // thrown from the north, at the doe's chest (the fawn stands behind her, to the south)
+    const nut = (o: Partial<Pelt> = {}): Pelt => ({ ax: 0, ay: 300.6, az: -1.2, bx: 0, by: 300.4, bz: -0.3, receipt: { hit: false }, ...o });
+    const { bus, rt, step, player, world } = setup();
+    player.z = 14;
+    player.stance = 'crouch';
+    bus.emit('animal:request', RICKE);
+    bus.emit('animal:request', KITZ);
+    step(1);
+    // `world:pelt`: who stands in the chestnut's way this step? Over her back or beside her: nobody
+    for (const q of [nut({ ay: 302.5, by: 302.3 }), nut({ ax: 3, bx: 3 })]) {
+      bus.emit('world:pelt', q);
+      expect(q.receipt).toEqual({ hit: false });
+    }
+    // a placed person nearer along the step keeps the answer; one farther along loses it to the doe
+    const nearer = nut({ receipt: { hit: true, at: 0.1, npc: 'gardist', x: 0, z: -1.1 } });
+    bus.emit('world:pelt', nearer);
+    expect(nearer.receipt).toMatchObject({ npc: 'gardist', at: 0.1 });
+    const farther = nut({ receipt: { hit: true, at: 1.5, npc: 'gardist', x: 0, z: 0.5 } });
+    bus.emit('world:pelt', farther);
+    expect(farther.receipt).toMatchObject({ hit: true, npc: 'animal:ricke', x: 0, z: 0 });
+    // in another era the deer are not there
+    world.era = '1789';
+    step(DT);
+    const elsewhere = nut();
+    bus.emit('world:pelt', elsewhere);
+    expect(elsewhere.receipt.hit).toBe(false);
+    world.era = 'today';
+    step(DT);
+    // the answer alone does nothing: a trunk may still be nearer, forage decides
+    const hit = nut();
+    bus.emit('world:pelt', hit);
+    expect(hit.receipt).toMatchObject({ hit: true, npc: 'animal:ricke', x: 0, z: 0 });
+    expect(hit.receipt.at!).toBeGreaterThan(0);
+    expect(hit.receipt.at!).toBeLessThanOrEqual(1);
+    expect(bus.of('animal:fled')).toEqual([]);
+    // an impact on something else (a trunk, a watcher of the court) is not hers
+    bus.emit('forage:impact', { x: 0, y: 300.5, z: -0.5, on: 'wood' });
+    bus.emit('forage:impact', { x: 0, y: 300.5, z: -0.5, on: 'body', npc: 'gardist' });
+    expect(bus.of('animal:fled')).toEqual([]);
+    // `forage:impact` on her body: the doe bolts at once, the fawn with her (dist: how far the thrower stood)
+    bus.emit('forage:impact', { x: 0, y: 300.5, z: -0.5, on: 'body', npc: 'animal:ricke' });
+    expect(bus.of('animal:fled')).toEqual([{ id: 'ricke', by: 'hit', dist: 14 }]);
+    expect(rt.deer[0]!.state).toBe('flee');
+    step(0.1);
+    expect(bus.of('animal:fled').map((e) => [e.id, e.by])).toEqual([['ricke', 'hit'], ['kitz', 'hit']]);
+    // away from the thrower (the player crouches to the south)
+    step(5);
+    expect(rt.deer[0]!.z).toBeLessThan(-20);
+    expect(bus.of('animal:settled')).toHaveLength(2);
+    // the fawn is struck: the doe leads the flight all the same
+    const f = setup();
+    f.player.z = 200;
+    f.bus.emit('animal:request', RICKE);
+    f.bus.emit('animal:request', KITZ);
+    f.step(3);
+    const kitz = f.rt.deer[1]!;
+    const atFawn = nut({ ax: kitz.x + 0.9, az: kitz.z + 0.9, bx: kitz.x, bz: kitz.z });
+    f.bus.emit('world:pelt', atFawn);
+    expect(atFawn.receipt).toMatchObject({ hit: true, npc: 'animal:kitz' });
+    f.bus.emit('forage:impact', { x: kitz.x, y: 300.5, z: kitz.z, on: 'body', npc: 'animal:kitz' });
+    expect(f.bus.of('animal:fled')[0]).toMatchObject({ id: 'ricke', by: 'hit' });
+    // on a slope the arc often ends a step short of the body: the ground at her feet counts, two metres off is only heard
+    const g = setup();
+    g.player.z = 14;
+    g.player.stance = 'crouch';
+    g.bus.emit('animal:request', RICKE);
+    g.bus.emit('animal:request', KITZ);
+    g.step(1);
+    g.bus.emit('forage:impact', { x: 2.2, y: 300, z: -0.4, on: 'ground' });
+    g.bus.emit('world:noise', { x: 2.2, z: -0.4, loud: 0.7, by: 'kastanie' });
+    g.step(DT * 2);
+    expect(g.bus.of('animal:fled')).toEqual([]);
+    expect(g.bus.of('animal:heard')).toHaveLength(1);
+    g.bus.emit('forage:impact', { x: 0.5, y: 300, z: -0.5, on: 'ground' });
+    expect(g.bus.of('animal:fled')).toEqual([{ id: 'ricke', by: 'hit', dist: 14 }]);
+    // a noise that close without a chestnut's impact is only a noise
+    const o = setup();
+    o.player.z = 200;
+    o.bus.emit('animal:request', RICKE);
+    o.bus.emit('world:noise', { x: 0.3, z: 0.3, loud: 0.5, by: 'ast' });
+    o.step(DT * 2);
+    expect(o.bus.of('animal:fled')).toEqual([]);
+  });
+
+  it('a flight ends on open ground when the world can tell (TASK-080)', () => {
+    // undergrowth everywhere straight ahead of the flight, open 30° off it
+    const { bus, rt, player } = setup({ clutter: (x) => (Math.abs(x) < 4 ? 2 : 0) });
+    player.z = 10;
+    bus.emit('animal:request', RICKE);
+    expect(rt.startle('ricke')).toBe(true);
+    expect(Math.abs(rt.deer[0]!.flee!.tx)).toBeCloseTo(12.5, 1);
   });
 
   it('calm is script-only and holds the doe below the flight; photo events do not calm', () => {

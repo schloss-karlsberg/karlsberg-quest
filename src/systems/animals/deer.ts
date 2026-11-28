@@ -14,6 +14,17 @@
  * `flee`. Standing still inside `flee` still builds suspicion. Freezing farther out, holding
  * still in a low stance or backing away lets it decay. Fleeing deer stop again and graze.
  *
+ * What a watcher can read from a distance (TASK-080), in the order it escalates:
+ *  - **glance**: while grazing she lifts her head every few seconds (the clip only; still 'graze');
+ *  - **alert**: head up and a look at what she noticed (`motion.gaze`): the player, or the spot a
+ *    noise came from (`world:noise`, a thrown chestnut) for `LOOK_S` seconds. The body stays as it
+ *    stands and turns only as far as the neck needs. An upright walker is noticed early
+ *    (`FAR_RISE`), but outside the flee radius the meter stops at `HOLD_CAP`: she watches;
+ *  - **step**: at `STEP_AT` she takes one step aside, away from the player, and watches again;
+ *  - **flight**: meter full after the tell, a scripted startle, or a hit (`hitDeer`, cause 'hit').
+ *    The flight ends on open ground where it can (`DeerInput.clutter`).
+ * A noise alone turns her head, it never fills the meter (`NOISE_CAP`).
+ *
  * A fawn (`follow: 'animal:<doe>'`) mirrors the doe's state and keeps a slot behind her, never
  * farther than FAWN_MAX. `stepDeerHerd` steps doe(s) first, then followers.
  *
@@ -57,6 +68,27 @@ export const DEER = {
   IDLE_DECAY: 0.25,
   /** A noise event of loudness 1 at the deer adds this much. */
   NOISE_GAIN: 0.8,
+  /** Noises alone raise the meter no further than this: they turn her head, they do not make her bolt. */
+  NOISE_CAP: 0.9,
+  /** A noise this strong at the deer (loudness × nearness × masking) makes her look toward it … */
+  LOOK_GAIN: 0.4,
+  /** … for this long (s): time to raise the phone, zoom and shoot. */
+  LOOK_S: 8,
+  /** Upright and moving between the flee and the notice radius: noticed within about a second. */
+  FAR_RISE: 0.6,
+  /** Outside the flee radius an unhurried player fills the meter no further: she watches. */
+  HOLD_CAP: 0.9,
+  /** In an alert the meter reaching this (after this many seconds of looking) is worth one step aside. */
+  STEP_AT: 0.75,
+  STEP_AFTER: 0.4,
+  /** The step: metres, and its angle off the line straight away from the player (radians). */
+  STEP_LEN: 1.4,
+  STEP_TURN: (50 * Math.PI) / 180,
+  /** Alert: the body turns only until what she watches is within this of straight ahead (the neck does the rest). */
+  HEAD_TURN: (60 * Math.PI) / 180,
+  /** Grazing: every `GLANCE_EVERY` s the head comes up for `GLANCE_S` s. */
+  GLANCE_EVERY: 9,
+  GLANCE_S: 2.4,
   /** Rustling leaves / wind (mask 1) reduce every rise by this fraction. */
   MASK_GAIN: 0.4,
   /** calm(): the meter is capped here and rises at CALM_RISE × the normal rate. */
@@ -77,7 +109,10 @@ export const DEER = {
 
 export type DeerState = 'graze' | 'alert' | 'flee' | 'settled' | 'leave' | 'gone';
 
-export interface DeerFlight { fx: number; fz: number; tx: number; tz: number; by: 'player' | 'cue'; dist: number }
+/** Why a deer bolted: the player came too fast, a script said so, or a thrown chestnut struck it. */
+export type FleeCause = 'player' | 'cue' | 'hit';
+
+export interface DeerFlight { fx: number; fz: number; tx: number; tz: number; by: FleeCause; dist: number }
 
 export interface Deer {
   readonly id: string;
@@ -101,6 +136,13 @@ export interface Deer {
   away: { x: number; z: number } | null;
   /** Player distance last step (NaN = unknown) for the back-off test. */
   lastDist: number;
+  /** Alert: the spot of a noise she looks at for `heardT` more seconds (null: the player). Not saved. */
+  heard: { x: number; z: number } | null;
+  heardT: number;
+  /** Metres of the step aside still to go, its direction, and whether this alert had its step. Not saved. */
+  step: number;
+  stepDir: { x: number; z: number };
+  stepped: boolean;
   motion: AnimalMotion;
 }
 
@@ -129,11 +171,14 @@ export interface DeerInput {
   mask?: number;
   /** Can a deer stand here? (water, buildings: no). Default: everywhere. */
   walkable?(x: number, z: number): boolean;
+  /** How overgrown the ground is there (0 = open): a flight ends where the deer can be seen again. */
+  clutter?(x: number, z: number): number;
 }
 
 export const headingOf = (dx: number, dz: number): number => Math.atan2(-dx, -dz);
 const DEG = Math.PI / 180;
 const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v);
+const wrapPi = (a: number): number => Math.atan2(Math.sin(a), Math.cos(a));
 
 export function createDeer(op: AnimalSpawnOp, at?: { x: number; z: number; yaw?: number }): Deer {
   const look: AnimalLook = op.look === 'kitz' ? 'kitz' : 'ricke';
@@ -157,7 +202,12 @@ export function createDeer(op: AnimalSpawnOp, at?: { x: number; z: number; yaw?:
     flee: null,
     away: null,
     lastDist: NaN,
-    motion: { tx: x, tz: z, speed: 0, yaw, clip: 'graze' },
+    heard: null,
+    heardT: 0,
+    step: 0,
+    stepDir: { x: 0, z: 0 },
+    stepped: false,
+    motion: { tx: x, tz: z, speed: 0, yaw, clip: 'graze', gaze: null },
   };
   return d;
 }
@@ -188,7 +238,7 @@ export function meterRate(shy: ShyRadii, dist: number, radial: number, input: De
   if (p.speed < DEER.FREEZE_SPEED) return p.stance === 'stand' && dist <= shy.flee ? DEER.STAND_FILL * m : -DEER.DECAY;
   if (p.speed > DEER.SPRINT_SPEED) return DEER.SPRINT_FILL * m;
   if (p.speed > DEER.RUN_SPEED) return DEER.FILL * m;
-  if (p.stance === 'stand' && dist <= shy.flee) return DEER.FILL * m;
+  if (p.stance === 'stand') return (dist <= shy.flee ? DEER.FILL : DEER.FAR_RISE) * m;
   const s = STANCES[p.stance];
   return DEER.RISE * ((s.noise + s.visibility) / 2) * (0.5 + (1 - dist / r)) * m;
 }
@@ -199,10 +249,18 @@ export function calmDeer(d: Deer, seconds: number): void {
 }
 
 /** Scripted startle (debug `kq.animals.alert`, a story cue): bolt away from `from` now. */
-export function startleDeer(d: Deer, from: { x: number; z: number }, walkable?: DeerInput['walkable']): AnimalEvent[] {
+export function startleDeer(d: Deer, from: { x: number; z: number }, walkable?: DeerInput['walkable'], clutter?: DeerInput['clutter']): AnimalEvent[] {
   const out: AnimalEvent[] = [];
   if (d.state === 'flee' || d.state === 'leave' || d.state === 'gone') return out;
-  startFlee(d, from, 'cue', walkable, out);
+  startFlee(d, from, 'cue', { walkable, clutter }, out);
+  return out;
+}
+
+/** A thrown chestnut struck the deer: bolt away from where it came from, cause 'hit'. */
+export function hitDeer(d: Deer, from: { x: number; z: number }, walkable?: DeerInput['walkable'], clutter?: DeerInput['clutter']): AnimalEvent[] {
+  const out: AnimalEvent[] = [];
+  if (d.state === 'flee' || d.state === 'leave' || d.state === 'gone') return out;
+  startFlee(d, from, 'hit', { walkable, clutter }, out);
   return out;
 }
 
@@ -221,7 +279,8 @@ export function leaveDeer(d: Deer, toward?: { x: number; z: number }): void {
 
 const FLEE_ANGLES = [0, 30, -30, 60, -60, 90, -90, 120, -120].map((a) => a * DEG);
 
-function startFlee(d: Deer, from: { x: number; z: number }, by: 'player' | 'cue', walkable: DeerInput['walkable'], out: AnimalEvent[]): void {
+function startFlee(d: Deer, from: { x: number; z: number }, by: FleeCause, ground: Pick<DeerInput, 'walkable' | 'clutter'>, out: AnimalEvent[]): void {
+  const { walkable, clutter } = ground;
   let dx = d.x - from.x;
   let dz = d.z - from.z;
   const dist = Math.hypot(dx, dz);
@@ -235,7 +294,9 @@ function startFlee(d: Deer, from: { x: number; z: number }, by: 'player' | 'cue'
   const len = d.shy.settle;
   let tx = d.x + dx * len;
   let tz = d.z + dz * len;
-  if (walkable) {
+  if (walkable || clutter) {
+    // straight away first, then wider: of the walkable directions the one that ends most in the open
+    let best = Infinity;
     for (const a of FLEE_ANGLES) {
       const c = Math.cos(a);
       const s = Math.sin(a);
@@ -243,16 +304,19 @@ function startFlee(d: Deer, from: { x: number; z: number }, by: 'player' | 'cue'
       const uz = dx * s + dz * c;
       const ex = d.x + ux * len;
       const ez = d.z + uz * len;
-      if (walkable(ex, ez) && walkable(d.x + ux * len * 0.5, d.z + uz * len * 0.5)) {
-        tx = ex;
-        tz = ez;
-        break;
-      }
+      if (walkable && !(walkable(ex, ez) && walkable(d.x + ux * len * 0.5, d.z + uz * len * 0.5))) continue;
+      const k = clutter ? clutter(ex, ez) : 0;
+      if (k >= best) continue;
+      best = k;
+      tx = ex;
+      tz = ez;
+      if (!(k > 0)) break;
     }
   }
   d.state = 'flee';
   d.t = 0;
   d.meter = 1;
+  endWatch(d);
   d.flee = { fx: d.x, fz: d.z, tx, tz, by, dist: Math.round(dist * 10) / 10 };
   d.yaw = headingOf(tx - d.x, tz - d.z);
   out.push({ type: 'animal:fled', id: d.id, by, dist: d.flee.dist });
@@ -288,12 +352,27 @@ export function stepDeer(d: Deer, dt: number, input: DeerInput, out: AnimalEvent
     let rate = meterRate(d.shy, dist, radial, input);
     if (calm && rate > 0) rate *= DEER.CALM_RISE;
     let m = d.meter + rate * dt;
+    // out there an unhurried player is watched, not fled from
+    if (dist > d.shy.flee && !running) m = Math.min(m, Math.max(d.meter, DEER.HOLD_CAP));
+    let heard: DeerNoise | null = null;
     if (input.noise) {
       const mk = 1 - DEER.MASK_GAIN * clamp01(input.mask ?? 0);
+      let loudest = 0;
       for (const n of input.noise) {
         const dn = Math.hypot(n.x - d.x, n.z - d.z);
-        m += clamp01(n.loud) * DEER.NOISE_GAIN * Math.max(0, 1 - dn / d.shy.notice) * mk * (calm ? DEER.CALM_RISE : 1);
+        const g = clamp01(n.loud) * Math.max(0, 1 - dn / d.shy.notice) * mk;
+        m = Math.max(m, Math.min(m + g * DEER.NOISE_GAIN * (calm ? DEER.CALM_RISE : 1), DEER.NOISE_CAP));
+        if (g >= DEER.LOOK_GAIN && g > loudest) {
+          loudest = g;
+          heard = n;
+        }
       }
+    }
+    if (heard) {
+      d.heard = { x: heard.x, z: heard.z };
+      d.heardT = DEER.LOOK_S;
+      m = Math.max(m, DEER.ALERT_AT + 0.1);
+      out.push({ type: 'animal:heard', id: d.id, x: heard.x, z: heard.z });
     }
     d.meter = clamp01(calm ? Math.min(m, DEER.CALM_CAP) : m);
 
@@ -306,11 +385,12 @@ export function stepDeer(d: Deer, dt: number, input: DeerInput, out: AnimalEvent
         d.t = 0;
       }
     } else {
-      if (d.meter >= 1 && d.t >= DEER.TELL_S && !calm) startFlee(d, p, 'player', input.walkable, out);
-      else if (d.meter <= DEER.CLEAR_AT) {
+      if (d.meter >= 1 && d.t >= DEER.TELL_S && !calm) startFlee(d, p, 'player', input, out);
+      else if (d.meter <= DEER.CLEAR_AT && d.heardT <= 0) {
         d.state = 'graze';
         d.t = 0;
-      }
+        endWatch(d);
+      } else stepAside(d, p, dt, input);
     }
   } else if (d.state === 'flee' && d.flee) {
     if (moveTo(d, d.flee.tx, d.flee.tz, DEER.BOUND * dt)) {
@@ -329,6 +409,10 @@ export function stepDeer(d: Deer, dt: number, input: DeerInput, out: AnimalEvent
     }
   }
   d.calm = Math.max(0, d.calm - dt);
+  if (d.heardT > 0) {
+    d.heardT = Math.max(0, d.heardT - dt);
+    if (d.heardT <= 0) d.heard = null;
+  }
   updateMotion(d, p);
   return out;
 }
@@ -336,22 +420,96 @@ export function stepDeer(d: Deer, dt: number, input: DeerInput, out: AnimalEvent
 function toAlert(d: Deer, out: AnimalEvent[]): void {
   d.state = 'alert';
   d.t = 0;
+  d.step = 0;
+  d.stepped = false;
   out.push({ type: 'animal:alert', id: d.id });
 }
 
-function updateMotion(d: Deer, p: { x: number; z: number }): void {
+/** The alert is over (grazing again, or bolting): nothing to look at, no step pending. */
+function endWatch(d: Deer): void {
+  d.heard = null;
+  d.heardT = 0;
+  d.step = 0;
+  d.stepped = false;
+}
+
+/**
+ * Alert, and the player keeps coming: one step aside per alert, at an angle away from the player
+ * (to the side she already faces), so she ends quartering away and still watching.
+ */
+function stepAside(d: Deer, p: { x: number; z: number }, dt: number, input: DeerInput): void {
+  if (!d.stepped && d.meter >= DEER.STEP_AT && d.t >= DEER.STEP_AFTER) {
+    d.stepped = true;
+    let ax = d.x - p.x;
+    let az = d.z - p.z;
+    const l = Math.hypot(ax, az) || 1;
+    ax /= l;
+    az /= l;
+    const fx = -Math.sin(d.yaw);
+    const fz = -Math.cos(d.yaw);
+    let best = -Infinity;
+    for (const turn of [DEER.STEP_TURN, -DEER.STEP_TURN]) {
+      const c = Math.cos(turn);
+      const s = Math.sin(turn);
+      const ux = ax * c - az * s;
+      const uz = ax * s + az * c;
+      if (input.walkable && !input.walkable(d.x + ux * DEER.STEP_LEN, d.z + uz * DEER.STEP_LEN)) continue;
+      const along = ux * fx + uz * fz;
+      if (along <= best) continue;
+      best = along;
+      d.stepDir = { x: ux, z: uz };
+      d.step = DEER.STEP_LEN;
+    }
+  }
+  if (d.step <= 0) return;
+  const move = Math.min(d.step, DEER.WALK * dt);
+  d.x += d.stepDir.x * move;
+  d.z += d.stepDir.z * move;
+  d.step -= move;
+  d.yaw = headingOf(d.stepDir.x, d.stepDir.z);
+  // her own step is not the player backing off
+  d.lastDist = Math.hypot(p.x - d.x, p.z - d.z);
+}
+
+/** Turn the body only as far as the neck needs to keep (tx, tz) in view. */
+function turnToWatch(d: Pick<Deer, 'x' | 'z' | 'yaw'>, tx: number, tz: number): void {
+  if (Math.hypot(tx - d.x, tz - d.z) < 1e-3) return;
+  const off = wrapPi(headingOf(tx - d.x, tz - d.z) - d.yaw);
+  if (Math.abs(off) > DEER.HEAD_TURN) d.yaw = wrapPi(d.yaw + off - Math.sign(off) * DEER.HEAD_TURN);
+}
+
+/** What an alert deer looks at: the spot of a recent noise, else the player's head. */
+function gazeOf(d: Pick<Deer, 'heard'>, p: DeerPlayer): { x: number; z: number; h: number } {
+  if (d.heard) return { x: d.heard.x, z: d.heard.z, h: 0.2 };
+  return { x: p.x, z: p.z, h: STANCES[p.stance].eye };
+}
+
+/** Grazing: head down, with a look around every `GLANCE_EVERY` s (`t` = seconds in the state). */
+export function grazeClip(t: number): 'graze' | 'idle' {
+  return t % DEER.GLANCE_EVERY >= DEER.GLANCE_EVERY - DEER.GLANCE_S ? 'idle' : 'graze';
+}
+
+function updateMotion(d: Deer, p: DeerPlayer): void {
   const m = d.motion;
   m.tx = d.x;
   m.tz = d.z;
   m.speed = 0;
+  m.gaze = null;
   switch (d.state) {
     case 'graze':
-      m.clip = 'graze';
+      m.clip = grazeClip(d.t);
       break;
-    case 'alert':
-      d.yaw = headingOf(p.x - d.x, p.z - d.z);
+    case 'alert': {
+      const g = gazeOf(d, p);
+      m.gaze = g;
       m.clip = 'alert';
+      if (d.step > 0) {
+        m.tx = d.x + d.stepDir.x * d.step;
+        m.tz = d.z + d.stepDir.z * d.step;
+        m.speed = DEER.WALK;
+      } else turnToWatch(d, g.x, g.z);
       break;
+    }
     case 'flee':
       if (d.flee) {
         m.tx = d.flee.tx;
@@ -362,6 +520,7 @@ function updateMotion(d: Deer, p: { x: number; z: number }): void {
       break;
     case 'settled':
       m.clip = d.t < DEER.TELL_S ? 'alert' : 'idle';
+      if (d.t < DEER.TELL_S) m.gaze = gazeOf({ heard: null }, p);
       break;
     case 'leave':
       if (d.away) {
@@ -424,8 +583,11 @@ export function stepFollower(f: Deer, leader: Deer, dt: number, input: DeerInput
   m.tx = slot.x;
   m.tz = slot.z;
   m.speed = speed;
+  // the fawn watches what the doe watches
+  m.gaze = leader.motion.gaze ?? null;
   if (speed < 0.2) {
-    f.yaw = f.state === 'alert' ? headingOf(p.x - f.x, p.z - f.z) : leader.yaw;
+    if (f.state === 'alert' && m.gaze) turnToWatch(f, m.gaze.x, m.gaze.z);
+    else f.yaw = leader.yaw;
   }
   m.yaw = f.yaw;
   m.clip = speed >= 0.2 ? (speed > DEER.WALK * 2 ? 'run' : 'walk') : leader.motion.clip;
@@ -528,7 +690,7 @@ export function restoreDeer(s: DeerSave, herd: readonly DeerSave[] = []): Deer {
   d.meter = finiteOr(s.meter, 0);
   d.calm = finiteOr(s.calm, 0);
   const f = s.flee;
-  d.flee = isRecord(f) && [f.fx, f.fz, f.tx, f.tz].every(Number.isFinite) && (f.dist === undefined || Number.isFinite(f.dist)) ? { ...f, by: f.by === 'cue' ? 'cue' : 'player' } : null;
+  d.flee = isRecord(f) && [f.fx, f.fz, f.tx, f.tz].every(Number.isFinite) && (f.dist === undefined || Number.isFinite(f.dist)) ? { ...f, by: f.by === 'cue' || f.by === 'hit' ? f.by : 'player' } : null;
   d.away = isRecord(s.away) && Number.isFinite(s.away.x) && Number.isFinite(s.away.z) ? { x: s.away.x, z: s.away.z } : null;
   if (d.state === 'flee' && !d.flee) d.state = 'settled';
   if (d.state === 'leave' && !hasDeparture(s, herd)) d.state = 'gone';
