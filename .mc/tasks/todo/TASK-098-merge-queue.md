@@ -4,7 +4,7 @@ aliases:
 - TASK-098
 title: 'Merge queue: few open pull requests, nobody waits for the owner'
 slug: merge-queue
-status: in-progress
+status: review
 priority: 1
 owner: ''
 projects: []
@@ -120,7 +120,7 @@ release-please, and it needs its own bisection.
 
 ## Progress
 
-- Branch `ci/task-098-merge-queue`, on `integrate/all` (db8b1b8d).
+- Branch `ci/task-098-merge-queue`, on `main` at db8b1b8d. PR: https://github.com/schloss-karlsberg/karlsberg-quest/pull/147
 - 2026-11-28: evaluated, workflow and docs prepared, minutes measured from run 46104995434
   (62 specs, 304 min; `forage` and `turn-light` are newer and count by their tests). With them a
   full run plans as 12 shards of 24 min beside the campaign, or 8 shards of 38 min.
